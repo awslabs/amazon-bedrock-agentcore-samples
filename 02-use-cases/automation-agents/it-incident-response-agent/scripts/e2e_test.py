@@ -274,7 +274,7 @@ def _final_log_sweep(ticket_id: str, start: float):
             print()
             print("  Tool call timeline (from runtime logs):")
             print()
-            for ts, msg in tool_events:
+            for _ts, msg in tool_events:
                 if "Tool call started:" in msg:
                     tool_name = msg.split("Tool call started:")[-1].strip().split()[0]
                     print(f"    🔧 {tool_name} (started)")
@@ -293,17 +293,24 @@ def _final_log_sweep(ticket_id: str, start: float):
 
 
 def main():
+    """Parse CLI args, submit a test ticket, and report step-by-step results."""
     parser = argparse.ArgumentParser(description="E2E test with step visibility")
     parser.add_argument("--ticket", help="Path to ticket JSON file")
-    parser.add_argument("--priority", default="MEDIUM", choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"])
-    parser.add_argument("--requester", default="U-1002", help="Requester ID (must exist in Users table)")
+    parser.add_argument(
+        "--priority", default="MEDIUM", choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    )
+    parser.add_argument(
+        "--requester", default="U-1002", help="Requester ID (must exist in Users table)"
+    )
     parser.add_argument("--title", default=None, help="Override ticket title")
-    parser.add_argument("--no-logs", action="store_true", help="Skip log tailing (faster, less detail)")
+    parser.add_argument(
+        "--no-logs", action="store_true", help="Skip log tailing (faster, less detail)"
+    )
     args = parser.parse_args()
 
     # Build ticket
     if args.ticket:
-        with open(args.ticket) as f:
+        with open(args.ticket, encoding="utf-8") as f:
             ticket = json.load(f)
     else:
         ticket_id = f"E2E-{uuid.uuid4().hex[:8].upper()}"

@@ -41,8 +41,8 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/spans" --region us-we
 # Should return a log group; if empty, wait longer
 ```
 
-> Manual enablement (`aws application-signals start-monitoring`) is no longer
-> required — it is kept here only as a fallback if you deploy with
+> Manual enablement (`aws application-signals start-monitoring`) is not
+> required; it remains available as a fallback if you deploy with
 > `onlineEvalConfigs: []` and later enable eval out of band.
 
 ## Required Runtime Environment Variables
@@ -63,8 +63,8 @@ provided by the Dockerfile `CMD ["opentelemetry-instrument", "python", "-m", "ma
 > **Failure mode:** If these are missing, the runtime still emits low-level HTTP
 > spans (IMDS/credential calls) but **no `gen_ai` spans with `session.id`**. The
 > online eval config deploys fine and `aws/spans` fills up, but evaluations never
-> trigger because there are no agent sessions to score. This was the root cause of
-> an early "evals not running" issue — the fix was adding the four vars above.
+> trigger because there are no agent sessions to score. The four variables
+> above are required for evaluations to run.
 
 ## Verifying evaluations are running
 
@@ -97,8 +97,6 @@ To deploy without online evaluation (e.g., if Transaction Search is not enabled)
 | `Correctness`            | Was the information provided accurate?   |
 | `Helpfulness`            | Was the response useful to the user?     |
 | `ToolSelectionAccuracy`  | Did the agent pick the right tools?      |
-
-A custom `IncidentResolutionQuality` evaluator is also available for on-demand domain-specific scoring via `scripts/evaluate.py`.
 
 ## Cost
 

@@ -290,3 +290,5 @@ plan/
 02-use-cases/automation-agents/it-incident-response-agent/docs/use-case-samples-evaluation.html
 02-use-cases/automation-agents/it-incident-response-agent/docs/use-case-samples-evaluation.md
 02-use-cases/automation-agents/it-incident-response-agent/docs/eval-style.css
+02-use-cases/automation-agents/it-incident-response-agent/agentcore/cdk/tmp_*.py
+02-use-cases/automation-agents/it-incident-response-agent/PUBLICATION_READINESS.md

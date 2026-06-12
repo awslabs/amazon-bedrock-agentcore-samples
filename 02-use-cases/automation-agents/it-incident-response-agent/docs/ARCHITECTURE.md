@@ -841,9 +841,6 @@ sequenceDiagram
 │  │  • Helpfulness                       │                                      │
 │  │  • ToolSelectionAccuracy             │                                      │
 │  │                                      │                                      │
-│  │  + Custom: IncidentResolutionQuality │                                      │
-│  │    (scripts/evaluate.py, on-demand)  │                                      │
-│  │                                      │                                      │
 │  │  Prerequisite: CloudWatch            │                                      │
 │  │  Transaction Search (auto-enabled    │                                      │
 │  │  via transaction_search.py custom    │                                      │

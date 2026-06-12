@@ -53,7 +53,11 @@ def query_eval_results(log_group: str, hours: int = 1) -> list:
     end = int(time.time() * 1000)
     start = end - hours * 60 * 60 * 1000
 
-    query = "fields @timestamp, @message | filter name = 'gen_ai.evaluation.result' | sort @timestamp desc | limit 200"
+    query = (
+        "fields @timestamp, @message "
+        "| filter name = 'gen_ai.evaluation.result' "
+        "| sort @timestamp desc | limit 200"
+    )
 
     q = logs.start_query(
         logGroupName=log_group,
@@ -185,18 +189,20 @@ def _score_bar(score) -> str:
         return "[ ? ]"
     if score >= 0.9:
         return "[████]"
-    elif score >= 0.7:
+    if score >= 0.7:
         return "[███░]"
-    elif score >= 0.5:
+    if score >= 0.5:
         return "[██░░]"
-    elif score >= 0.3:
+    if score >= 0.3:
         return "[█░░░]"
-    else:
-        return "[░░░░]"
+    return "[░░░░]"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Retrieve online evaluation results for IT Incident Response Agent")
+    """Parse CLI args and print online evaluation results for the agent."""
+    parser = argparse.ArgumentParser(
+        description="Retrieve online evaluation results for IT Incident Response Agent"
+    )
     parser.add_argument("--hours", type=int, default=1, help="Hours back to query (default: 1)")
     parser.add_argument("--raw", action="store_true", help="Print raw JSON")
     parser.add_argument("--summary", action="store_true", help="Show aggregate summary only")

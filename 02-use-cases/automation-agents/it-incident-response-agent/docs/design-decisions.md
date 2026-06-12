@@ -172,7 +172,7 @@ notes this.
 
 ---
 
-## ADR-10: Bedrock Guardrail at Trigger (not inline in agent)
+## ADR-10: Bedrock Guardrail at the Agent Entry Point
 
 **Decision**: Apply the Bedrock Guardrail on incoming ticket payloads at the agent
 entry point, not as a model-level guardrail.

@@ -17,10 +17,11 @@ import json
 import logging
 import time
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from string import Template
 
 import boto3
+from boto3.dynamodb.conditions import Key
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from config import (
     TICKETS_TABLE,
@@ -143,6 +144,35 @@ Rules:
 $past_incidents_block
 Return the resolution comment as your final message.
 """
+
+
+def _count_recent_incidents(requester_id: str, exclude_ticket_id: str = "") -> int:
+    """Count this requester's incidents in the last 30 days (excluding the
+    current ticket), querying the same ``byRequester`` GSI the ``lookup_user``
+    tool uses.
+
+    This is the authoritative, immediately-consistent recurrence signal. Unlike
+    the SUMMARIZATION memory summaries (extracted asynchronously, so they lag a
+    just-submitted ticket and read 0 on an immediate resubmit), the tickets
+    table reflects prior incidents right away — keeping the reported count in
+    sync with the recurrence the model narrates from ``lookup_user``.
+
+    Non-fatal: returns 0 on any failure.
+    """
+    if not TICKETS_TABLE or not requester_id:
+        return 0
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    try:
+        items = _ddb.Table(TICKETS_TABLE).query(
+            IndexName="byRequester",
+            KeyConditionExpression=(Key("requester_id").eq(requester_id) & Key("created_at").gte(cutoff)),
+            Limit=25,
+            ScanIndexForward=False,
+        ).get("Items", [])
+    except Exception:
+        logger.exception("Failed to count recent incidents for %s (non-fatal)", requester_id)
+        return 0
+    return sum(1 for it in items if it.get("ticket_id") != exclude_ticket_id)
 
 
 def _resolve_ticket(ticket_id: str, comment: str) -> None:
@@ -473,13 +503,21 @@ async def invoke(payload, context):
         _emit_resolution_event(ticket_id, resolution, requester_id)
 
         logger.info("%s %s resolved successfully", "Issue" if is_jira_mode else "Ticket", ticket_id)
+        # Recurrence count: prefer the immediate tickets-table signal; fall back
+        # to the (async) memory-summary count when no DDB history exists (e.g.
+        # Jira mode). This keeps the reported count consistent with the
+        # recurrence the model detects via lookup_user.
+        recurring_count = max(
+            len(past_incidents),
+            _count_recent_incidents(requester_id, exclude_ticket_id=ticket_id),
+        )
         yield json.dumps(
             {
                 "ticket_id": ticket_id,
                 "status": "Resolved",
                 "resolution": resolution,
                 "mode": "jira" if is_jira_mode else "ddb",
-                "recurring_incident_count": len(past_incidents),
+                "recurring_incident_count": recurring_count,
             }
         )
 

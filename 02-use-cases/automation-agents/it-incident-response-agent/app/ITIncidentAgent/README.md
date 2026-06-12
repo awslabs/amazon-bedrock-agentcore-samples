@@ -29,6 +29,6 @@ This directory contains the agent code deployed to AgentCore Runtime as a contai
 ## Local Development
 
 ```bash
-agentcore dev                    # Start local server on :8080
-agentcore invoke --dev "Hello"   # Test locally
+agentcore dev                    # Web UI on :8081, runtime container on :8082
+agentcore dev "Hello"            # Test with a prompt
 ```
