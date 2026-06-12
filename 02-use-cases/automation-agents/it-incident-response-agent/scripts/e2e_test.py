@@ -226,7 +226,7 @@ def _check_spans_for_tools(logs_client, start: float, log_start_ms: int, seen_to
                     if tool in span_name and tool not in seen_tools:
                         seen_tools.add(tool)
                         duration_ns = span.get("duration", 0)
-                        duration_ms = duration_ns / 1_000_000 if duration_ns > 1000 else duration_ns
+                        duration_ms = duration_ns / 1_000_000  # OTEL span durations are always ns
                         print_step(start, "🔧", f"Tool: {tool} ({duration_ms:.0f}ms)")
             except (json.JSONDecodeError, KeyError):
                 pass
