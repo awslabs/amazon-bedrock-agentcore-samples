@@ -17,7 +17,13 @@ from typing import Optional
 
 from mcp.client.streamable_http import streamablehttp_client
 from strands.tools.mcp.mcp_client import MCPClient
-from config import GATEWAY_URL, GATEWAY_AUTH_MODE, GATEWAY_OAUTH_PROVIDER_NAME, GATEWAY_OAUTH_AUDIENCE, REGION
+from config import (
+    GATEWAY_URL,
+    GATEWAY_AUTH_MODE,
+    GATEWAY_OAUTH_PROVIDER_NAME,
+    GATEWAY_OAUTH_AUDIENCE,
+    REGION,
+)
 
 logger = logging.getLogger(__name__)
 

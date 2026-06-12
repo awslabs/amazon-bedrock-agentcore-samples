@@ -43,7 +43,9 @@ def handler(event, context):
 
     # On Delete: do NOT disable Transaction Search (shared account-level setting).
     if request_type == "Delete":
-        logger.info("Delete requested — leaving Transaction Search enabled (shared account setting).")
+        logger.info(
+            "Delete requested — leaving Transaction Search enabled (shared account setting)."
+        )
         return {"PhysicalResourceId": PHYSICAL_ID}
 
     xray = boto3.client("xray")

@@ -163,12 +163,16 @@ def _count_recent_incidents(requester_id: str, exclude_ticket_id: str = "") -> i
         return 0
     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     try:
-        items = _ddb.Table(TICKETS_TABLE).query(
-            IndexName="byRequester",
-            KeyConditionExpression=(Key("requester_id").eq(requester_id) & Key("created_at").gte(cutoff)),
-            Limit=25,
-            ScanIndexForward=False,
-        ).get("Items", [])
+        items = (
+            _ddb.Table(TICKETS_TABLE)
+            .query(
+                IndexName="byRequester",
+                KeyConditionExpression=(Key("requester_id").eq(requester_id) & Key("created_at").gte(cutoff)),
+                Limit=25,
+                ScanIndexForward=False,
+            )
+            .get("Items", [])
+        )
     except Exception:
         logger.exception("Failed to count recent incidents for %s (non-fatal)", requester_id)
         return 0
@@ -318,7 +322,10 @@ async def invoke(payload, context):
         agent = None
         try:
             if tool_warnings:
-                logger.warning("Running in degraded mode (some tools unavailable): %s", "; ".join(tool_warnings))
+                logger.warning(
+                    "Running in degraded mode (some tools unavailable): %s",
+                    "; ".join(tool_warnings),
+                )
 
             agent = Agent(
                 model=load_model(),
@@ -451,13 +458,14 @@ async def invoke(payload, context):
             )
         except Exception as agent_init_exc:
             # Tool loading failed even with available clients — fall back to LLM-only
+            exc_name = type(agent_init_exc).__name__
             logger.warning(
                 "Agent initialization with tools failed (%s: %s). Falling back to LLM-only mode.",
-                type(agent_init_exc).__name__,
+                exc_name,
                 agent_init_exc,
                 exc_info=True,
             )
-            tool_warnings.append(f"Agent tool initialization failed: {type(agent_init_exc).__name__}: {agent_init_exc}")
+            tool_warnings.append(f"Agent tool initialization failed: {exc_name}: {agent_init_exc}")
 
             # Create agent without tools
             agent = Agent(

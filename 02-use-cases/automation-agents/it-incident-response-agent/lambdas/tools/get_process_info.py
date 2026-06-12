@@ -64,7 +64,10 @@ def lambda_handler(event, context):
     if len(process_name) > MAX_PROCESS_NAME_LENGTH:
         return _err(f"process_name exceeds maximum length of {MAX_PROCESS_NAME_LENGTH} characters")
     if not PROCESS_NAME_PATTERN.match(process_name):
-        return _err("process_name contains invalid characters (allowed: alphanumeric, _, -, ., space, /, ())")
+        return _err(
+            "process_name contains invalid characters "
+            "(allowed: alphanumeric, _, -, ., space, /, ())"
+        )
 
     item = _processes.get_item(Key={"process_name": process_name}).get("Item")
     if not item:

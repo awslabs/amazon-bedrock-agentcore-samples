@@ -9,11 +9,15 @@ summaries that power the enrichment module.
 from typing import Optional
 
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
-from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
+from bedrock_agentcore.memory.integrations.strands.session_manager import (
+    AgentCoreMemorySessionManager,
+)
 from config import MEMORY_ID, REGION
 
 
-def get_memory_session_manager(session_id: str, actor_id: str) -> Optional[AgentCoreMemorySessionManager]:
+def get_memory_session_manager(
+    session_id: str, actor_id: str
+) -> Optional[AgentCoreMemorySessionManager]:
     """Create a session manager bound to a specific session and actor.
 
     Args:

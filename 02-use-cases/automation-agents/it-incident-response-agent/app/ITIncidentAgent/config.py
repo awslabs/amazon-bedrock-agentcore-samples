@@ -12,7 +12,9 @@ import os
 # We also accept GATEWAY_URL for backward compat and explicit override.
 GATEWAY_URL = os.getenv("GATEWAY_URL") or os.getenv("AGENTCORE_GATEWAY_ITINCIDENTGATEWAY_URL", "")
 GATEWAY_AUTH_MODE = os.getenv("GATEWAY_AUTH_MODE", "AWS_IAM")
-GATEWAY_OAUTH_PROVIDER_NAME = os.getenv("GATEWAY_OAUTH_PROVIDER_NAME") or os.getenv("OAUTH_PROVIDER_NAME", "")
+GATEWAY_OAUTH_PROVIDER_NAME = os.getenv("GATEWAY_OAUTH_PROVIDER_NAME") or os.getenv(
+    "OAUTH_PROVIDER_NAME", ""
+)
 GATEWAY_OAUTH_AUDIENCE = os.getenv("GATEWAY_OAUTH_AUDIENCE") or os.getenv("GATEWAY_AUDIENCE", "")
 
 # ─── Memory ──────────────────────────────────────────────────────────────────
