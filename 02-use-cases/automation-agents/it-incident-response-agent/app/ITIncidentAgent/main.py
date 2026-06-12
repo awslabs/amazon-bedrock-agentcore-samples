@@ -83,7 +83,6 @@ def _on_after_tool_call(event: AfterToolCallEvent) -> None:
 # Configuration is loaded from config.py (centralized env var resolution)
 
 app = BedrockAgentCoreApp()
-log = app.logger
 
 # DynamoDB resource for ticket status updates
 _ddb = boto3.resource("dynamodb", region_name=REGION)
@@ -272,7 +271,7 @@ def _build_query(ticket: dict) -> str:
 @app.entrypoint
 async def invoke(payload, context):
     """Main entrypoint called by AgentCore Runtime."""
-    log.info("Invoking IT Incident Response Agent...")
+    logger.info("Invoking IT Incident Response Agent...")
 
     # Determine if this is a ticket processing request or a simple prompt
     if isinstance(payload, str):
@@ -286,6 +285,7 @@ async def invoke(payload, context):
         mcp_clients, tool_warnings = get_all_mcp_clients_safe()
         tools = mcp_clients if mcp_clients else []
 
+        agent = None
         try:
             if tool_warnings:
                 logger.warning("Running in degraded mode (some tools unavailable): %s", "; ".join(tool_warnings))
@@ -306,13 +306,20 @@ async def invoke(payload, context):
                 exc_info=True,
             )
 
-            # Create agent without tools
-            agent = Agent(
-                model=load_model(),
-                session_manager=get_memory_session_manager(session_id, user_id),
-                system_prompt=SYSTEM_PROMPT,
-                tools=[],
-            )
+            # Create agent without tools — if this ALSO fails, there is no agent
+            # to stream from, so yield a structured error instead of crashing
+            # with a NameError on the unbound `agent`.
+            try:
+                agent = Agent(
+                    model=load_model(),
+                    session_manager=get_memory_session_manager(session_id, user_id),
+                    system_prompt=SYSTEM_PROMPT,
+                    tools=[],
+                )
+            except Exception:
+                logger.exception("Agent fallback initialization also failed")
+                yield json.dumps({"status": "Failed", "error": "Agent initialization failed"})
+                return
 
         stream = agent.stream_async(payload.get("prompt"))
         async for event in stream:
@@ -357,10 +364,16 @@ async def invoke(payload, context):
     )
 
     try:
-        # STEP: GUARDRAIL — Sanitize event payload before model invocation
+        # STEP: GUARDRAIL — Sanitize event payload before model invocation.
+        # Both title AND description reach the model via _build_query, so both
+        # must be sanitized — PII in a ticket title would otherwise bypass the
+        # guardrail.
         if not is_jira_mode:
-            sanitized_description = _apply_guardrail(payload.get("description", ""))
-            payload_for_agent = {**payload, "description": sanitized_description}
+            payload_for_agent = {
+                **payload,
+                "title": _apply_guardrail(payload.get("title", "")),
+                "description": _apply_guardrail(payload.get("description", "")),
+            }
         else:
             payload_for_agent = payload
 
@@ -435,8 +448,16 @@ async def invoke(payload, context):
 
         result = agent(user_query)
 
-        # Extract resolution text
-        resolution = result.message["content"][0]["text"]
+        # Extract resolution text defensively. The model may return an empty
+        # content list or non-text content (a tool-only turn, a refusal, or a
+        # guardrail block); guard against an unguarded [0]["text"] IndexError.
+        content = (getattr(result, "message", None) or {}).get("content") or []
+        resolution = content[0].get("text", "") if content and isinstance(content[0], dict) else ""
+        if not resolution:
+            # No usable text output. Do NOT auto-resolve with placeholder text —
+            # raise so the outer handler marks the ticket Failed. A ticket with no
+            # agent resolution must require human processing, not be silently closed.
+            raise ValueError("Agent produced no text resolution — requires human review")
 
         # STEP: MEMORY — Persistence is handled by the AgentCoreMemorySessionManager
         # attached to the Agent above; it writes the conversation turn (and the
