@@ -296,16 +296,10 @@ def main():
     """Parse CLI args, submit a test ticket, and report step-by-step results."""
     parser = argparse.ArgumentParser(description="E2E test with step visibility")
     parser.add_argument("--ticket", help="Path to ticket JSON file")
-    parser.add_argument(
-        "--priority", default="MEDIUM", choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-    )
-    parser.add_argument(
-        "--requester", default="U-1002", help="Requester ID (must exist in Users table)"
-    )
+    parser.add_argument("--priority", default="MEDIUM", choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"])
+    parser.add_argument("--requester", default="U-1002", help="Requester ID (must exist in Users table)")
     parser.add_argument("--title", default=None, help="Override ticket title")
-    parser.add_argument(
-        "--no-logs", action="store_true", help="Skip log tailing (faster, less detail)"
-    )
+    parser.add_argument("--no-logs", action="store_true", help="Skip log tailing (faster, less detail)")
     args = parser.parse_args()
 
     # Build ticket

@@ -62,9 +62,7 @@ def get_jira_mcp_client_sync() -> Optional[MCPClient]:
         provider_name=JIRA_OAUTH_PROVIDER_NAME,
         auth_flow="USER_FEDERATION",
         scopes=JIRA_SCOPES,
-        on_auth_url=lambda url: logger.warning(
-            "Atlassian consent required (one-time). Visit: %s", url
-        ),
+        on_auth_url=lambda url: logger.warning("Atlassian consent required (one-time). Visit: %s", url),
     )
     def _build_client(*, access_token: str) -> MCPClient:
         """Decorated — token injected by @requires_access_token."""

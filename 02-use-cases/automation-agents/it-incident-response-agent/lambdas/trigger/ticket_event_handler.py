@@ -158,9 +158,7 @@ def lambda_handler(event, context):
                 issue_key = payload["issue_key"]
                 # Ensure requester_id has a fallback for memory actor_id
                 payload.setdefault("requester_id", issue_key)
-                logger.info(
-                    "Dispatching Jira issue %s (requester=%s)", issue_key, payload["requester_id"]
-                )
+                logger.info("Dispatching Jira issue %s (requester=%s)", issue_key, payload["requester_id"])
                 _invoke_runtime(payload, issue_key)
 
             else:
@@ -172,9 +170,7 @@ def lambda_handler(event, context):
                     continue
 
                 ticket_id = payload["ticket_id"]
-                logger.info(
-                    "Processing ticket %s (priority=%s)", ticket_id, payload.get("priority")
-                )
+                logger.info("Processing ticket %s (priority=%s)", ticket_id, payload.get("priority"))
                 _persist_ticket(payload)
                 _invoke_runtime(payload, ticket_id)
 
