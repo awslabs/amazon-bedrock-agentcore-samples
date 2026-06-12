@@ -31,8 +31,9 @@ if AGENT_RUNTIME_ARN == "PENDING":
         "Ensure the parent stack sets this env var after AgentCore constructs are created."
     )
 
-_ddb = boto3.resource("dynamodb")
-_agentcore = boto3.client("bedrock-agentcore")
+_REGION = os.environ.get("AWS_REGION", "us-west-2")
+_ddb = boto3.resource("dynamodb", region_name=_REGION)
+_agentcore = boto3.client("bedrock-agentcore", region_name=_REGION)
 
 # Full-ticket mode requires these fields
 REQUIRED_TICKET_FIELDS = {"ticket_id", "title", "description", "requester_id"}

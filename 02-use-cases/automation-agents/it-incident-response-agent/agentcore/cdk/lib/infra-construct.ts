@@ -405,7 +405,7 @@ export class InfraConstruct extends Construct {
         timeout: cdk.Duration.seconds(30),
         memorySize: 256,
         code: lambda_.Code.fromAsset(lambdasPath),
-        environment: { KB_ID: this.knowledgeBaseId },
+        environment: { ...commonEnv, KB_ID: this.knowledgeBaseId },
         logRetention: logs.RetentionDays.TWO_WEEKS,
       });
       queryKbFn.addToRolePolicy(
@@ -511,8 +511,10 @@ export class InfraConstruct extends Construct {
         ProcessesTable: processesTable.tableName,
         ...(this.knowledgeBaseId ? { KnowledgeBaseId: this.knowledgeBaseId } : {}),
         ...(this.knowledgeBaseDataSourceId ? { DataSourceId: this.knowledgeBaseDataSourceId } : {}),
-        // Bump version to force re-seed on deploy
-        Version: '2',
+        // Bump version to force re-seed on deploy (v3: DataSourceId now passed →
+        // forces the custom resource to re-run and trigger KB ingestion on
+        // already-deployed stacks).
+        Version: '3',
       },
     });
 
