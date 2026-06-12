@@ -19,8 +19,6 @@ CHANGES_TABLE = os.environ["CHANGES_TABLE"]
 USERS_TABLE = os.environ["USERS_TABLE"]
 
 _ddb = boto3.resource("dynamodb")
-_changes = _ddb.Table(CHANGES_TABLE)
-_users = _ddb.Table(USERS_TABLE)
 
 # Input validation constants
 MAX_ID_LENGTH = 128
@@ -78,25 +76,51 @@ def lambda_handler(event, context):
     if not ACTION_PATTERN.match(action):
         return _err("action contains invalid characters (allowed: alphanumeric, _, -, .)")
 
+    # Optional justification (see tool schema). Persisted on the change record and
+    # surfaced to the policy engine context so the RequireReasonForChangeRequest
+    # Cedar policy can evaluate it.
+    reason = event.get("reason", "")
+    if not isinstance(reason, str):
+        return _err("reason must be a string")
+    if len(reason) > MAX_SUMMARY_LENGTH:
+        return _err(f"reason exceeds maximum length of {MAX_SUMMARY_LENGTH} characters")
+
     now = datetime.now(timezone.utc).isoformat()
     change_id = f"CHG-{uuid.uuid4().hex[:8].upper()}"
 
-    _changes.put_item(
-        Item={
-            "change_id": change_id,
-            "ticket_id": ticket_id,
-            "user_id": user_id,
-            "summary": summary,
-            "action": action,
-            "created_at": now,
-            "status": "applied",
-        }
-    )
-
-    _users.update_item(
-        Key={"user_id": user_id},
-        UpdateExpression="SET last_incident_at = :ts ADD incident_count :one",
-        ExpressionAttributeValues={":ts": now, ":one": 1},
+    # Atomic dual write: record the change AND stamp the user in one transaction.
+    # A non-transactional pair could leave the change record written while the
+    # user's incident_count/last_incident_at update fails (throttle, network),
+    # which would make lookup_user undercount repeat offenders — and a model
+    # retry after a partial failure would create a duplicate change record.
+    # transact_write_items uses the low-level client, so attribute values must
+    # be DynamoDB-typed.
+    _ddb.meta.client.transact_write_items(
+        TransactItems=[
+            {
+                "Put": {
+                    "TableName": CHANGES_TABLE,
+                    "Item": {
+                        "change_id": {"S": change_id},
+                        "ticket_id": {"S": ticket_id},
+                        "user_id": {"S": user_id},
+                        "summary": {"S": summary},
+                        "action": {"S": action},
+                        "reason": {"S": reason},
+                        "created_at": {"S": now},
+                        "status": {"S": "applied"},
+                    },
+                }
+            },
+            {
+                "Update": {
+                    "TableName": USERS_TABLE,
+                    "Key": {"user_id": {"S": user_id}},
+                    "UpdateExpression": "SET last_incident_at = :ts ADD incident_count :one",
+                    "ExpressionAttributeValues": {":ts": {"S": now}, ":one": {"N": "1"}},
+                }
+            },
+        ]
     )
 
     return _ok(

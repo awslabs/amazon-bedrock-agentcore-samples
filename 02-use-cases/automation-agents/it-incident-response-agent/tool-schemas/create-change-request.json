@@ -20,6 +20,10 @@
         "action": {
           "type": "string",
           "description": "Machine-readable action key (e.g. apply_smb_gateway_override)."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Justification (from the runbook) for taking this corrective action. Provide this whenever a runbook supports the change."
         }
       },
       "required": ["ticket_id", "user_id", "summary"]
