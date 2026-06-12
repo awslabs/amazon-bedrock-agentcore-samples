@@ -46,10 +46,14 @@ def main():
         print("\n🔑 Authentication Flows:")
         print(f"   ExplicitAuthFlows: {client.get('ExplicitAuthFlows', [])}")
         print(f"   AllowedOAuthFlows: {client.get('AllowedOAuthFlows', [])}")
-        print(f"   AllowedOAuthFlowsUserPoolClient: {client.get('AllowedOAuthFlowsUserPoolClient', False)}")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"   AllowedOAuthFlowsUserPoolClient: {client.get('AllowedOAuthFlowsUserPoolClient', False)}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
 
         print("\n🔐 OAuth Configuration:")
-        print(f"   AllowedOAuthScopes: {client.get('AllowedOAuthScopes', [])}")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"   AllowedOAuthScopes: {client.get('AllowedOAuthScopes', [])}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
         print(f"   SupportedIdentityProviders: {client.get('SupportedIdentityProviders', [])}")
         print(f"   CallbackURLs: {client.get('CallbackURLs', [])}")
         print(f"   LogoutURLs: {client.get('LogoutURLs', [])}")

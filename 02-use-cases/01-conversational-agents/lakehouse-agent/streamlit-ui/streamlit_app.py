@@ -95,7 +95,9 @@ def authenticate_user(username: str, password: str, user_pool_id: str, client_id
 
         message = bytes(username + client_id, "utf-8")
         secret = bytes(client_secret, "utf-8")
-        secret_hash = base64.b64encode(hmac.new(secret, message, digestmod=hashlib.sha256).digest()).decode()  # codeql[py/weak-sensitive-data-hashing] - HMAC-SHA256 for Cognito SECRET_HASH, not password hashing
+        secret_hash = base64.b64encode(
+            hmac.new(secret, message, digestmod=hashlib.sha256).digest()
+        ).decode()  # codeql[py/weak-sensitive-data-hashing] - HMAC-SHA256 for Cognito SECRET_HASH, not password hashing
 
         response = client.admin_initiate_auth(
             UserPoolId=user_pool_id,
@@ -162,7 +164,9 @@ def set_new_password(
 
         message = bytes(username + client_id, "utf-8")
         secret = bytes(client_secret, "utf-8")
-        secret_hash = base64.b64encode(hmac.new(secret, message, digestmod=hashlib.sha256).digest()).decode()  # codeql[py/weak-sensitive-data-hashing] - HMAC-SHA256 for Cognito SECRET_HASH, not password hashing
+        secret_hash = base64.b64encode(
+            hmac.new(secret, message, digestmod=hashlib.sha256).digest()
+        ).decode()  # codeql[py/weak-sensitive-data-hashing] - HMAC-SHA256 for Cognito SECRET_HASH, not password hashing
 
         response = client.admin_respond_to_auth_challenge(
             UserPoolId=user_pool_id,

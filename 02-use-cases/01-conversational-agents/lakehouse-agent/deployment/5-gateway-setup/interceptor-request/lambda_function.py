@@ -419,7 +419,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             tenant_credentials = exchange_jwt_to_iam(claim_name, claim_value)
 
             if tenant_credentials:
-                logger.info(f"🔑 Obtained temporary credentials for role: {tenant_credentials['RoleName']}")  # codeql[py/clear-text-logging-sensitive-data]
+                logger.info(
+                    f"🔑 Obtained temporary credentials for role: {tenant_credentials['RoleName']}"
+                )  # codeql[py/clear-text-logging-sensitive-data]
             else:
                 logger.warning("⚠️  Failed to exchange JWT to IAM credentials")
         else:

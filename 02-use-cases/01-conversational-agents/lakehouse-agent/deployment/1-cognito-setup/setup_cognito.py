@@ -164,9 +164,13 @@ class CognitoSetup:
                     Type="String",
                     Overwrite=True,
                 )
-                print(f"✅ Stored parameter: {param['name']} = {param['value']}")  # codeql[py/clear-text-logging-sensitive-data]
+                print(
+                    f"✅ Stored parameter: {param['name']} = {param['value']}"
+                )  # codeql[py/clear-text-logging-sensitive-data]
             except Exception as e:
-                print(f"❌ Error storing parameter {param['name']}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
+                print(
+                    f"❌ Error storing parameter {param['name']}: {e}"
+                )  # codeql[py/clear-text-logging-sensitive-data]
                 raise
 
     def write_to_env(self, config: Dict):
@@ -617,12 +621,16 @@ if __name__ == "__main__":
     # Normal setup flow (includes automatic post-auth trigger configuration)
     result = setup.setup()
 
-    print(f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     if "client_secret" in result:
         print(f"\n🔐 User App Client Secret: {result['client_secret']}")  # codeql[py/clear-text-logging-sensitive-data]
         print("   (Also stored securely in SSM Parameter Store)")
     if "m2m_client_secret" in result:
-        print(f"\n🤖 M2M App Client Secret: {result['m2m_client_secret']}")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"\n🤖 M2M App Client Secret: {result['m2m_client_secret']}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
         print("   (Also stored securely in SSM Parameter Store)")
 
     print("\n💾 SSM Parameters Stored:")

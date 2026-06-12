@@ -507,7 +507,9 @@ class GatewaySetup:
                                 or provider.get("credentialProviderArn")
                             )
                             if provider_arn:
-                                print(f"✅ Using existing provider: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
+                                print(
+                                    f"✅ Using existing provider: {provider_arn}"
+                                )  # codeql[py/clear-text-logging-sensitive-data]
                                 return provider_arn
 
                     print(f"   ⚠️  Provider {provider_name} not found in list")
