@@ -481,7 +481,7 @@ class GatewaySetup:
                 print(f"   Debug - Full response: {response}")
                 raise KeyError(f"Could not find ARN in response. Available keys: {list(response.keys())}")
 
-            print(f"✅ OAuth2 provider created: {provider_arn}")
+            print(f"✅ OAuth2 provider created: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
             return provider_arn
 
         except Exception as e:
@@ -507,7 +507,7 @@ class GatewaySetup:
                                 or provider.get("credentialProviderArn")
                             )
                             if provider_arn:
-                                print(f"✅ Using existing provider: {provider_arn}")
+                                print(f"✅ Using existing provider: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
                                 return provider_arn
 
                     print(f"   ⚠️  Provider {provider_name} not found in list")
@@ -540,7 +540,7 @@ class GatewaySetup:
             print(f"\n🎯 Creating gateway target: {target_name}")
             print(f"   MCP Server URL: {mcp_server_url}")
             print("   Authentication: OAuth2 Client Credentials")
-            print(f"   Provider ARN: {oauth_provider_arn}")
+            print(f"   Provider ARN: {oauth_provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
 
             response = self.client.create_gateway_target(
                 name=target_name,

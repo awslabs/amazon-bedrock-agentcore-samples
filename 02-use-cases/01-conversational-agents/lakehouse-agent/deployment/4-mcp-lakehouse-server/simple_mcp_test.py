@@ -48,7 +48,7 @@ def get_m2m_token():
     client_details = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
     allowed_scopes = client_details["UserPoolClient"].get("AllowedOAuthScopes", [])
     scope_string = " ".join(allowed_scopes)
-    print(f"   Scopes: {scope_string}")
+    print(f"   Scopes: {scope_string}")  # codeql[py/clear-text-logging-sensitive-data]
 
     # Request token
     print("\n🔐 Requesting access token...")

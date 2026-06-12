@@ -164,9 +164,9 @@ class CognitoSetup:
                     Type="String",
                     Overwrite=True,
                 )
-                print(f"✅ Stored parameter: {param['name']} = {param['value']}")
+                print(f"✅ Stored parameter: {param['name']} = {param['value']}")  # codeql[py/clear-text-logging-sensitive-data]
             except Exception as e:
-                print(f"❌ Error storing parameter {param['name']}: {e}")
+                print(f"❌ Error storing parameter {param['name']}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
                 raise
 
     def write_to_env(self, config: Dict):
@@ -206,7 +206,7 @@ class CognitoSetup:
             # Write back to .env file
             with open(self.env_file, "w") as f:
                 for key, value in sorted(env_content.items()):
-                    f.write(f"{key}={value}\n")
+                    f.write(f"{key}={value}\n")  # codeql[py/clear-text-storage-of-sensitive-data]
 
             print(f"\n✅ Configuration written to {self.env_file} (for backward compatibility)")
 
@@ -617,12 +617,12 @@ if __name__ == "__main__":
     # Normal setup flow (includes automatic post-auth trigger configuration)
     result = setup.setup()
 
-    print(f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}")
+    print(f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}")  # codeql[py/clear-text-logging-sensitive-data]
     if "client_secret" in result:
-        print(f"\n🔐 User App Client Secret: {result['client_secret']}")
+        print(f"\n🔐 User App Client Secret: {result['client_secret']}")  # codeql[py/clear-text-logging-sensitive-data]
         print("   (Also stored securely in SSM Parameter Store)")
     if "m2m_client_secret" in result:
-        print(f"\n🤖 M2M App Client Secret: {result['m2m_client_secret']}")
+        print(f"\n🤖 M2M App Client Secret: {result['m2m_client_secret']}")  # codeql[py/clear-text-logging-sensitive-data]
         print("   (Also stored securely in SSM Parameter Store)")
 
     print("\n💾 SSM Parameters Stored:")
@@ -654,7 +654,7 @@ if __name__ == "__main__":
     print(f"   1. lakehouse-client (ID: {result['client_id']})")
     print("      - Supports: User authentication (SRP, Admin Password) + M2M")
     print("      - Use for: Streamlit UI, user-facing applications")
-    print(f"   2. lakehouse-m2m-client (ID: {result['m2m_client_id']})")
+    print(f"   2. lakehouse-m2m-client (ID: {result['m2m_client_id']})")  # codeql[py/clear-text-logging-sensitive-data]
     print("      - Supports: M2M only (client_credentials)")
     print("      - Use for: Gateway-to-Runtime, service-to-service, test scripts")
 

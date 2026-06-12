@@ -11,9 +11,10 @@ exports.virtualCardRequisition = async (event) => {
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
   const { messageId, buyerId, amount, currency } = body;
   
-  // Generate random card details
-  const requisitionId = Math.floor(Math.random() * 1000000000).toString();
-  const accountNumber = '4' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0');
+  // Generate random card details using cryptographically secure random numbers
+  const crypto = require('crypto');
+  const requisitionId = parseInt(crypto.randomBytes(4).toString('hex'), 16).toString();
+  const accountNumber = '4' + parseInt(crypto.randomBytes(7).toString('hex'), 16).toString().slice(0, 15).padStart(15, '0');
   const now = new Date();
   const futureExpiry = new Date(now.getFullYear() + 3, now.getMonth());
   const expiryMonth = String(futureExpiry.getMonth() + 1).padStart(2, '0');

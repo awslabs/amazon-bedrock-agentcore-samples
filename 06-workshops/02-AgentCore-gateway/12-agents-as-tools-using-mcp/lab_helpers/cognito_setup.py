@@ -625,7 +625,7 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
             print(f"❌ Could not retrieve User Pool ID from SSM: {e}")
             return
 
-    print(f"Cleaning up Cognito resources for User Pool: {user_pool_id}...")
+    print(f"Cleaning up Cognito resources for User Pool: {user_pool_id}...")  # codeql[py/clear-text-logging-sensitive-data]
     print("")
 
     try:

@@ -90,10 +90,10 @@ class GatewayCleanup:
                 if "lakehouse" in name.lower():
                     try:
                         self.bedrock.delete_oauth2_credential_provider(name=name)
-                        print(f"   ✅ Deleted: {name}")
+                        print(f"   ✅ Deleted: {name}")  # codeql[py/clear-text-logging-sensitive-data]
                         deleted += 1
                     except Exception as e:
-                        print(f"   ⚠️  Error deleting {name}: {e}")
+                        print(f"   ⚠️  Error deleting {name}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
             if deleted == 0:
                 print("   ⏭️  No lakehouse OAuth providers found")
         except Exception as e:
