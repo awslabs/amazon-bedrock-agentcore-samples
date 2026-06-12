@@ -68,6 +68,9 @@ export class InfraConstruct extends Construct {
   /** Bedrock Knowledge Base ID (created or pre-existing; empty if skipped) */
   public readonly knowledgeBaseId: string = '';
 
+  /** Bedrock KB data source ID (empty if KB skipped). Used to trigger ingestion on deploy. */
+  public readonly knowledgeBaseDataSourceId: string = '';
+
   constructor(scope: Construct, id: string, props: InfraConstructProps = {}) {
     super(scope, id);
 
@@ -264,6 +267,7 @@ export class InfraConstruct extends Construct {
       dataSource.addDependency(kb);
 
       this.knowledgeBaseId = kb.attrKnowledgeBaseId;
+      this.knowledgeBaseDataSourceId = dataSource.attrDataSourceId;
 
       new cdk.CfnOutput(this, 'KnowledgeBaseId', { value: kb.attrKnowledgeBaseId });
       new cdk.CfnOutput(this, 'KnowledgeBaseArn', { value: kb.attrKnowledgeBaseArn });
@@ -506,6 +510,7 @@ export class InfraConstruct extends Construct {
         UsersTable: usersTable.tableName,
         ProcessesTable: processesTable.tableName,
         ...(this.knowledgeBaseId ? { KnowledgeBaseId: this.knowledgeBaseId } : {}),
+        ...(this.knowledgeBaseDataSourceId ? { DataSourceId: this.knowledgeBaseDataSourceId } : {}),
         // Bump version to force re-seed on deploy
         Version: '2',
       },

@@ -697,13 +697,18 @@ zero prerequisites). The deployment creates:
 - An S3 data source pointing to the `kb-docs/` runbook files
 - The `query-kb` Lambda tool registered in the gateway
 
-After first deploy, trigger ingestion to index the runbook documents:
+**Ingestion runs automatically on deploy.** The seeder custom resource calls
+`start_ingestion_job` once the KB and data source are created (it receives both
+the `KnowledgeBaseId` and `DataSourceId`), so the runbook documents are indexed
+without any manual step.
+
+If you ever need to re-index manually (e.g., after editing `kb-docs/` without a
+redeploy), you can trigger ingestion directly:
 
 ```bash
-# Get the KB ID from stack outputs
+# Get the KB ID + data source ID from stack outputs
 agentcore status
 
-# Start ingestion (indexes kb-docs/ content)
 aws bedrock-agent start-ingestion-job \
   --knowledge-base-id <KB_ID from output> \
   --data-source-id <DataSourceId from output> \
@@ -711,7 +716,8 @@ aws bedrock-agent start-ingestion-job \
 ```
 
 **To use a pre-existing KB instead:**
-Set `KB_ID=<your-kb-id>` in `.env` before deploying.
+Set `KB_ID=<your-kb-id>` in `.env` before deploying. Note: auto-ingestion only
+applies to the stack-created KB; for a reused KB, manage ingestion yourself.
 
 **To disable the KB tool entirely:**
 Set `SKIP_KB=true` in `.env`.
