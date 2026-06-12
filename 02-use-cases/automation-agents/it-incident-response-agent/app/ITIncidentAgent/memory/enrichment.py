@@ -36,10 +36,12 @@ def _get_memory_client() -> Optional[MemoryClient]:
 def retrieve_past_incidents(requester_id: str, query: str, top_k: int = 5) -> list[str]:
     """Pull summarized past-incident episodes for this requester.
 
-    The CfnMemory resource is configured with a `summary_memory_strategy`
-    namespaced as `incidents/{actorId}`. AgentCore extracts a summary per
-    session asynchronously after each event; `retrieve_memories` does a
-    semantic search across those summaries.
+    The Memory resource is configured with a `summary_memory_strategy`
+    namespaced as `incidents/{actorId}/{sessionId}` ({sessionId} is mandatory
+    for SUMMARIZATION strategies). AgentCore extracts a summary per session
+    asynchronously after each event; this function does a semantic search across
+    all of a requester's session summaries by querying the `incidents/{actorId}`
+    path prefix (via `namespace_path`).
 
     Returns a list of summary strings (most relevant first), or empty
     list on failure (graceful degradation — the agent just won't have
@@ -50,11 +52,16 @@ def retrieve_past_incidents(requester_id: str, query: str, top_k: int = 5) -> li
         logger.info("Memory not configured (MEMORY_ID unset) — no past-incident context")
         return []
 
-    namespace = f"incidents/{requester_id}"
+    # The summary strategy stores records at "incidents/{actorId}/{sessionId}"
+    # ({sessionId} is mandatory for SUMMARIZATION strategies). Retrieve with a
+    # hierarchical PATH PREFIX (namespace_path) so all of a requester's session
+    # summaries match — an exact `namespace` match would never hit the
+    # session-scoped leaf namespaces and would silently return nothing.
+    namespace_path = f"incidents/{requester_id}"
     try:
         hits = client.retrieve_memories(
             memory_id=MEMORY_ID,
-            namespace=namespace,
+            namespace_path=namespace_path,
             query=query,
             top_k=top_k,
         )
