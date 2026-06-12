@@ -4,6 +4,7 @@ Looks up information about a hardware/software process or service from the
 asset catalog. The agent uses this to understand what's affected.
 """
 
+import decimal
 import logging
 import os
 import re
@@ -32,6 +33,22 @@ def _err(message: str) -> dict:
     return {"error": message}
 
 
+def _decimals_to_native(obj):
+    """Recursively convert DynamoDB Decimal values to int/float.
+
+    boto3's DynamoDB resource deserializes Numbers as Decimal, which is not
+    JSON-serializable; AWS Lambda serializes the handler return to JSON, so
+    unconverted Decimals would raise a TypeError and fail the tool call.
+    """
+    if isinstance(obj, decimal.Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    if isinstance(obj, dict):
+        return {k: _decimals_to_native(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_decimals_to_native(i) for i in obj]
+    return obj
+
+
 def lambda_handler(event, context):
     """Look up process/service information from asset catalog."""
     # STEP: ENRICH — Understand what service/process is affected
@@ -54,13 +71,15 @@ def lambda_handler(event, context):
         return _err(f"process {process_name} not found in asset catalog")
 
     return _ok(
-        {
-            "process_name": process_name,
-            "type": item.get("type"),
-            "version": item.get("version"),
-            "owner_team": item.get("owner_team"),
-            "criticality": item.get("criticality"),
-            "current_status": item.get("current_status"),
-            "known_issues": item.get("known_issues", []),
-        }
+        _decimals_to_native(
+            {
+                "process_name": process_name,
+                "type": item.get("type"),
+                "version": item.get("version"),
+                "owner_team": item.get("owner_team"),
+                "criticality": item.get("criticality"),
+                "current_status": item.get("current_status"),
+                "known_issues": item.get("known_issues", []),
+            }
+        )
     )

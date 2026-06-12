@@ -4,6 +4,7 @@ Returns user profile, quotas, and recent incident history for a given user_id.
 The agent uses this to understand requester context and detect recurring incidents.
 """
 
+import decimal
 import logging
 import os
 import re
@@ -38,6 +39,23 @@ def _err(message: str) -> dict:
     return {"error": message}
 
 
+def _decimals_to_native(obj):
+    """Recursively convert DynamoDB Decimal values to int/float.
+
+    The boto3 DynamoDB resource deserializes Numbers as Decimal, which is not
+    JSON-serializable. AWS Lambda serializes the handler's return value to JSON,
+    so unconverted Decimals would raise "Object of type Decimal is not JSON
+    serializable" and fail the tool call.
+    """
+    if isinstance(obj, decimal.Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    if isinstance(obj, dict):
+        return {k: _decimals_to_native(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_decimals_to_native(i) for i in obj]
+    return obj
+
+
 def lambda_handler(event, context):
     """Look up user profile and recent ticket history."""
     # STEP: ENRICH — Gather requester context for the agent's reasoning
@@ -69,19 +87,21 @@ def lambda_handler(event, context):
     ).get("Items", [])
 
     return _ok(
-        {
-            "user_id": user_id,
-            "profile": user,
-            "quotas": user.get("quotas", {}),
-            "recent_tickets": [
-                {
-                    "ticket_id": t["ticket_id"],
-                    "title": t.get("title"),
-                    "status": t.get("status"),
-                    "created_at": t.get("created_at"),
-                }
-                for t in recent
-            ],
-            "recent_incident_count_30d": len(recent),
-        }
+        _decimals_to_native(
+            {
+                "user_id": user_id,
+                "profile": user,
+                "quotas": user.get("quotas", {}),
+                "recent_tickets": [
+                    {
+                        "ticket_id": t["ticket_id"],
+                        "title": t.get("title"),
+                        "status": t.get("status"),
+                        "created_at": t.get("created_at"),
+                    }
+                    for t in recent
+                ],
+                "recent_incident_count_30d": len(recent),
+            }
+        )
     )
