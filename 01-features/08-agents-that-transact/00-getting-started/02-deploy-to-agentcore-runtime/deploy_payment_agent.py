@@ -157,7 +157,15 @@ subprocess.run(["agentcore", "deploy", "-y"], cwd=project_dir, check=True)
 result = subprocess.run(["agentcore", "status"], cwd=project_dir, capture_output=True, text=True)
 print(result.stdout)
 
-# Add payment permissions to the auto-created execution role
+# Add payment permissions to the auto-created execution role.
+# The agentcore CLI creates the execution role itself from the CDK construct;
+# `agentcore.json` (AgentEnvSpec) does not currently expose `executionRoleArn`,
+# so we cannot bind the runtime to the AgentCorePaymentsProcessPaymentRole that
+# Tutorial 00 created. Instead, we attach a narrow inline policy here. Allow
+# only on ProcessPayment + the read APIs is what enforces separation — the
+# absence of CreatePaymentSession / CreatePaymentInstrument on the role keeps
+# the agent from creating its own budgets or wallets. See
+# https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-iam-roles.html.
 print("Adding payment permissions to execution role...")
 iam = boto3.client("iam")
 roles = iam.list_roles(MaxItems=200)["Roles"]

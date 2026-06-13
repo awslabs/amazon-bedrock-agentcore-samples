@@ -124,7 +124,7 @@ python payment_agent.py
 
 **Stateless agent** — `payment_agent.py` reads all payment context from the invocation payload, not from environment variables. This means the same agent binary can serve different users with different budgets — the app backend controls what each user can spend by creating a session with the appropriate budget before invoking.
 
-**ProcessPaymentRole** — The execution role the agent runs under. It has `ProcessPayment` permission and explicit denies on `CreatePaymentSession`, `CreatePaymentInstrument`, and all control-plane operations. The agent cannot create sessions, override budgets, or provision wallets.
+**Runtime execution role** — The agentcore CLI auto-creates an execution role when it scaffolds the project. `deploy_payment_agent.py` then attaches a narrow inline policy (`PaymentDataPlaneAccess`) that grants only `ProcessPayment` and the read-only payment APIs (`GetPaymentInstrument`, `GetPaymentInstrumentBalance`, `GetPaymentSession`, `ListPaymentInstruments`, `GetResourcePaymentToken`). The agent cannot create sessions, override budgets, or provision wallets because those actions are not on the allow list. This matches the [IAM roles guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-iam-roles.html), which separates payment management from payment execution by **narrow scope** on the execution role and an **explicit `Deny ProcessPayment`** on the management role used by the app backend.
 
 **Payload-driven sessions** — The app backend creates a fresh session with a budget before every invocation, then passes the `payment_session_id` in the payload. The agent cannot reuse sessions from previous invocations or extend their expiry.
 
