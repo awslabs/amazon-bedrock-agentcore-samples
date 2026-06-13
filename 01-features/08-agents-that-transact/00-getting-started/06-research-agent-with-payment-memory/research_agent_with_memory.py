@@ -197,8 +197,12 @@ def main() -> None:
     try:
         # Wait for memory to become ACTIVE. CreateMemory returns immediately
         # with status=CREATING; downstream record ops require ACTIVE.
+        # README documents ~30-90s typical, 5 minutes as the practical ceiling.
+        # If we exceed the ceiling, surface it so the user can investigate
+        # rather than wait indefinitely.
+        MAX_WAIT_SECONDS = 300
         print(
-            "\n   Waiting for memory to become ACTIVE (usually 30-90s)...",
+            f"\n   Waiting for memory to become ACTIVE (usually 30-90s, ceiling {MAX_WAIT_SECONDS}s)...",
             flush=True,
         )
         elapsed = 0
@@ -210,6 +214,13 @@ def main() -> None:
             if status == "FAILED":
                 reason = memory_ctl.get_memory(memoryId=memory_id)["memory"].get("failureReason", "unknown")
                 raise RuntimeError(f"Memory creation failed: {reason}")
+            if elapsed >= MAX_WAIT_SECONDS:
+                raise TimeoutError(
+                    f"Memory {memory_id} stayed in {status} for {elapsed}s — exceeded the "
+                    f"{MAX_WAIT_SECONDS}s ceiling. Inspect failureReason via "
+                    f"`aws bedrock-agentcore-control get-memory --memory-id {memory_id}` "
+                    f"and check CloudWatch logs in the bedrock-agentcore log group."
+                )
             print(
                 f"   status={status}, elapsed={elapsed}s, polling again in 10s...",
                 flush=True,
