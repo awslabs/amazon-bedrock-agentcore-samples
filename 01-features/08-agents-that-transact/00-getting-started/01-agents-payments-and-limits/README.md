@@ -122,7 +122,7 @@ python langgraph_payment_agent.py
 
 ### Agent gets 402 but payment fails
 
-Delegated signing is not configured. For Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies. For Stripe/Privy: open the Privy reference frontend at `http://localhost:3000`, log in as `LINKED_EMAIL`, and choose **Connect agent**.
+The error message is `Delegated signing grant is not active for the end user wallet. Please redirect end user to the WalletHub to grant the permissions`. Delegated signing has two layers and both must be granted. For Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies (project-level), then open the WalletHub `redirectUrl` from the `CreatePaymentInstrument` response, sign in as `LINKED_EMAIL`, and grant the per-wallet permission. For Stripe/Privy: open the Privy reference frontend at `http://localhost:3000`, log in as `LINKED_EMAIL`, and choose **Connect agent**.
 
 ### Session budget exceeded immediately
 
