@@ -49,15 +49,15 @@ App Backend                          AgentCore runtime
 - Tutorial 01 completed (understand the local agent + plugin flow)
 - Wallet funded with testnet USDC from [faucet.circle.com](https://faucet.circle.com/)
 - Python 3.10+
-- Node.js 20+ and the AgentCore CLI: `npm install -g @aws/agentcore`
+- Node.js 20+ and the AgentCore CLI 0.19+: `npm install -g @aws/agentcore@^0.19.0` (0.14 ships an empty `aws-targets.json` and the deploy fails — see Troubleshooting)
 - AWS CDK: `npm install -g aws-cdk`
 - AWS CLI configured
 
 ## CLI Commands
 
 ```bash
-# Install AgentCore CLI
-npm install -g @aws/agentcore
+# Install AgentCore CLI (0.19+)
+npm install -g @aws/agentcore@^0.19.0
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -134,8 +134,20 @@ python payment_agent.py
 
 Install Node.js 20+ and the AgentCore CLI:
 ```bash
-npm install -g @aws/agentcore
+npm install -g @aws/agentcore@^0.19.0
 agentcore --version
+```
+
+### agentcore deploy fails with `Target "default" not found in aws-targets.json`
+
+The agentcore CLI 0.14 scaffolds `<project>/agentcore/aws-targets.json` as an empty list, so `agentcore deploy` exits before the CDK synth. Upgrade to 0.19 or later:
+```bash
+npm install -g @aws/agentcore@^0.19.0
+agentcore --version
+```
+If you must stay on 0.14, hand-write the file before deploy:
+```bash
+echo '[{"name":"default","account":"<account-id>","region":"<region>"}]' > PaymentAgent/agentcore/aws-targets.json
 ```
 
 ### Deploy fails with CDK bootstrap error
