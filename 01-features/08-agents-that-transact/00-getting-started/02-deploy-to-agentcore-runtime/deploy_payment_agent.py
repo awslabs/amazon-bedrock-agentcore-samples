@@ -38,7 +38,7 @@ import boto3
 from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_tutorial_env, print_summary, update_env_file
+from utils import load_tutorial_env, print_summary, resolve_region, update_env_file
 
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
@@ -46,10 +46,10 @@ load_dotenv(ENV_FILE, override=True)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ── Verify AWS credentials ────────────────────────────────────────────────────
+REGION = resolve_region()
 session = boto3.Session()
 identity = session.client("sts").get_caller_identity()
 account_id = identity["Account"]
-REGION = session.region_name or os.environ.get("AWS_REGION", "us-west-2")
 print(f"Authenticated as: {identity['Arn']}")
 print(f"Account: {account_id}")
 print(f"Region: {REGION}")
