@@ -64,8 +64,11 @@ Step 3a — Create an API Key
   1. In the CDP Portal, navigate to your project.
   2. Choose Create API key (or New key).
   3. Enter a descriptive name (e.g. agentcore-payments-tutorial).
-  4. Choose Create or Save.
-  5. Download the keys when prompted.
+  4. Under Advanced settings, enable Non-custodial: Manage.
+     Without this scope, Tutorial 00 fails at CreatePaymentInstrument
+     with AccessDenied.
+  5. Choose Create or Save.
+  6. Download the keys when prompted.
   → Gives you: API Key ID  →  COINBASE_API_KEY_ID
                 API Key Secret  →  COINBASE_API_KEY_SECRET
 
