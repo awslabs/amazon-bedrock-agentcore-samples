@@ -22,8 +22,6 @@ Both approaches work with either wallet provider (Coinbase CDP or Stripe/Privy) 
 
 ### Strands
 
-![Strands Payment Flow](images/strands_payment_flow.png)
-
 ```
 Agent (Strands + http_request tool)
   │
@@ -45,8 +43,6 @@ Agent (Strands + http_request tool)
 ![Strands Agent Payment Flow](images/strands_agent_payment_flow.png)
 
 ### LangGraph
-
-![LangGraph Payment Flow](images/langgraph_payment_flow.png)
 
 ```
 LangGraph ReAct Agent
