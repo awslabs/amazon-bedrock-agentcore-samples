@@ -138,6 +138,13 @@ npm install -g @aws/agentcore
 agentcore --version
 ```
 
+### agentcore deploy fails with `Target "default" not found in aws-targets.json`
+
+Some agentcore CLI versions scaffold `<project>/agentcore/aws-targets.json` as an empty list, which makes `agentcore deploy` exit before the CDK synth. The `deploy_payment_agent.py` script appends a `default` entry automatically when it sees this. If you ran `agentcore deploy` directly, write the file by hand and re-run:
+```bash
+echo '[{"name":"default","account":"<account-id>","region":"<region>"}]' > PaymentAgent/agentcore/aws-targets.json
+```
+
 ### Deploy fails with CDK bootstrap error
 
 Bootstrap CDK in your account/region first:

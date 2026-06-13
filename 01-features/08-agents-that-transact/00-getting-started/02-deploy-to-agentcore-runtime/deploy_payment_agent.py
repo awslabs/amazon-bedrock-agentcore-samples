@@ -146,6 +146,27 @@ if os.path.exists(lock_file):
 
 print("pyproject.toml updated")
 
+# Some agentcore CLI versions scaffold aws-targets.json as an empty list,
+# which causes `agentcore deploy` to exit with `Target "default" not found
+# in aws-targets.json`. Append a default target if one is missing, and leave
+# any other entries alone.
+targets_file = os.path.join(project_dir, "agentcore", "aws-targets.json")
+if os.path.exists(targets_file):
+    try:
+        with open(targets_file) as f:
+            targets = json.loads(f.read() or "[]")
+    except json.JSONDecodeError:
+        targets = None
+    if (
+        isinstance(targets, list)
+        and all(isinstance(t, dict) and "name" in t for t in targets)
+        and not any(t["name"] == "default" for t in targets)
+    ):
+        targets.append({"name": "default", "account": account_id, "region": REGION})
+        with open(targets_file, "w") as f:
+            f.write(json.dumps(targets, indent=2))
+        print(f"Added default target to aws-targets.json (account={account_id}, region={REGION})")
+
 # ── Step 7: Deploy to AgentCore Runtime ───────────────────────────────────────
 print("\n── Step 7: Deploy to AgentCore Runtime ──")
 print("This creates billable AWS resources (Lambda, CloudWatch, API Gateway).")
