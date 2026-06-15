@@ -336,8 +336,10 @@ def main():
     print("SETUP COMPLETE")
     print("=" * 60)
 
-    # Write credentials to a local .env file (avoids logging secrets to stdout)
-    env_file = ".env.web-search"
+    # Write credentials to a local .env file next to the script that invoked setup
+    caller_dir = os.path.dirname(os.path.abspath(sys.argv[0])) if sys.argv[0] else os.getcwd()
+    env_file = os.path.join(caller_dir, ".env.web-search")
+
     with open(env_file, "w") as f:
         f.write(f"export AGENTCORE_GATEWAY_URL=\"{gateway_url}\"\n")
         f.write(f"export COGNITO_DOMAIN=\"{cognito_config['domain']}\"\n")

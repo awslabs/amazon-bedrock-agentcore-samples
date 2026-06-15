@@ -1,13 +1,14 @@
 """
-Clean up all resources created by the Web Search Tool setup.
+Clean up all resources provisioned by the Deep Research Agent.
 
 Deletes in order:
   1. Gateway targets and Gateway
   2. Cognito User Pool (domain, clients, pool)
   3. IAM Role and inline policies
+  4. Local .env.web-search credentials file
 
 Prerequisites:
-    pip install -r ../requirements.txt
+    pip install -r requirements.txt
     AWS credentials with permissions to delete the resources.
 
 Usage:
@@ -21,12 +22,7 @@ import time
 
 import boto3
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-
 REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-
-
-# ── Cleanup Steps ─────────────────────────────────────────────────────────────
 
 
 def delete_gateway(gateway_client, gateway_id):
@@ -67,7 +63,6 @@ def delete_iam_role(iam_client, role_name):
     """Delete the IAM role and its inline policies."""
     print("\n[3/3] Deleting IAM resources...")
     try:
-        # Delete inline policies
         policies = iam_client.list_role_policies(RoleName=role_name)
         for policy_name in policies["PolicyNames"]:
             iam_client.delete_role_policy(
@@ -81,12 +76,17 @@ def delete_iam_role(iam_client, role_name):
         print(f"  Error deleting IAM role: {e}")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+def delete_env_file():
+    """Remove local .env.web-search credentials file."""
+    env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.web-search")
+    if os.path.exists(env_file):
+        os.remove(env_file)
+        print(f"\n  Deleted local credentials file: {env_file}")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Clean up Web Search Tool Gateway resources"
+        description="Clean up Deep Research Agent Gateway resources"
     )
     parser.add_argument(
         "--gateway-id", required=True, help="Gateway ID to delete"
@@ -108,7 +108,7 @@ def main():
     region = args.region
 
     print("=" * 60)
-    print("AgentCore Web Search Tool — Resource Cleanup")
+    print("Deep Research Agent — Resource Cleanup")
     print("=" * 60)
     print(f"\nRegion:       {region}")
     print(f"Gateway ID:   {args.gateway_id}")
@@ -122,10 +122,13 @@ def main():
     delete_gateway(gateway_client, args.gateway_id)
     delete_cognito(cognito_client, args.user_pool_id)
     delete_iam_role(iam_client, args.role_name)
+    delete_env_file()
 
     print("\n" + "=" * 60)
     print("✅ All resources cleaned up successfully!")
     print("=" * 60)
+    print("\n💡 Remember to unset environment variables:")
+    print("   unset AGENTCORE_GATEWAY_URL COGNITO_DOMAIN COGNITO_CLIENT_ID COGNITO_CLIENT_SECRET COGNITO_SCOPE")
 
 
 if __name__ == "__main__":

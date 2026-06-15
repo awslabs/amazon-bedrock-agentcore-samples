@@ -1,4 +1,5 @@
-boto3
+boto3>=1.38.0
+botocore>=1.38.0
 strands-agents>=0.1.8
 mcp
 requests
