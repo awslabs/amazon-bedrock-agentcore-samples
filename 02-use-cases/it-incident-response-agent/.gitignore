@@ -1,8 +1,0 @@
-.env
-.venv/
-cdk.out/
-__pycache__/
-*.pyc
-node_modules/
-*.swp
-.DS_Store
