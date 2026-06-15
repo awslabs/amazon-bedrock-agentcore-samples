@@ -521,10 +521,9 @@ mode:
 
 - **HOP 1 — Inbound (caller → Runtime)**: This project uses **SigV4** (AWS_IAM).
   In the event-driven path the caller is the Trigger Lambda (a service), so SigV4
-  is the right fit. The Streamlit UI also signs with SigV4 even in "Google OAuth"
-  mode, passing the authenticated user's email in the
-  `X-Amzn-Bedrock-AgentCore-Runtime-User-Id` header (see
-  `it-incident-response-ui/app.py` → `_sign_request_sigv4`). AgentCore *does*
+  is the right fit. Any direct caller (e.g. a `curl` against `/invocations`, as in
+  the README's local-dev example) likewise signs with SigV4 and passes a caller
+  identity in the `X-Amzn-Bedrock-AgentCore-Runtime-User-Id` header. AgentCore *does*
   support **CUSTOM_JWT inbound** as well, but this project does not configure it —
   see "Choosing the inbound auth mode" below for when it applies.
 - **HOP 2 — Outbound (Runtime → Gateway)**: The `GATEWAY_AUTH_MODE` toggle
@@ -688,70 +687,35 @@ flowchart TD
 ```
 </details>
 
-### Data Flow: Direct Invoke Path (UI → Resolution)
+### Data Flow: Direct Invoke Path (synchronous request → response)
+
+Besides the event-driven SNS path, the Runtime can be invoked **directly** — a
+SigV4-signed `POST` to `/invocations` (this is what the README's local-dev `curl`
+example does). The same entrypoint accepts two payload shapes:
 
 ```mermaid
 sequenceDiagram
-    participant UI as UI
+    participant C as Caller (SigV4)
     participant AC as API Endpoint
     participant RT as Runtime
 
-    UI->>AC: POST /runtimes/arn/invocations
+    C->>AC: POST /runtimes/{arn}/invocations
     AC->>RT: Route to container
 
-    alt Prompt Mode
-        RT-->>UI: Streaming text
-    else Ticket Mode
-        RT-->>UI: JSON result
+    alt Prompt Mode {"prompt": "..."}
+        RT-->>C: Streaming text
+    else Ticket Mode {"ticket_id": "...", ...}
+        RT-->>C: JSON {ticket_id, status, resolution}
     end
 ```
 
-<details>
-<summary>Data Flow: Direct Invoke Path (UI → Resolution)[ASCII]</summary>
-
-```text
-┌────────────────────────────────────────────────────────────────────────────────┐
-│                                                                                │
-│  ┌────────────────────┐                                                        │
-│  │  Streamlit UI      │                                                        │
-│  │  (it-incident-     │                                                        │
-│  │   response-ui/)    │                                                        │
-│  │                    │                                                        │
-│  │  Auth: Google      │                                                        │
-│  │  OAuth → user ID   │                                                        │
-│  │                    │                                                        │
-│  │  SigV4 signed      │                                                        │
-│  │  POST /invocations │                                                        │
-│  └─────────┬──────────┘                                                        │
-│            │                                                                   │
-│            │  HTTPS (SigV4)                                                    │
-│            │  URL: bedrock-agentcore.{region}.amazonaws.com                    │
-│            │       /runtimes/{url-encoded-arn}/invocations                     │
-│            │                                                                   │
-│            │  Headers:                                                         │
-│            │   Authorization: AWS4-HMAC-SHA256 ...                             │
-│            │   X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: <uuid>             │
-│            │   X-Amzn-Bedrock-AgentCore-Runtime-User-Id: <google-email>        │
-│            │                                                                   │
-│            ▼                                                                   │
-│  ┌─────────────────────────────────────────────────────┐                       │
-│  │  AgentCore Runtime                                  │                       │
-│  │                                                     │                       │
-│  │  Prompt mode: {"prompt": "..."}                     │                       │
-│  │    → Agent runs with MCP tools                      │                       │
-│  │    → Streams response back                          │                       │
-│  │                                                     │                       │
-│  │  Ticket mode: {"ticket_id": "...", ...}             │                       │
-│  │    → Full TRIGGER→ENRICH→REASON→ACT→EMIT flow       │                       │
-│  │    → Returns JSON: {ticket_id, status, resolution}  │                       │
-│  └─────────────────────────────────────────────────────┘                       │
-│                                                                                │
-│  Response: text/event-stream                                                   │
-│  Body: data: {"ticket_id":"INC-...", "status":"Resolved", "resolution":"..."}  │
-│                                                                                │
-└────────────────────────────────────────────────────────────────────────────────┘
-```
-<details>
+The caller signs the request with SigV4 and supplies
+`X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` and
+`X-Amzn-Bedrock-AgentCore-Runtime-User-Id` headers. **Prompt mode**
+(`{"prompt": "..."}`) runs the agent with MCP tools and streams text back;
+**ticket mode** (`{"ticket_id": "...", ...}`) runs the full
+TRIGGER→ENRICH→REASON→ACT→EMIT flow and returns a JSON resolution. The response is
+delivered as `text/event-stream`.
 
 ### Memory Data Flow (Cross-Session Enrichment)
 
@@ -773,7 +737,7 @@ sequenceDiagram
 ```
 
 <details>
-<summary>Data Flow: Direct Invoke Path (UI → Resolution) [ASCII]</summary>
+<summary>Memory Data Flow (Cross-Session Enrichment) [ASCII]</summary>
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────┐
@@ -806,7 +770,7 @@ sequenceDiagram
 │                                                                                │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
-<details>
+</details>
 
 ### Observability Data Flow
 
@@ -918,24 +882,17 @@ sequenceDiagram
 
 ## Reading Order for New Developers
 
-1. **This file** — understand the pattern and flow
+1. **This file** — understand the architecture, pattern, and data flows
 2. **README.md** — deploy and run the demo
-3. **`app/ITIncidentAgent/main.py`** — the agent's brain (follow the STEP comments)
-4. **`lambdas/tools/lookup_user.py`** — example of a gateway tool
-5. **`agentcore/agentcore.json`** — the CLI configuration
-6. **`agentcore/cdk/lib/cdk-stack.ts`** — how it all deploys
-7. **`docs/custom-jwt-auth-upgrade.md`** — when you're ready for enterprise auth
+3. **[commands-reference.md](commands-reference.md)** — CLI commands, operations, and troubleshooting
+4. **`app/ITIncidentAgent/main.py`** — the agent's brain (follow the STEP comments)
+5. **`lambdas/tools/lookup_user.py`** — example of a gateway tool
+6. **`agentcore/agentcore.json`** — the CLI configuration
+7. **`agentcore/cdk/lib/cdk-stack.ts`** — how it all deploys
+8. **`docs/custom-jwt-auth-upgrade.md`** — when you're ready for enterprise auth
 
 ---
 
-## Known Configuration Notes
-
-| Item | Detail |
-|------|--------|
-| **agentcore.json `credentials.discoveryUrl`** | Points to `accounts.google.com` — this is correct when using Google as the OIDC provider. For Auth0, replace with `https://TENANT.auth0.com/.well-known/openid-configuration`. |
-| **agentcore.json `memories[]`** | A Memory resource (`ITIncidentAgentMemory`, SUMMARIZATION strategy, namespace `incidents/{actorId}/{sessionId}`) is declared in `memories[]` and provisioned by the L3 `AgentCoreApplication` construct. The L3 injects `MEMORY_ITINCIDENTAGENTMEMORY_ID` into the Runtime, which `config.py` reads as `MEMORY_ID`. The agent code (`memory/session.py`, `memory/enrichment.py`) records turns and retrieves past-incident summaries (via the `incidents/{actorId}` prefix). If `memories[]` is emptied, the code degrades gracefully to a no-op. Note: SUMMARIZATION namespaces must include `{sessionId}`. |
-| **Model ID alignment** | `model/load.py` defaults to `claude-sonnet-4-6`. The deployed runtime gets `AGENT_MODEL_ID` declaratively from `agentcore.json` → `runtimes[].envVars[]` (rendered by the L3 construct); the Python default is the fallback for local dev only. Editing `.env` does not affect the deployed model — edit `agentcore.json`. |
-| **FAST_MODEL_ID** | Declared in `agentcore.json` → `runtimes[].envVars[]` (`us.anthropic.claude-haiku-4-5-20251001-v1:0`, fastest/cheapest for LOW priority) and rendered into the runtime by the L3 construct. |
-| **Gateway authorizerType** | `agentcore.json` declares `AWS_IAM` but CDK can override to `CUSTOM_JWT` via env var at deploy time. Agent code handles both modes dynamically. |
-| **query-kb target** | Always present in agentcore.json but gracefully removed by CDK `patchMcpSpecArns()` when no KB is available (SKIP_KB=true or no KB_ID). |
-| **Jira MCP transport** | Uses SSE (`sse_client`) while Gateway uses streamable HTTP (`streamablehttp_client`) — this is intentional since Atlassian's server uses SSE protocol. |
+> **Looking for commands?** CLI scaffolding, resource management (Memory, KB, tools,
+> eval, auth), operational commands, troubleshooting, and the known-configuration
+> notes now live in **[commands-reference.md](commands-reference.md)**.
