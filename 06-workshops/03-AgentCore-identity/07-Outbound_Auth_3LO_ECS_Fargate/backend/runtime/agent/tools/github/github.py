@@ -35,9 +35,7 @@ class GitHubTools:
         """
         raise AuthorizationRequiredError(provider="GitHub", auth_url=url)
 
-    async def _call_github_api(
-        self, endpoint: str, scopes: list[str], params: dict | None = None
-    ) -> Any:
+    async def _call_github_api(self, endpoint: str, scopes: list[str], params: dict | None = None) -> Any:
         """Make authenticated GitHub API call.
 
         Raises:
@@ -95,9 +93,7 @@ class GitHubTools:
             ApiError: When API call fails
 
         """
-        result: dict[str, Any] = await self._call_github_api(
-            "/user", scopes=["read:user"]
-        )
+        result: dict[str, Any] = await self._call_github_api("/user", scopes=["read:user"])
         return GitHubUser.model_validate(result)
 
     @tool

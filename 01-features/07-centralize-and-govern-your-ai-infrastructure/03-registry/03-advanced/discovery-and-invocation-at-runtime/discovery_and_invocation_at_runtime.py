@@ -170,9 +170,9 @@ app_client_resp = cognito_client.create_user_pool_client(
 client_id = app_client_resp["UserPoolClient"]["ClientId"]
 
 secret_name = f"gateway-client-secret-{timestamp}"
-_client_secret = cognito_client.describe_user_pool_client(
-    UserPoolId=user_pool_id, ClientId=client_id
-)["UserPoolClient"]["ClientSecret"]
+_client_secret = cognito_client.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)[
+    "UserPoolClient"
+]["ClientSecret"]
 sm_client.create_secret(Name=secret_name, SecretString=_client_secret)
 del _client_secret
 
@@ -257,12 +257,7 @@ resp = cp_client.create_gateway_target(
 )
 tid = resp["targetId"]
 while True:
-    if (
-        cp_client.get_gateway_target(gatewayIdentifier=gateway_id, targetId=tid).get(
-            "status"
-        )
-        == "READY"
-    ):
+    if cp_client.get_gateway_target(gatewayIdentifier=gateway_id, targetId=tid).get("status") == "READY":
         break
     time.sleep(10)
 print(f"✓ Gateway target ready: {tid}")
@@ -332,9 +327,7 @@ print("═" * 70)
 print(f"  Lambda ARN:            {lambda_arns['order-management-mcp']}")
 print(f"  Gateway URL:           {gateway_url}")
 print(f"  Cognito User Pool:     {user_pool_id}")
-print(
-    f"  Secret Name:           {secret_name}"
-)  # codeql[py/clear-text-logging-sensitive-data]
+print(f"  Secret Name:           {secret_name}")  # codeql[py/clear-text-logging-sensitive-data]
 print(f"  Pricing Agent ARN:     {agent_arns['pricing_agent']}")
 print(f"  Support Agent ARN:     {agent_arns['customer_support_agent']}")
 print("═" * 70)
@@ -417,9 +410,7 @@ def build_a2a_descriptors(name, description, agent_arn):
 record_ids = []
 for name, cfg in registry_records.items():
     if cfg["protocol"] == "MCP":
-        descriptors = build_mcp_descriptors(
-            name, cfg["description"], gateway_url, cfg["tools"]
-        )
+        descriptors = build_mcp_descriptors(name, cfg["description"], gateway_url, cfg["tools"])
     else:
         descriptors = build_a2a_descriptors(name, cfg["description"], agent_arns[name])
 
@@ -453,9 +444,7 @@ for rid in record_ids:
     rec = cp_client.get_registry_record(registryId=REGISTRY_ID, recordId=rid)
     status = rec.get("status")
     if status == "DRAFT":
-        cp_client.submit_registry_record_for_approval(
-            registryId=REGISTRY_ID, recordId=rid
-        )
+        cp_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=rid)
     if status in ("DRAFT", "PENDING_APPROVAL"):
         cp_client.update_registry_record_status(
             registryId=REGISTRY_ID,
@@ -489,20 +478,12 @@ for query in [
     "return refund customer support",
     "cancel order update",
 ]:
-    resp = dp_client.search_registry_records(
-        registryIds=[REGISTRY_ARN], searchQuery=query, maxResults=3
-    )
+    resp = dp_client.search_registry_records(registryIds=[REGISTRY_ARN], searchQuery=query, maxResults=3)
     hits = resp.get("registryRecords", [])
     print(f"\n'{query}' -> {len(hits)} results:")
     for h in hits:
         descriptors = h.get("descriptors", {})
-        dtype = (
-            "MCP"
-            if "mcp" in descriptors
-            else "A2A"
-            if "a2a" in descriptors
-            else h.get("descriptorType", "?")
-        )
+        dtype = "MCP" if "mcp" in descriptors else "A2A" if "a2a" in descriptors else h.get("descriptorType", "?")
         print(f"  - {h['name']} ({dtype})")
 
 # ── 3. Deploy Orchestrator Agent ──────────────────────────────────────────────
@@ -730,9 +711,7 @@ print(f"✓ Orchestrator status: {agent_info['status']}")
 
 # ── 4. End-to-End Demos ───────────────────────────────────────────────────────
 print("\n=== 4. End-to-End Demos ===")
-print(
-    "Each demo triggers the orchestrator to: search Registry → instantiate tools → execute\n"
-)
+print("Each demo triggers the orchestrator to: search Registry → instantiate tools → execute\n")
 
 from utils import invoke_orchestrator  # noqa: E402
 

@@ -37,7 +37,7 @@ Memory search is exposed as a `FunctionTool` wrapping `search_long_term_memories
 
 - Python 3.10+
 - AWS credentials with AgentCore memory permissions
-- Bedrock model access (default: `us.anthropic.claude-3-7-sonnet-20250219-v1:0`)
+- Bedrock model access (default: `us.anthropic.claude-haiku-4-5-20251001-v1:0`, matching `MODEL_ID` in the scripts)
 - `pip install -r requirements.txt`
 
 ## See also

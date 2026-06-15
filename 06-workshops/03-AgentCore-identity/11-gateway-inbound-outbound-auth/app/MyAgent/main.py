@@ -64,9 +64,7 @@ async def _call_mcp(method: str, params: dict) -> dict:
 @tool
 async def get_time() -> str:
     """Get the current UTC time from the gateway."""
-    result = await _call_mcp(
-        "tools/call", {"name": "MyTools___get_time", "arguments": {}}
-    )
+    result = await _call_mcp("tools/call", {"name": "MyTools___get_time", "arguments": {}})
     content = result.get("content", [])
     return content[0].get("text", str(result)) if content else str(result)
 
@@ -78,9 +76,7 @@ async def echo(message: str) -> str:
     Args:
         message: The message to echo
     """
-    result = await _call_mcp(
-        "tools/call", {"name": "MyTools___echo", "arguments": {"message": message}}
-    )
+    result = await _call_mcp("tools/call", {"name": "MyTools___echo", "arguments": {"message": message}})
     content = result.get("content", [])
     return content[0].get("text", str(result)) if content else str(result)
 

@@ -82,9 +82,7 @@ async def get_calendar():
         try:
             service = build("calendar", "v3", credentials=creds)
             # Call the Calendar API
-            today_start = datetime.datetime.now().replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             # We use a fixed Time Zone. In a real application this would be
             # derived from the user interacting with the agent
             tz = "00:00"

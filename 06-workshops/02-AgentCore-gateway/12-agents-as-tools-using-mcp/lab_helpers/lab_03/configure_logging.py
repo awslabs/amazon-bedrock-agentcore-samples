@@ -192,9 +192,7 @@ def configure_runtime_logging(
                 print(f"     Destination: {delivery.get('deliveryDestinationArn')}")
 
                 if result["delivery_status"] == "ENABLED":
-                    print(
-                        "\n  🎉 Delivery is ENABLED - logs should flow to CloudWatch!"
-                    )
+                    print("\n  🎉 Delivery is ENABLED - logs should flow to CloudWatch!")
                 break
 
     except Exception as e:

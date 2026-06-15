@@ -86,19 +86,11 @@ parser.add_argument(
     default="node",
     help="Language preset (default: node)",
 )
-parser.add_argument(
-    "--container", default=None, metavar="URI", help="Override container image URI"
-)
+parser.add_argument("--container", default=None, metavar="URI", help="Override container image URI")
 parser.add_argument("--message", "-m", default=None, help="Override prompt to agent")
-parser.add_argument(
-    "--model", default="global.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
-parser.add_argument(
-    "--role-arn", default=None, metavar="ARN", help="Use existing IAM role ARN"
-)
-parser.add_argument(
-    "--skip-cleanup", action="store_true", help="Keep resources after the demo"
-)
+parser.add_argument("--model", default="global.anthropic.claude-haiku-4-5-20251001-v1:0")
+parser.add_argument("--role-arn", default=None, metavar="ARN", help="Use existing IAM role ARN")
+parser.add_argument("--skip-cleanup", action="store_true", help="Keep resources after the demo")
 args = parser.parse_args()
 
 # ── Resolve preset ─────────────────────────────────────────────────────────────
@@ -196,9 +188,7 @@ try:
     print(f"\n=== Step 2: Attach Custom Container ({container_uri}) ===")
     control.update_harness(
         harnessId=harness_id,
-        environmentArtifact={
-            "optionalValue": {"containerConfiguration": {"containerUri": container_uri}}
-        },
+        environmentArtifact={"optionalValue": {"containerConfiguration": {"containerUri": container_uri}}},
         systemPrompt=[{"text": system_prompt}],
     )
     print("Waiting for container update...")

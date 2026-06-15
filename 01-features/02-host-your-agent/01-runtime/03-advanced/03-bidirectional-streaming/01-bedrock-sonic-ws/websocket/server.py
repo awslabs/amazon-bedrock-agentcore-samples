@@ -78,9 +78,7 @@ def get_credentials_from_imds():
         )
 
         if role_response.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve IAM role name: HTTP {role_response.status_code}"
-            )
+            result["error"] = f"Failed to retrieve IAM role name: HTTP {role_response.status_code}"
             return result
 
         role_name = role_response.text.strip()
@@ -94,9 +92,7 @@ def get_credentials_from_imds():
         )
 
         if creds_response.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve credentials for role {role_name}: HTTP {creds_response.status_code}"
-            )
+            result["error"] = f"Failed to retrieve credentials for role {role_name}: HTTP {creds_response.status_code}"
             return result
 
         # Parse the credentials
@@ -146,9 +142,7 @@ async def refresh_credentials_from_imds():
                 # Parse expiration time and calculate refresh interval
                 # Refresh 5 minutes before expiration
                 try:
-                    expiration = datetime.fromisoformat(
-                        creds["Expiration"].replace("Z", "+00:00")
-                    )
+                    expiration = datetime.fromisoformat(creds["Expiration"].replace("Z", "+00:00"))
                     now = datetime.now(expiration.tzinfo)
                     time_until_expiration = (expiration - now).total_seconds()
 
@@ -156,17 +150,13 @@ async def refresh_credentials_from_imds():
                     refresh_interval = min(max(time_until_expiration - 300, 60), 3600)
                     logger.info(f"   Next refresh in {refresh_interval:.0f} seconds")
                 except Exception as e:
-                    logger.warning(
-                        f"Could not parse expiration time, using default 1 hour refresh: {e}"
-                    )
+                    logger.warning(f"Could not parse expiration time, using default 1 hour refresh: {e}")
                     refresh_interval = 3600
 
                 # Wait until next refresh
                 await asyncio.sleep(refresh_interval)
             else:
-                logger.error(
-                    f"Failed to refresh credentials from IMDS: {imds_result['error']}"
-                )
+                logger.error(f"Failed to refresh credentials from IMDS: {imds_result['error']}")
                 # Retry in 5 minutes on failure
                 await asyncio.sleep(300)
 
@@ -221,17 +211,11 @@ async def startup_event():
             logger.info("✅ Initial credentials loaded from IMDS.")
 
             # Start background task to refresh credentials
-            credential_refresh_task = asyncio.create_task(
-                refresh_credentials_from_imds()
-            )
+            credential_refresh_task = asyncio.create_task(refresh_credentials_from_imds())
             logger.info("🔄 Credential refresh background task started")
         else:
-            logger.error(
-                f"❌ Failed to fetch credentials from IMDS: {imds_result['error']}"
-            )
-            logger.error(
-                "   Application may not function correctly without credentials"
-            )
+            logger.error(f"❌ Failed to fetch credentials from IMDS: {imds_result['error']}")
+            logger.error("   Application may not function correctly without credentials")
 
 
 @app.on_event("shutdown")
@@ -337,24 +321,18 @@ async def websocket_endpoint(websocket: WebSocket):
                                 pass
 
                         # Create a new stream manager for this connection
-                        stream_manager = S2sSessionManager(
-                            model_id="amazon.nova-2-sonic-v1:0", region=aws_region
-                        )
+                        stream_manager = S2sSessionManager(model_id="amazon.nova-2-sonic-v1:0", region=aws_region)
 
                         # Initialize the Bedrock stream
                         await stream_manager.initialize_stream()
                         logger.info("Stream initialized successfully")
 
                         # Start a task to forward responses from Bedrock to the WebSocket
-                        forward_task = asyncio.create_task(
-                            forward_responses(websocket, stream_manager)
-                        )
+                        forward_task = asyncio.create_task(forward_responses(websocket, stream_manager))
 
                         # Now send the sessionStart event to Bedrock
                         await stream_manager.send_raw_event(data)
-                        logger.info(
-                            f"SessionStart event sent to Bedrock {json.dumps(data)}"
-                        )
+                        logger.info(f"SessionStart event sent to Bedrock {json.dumps(data)}")
 
                         # Continue to next iteration to process next event
                         continue
@@ -381,16 +359,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     if stream_manager and stream_manager.is_active:
                         # Store prompt name and content names if provided
                         if event_type == "promptStart":
-                            stream_manager.prompt_name = data["event"]["promptStart"][
-                                "promptName"
-                            ]
-                        elif (
-                            event_type == "contentStart"
-                            and data["event"]["contentStart"].get("type") == "AUDIO"
-                        ):
-                            stream_manager.audio_content_name = data["event"][
-                                "contentStart"
-                            ]["contentName"]
+                            stream_manager.prompt_name = data["event"]["promptStart"]["promptName"]
+                        elif event_type == "contentStart" and data["event"]["contentStart"].get("type") == "AUDIO":
+                            stream_manager.audio_content_name = data["event"]["contentStart"]["contentName"]
 
                         # Handle audio input separately (queue-based processing)
                         if event_type == "audioInput":
@@ -399,33 +370,23 @@ async def websocket_endpoint(websocket: WebSocket):
                             audio_base64 = data["event"]["audioInput"]["content"]
 
                             # Add to the audio queue for async processing
-                            stream_manager.add_audio_chunk(
-                                prompt_name, content_name, audio_base64
-                            )
+                            stream_manager.add_audio_chunk(prompt_name, content_name, audio_base64)
                         else:
                             # Send other events directly to Bedrock
                             await stream_manager.send_raw_event(data)
                     elif event_type not in ["sessionStart", "sessionEnd"]:
-                        logger.warning(
-                            f"Received event {event_type} but no active stream manager"
-                        )
+                        logger.warning(f"Received event {event_type} but no active stream manager")
 
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON received from WebSocket: {e}")
                     try:
-                        await websocket.send_json(
-                            {"type": "error", "message": "Invalid JSON format"}
-                        )
+                        await websocket.send_json({"type": "error", "message": "Invalid JSON format"})
                     except Exception:
                         pass
                 except Exception as exp:
-                    logger.error(
-                        f"Error processing WebSocket message: {exp}", exc_info=True
-                    )
+                    logger.error(f"Error processing WebSocket message: {exp}", exc_info=True)
                     try:
-                        await websocket.send_json(
-                            {"type": "error", "message": str(exp)}
-                        )
+                        await websocket.send_json({"type": "error", "message": str(exp)})
                     except Exception:
                         pass
 
@@ -435,9 +396,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     f"Disconnect details: code={getattr(e, 'code', 'N/A')}, reason={getattr(e, 'reason', 'N/A')}"
                 )
                 if stream_manager and stream_manager.is_active:
-                    logger.info(
-                        "Bedrock stream was still active when WebSocket disconnected"
-                    )
+                    logger.info("Bedrock stream was still active when WebSocket disconnected")
                 break
             except Exception as e:
                 logger.error(f"WebSocket error: {e}", exc_info=True)
@@ -446,9 +405,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
         try:
-            await websocket.send_json(
-                {"type": "error", "message": "WebSocket handler error"}
-            )
+            await websocket.send_json({"type": "error", "message": "WebSocket handler error"})
         except Exception:
             pass
     finally:
@@ -494,9 +451,7 @@ def split_large_event(response, max_size=16000):
 
     # Only split events that have a 'content' field (audioOutput, textOutput, etc.)
     if "content" not in event_data:
-        logger.warning(
-            f"Event {event_type} is large ({event_size} bytes) but has no content field to split"
-        )
+        logger.warning(f"Event {event_type} is large ({event_size} bytes) but has no content field to split")
         return [response]
 
     content = event_data["content"]
@@ -520,9 +475,7 @@ def split_large_event(response, max_size=16000):
         # This ensures each chunk is valid base64 without padding issues
         alignment = 4
         max_content_size = (max_content_size // alignment) * alignment
-        logger.debug(
-            f"Audio splitting: aligned chunk size to {max_content_size} chars (base64 boundary)"
-        )
+        logger.debug(f"Audio splitting: aligned chunk size to {max_content_size} chars (base64 boundary)")
 
     # Split content into chunks
     chunks = []
@@ -547,9 +500,7 @@ def split_large_event(response, max_size=16000):
 
         chunks.append(chunk_event)
 
-    logger.info(
-        f"Split {event_type} event ({event_size} bytes) into {len(chunks)} chunks"
-    )
+    logger.info(f"Split {event_type} event ({event_size} bytes) into {len(chunks)} chunks")
     return chunks
 
 
@@ -567,17 +518,11 @@ async def forward_responses(websocket: WebSocket, stream_manager):
                 event_size = len(event.encode("utf-8"))
 
                 # Get event type for logging
-                event_type = (
-                    list(response.get("event", {}).keys())[0]
-                    if "event" in response
-                    else "unknown"
-                )
+                event_type = list(response.get("event", {}).keys())[0] if "event" in response else "unknown"
 
                 # Split large events
                 if event_size > 10000:
-                    logger.warning(
-                        f"!!!! Large {event_type} event detected (size: {event_size} bytes) - splitting..."
-                    )
+                    logger.warning(f"!!!! Large {event_type} event detected (size: {event_size} bytes) - splitting...")
                     events_to_send = split_large_event(response, max_size=10000)
                 else:
                     events_to_send = [response]
@@ -594,9 +539,7 @@ async def forward_responses(websocket: WebSocket, stream_manager):
                             f"Forwarded {event_type} chunk {idx + 1}/{len(events_to_send)} to client (size: {chunk_size} bytes)"
                         )
                     else:
-                        logger.info(
-                            f"Forwarded {event_type} to client (size: {chunk_size} bytes)"
-                        )
+                        logger.info(f"Forwarded {event_type} to client (size: {chunk_size} bytes)")
 
             except Exception as e:
                 logger.error(f"Error sending response to client: {e}", exc_info=True)

@@ -32,9 +32,7 @@ class RuntimeOAuth2Configuration:
     def __init__(self, region: str = AWS_REGION, profile: str = AWS_PROFILE):
         """Initialize Runtime OAuth2 configuration"""
         self.session = boto3.Session(profile_name=profile, region_name=region)
-        self.agentcore = self.session.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        self.agentcore = self.session.client("bedrock-agentcore-control", region_name=region)
         self.ssm = self.session.client("ssm", region_name=region)
         self.sts = self.session.client("sts", region_name=region)
 
@@ -42,9 +40,7 @@ class RuntimeOAuth2Configuration:
         self.account_id = self.sts.get_caller_identity()["Account"]
         self.prefix = "aiml301"
 
-    def configure_runtime_token_validation(
-        self, runtime_id: str, cognito_config: Optional[Dict] = None
-    ) -> Dict:
+    def configure_runtime_token_validation(self, runtime_id: str, cognito_config: Optional[Dict] = None) -> Dict:
         """
         Configure Runtime to validate M2M tokens from Gateway
 
@@ -63,15 +59,9 @@ class RuntimeOAuth2Configuration:
         if not cognito_config:
             try:
                 user_pool_id = get_parameter(PARAMETER_PATHS["cognito"]["user_pool_id"])
-                token_endpoint = get_parameter(
-                    PARAMETER_PATHS["cognito"]["token_endpoint"]
-                )
-                resource_server_id = get_parameter(
-                    PARAMETER_PATHS["cognito"]["resource_server_identifier"]
-                )
-                m2m_client_id = get_parameter(
-                    PARAMETER_PATHS["cognito"]["m2m_client_id"]
-                )
+                token_endpoint = get_parameter(PARAMETER_PATHS["cognito"]["token_endpoint"])
+                resource_server_id = get_parameter(PARAMETER_PATHS["cognito"]["resource_server_identifier"])
+                m2m_client_id = get_parameter(PARAMETER_PATHS["cognito"]["m2m_client_id"])
 
                 cognito_config = {
                     "user_pool_id": user_pool_id,
@@ -128,9 +118,7 @@ class RuntimeOAuth2Configuration:
         print(
             f"  JWKS URI: {runtime_oauth2_config['oauth2_config']['jwks_uri']}"
         )  # codeql[py/clear-text-logging-sensitive-data]
-        print(
-            f"  Required Scopes: {', '.join(runtime_oauth2_config['scope_config']['required_scopes'])}"
-        )
+        print(f"  Required Scopes: {', '.join(runtime_oauth2_config['scope_config']['required_scopes'])}")
         print(
             f"  Validate Signature: {runtime_oauth2_config['token_validation']['validate_signature']}"
         )  # codeql[py/clear-text-logging-sensitive-data]
@@ -148,9 +136,7 @@ class RuntimeOAuth2Configuration:
 
         return runtime_oauth2_config
 
-    def create_runtime_iam_policy_for_token_validation(
-        self, runtime_role_arn: str
-    ) -> None:
+    def create_runtime_iam_policy_for_token_validation(self, runtime_role_arn: str) -> None:
         """
         Create IAM policy for Runtime to validate tokens
 
@@ -445,9 +431,7 @@ async def handle_mcp_request(request: Request):
         print("=" * 70 + "\n")
 
 
-def setup_runtime_oauth2_validation_complete(
-    runtime_id: str, runtime_role_arn: str
-) -> Dict:
+def setup_runtime_oauth2_validation_complete(runtime_id: str, runtime_role_arn: str) -> Dict:
     """
     Complete setup workflow for Runtime OAuth2 token validation
 
@@ -465,14 +449,10 @@ def setup_runtime_oauth2_validation_complete(
     config = RuntimeOAuth2Configuration()
 
     # Step 1: Configure token validation
-    runtime_oauth2_config = config.configure_runtime_token_validation(
-        runtime_id=runtime_id
-    )
+    runtime_oauth2_config = config.configure_runtime_token_validation(runtime_id=runtime_id)
 
     # Step 2: Update IAM role with token validation permissions
-    config.create_runtime_iam_policy_for_token_validation(
-        runtime_role_arn=runtime_role_arn
-    )
+    config.create_runtime_iam_policy_for_token_validation(runtime_role_arn=runtime_role_arn)
 
     # Step 3: Print implementation guide
     config.print_runtime_token_validation_guide()

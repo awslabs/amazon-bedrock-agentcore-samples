@@ -40,9 +40,7 @@ from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env, print_summary, update_env_file
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -156,20 +154,14 @@ print("First deploy takes ~2-3 minutes...\n")
 subprocess.run(["agentcore", "deploy", "-y"], cwd=project_dir, check=True)
 
 # Verify deployment
-result = subprocess.run(
-    ["agentcore", "status"], cwd=project_dir, capture_output=True, text=True
-)
+result = subprocess.run(["agentcore", "status"], cwd=project_dir, capture_output=True, text=True)
 print(result.stdout)
 
 # Add payment permissions to the auto-created execution role
 print("Adding payment permissions to execution role...")
 iam = boto3.client("iam")
 roles = iam.list_roles(MaxItems=200)["Roles"]
-runtime_roles = [
-    r["RoleName"]
-    for r in roles
-    if "PaymentAgent" in r["RoleName"] and "Execution" in r["RoleName"]
-]
+runtime_roles = [r["RoleName"] for r in roles if "PaymentAgent" in r["RoleName"] and "Execution" in r["RoleName"]]
 if not runtime_roles:
     runtime_roles = [r["RoleName"] for r in roles if "PaymentAgent" in r["RoleName"]]
 
@@ -199,9 +191,7 @@ if runtime_roles:
     )
     print(f"Added payment permissions to: {RUNTIME_ROLE_NAME}")
 else:
-    print(
-        "WARNING: Could not find PaymentAgent execution role — add payment permissions manually"
-    )
+    print("WARNING: Could not find PaymentAgent execution role — add payment permissions manually")
 
 # Extract Runtime ARN and save to .env
 status_output = result.stdout + result.stderr
@@ -212,9 +202,7 @@ if match:
     print(f"Runtime ARN: {AGENT_RUNTIME_ARN}")
     print("Saved to .env")
 else:
-    print(
-        "NOTE: Could not extract Runtime ARN from status output — check agentcore status manually"
-    )
+    print("NOTE: Could not extract Runtime ARN from status output — check agentcore status manually")
 
 # ── Step 8: Invoke the Deployed Agent ────────────────────────────────────────
 print("\n── Step 8: Invoke Deployed Agent ──")

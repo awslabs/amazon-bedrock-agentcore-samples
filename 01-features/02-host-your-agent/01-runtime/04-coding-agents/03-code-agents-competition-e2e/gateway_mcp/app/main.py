@@ -24,9 +24,7 @@ from pydantic import BaseModel
 
 GITHUB_API = "https://api.github.com"
 
-AWS_REGION = (
-    os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-west-2"
-)
+AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-west-2"
 GITHUB_APP_SECRET_ARN = os.environ.get("GITHUB_APP_SECRET_ARN", "")
 
 _secrets_client = boto3.client("secretsmanager", region_name=AWS_REGION)
@@ -98,8 +96,7 @@ class TokenMiddleware(Middleware):
         if GITHUB_TOKEN is None or now >= GITHUB_TOKEN_EXP - 300:
             GITHUB_TOKEN, GITHUB_TOKEN_EXP = _mint_installation_token()
             print(
-                f"[TokenMiddleware] minted token prefix={GITHUB_TOKEN[:8]}... "
-                f"expires_in={GITHUB_TOKEN_EXP - now}s",
+                f"[TokenMiddleware] minted token prefix={GITHUB_TOKEN[:8]}... expires_in={GITHUB_TOKEN_EXP - now}s",
                 flush=True,
             )
         return await call_next(context)
@@ -200,9 +197,7 @@ def update_comment(owner: str, repo: str, comment_id: int, body: str) -> str:
 
 
 @mcp.tool()
-def assign_issue(
-    owner: str, repo: str, issue_number: int, assignees: List[str]
-) -> List[str]:
+def assign_issue(owner: str, repo: str, issue_number: int, assignees: List[str]) -> List[str]:
     """Add assignees to an issue. Returns the final list of assignee logins."""
     with httpx.Client(timeout=30) as c:
         r = c.post(
@@ -218,9 +213,7 @@ def assign_issue(
 
 
 @mcp.tool()
-def set_labels(
-    owner: str, repo: str, issue_number: int, labels: List[str]
-) -> List[str]:
+def set_labels(owner: str, repo: str, issue_number: int, labels: List[str]) -> List[str]:
     """Replace an issue's labels with the given set. Returns the final labels."""
     with httpx.Client(timeout=30) as c:
         r = c.put(
@@ -233,9 +226,7 @@ def set_labels(
 
 
 @mcp.tool()
-def add_labels(
-    owner: str, repo: str, issue_number: int, labels: List[str]
-) -> List[str]:
+def add_labels(owner: str, repo: str, issue_number: int, labels: List[str]) -> List[str]:
     """Add labels to an issue without removing existing ones."""
     with httpx.Client(timeout=30) as c:
         r = c.post(

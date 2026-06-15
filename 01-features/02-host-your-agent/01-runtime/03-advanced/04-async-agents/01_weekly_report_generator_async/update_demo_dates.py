@@ -150,9 +150,7 @@ def rename_files_with_week(demo_data_path, week_num, week_dates):
             if new_name != file_path.name:
                 new_path = file_path.parent / new_name
                 file_path.rename(new_path)
-                print(
-                    f"{get_symbol('✓', '+')} Renamed {file_path.name} {get_symbol('→', '->')} {new_name}"
-                )
+                print(f"{get_symbol('✓', '+')} Renamed {file_path.name} {get_symbol('→', '->')} {new_name}")
 
 
 def upload_to_s3(demo_data_path, bucket_name, prefix="demo_data"):
@@ -168,11 +166,7 @@ def upload_to_s3(demo_data_path, bucket_name, prefix="demo_data"):
         if file_path.is_file():
             # Calculate relative path from demo_data directory itself (not parent)
             relative_path = file_path.relative_to(demo_data_path)
-            s3_key = (
-                f"{prefix}/{relative_path.as_posix()}"
-                if prefix
-                else relative_path.as_posix()
-            )
+            s3_key = f"{prefix}/{relative_path.as_posix()}" if prefix else relative_path.as_posix()
 
             try:
                 # Determine content type
@@ -195,9 +189,7 @@ def upload_to_s3(demo_data_path, bucket_name, prefix="demo_data"):
             except ClientError as e:
                 print(f"{get_symbol('✗', 'X')} Failed to upload {s3_key}: {e}")
 
-    print(
-        f"\n{get_symbol('✅', 'SUCCESS:')} Uploaded {len(uploaded_files)} files to s3://{bucket_name}/{prefix}/"
-    )
+    print(f"\n{get_symbol('✅', 'SUCCESS:')} Uploaded {len(uploaded_files)} files to s3://{bucket_name}/{prefix}/")
     return uploaded_files
 
 
@@ -221,9 +213,7 @@ def update_tools_config(bucket_name):
 
         if re.search(bucket_pattern, content):
             content = re.sub(bucket_pattern, bucket_replacement, content)
-            print(
-                f"{get_symbol('✓', '+')} Updated S3_BUCKET in tools.py to: {bucket_name}"
-            )
+            print(f"{get_symbol('✓', '+')} Updated S3_BUCKET in tools.py to: {bucket_name}")
 
             # Write back
             with open(tools_file, "w") as f:
@@ -231,9 +221,7 @@ def update_tools_config(bucket_name):
 
             return True
         else:
-            print(
-                f"{get_symbol('⚠️', 'WARNING:')} Could not find S3_BUCKET configuration in tools.py"
-            )
+            print(f"{get_symbol('⚠️', 'WARNING:')} Could not find S3_BUCKET configuration in tools.py")
             return False
 
     except Exception as e:
@@ -258,9 +246,7 @@ Examples:
   python update_demo_dates.py
         """,
     )
-    parser.add_argument(
-        "--bucket", type=str, help="S3 bucket name to upload demo data to"
-    )
+    parser.add_argument("--bucket", type=str, help="S3 bucket name to upload demo data to")
     parser.add_argument(
         "--prefix",
         type=str,
@@ -301,9 +287,7 @@ Examples:
                 update_csv_dates(file_path, week_dates)
 
     print(f"\n{get_symbol('✅', 'SUCCESS:')} Demo data updated successfully!")
-    print(
-        f"   All dates now reflect week {week_num} ({monday.strftime('%B %d - %B %d, %Y')})"
-    )
+    print(f"   All dates now reflect week {week_num} ({monday.strftime('%B %d - %B %d, %Y')})")
 
     # Upload to S3 if bucket specified
     if args.bucket:
@@ -314,9 +298,7 @@ Examples:
         # Upload demo data
         upload_to_s3(demo_data_path, args.bucket, args.prefix)
     else:
-        print(
-            f"\n{get_symbol('💡', 'TIP:')} Use --bucket to upload data to S3 for AgentCore deployment"
-        )
+        print(f"\n{get_symbol('💡', 'TIP:')} Use --bucket to upload data to S3 for AgentCore deployment")
 
 
 if __name__ == "__main__":

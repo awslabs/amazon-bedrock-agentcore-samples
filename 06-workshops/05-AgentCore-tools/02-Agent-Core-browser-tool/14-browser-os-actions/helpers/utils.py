@@ -32,11 +32,7 @@ def create_agentcore_execution_role(role_name: str) -> Optional[str]:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                        )
-                    },
+                    "ArnLike": {"aws:SourceArn": (f"arn:aws:bedrock-agentcore:{region}:{account_id}:*")},
                 },
             }
         ],
@@ -73,9 +69,7 @@ def create_agentcore_execution_role(role_name: str) -> Optional[str]:
         role_response = iam.create_role(
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description=(
-                "IAM role for Amazon Bedrock AgentCore with required permissions"
-            ),
+            Description=("IAM role for Amazon Bedrock AgentCore with required permissions"),
         )
 
         print(f"✅ Created IAM role: {role_name}")
@@ -170,7 +164,4 @@ def local_file_cleanup() -> None:
     if deleted_files:
         print(f"\n📁 Successfully deleted {len(deleted_files)} files")
     if missing_files:
-        print(
-            f"ℹ️  {len(missing_files)} files were already missing: "
-            f"{', '.join(missing_files)}"
-        )
+        print(f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}")

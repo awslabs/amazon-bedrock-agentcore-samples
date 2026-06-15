@@ -36,10 +36,7 @@ except ImportError:
 try:
     from bedrock_agentcore.services.identity import IdentityClient
 except ImportError:
-    raise SystemExit(
-        "bedrock-agentcore package not found.\n"
-        "Install it with: pip install -r requirements.txt"
-    )
+    raise SystemExit("bedrock-agentcore package not found.\nInstall it with: pip install -r requirements.txt")
 
 
 def create_m2m_provider(identity_client: IdentityClient) -> dict:
@@ -48,9 +45,7 @@ def create_m2m_provider(identity_client: IdentityClient) -> dict:
         with open("cognito_config.json") as f:
             cognito_config = json.load(f)
     except FileNotFoundError:
-        print(
-            "  Skipping M2M: cognito_config.json not found. Run setup_cognito.py first."
-        )
+        print("  Skipping M2M: cognito_config.json not found. Run setup_cognito.py first.")
         return {"name": "M2MProvider", "skipped": True}
 
     client_id = cognito_config.get("m2m_client_id", "")
@@ -112,17 +107,13 @@ def create_github_3lo_provider(identity_client: IdentityClient) -> dict:
     except Exception as e:
         if "already exists" in str(e).lower():
             print("  GitHub3LOProvider already exists.")
-            existing = identity_client.cp_client.get_oauth2_credential_provider(
-                name="GitHub3LOProvider"
-            )
+            existing = identity_client.cp_client.get_oauth2_credential_provider(name="GitHub3LOProvider")
             callback_url = existing.get("callbackUrl", "")
         else:
             raise
     print("\n  IMPORTANT: Add this callback URL to your GitHub OAuth App:")
     print(f"  {callback_url}")
-    print(
-        "  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)"
-    )
+    print("  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)")
     return {"name": "GitHub3LOProvider", "callback_url": callback_url}
 
 
@@ -154,9 +145,7 @@ def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
     except Exception as e:
         if "already exists" in str(e).lower():
             print("  Google3LOProvider already exists.")
-            existing = identity_client.cp_client.get_oauth2_credential_provider(
-                name="Google3LOProvider"
-            )
+            existing = identity_client.cp_client.get_oauth2_credential_provider(name="Google3LOProvider")
             callback_url = existing.get("callbackUrl", "")
         else:
             raise

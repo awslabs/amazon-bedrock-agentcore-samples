@@ -137,8 +137,7 @@ class EcsService(Construct):
                             f":workload-identity-directory/default/workload-identity/{workload_identity_name}",
                             f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
                             f":token-vault/default/oauth2credentialprovider/{github_provider_name}",
-                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
-                            ":token-vault/default",
+                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}:token-vault/default",
                         ],
                     ),
                 ],
@@ -177,8 +176,7 @@ class EcsService(Construct):
                             ":workload-identity-directory/default",
                             f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
                             f":workload-identity-directory/default/workload-identity/{workload_identity_name}",
-                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
-                            ":token-vault/default",
+                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}:token-vault/default",
                             f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
                             f":token-vault/default/oauth2credentialprovider/{github_provider_name}",
                         ],
@@ -227,9 +225,7 @@ class EcsService(Construct):
                 platform=ecr_assets.Platform.LINUX_ARM64,
                 file="runtime/Dockerfile",
             ),
-            logging=ecs.LogDrivers.aws_logs(
-                stream_prefix="agent", log_group=agent_log_group
-            ),
+            logging=ecs.LogDrivers.aws_logs(stream_prefix="agent", log_group=agent_log_group),
             environment=environment_vars,
             health_check=ecs.HealthCheck(
                 command=["CMD-SHELL", "curl -f http://localhost:8080/ping || exit 1"],
@@ -261,34 +257,28 @@ class EcsService(Construct):
             ),
         )
 
-        self.session_binding_container = (
-            self.session_binding_task_definition.add_container(
-                "SessionBinding",
-                image=ecs.ContainerImage.from_asset(
-                    "backend",
-                    asset_name=f"session-binding-{suffix}",
-                    platform=ecr_assets.Platform.LINUX_ARM64,
-                    file="session_binding/Dockerfile",
-                ),
-                logging=ecs.LogDrivers.aws_logs(
-                    stream_prefix="session-binding", log_group=session_binding_log_group
-                ),
-                environment=environment_vars,
-                health_check=ecs.HealthCheck(
-                    command=[
-                        "CMD-SHELL",
-                        "curl -f http://localhost:8080/ping || exit 1",
-                    ],
-                    interval=Duration.seconds(30),
-                    timeout=Duration.seconds(5),
-                    retries=3,
-                    start_period=Duration.seconds(60),
-                ),
-            )
+        self.session_binding_container = self.session_binding_task_definition.add_container(
+            "SessionBinding",
+            image=ecs.ContainerImage.from_asset(
+                "backend",
+                asset_name=f"session-binding-{suffix}",
+                platform=ecr_assets.Platform.LINUX_ARM64,
+                file="session_binding/Dockerfile",
+            ),
+            logging=ecs.LogDrivers.aws_logs(stream_prefix="session-binding", log_group=session_binding_log_group),
+            environment=environment_vars,
+            health_check=ecs.HealthCheck(
+                command=[
+                    "CMD-SHELL",
+                    "curl -f http://localhost:8080/ping || exit 1",
+                ],
+                interval=Duration.seconds(30),
+                timeout=Duration.seconds(5),
+                retries=3,
+                start_period=Duration.seconds(60),
+            ),
         )
-        self.session_binding_container.add_port_mappings(
-            ecs.PortMapping(container_port=8080)
-        )
+        self.session_binding_container.add_port_mappings(ecs.PortMapping(container_port=8080))
 
         self.agent_service = ecs.FargateService(
             self,
@@ -297,9 +287,7 @@ class EcsService(Construct):
             task_definition=self.agent_task_definition,
             desired_count=1,
             security_groups=[self.security_group],
-            vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
-            ),
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
         )
 
         self.session_binding_service = ecs.FargateService(
@@ -309,9 +297,7 @@ class EcsService(Construct):
             task_definition=self.session_binding_task_definition,
             desired_count=1,
             security_groups=[self.security_group],
-            vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
-            ),
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
         )
 
         agent_target_group = elbv2.ApplicationTargetGroup(
@@ -334,26 +320,18 @@ class EcsService(Construct):
             vpc=vpc,
         )
 
-        oidc_credentials = secretsmanager.Secret.from_secret_name_v2(
-            self, "OIDCCredentials", oidc_config.secret_name
-        )
+        oidc_credentials = secretsmanager.Secret.from_secret_name_v2(self, "OIDCCredentials", oidc_config.secret_name)
 
         listener.add_action(
             "EntraIdAction",
             priority=11,
-            conditions=[
-                elbv2.ListenerCondition.path_patterns(
-                    ["/invocations", "/docs", "/openapi.json"]
-                )
-            ],
+            conditions=[elbv2.ListenerCondition.path_patterns(["/invocations", "/docs", "/openapi.json"])],
             action=elbv2.ListenerAction.authenticate_oidc(
                 issuer=oidc_config.issuer,
                 authorization_endpoint=oidc_config.authorization_endpoint,
                 token_endpoint=oidc_config.token_endpoint,
                 user_info_endpoint=oidc_config.user_info_endpoint,
-                client_id=oidc_credentials.secret_value_from_json(
-                    "client_id"
-                ).to_string(),
+                client_id=oidc_credentials.secret_value_from_json("client_id").to_string(),
                 client_secret=oidc_credentials.secret_value_from_json("client_secret"),
                 scope=oidc_config.scope,
                 session_timeout=Duration.minutes(5),
@@ -364,17 +342,13 @@ class EcsService(Construct):
         listener.add_action(
             "SessionBindingAction",
             priority=22,
-            conditions=[
-                elbv2.ListenerCondition.path_patterns(["/oauth2/session-binding"])
-            ],
+            conditions=[elbv2.ListenerCondition.path_patterns(["/oauth2/session-binding"])],
             action=elbv2.ListenerAction.authenticate_oidc(
                 issuer=oidc_config.issuer,
                 authorization_endpoint=oidc_config.authorization_endpoint,
                 token_endpoint=oidc_config.token_endpoint,
                 user_info_endpoint=oidc_config.user_info_endpoint,
-                client_id=oidc_credentials.secret_value_from_json(
-                    "client_id"
-                ).to_string(),
+                client_id=oidc_credentials.secret_value_from_json("client_id").to_string(),
                 client_secret=oidc_credentials.secret_value_from_json("client_secret"),
                 scope=oidc_config.scope,
                 session_timeout=Duration.minutes(5),

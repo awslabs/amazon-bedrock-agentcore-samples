@@ -21,9 +21,7 @@ def generate_unique_agent_name(base_name: str = "async_data_analysis_agent") -> 
     - Max 48 characters total
     """
     # Use shorter timestamp and UUID to fit within 48 char limit
-    timestamp = datetime.now().strftime(
-        "%Y%m%d_%H%M%S"
-    )  # Use underscore instead of hyphen
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Use underscore instead of hyphen
     short_uuid = str(uuid.uuid4()).replace("-", "")[:8]  # Remove hyphens from UUID
 
     # Create base name that fits AWS constraints
@@ -45,9 +43,7 @@ def generate_unique_agent_name(base_name: str = "async_data_analysis_agent") -> 
     return unique_name
 
 
-def update_agent_name_in_config(
-    config_path: str = ".bedrock_agentcore.yaml", new_name: str = None
-):
+def update_agent_name_in_config(config_path: str = ".bedrock_agentcore.yaml", new_name: str = None):
     """Update agent name in configuration to use unique name."""
     try:
         with open(config_path, "r") as f:
@@ -147,9 +143,7 @@ def ensure_fresh_deployment(config_path: str = ".bedrock_agentcore.yaml"):
 
     for agent_name, info in status.items():
         if info["deployed"]:
-            logging.info(
-                f"🔄 Agent '{agent_name}' has existing deployment, resetting for fresh deployment"
-            )
+            logging.info(f"🔄 Agent '{agent_name}' has existing deployment, resetting for fresh deployment")
             reset_agent_configuration(config_path)
             break
     else:
@@ -164,9 +158,7 @@ class SecureCodeInterpreter:
     def __init__(self, region: str, allowed_s3_buckets: Optional[list] = None):
         self.region = region
         self.allowed_s3_buckets = allowed_s3_buckets or []
-        self.control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        self.control_client = boto3.client("bedrock-agentcore-control", region_name=region)
         self.code_interpreter_id = None
         self.execution_role_arn = None
 
@@ -190,9 +182,7 @@ class SecureCodeInterpreter:
         s3_resources = []
         if self.allowed_s3_buckets:
             for bucket in self.allowed_s3_buckets:
-                s3_resources.extend(
-                    [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"]
-                )
+                s3_resources.extend([f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"])
 
         execution_policy = {
             "Version": "2012-10-17",
@@ -267,16 +257,12 @@ class SecureCodeInterpreter:
     def get_code_interpreter_client(self):
         """Get CodeInterpreter client configured for secure execution."""
         if not self.code_interpreter_id:
-            raise ValueError(
-                "CodeInterpreter not created. Call create_secure_code_interpreter first."
-            )
+            raise ValueError("CodeInterpreter not created. Call create_secure_code_interpreter first.")
 
         from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 
         # Use custom CodeInterpreter with restricted configuration
-        return CodeInterpreter(
-            region=self.region, code_interpreter_id=self.code_interpreter_id
-        )
+        return CodeInterpreter(region=self.region, code_interpreter_id=self.code_interpreter_id)
 
 
 def create_agentcore_role(agent_name):
@@ -321,9 +307,7 @@ def create_agentcore_role(agent_name):
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -351,9 +335,7 @@ def create_agentcore_role(agent_name):
                 "Effect": "Allow",
                 "Resource": f"arn:aws:cloudwatch:{region}:{account_id}:metric/bedrock-agentcore/*",
                 "Action": "cloudwatch:PutMetricData",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "GetAgentAccessToken",
@@ -380,9 +362,7 @@ def create_agentcore_role(agent_name):
                     "bedrock-agentcore:StopCodeInterpreterSession",
                     "bedrock-agentcore:InvokeCodeInterpreter",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:code-interpreter/*"
-                ],
+                "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:code-interpreter/*"],
             },
             {
                 "Sid": "IAMRoleManagement",
@@ -395,9 +375,7 @@ def create_agentcore_role(agent_name):
                     "iam:DeleteRolePolicy",
                     "iam:ListRolePolicies",
                 ],
-                "Resource": [
-                    f"arn:aws:iam::{account_id}:role/secure-code-interpreter-*"
-                ],
+                "Resource": [f"arn:aws:iam::{account_id}:role/secure-code-interpreter-*"],
             },
             {
                 "Sid": "STSGetCallerIdentity",
@@ -417,9 +395,7 @@ def create_agentcore_role(agent_name):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": f"{account_id}"},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -438,14 +414,10 @@ def create_agentcore_role(agent_name):
         time.sleep(10)
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
-        policies = iam_client.list_role_policies(
-            RoleName=agentcore_role_name, MaxItems=100
-        )
+        policies = iam_client.list_role_policies(RoleName=agentcore_role_name, MaxItems=100)
         print("policies:", policies)
         for policy_name in policies["PolicyNames"]:
-            iam_client.delete_role_policy(
-                RoleName=agentcore_role_name, PolicyName=policy_name
-            )
+            iam_client.delete_role_policy(RoleName=agentcore_role_name, PolicyName=policy_name)
         print(f"deleting {agentcore_role_name}")
         iam_client.delete_role(RoleName=agentcore_role_name)
         print(f"recreating {agentcore_role_name}")

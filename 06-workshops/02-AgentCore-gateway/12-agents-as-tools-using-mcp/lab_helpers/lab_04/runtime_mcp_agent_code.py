@@ -43,9 +43,7 @@ logger = logging.getLogger("bedrock_agentcore.app")
 # Ensure handler exists
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
@@ -81,9 +79,7 @@ def initialize_browser(region=AWS_REGION):
     global agentcore_browser, BROWSER_AVAILABLE
 
     try:
-        logger.debug(
-            f"[DIAGNOSTIC] Attempting to initialize AgentCoreBrowser in region: {region}"
-        )
+        logger.debug(f"[DIAGNOSTIC] Attempting to initialize AgentCoreBrowser in region: {region}")
         agentcore_browser = AgentCoreBrowser(region=region)
         BROWSER_AVAILABLE = True
         logger.info("✅ AgentCore Browser initialized")
@@ -167,9 +163,7 @@ def research_agent(research_topic_query: str):
     - Success metrics for measuring prevention effectiveness
     
     """
-        prevention_agent = Agent(
-            system_prompt=system_prompt, model=model, tools=[agentcore_browser.browser]
-        )
+        prevention_agent = Agent(system_prompt=system_prompt, model=model, tools=[agentcore_browser.browser])
 
         logger.info("✅ Prevention agent with browser tool initialized")
         logger.debug(f"[DIAGNOSTIC] Agent type: {type(prevention_agent)}")

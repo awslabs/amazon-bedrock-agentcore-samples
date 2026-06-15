@@ -36,9 +36,7 @@ GATEWAY_POLICY_NAME = f"{PREFIX}-gateway-runtime-policy"
 class AgentCoreGatewaySetup:
     """Setup helper for AgentCore Gateway with Runtime targets"""
 
-    def __init__(
-        self, region: str = REGION, prefix: str = PREFIX, verbose: bool = True
-    ):
+    def __init__(self, region: str = REGION, prefix: str = PREFIX, verbose: bool = True):
         """
         Initialize gateway setup helper.
 
@@ -181,9 +179,7 @@ class AgentCoreGatewaySetup:
                 role_arn = role["Role"]["Arn"]
 
                 # Update trust policy to ensure it has gamma service principals
-                self.iam.update_assume_role_policy(
-                    RoleName=GATEWAY_ROLE_NAME, PolicyDocument=json.dumps(trust_policy)
-                )
+                self.iam.update_assume_role_policy(RoleName=GATEWAY_ROLE_NAME, PolicyDocument=json.dumps(trust_policy))
                 self._log("Trust policy updated")
 
             except self.iam.exceptions.NoSuchEntityException:
@@ -256,9 +252,7 @@ class AgentCoreGatewaySetup:
         # Get role ARN if not provided
         if not role_arn:
             try:
-                response = self.ssm.get_parameter(
-                    Name=f"/{self.prefix}/lab-03/gateway-role-arn"
-                )
+                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/gateway-role-arn")
                 role_arn = response["Parameter"]["Value"]
                 self._log("Retrieved Gateway role ARN from Parameter Store")
             except ClientError:
@@ -389,12 +383,8 @@ class AgentCoreGatewaySetup:
             response = self.agentcore.create_gateway_target(
                 gatewayIdentifier=gateway_id,
                 name=target_name,
-                targetConfiguration={
-                    "mcp": {"mcpServer": {"endpoint": mcp_endpoint_url}}
-                },
-                credentialProviderConfigurations=[
-                    {"credentialProviderType": credentials_type}
-                ],
+                targetConfiguration={"mcp": {"mcpServer": {"endpoint": mcp_endpoint_url}}},
+                credentialProviderConfigurations=[{"credentialProviderType": credentials_type}],
             )
 
             target_id = response["targetId"]
@@ -467,9 +457,7 @@ class AgentCoreGatewaySetup:
 
             # Get gateway config
             try:
-                response = self.ssm.get_parameter(
-                    Name=f"/{self.prefix}/lab-03/gateway-config"
-                )
+                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/gateway-config")
                 config["gateway"] = json.loads(response["Parameter"]["Value"])
                 self._log("Retrieved Gateway configuration from Parameter Store")
             except ClientError:
@@ -477,9 +465,7 @@ class AgentCoreGatewaySetup:
 
             # Get runtime target config
             try:
-                response = self.ssm.get_parameter(
-                    Name=f"/{self.prefix}/lab-03/gateway-runtime-target"
-                )
+                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/gateway-runtime-target")
                 config["runtime_target"] = json.loads(response["Parameter"]["Value"])
                 self._log("Retrieved Runtime target configuration from Parameter Store")
             except ClientError:
@@ -504,10 +490,7 @@ class AgentCoreGatewaySetup:
         self._log("Starting Gateway cleanup...")
 
         if not force:
-            confirm = input(
-                "Delete Lab-03 Gateway and related resources? "
-                "This cannot be undone. (yes/no): "
-            )
+            confirm = input("Delete Lab-03 Gateway and related resources? This cannot be undone. (yes/no): ")
             if confirm.lower() != "yes":
                 self._log("Cleanup cancelled")
                 return False
@@ -515,9 +498,7 @@ class AgentCoreGatewaySetup:
         try:
             # Get gateway ID from Parameter Store
             try:
-                response = self.ssm.get_parameter(
-                    Name=f"/{self.prefix}/lab-03/gateway-config"
-                )
+                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/gateway-config")
                 config = json.loads(response["Parameter"]["Value"])
                 gateway_id = config.get("gateway_id")
 
@@ -529,9 +510,7 @@ class AgentCoreGatewaySetup:
 
             # Delete IAM role and policies
             try:
-                self.iam.delete_role_policy(
-                    RoleName=GATEWAY_ROLE_NAME, PolicyName=GATEWAY_POLICY_NAME
-                )
+                self.iam.delete_role_policy(RoleName=GATEWAY_ROLE_NAME, PolicyName=GATEWAY_POLICY_NAME)
                 self._log(f"Deleted role policy: {GATEWAY_POLICY_NAME}")
             except ClientError:
                 pass
@@ -544,9 +523,7 @@ class AgentCoreGatewaySetup:
 
             # Delete Parameter Store entries
             try:
-                self.ssm.delete_parameter(
-                    Name=f"/{self.prefix}/lab-03/gateway-role-arn"
-                )
+                self.ssm.delete_parameter(Name=f"/{self.prefix}/lab-03/gateway-role-arn")
                 self._log("Deleted Parameter Store entry: gateway-role-arn")
             except ClientError:
                 pass
@@ -558,9 +535,7 @@ class AgentCoreGatewaySetup:
                 pass
 
             try:
-                self.ssm.delete_parameter(
-                    Name=f"/{self.prefix}/lab-03/gateway-runtime-target"
-                )
+                self.ssm.delete_parameter(Name=f"/{self.prefix}/lab-03/gateway-runtime-target")
                 self._log("Deleted Parameter Store entry: gateway-runtime-target")
             except ClientError:
                 pass

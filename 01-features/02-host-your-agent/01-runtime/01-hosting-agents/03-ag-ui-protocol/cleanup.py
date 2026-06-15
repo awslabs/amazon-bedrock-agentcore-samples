@@ -22,9 +22,7 @@ def main():
         config["runtime_id"],
         config["region"],
     )
-    account_id = (
-        Session(region_name=region).client("sts").get_caller_identity()["Account"]
-    )
+    account_id = Session(region_name=region).client("sts").get_caller_identity()["Account"]
 
     control = boto3.client("bedrock-agentcore-control", region_name=region)
     s3 = boto3.client("s3", region_name=region)
@@ -32,12 +30,8 @@ def main():
     print(f"Cleaning up: {agent_name}\n")
 
     try:
-        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get(
-            "runtimeEndpoints", []
-        ):
-            control.delete_agent_runtime_endpoint(
-                agentRuntimeId=runtime_id, endpointName=ep["name"]
-            )
+        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
+            control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ep["name"])
         time.sleep(30)
     except Exception as e:
         print(f"  Warning: {e}")

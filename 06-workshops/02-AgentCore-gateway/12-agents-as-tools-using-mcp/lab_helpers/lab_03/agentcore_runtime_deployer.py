@@ -230,9 +230,7 @@ class AgentCoreRuntimeDeployer:
                 role_arn = role["Role"]["Arn"]
 
                 # Update trust policy to ensure it's correct for current region
-                self.iam.update_assume_role_policy(
-                    RoleName=RUNTIME_ROLE_NAME, PolicyDocument=json.dumps(trust_policy)
-                )
+                self.iam.update_assume_role_policy(RoleName=RUNTIME_ROLE_NAME, PolicyDocument=json.dumps(trust_policy))
                 self._log(f"Updated trust policy for region {self.region}", "success")
 
             except self.iam.exceptions.NoSuchEntityException:
@@ -358,15 +356,11 @@ class AgentCoreRuntimeDeployer:
         # Get role ARN if not provided
         if not role_arn:
             try:
-                response = self.ssm.get_parameter(
-                    Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"]
-                )
+                response = self.ssm.get_parameter(Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"])
                 role_arn = response["Parameter"]["Value"]
                 self._log("Retrieved role ARN from Parameter Store", "info")
             except ClientError:
-                self._log(
-                    "Role ARN not found in Parameter Store. Creating role...", "warning"
-                )
+                self._log("Role ARN not found in Parameter Store. Creating role...", "warning")
                 role_info = self.create_runtime_iam_role()
                 role_arn = role_info["role_arn"]
 
@@ -380,8 +374,7 @@ class AgentCoreRuntimeDeployer:
                 role_arn=role_arn,
                 region_name=self.region,
                 timeout_seconds=timeout_seconds,
-                description=description
-                or "Strands remediation agent with Code Interpreter - Lab 03",
+                description=description or "Strands remediation agent with Code Interpreter - Lab 03",
             )
 
             # Deploy to AgentCore
@@ -433,9 +426,7 @@ class AgentCoreRuntimeDeployer:
         try:
             # Get runtime ID if not provided
             if not runtime_id:
-                response = self.ssm.get_parameter(
-                    Name=f"/{self.prefix}/lab-03/runtime-config"
-                )
+                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/runtime-config")
                 config = json.loads(response["Parameter"]["Value"])
                 runtime_id = config.get("runtime_id")
 
@@ -444,9 +435,7 @@ class AgentCoreRuntimeDeployer:
                 return {"status": "NOT_FOUND"}
 
             # Get runtime details
-            response = self.agentcore.get_agent_runtime(
-                agentRuntimeIdentifier=runtime_id
-            )
+            response = self.agentcore.get_agent_runtime(agentRuntimeIdentifier=runtime_id)
 
             status_info = {
                 "runtime_id": response["agentRuntime"]["agentRuntimeId"],
@@ -465,9 +454,7 @@ class AgentCoreRuntimeDeployer:
                 return {"status": "NOT_FOUND"}
             raise
 
-    def save_deployment_config(
-        self, config: Dict, output_path: Optional[Path] = None
-    ) -> Path:
+    def save_deployment_config(self, config: Dict, output_path: Optional[Path] = None) -> Path:
         """
         Save deployment configuration to file.
 
@@ -479,9 +466,7 @@ class AgentCoreRuntimeDeployer:
             Path to saved configuration file
         """
         if not output_path:
-            output_path = (
-                Path(__file__).parent.parent.parent / "lab_03_deployment_config.json"
-            )
+            output_path = Path(__file__).parent.parent.parent / "lab_03_deployment_config.json"
 
         with open(output_path, "w") as f:
             json.dump(config, f, indent=2)
@@ -503,8 +488,7 @@ class AgentCoreRuntimeDeployer:
 
         if not force:
             confirm = input(
-                f"Delete Lab-03 runtime '{self.runtime_name}' and related resources? "
-                "This cannot be undone. (yes/no): "
+                f"Delete Lab-03 runtime '{self.runtime_name}' and related resources? This cannot be undone. (yes/no): "
             )
             if confirm.lower() != "yes":
                 self._log("Cleanup cancelled", "warning")
@@ -513,17 +497,13 @@ class AgentCoreRuntimeDeployer:
         try:
             # Get runtime ID from Parameter Store
             try:
-                response = self.ssm.get_parameter(
-                    Name=f"/{self.prefix}/lab-03/runtime-config"
-                )
+                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/runtime-config")
                 config = json.loads(response["Parameter"]["Value"])
                 runtime_id = config.get("runtime_id")
 
                 if runtime_id:
                     # Delete runtime
-                    self.agentcore.delete_agent_runtime(
-                        agentRuntimeIdentifier=runtime_id
-                    )
+                    self.agentcore.delete_agent_runtime(agentRuntimeIdentifier=runtime_id)
                     self._log(f"Deleted runtime: {runtime_id}", "success")
             except ClientError as e:
                 if e.response["Error"]["Code"] != "ParameterNotFound":
@@ -531,9 +511,7 @@ class AgentCoreRuntimeDeployer:
 
             # Delete IAM role and policies
             try:
-                self.iam.delete_role_policy(
-                    RoleName=RUNTIME_ROLE_NAME, PolicyName=RUNTIME_POLICY_NAME
-                )
+                self.iam.delete_role_policy(RoleName=RUNTIME_ROLE_NAME, PolicyName=RUNTIME_POLICY_NAME)
                 self._log(f"Deleted role policy: {RUNTIME_POLICY_NAME}", "success")
             except ClientError as e:
                 if e.response["Error"]["Code"] != "NoSuchEntity":
@@ -548,17 +526,13 @@ class AgentCoreRuntimeDeployer:
 
             # Delete Parameter Store entries
             try:
-                self.ssm.delete_parameter(
-                    Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"]
-                )
+                self.ssm.delete_parameter(Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"])
                 self._log("Deleted Parameter Store entry: runtime-role-arn", "success")
             except ClientError:
                 pass
 
             try:
-                self.ssm.delete_parameter(
-                    Name=PARAMETER_PATHS["lab_03"]["runtime_config"]
-                )
+                self.ssm.delete_parameter(Name=PARAMETER_PATHS["lab_03"]["runtime_config"])
                 self._log("Deleted Parameter Store entry: runtime-config", "success")
             except ClientError:
                 pass
@@ -570,9 +544,7 @@ class AgentCoreRuntimeDeployer:
                 )
                 for log_group in log_groups.get("logGroups", []):
                     self.logs.delete_log_group(logGroupName=log_group["logGroupName"])
-                    self._log(
-                        f"Deleted log group: {log_group['logGroupName']}", "success"
-                    )
+                    self._log(f"Deleted log group: {log_group['logGroupName']}", "success")
             except ClientError:
                 pass
 

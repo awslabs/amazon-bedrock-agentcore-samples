@@ -49,23 +49,17 @@ from bedrock_agentcore.tools.browser_client import BrowserClient
 
 console = Console()
 
-DEFAULT_TASK = (
-    "Search for a coffee maker on amazon.com and extract details of the first one"
-)
+DEFAULT_TASK = "Search for a coffee maker on amazon.com and extract details of the first one"
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
-async def run_browser_task(
-    browser_session: Browser, llm: ChatAnthropicBedrock, task: str
-) -> None:
+async def run_browser_task(browser_session: Browser, llm: ChatAnthropicBedrock, task: str) -> None:
     """Execute a natural language browser task using Browser-Use."""
     console.print(f"\n[bold blue]Executing task:[/bold blue] {task}")
     agent = Agent(task=task, llm=llm, browser_session=browser_session)
-    with console.status(
-        "[bold green]Running browser automation...[/bold green]", spinner="dots"
-    ):
+    with console.status("[bold green]Running browser automation...[/bold green]", spinner="dots"):
         await agent.run()
     console.print("[bold green]Task completed successfully![/bold green]")
 
@@ -131,9 +125,7 @@ async def main_async(task: str, region: str) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Browser-Use SDK demo with AgentCore Browser Tool"
-    )
+    parser = argparse.ArgumentParser(description="Browser-Use SDK demo with AgentCore Browser Tool")
     parser.add_argument(
         "--task",
         default=DEFAULT_TASK,

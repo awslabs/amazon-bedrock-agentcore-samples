@@ -62,9 +62,9 @@ def list_files(path="/"):
             "items": [
                 {
                     "name": name,
-                    "type": MOCK_FILE_SYSTEM.get(
-                        f"{path}/{name}" if path != "/" else f"/{name}", {}
-                    ).get("type", "unknown"),
+                    "type": MOCK_FILE_SYSTEM.get(f"{path}/{name}" if path != "/" else f"/{name}", {}).get(
+                        "type", "unknown"
+                    ),
                 }
                 for name in item["contents"]
             ],
@@ -208,9 +208,7 @@ def lambda_handler(event, context):
 
         response = {
             "statusCode": 200,
-            "body": json.dumps(
-                {"tool": "file_handler_tool", "result": file_result, "success": True}
-            ),
+            "body": json.dumps({"tool": "file_handler_tool", "result": file_result, "success": True}),
         }
 
         print(f"File handler operation '{operation}' completed successfully")
@@ -219,9 +217,7 @@ def lambda_handler(event, context):
     except ValueError as e:
         return {
             "statusCode": 400,
-            "body": json.dumps(
-                {"tool": "file_handler_tool", "error": str(e), "success": False}
-            ),
+            "body": json.dumps({"tool": "file_handler_tool", "error": str(e), "success": False}),
         }
     except Exception as e:
         return {

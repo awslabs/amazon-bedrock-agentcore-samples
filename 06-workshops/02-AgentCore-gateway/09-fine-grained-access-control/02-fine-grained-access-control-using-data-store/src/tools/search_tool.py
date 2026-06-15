@@ -160,11 +160,7 @@ def lambda_handler(event, context):
 
     # Apply keyword filter if provided
     if filter_keywords:
-        results = [
-            r
-            for r in results
-            if any(kw in r["document"]["keywords"] for kw in filter_keywords)
-        ]
+        results = [r for r in results if any(kw in r["document"]["keywords"] for kw in filter_keywords)]
 
     # Format results
     formatted_results = []
@@ -192,9 +188,7 @@ def lambda_handler(event, context):
 
     response = {
         "statusCode": 200,
-        "body": json.dumps(
-            {"tool": "search_tool", "result": search_result, "success": True}
-        ),
+        "body": json.dumps({"tool": "search_tool", "result": search_result, "success": True}),
     }
 
     print(f"Search tool response: {len(formatted_results)} results for query '{query}'")

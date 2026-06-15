@@ -114,11 +114,7 @@ for root, dirs, files in os.walk('.'):
     def _refresh_file_list(self):
         """Get updated list of files in the sandbox"""
         result = self.code_client.invoke("listFiles", {"path": ""})
-        return (
-            self._extract_output(result).strip().split("\n")
-            if self._extract_output(result).strip()
-            else []
-        )
+        return self._extract_output(result).strip().split("\n") if self._extract_output(result).strip() else []
 
     def _extract_output(self, result: Dict) -> str:
         """Extract output from code execution result"""
@@ -152,13 +148,9 @@ for root, dirs, files in os.walk('.'):
         # If no code block is found, return the whole text
         return text.strip()
 
-    def execute_llm_generated_code(
-        self, task_description: str, context: Dict = None
-    ) -> Dict[str, Any]:
+    def execute_llm_generated_code(self, task_description: str, context: Dict = None) -> Dict[str, Any]:
         """Have LLM generate and execute code for the task"""
-        console.print(
-            f"\n[bold blue]🤖 LLM generating code for:[/bold blue] {task_description}"
-        )
+        console.print(f"\n[bold blue]🤖 LLM generating code for:[/bold blue] {task_description}")
 
         # Build prompt with context
         prompt = f"""You are working in a Python code interpreter sandbox. 
@@ -184,11 +176,7 @@ Return ONLY the Python code, no explanations."""
         generated_code = self._extract_code_block(response.content)
 
         # Display the code preview
-        code_preview = (
-            generated_code[:300] + "..."
-            if len(generated_code) > 300
-            else generated_code
-        )
+        code_preview = generated_code[:300] + "..." if len(generated_code) > 300 else generated_code
         console.print(Syntax(code_preview, "python"))
 
         # Execute the code
@@ -235,9 +223,7 @@ Return ONLY the Python code, no explanations."""
 
     def understand_query(self, state: AgentState) -> AgentState:
         """Understand what the user wants to research"""
-        console.print(
-            f"\n[bold magenta]🎯 Understanding research query:[/bold magenta] {state['research_query']}"
-        )
+        console.print(f"\n[bold magenta]🎯 Understanding research query:[/bold magenta] {state['research_query']}")
 
         # Have LLM break down the query
         prompt = f"""Analyze this research query: '{state["research_query"]}'
@@ -264,22 +250,16 @@ Respond in JSON format with the following structure:
             json_understanding = json.loads(understanding)
             console.print("[green]Query analysis completed as structured JSON[/green]")
         except json.JSONDecodeError:
-            console.print(
-                "[yellow]Could not parse response as JSON. Using raw text.[/yellow]"
-            )
+            console.print("[yellow]Could not parse response as JSON. Using raw text.[/yellow]")
             json_understanding = {"raw_analysis": understanding}
 
         # Display a summary of the understanding
         console.print("[cyan]Query Understanding:[/cyan]")
         for key, value in json_understanding.items():
             if isinstance(value, list) and value:
-                console.print(
-                    f"[cyan]• {key}:[/cyan] {', '.join(value[:3])}{'...' if len(value) > 3 else ''}"
-                )
+                console.print(f"[cyan]• {key}:[/cyan] {', '.join(value[:3])}{'...' if len(value) > 3 else ''}")
             else:
-                preview = (
-                    str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
-                )
+                preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
                 console.print(f"[cyan]• {key}:[/cyan] {preview}")
 
         return {
@@ -441,9 +421,7 @@ print(df.describe())
         # Find the best data file to use
         available_files = state["research_data"].get("available_files", [])
         data_file = (
-            "data/processed_data.csv"
-            if "data/processed_data.csv" in available_files
-            else "data/research_data.csv"
+            "data/processed_data.csv" if "data/processed_data.csv" in available_files else "data/research_data.csv"
         )
 
         # Get understanding to guide analysis
@@ -484,9 +462,7 @@ print(df.describe())
 
     def generate_insights(self, state: AgentState) -> AgentState:
         """Generate final report with insights regardless of previous step success"""
-        console.print(
-            "\n[bold magenta]💡 Generating insights and report...[/bold magenta]"
-        )
+        console.print("\n[bold magenta]💡 Generating insights and report...[/bold magenta]")
 
         # Get list of available files
         available_files = state["research_data"].get("available_files", [])
@@ -494,20 +470,14 @@ print(df.describe())
             available_files = self._refresh_file_list()
 
         # Filter for specific file types
-        data_files = [
-            f for f in available_files if f.endswith(".csv") or f.endswith(".json")
-        ]
-        viz_files = [
-            f for f in available_files if f.endswith((".png", ".jpg", ".jpeg", ".svg"))
-        ]
+        data_files = [f for f in available_files if f.endswith(".csv") or f.endswith(".json")]
+        viz_files = [f for f in available_files if f.endswith((".png", ".jpg", ".jpeg", ".svg"))]
 
         # Load analysis results if available
         analysis_data = {}
         if "data/analysis_results.json" in available_files:
             try:
-                result = self.code_client.invoke(
-                    "readFiles", {"paths": ["data/analysis_results.json"]}
-                )
+                result = self.code_client.invoke("readFiles", {"paths": ["data/analysis_results.json"]})
                 analysis_content = self._extract_output(result)
                 analysis_data = json.loads(analysis_content) if analysis_content else {}
             except Exception:
@@ -554,17 +524,11 @@ Format as a complete professional markdown document with proper headings, bullet
         console.print("=" * 60)
 
         try:
-            md = Markdown(
-                report_content[:5000] + ("..." if len(report_content) > 5000 else "")
-            )
+            md = Markdown(report_content[:5000] + ("..." if len(report_content) > 5000 else ""))
             console.print(md)
         except Exception:
             # Fallback to plain text if Markdown rendering fails
-            console.print(
-                report_content[:2000] + "..."
-                if len(report_content) > 2000
-                else report_content
-            )
+            console.print(report_content[:2000] + "..." if len(report_content) > 2000 else report_content)
 
         console.print("=" * 60)
 
@@ -623,9 +587,7 @@ async def run_research(query: str):
         console.print(f"Completed: {', '.join(final_state['completed_tasks'])}")
 
         if final_state.get("errors"):
-            console.print(
-                f"[red]⚠️ {len(final_state['errors'])} errors encountered[/red]"
-            )
+            console.print(f"[red]⚠️ {len(final_state['errors'])} errors encountered[/red]")
             for error in final_state["errors"]:
                 console.print(f"[red]- {error}[/red]")
 

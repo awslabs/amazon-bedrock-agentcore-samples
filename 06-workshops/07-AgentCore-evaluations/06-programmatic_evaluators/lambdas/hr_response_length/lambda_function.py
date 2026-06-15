@@ -64,9 +64,7 @@ def _extract_fallback_response(spans: list) -> str:
                 continue
             for msg in (body.get("output", {}) or {}).get("messages", []):
                 content = msg.get("content", {})
-                text = (
-                    (content.get("message") or "") if isinstance(content, dict) else ""
-                )
+                text = (content.get("message") or "") if isinstance(content, dict) else ""
                 cleaned = _THINKING_RE.sub("", text).strip()
                 if cleaned and not cleaned.startswith("[{"):
                     return cleaned
@@ -106,8 +104,7 @@ def lambda_handler(evaluator_input: EvaluatorInput, _context) -> EvaluatorOutput
             value=1.0,
             label="PASS",
             explanation=(
-                f"Response length {length} chars is within the acceptable range "
-                f"[{MIN_LENGTH}, {MAX_LENGTH}]."
+                f"Response length {length} chars is within the acceptable range [{MIN_LENGTH}, {MAX_LENGTH}]."
             ),
         )
     if length < MIN_LENGTH:
@@ -115,15 +112,11 @@ def lambda_handler(evaluator_input: EvaluatorInput, _context) -> EvaluatorOutput
             value=0.0,
             label="FAIL",
             explanation=(
-                f"Response length {length} chars is too short (minimum {MIN_LENGTH}). "
-                f'Preview: "{output_text[:60]}..."'
+                f'Response length {length} chars is too short (minimum {MIN_LENGTH}). Preview: "{output_text[:60]}..."'
             ),
         )
     return EvaluatorOutput(
         value=0.0,
         label="FAIL",
-        explanation=(
-            f"Response length {length} chars exceeds maximum {MAX_LENGTH}. "
-            "Consider a more concise answer."
-        ),
+        explanation=(f"Response length {length} chars exceeds maximum {MAX_LENGTH}. Consider a more concise answer."),
     )

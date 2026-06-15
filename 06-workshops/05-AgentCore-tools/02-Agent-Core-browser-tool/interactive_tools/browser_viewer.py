@@ -50,9 +50,7 @@ class BrowserViewerServer:
         self._check_dcv_sdk()
 
         # Mount static files
-        self.app.mount(
-            "/static", StaticFiles(directory=str(self.static_dir)), name="static"
-        )
+        self.app.mount("/static", StaticFiles(directory=str(self.static_dir)), name="static")
 
         # Setup routes
         self._setup_routes()
@@ -398,9 +396,7 @@ button.active {
             console.print(
                 "1. Download from: https://d1uj6qtbmh3dt5.cloudfront.net/webclientsdk/nice-dcv-web-client-sdk-1.9.100-952.zip"
             )
-            console.print(
-                "2. Extract and copy dcvjs-umd/* files to the directory above"
-            )
+            console.print("2. Extract and copy dcvjs-umd/* files to the directory above")
             console.print("3. Ensure the following structure:")
             console.print("   dcvjs/")
             console.print("   ├── dcv.js")
@@ -413,16 +409,12 @@ button.active {
             console.print("       ├── broadway/")
             console.print("       ├── jsmpeg/")
             console.print("       └── lz4/")
-            console.print(
-                "\n[red]The viewer will not work until DCV SDK is installed![/red]\n"
-            )
+            console.print("\n[red]The viewer will not work until DCV SDK is installed![/red]\n")
         else:
             # Check if it's a real DCV file or placeholder
             file_size = dcv_js_path.stat().st_size
             if file_size < 10000:  # Real DCV SDK is much larger
-                console.print(
-                    "\n[bold yellow]⚠️  DCV SDK file appears to be a placeholder[/bold yellow]"
-                )
+                console.print("\n[bold yellow]⚠️  DCV SDK file appears to be a placeholder[/bold yellow]")
                 console.print(f"File size: {file_size} bytes (expected > 100KB)")
                 console.print("Please replace with the real DCV SDK files\n")
             else:
@@ -775,9 +767,7 @@ button.active {
 
         viewer_url = f"http://localhost:{self.port}"
         console.print(f"\n[green]✅ Viewer server running at: {viewer_url}[/green]")
-        console.print(
-            "[dim]Check browser console (F12) for detailed debug information[/dim]\n"
-        )
+        console.print("[dim]Check browser console (F12) for detailed debug information[/dim]\n")
 
         if open_browser:
             console.print("[cyan]Opening browser...[/cyan]")

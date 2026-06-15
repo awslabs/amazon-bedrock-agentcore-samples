@@ -95,9 +95,7 @@ def zip_and_upload_code():
     s3 = boto3.client("s3", region_name=REGION)
     pkg_dir = os.path.join(os.path.dirname(__file__) or ".", "deployment_package")
     zip_file = os.path.join(os.path.dirname(__file__) or ".", "deployment_package.zip")
-    req_file = os.path.join(
-        os.path.dirname(__file__) or ".", "agent", "requirements.txt"
-    )
+    req_file = os.path.join(os.path.dirname(__file__) or ".", "agent", "requirements.txt")
     agents_dir = os.path.join(os.path.dirname(__file__) or ".", "agent")
     demo_data_dir = os.path.join(os.path.dirname(__file__) or ".", "demo_data")
 
@@ -141,9 +139,7 @@ def zip_and_upload_code():
     # Copy Python source files from agent/ into root of deployment package
     for filename in os.listdir(agents_dir):
         if filename.endswith(".py"):
-            shutil.copy(
-                os.path.join(agents_dir, filename), os.path.join(pkg_dir, filename)
-            )
+            shutil.copy(os.path.join(agents_dir, filename), os.path.join(pkg_dir, filename))
             print(f"  Added {filename}")
 
     # Copy demo_data/ directory preserving its structure
@@ -205,10 +201,7 @@ def create_endpoint(runtime_id: str):
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     while True:
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
-        if (
-            eps.get("runtimeEndpoints")
-            and eps["runtimeEndpoints"][0]["status"] == "READY"
-        ):
+        if eps.get("runtimeEndpoints") and eps["runtimeEndpoints"][0]["status"] == "READY":
             break
         time.sleep(15)
     print("✓ Endpoint ready")

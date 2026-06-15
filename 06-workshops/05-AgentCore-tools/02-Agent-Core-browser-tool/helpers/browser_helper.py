@@ -21,4 +21,6 @@ def get_signed_headers(ws_url):
 
 
 def get_url(browser_id, session_id):
-    return f"wss://bedrock-agentcore.{REGION}.amazonaws.com/browser-streams/{browser_id}/sessions/{session_id}/automation"
+    return (
+        f"wss://bedrock-agentcore.{REGION}.amazonaws.com/browser-streams/{browser_id}/sessions/{session_id}/automation"
+    )

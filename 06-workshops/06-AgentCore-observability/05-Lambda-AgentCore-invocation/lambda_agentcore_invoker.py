@@ -47,9 +47,7 @@ def lambda_handler(event, context):
         if not prompt:
             return {
                 "statusCode": 400,
-                "body": json.dumps(
-                    {"error": "Bad Request", "message": "Missing prompt in request"}
-                ),
+                "body": json.dumps({"error": "Bad Request", "message": "Missing prompt in request"}),
             }
 
         print(f"Processing prompt: {prompt}")
@@ -122,7 +120,5 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 500,
-            "body": json.dumps(
-                {"error": "InternalError", "message": str(e), "type": type(e).__name__}
-            ),
+            "body": json.dumps({"error": "InternalError", "message": str(e), "type": type(e).__name__}),
         }

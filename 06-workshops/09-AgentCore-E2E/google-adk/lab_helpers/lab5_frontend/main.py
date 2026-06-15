@@ -41,11 +41,7 @@ qualifier = "DEFAULT"
 
 def build_context(messages, context_window=CONTEXT_WINDOW):
     # Only use the last context_window*2 messages (user+assistant pairs)
-    history = (
-        messages[-context_window * 2 :]
-        if len(messages) > context_window * 2
-        else messages
-    )
+    history = messages[-context_window * 2 :] if len(messages) > context_window * 2 else messages
     context = ""
     for msg in history:
         role = "User" if msg["role"] == "user" else "Assistant"
@@ -98,9 +94,7 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
-    payload = json.dumps(
-        {"prompt": prompt, "actor_id": st.session_state["auth_username"]}
-    )
+    payload = json.dumps({"prompt": prompt, "actor_id": st.session_state["auth_username"]})
 
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
@@ -156,9 +150,7 @@ if prompt := st.chat_input("What is up?"):
 
                             if begin_pos != -1 and end_pos != -1:
                                 # Extract everything between the markers
-                                json_part = accumulated_response[
-                                    begin_pos + len(begin_marker) : end_pos
-                                ].strip()
+                                json_part = accumulated_response[begin_pos + len(begin_marker) : end_pos].strip()
 
                                 # The JSON should start immediately after the Begin marker
                                 json_start = json_part.find('{"role":')
@@ -178,9 +170,7 @@ if prompt := st.chat_input("What is up?"):
 
                                     if json_end != -1:
                                         json_str = json_str[:json_end]
-                                        print(
-                                            f"Extracted JSON: {json_str}"
-                                        )  # Debug print
+                                        print(f"Extracted JSON: {json_str}")  # Debug print
                                         response_data = json.loads(json_str)
 
                                         # Extract text from the JSON structure
@@ -189,12 +179,8 @@ if prompt := st.chat_input("What is up?"):
                                             and len(response_data["content"]) > 0
                                             and "text" in response_data["content"][0]
                                         ):
-                                            formatted_response = response_data[
-                                                "content"
-                                            ][0]["text"]
-                                            print(
-                                                f"Extracted text: {formatted_response}"
-                                            )  # Debug print
+                                            formatted_response = response_data["content"][0]["text"]
+                                            print(f"Extracted text: {formatted_response}")  # Debug print
 
                         except (json.JSONDecodeError, KeyError, IndexError) as e:
                             print(f"JSON parsing error: {e}")
@@ -207,9 +193,7 @@ if prompt := st.chat_input("What is up?"):
                     else:
                         # Add typing cursor effect during streaming
                         streaming_text = accumulated_response
-                        if (
-                            chunk_count % 3 == 0
-                        ):  # Add cursor every few chunks for effect
+                        if chunk_count % 3 == 0:  # Add cursor every few chunks for effect
                             streaming_text += ""
 
                         # Update display with streaming animation (make URLs clickable)
@@ -226,11 +210,7 @@ if prompt := st.chat_input("What is up?"):
             answer = (
                 formatted_response
                 if formatted_response
-                else (
-                    accumulated_response
-                    if accumulated_response
-                    else "No response received"
-                )
+                else (accumulated_response if accumulated_response else "No response received")
             )
 
             # Format the response to handle escaped characters
@@ -253,9 +233,7 @@ if prompt := st.chat_input("What is up?"):
 
         # Add final response to session state
         final_answer = answer if "answer" in locals() else accumulated_response
-        st.session_state.messages.append(
-            {"role": "assistant", "content": final_answer, "elapsed": elapsed}
-        )
+        st.session_state.messages.append({"role": "assistant", "content": final_answer, "elapsed": elapsed})
         st.session_state["pending_assistant"] = False
         st.rerun()
 
@@ -268,6 +246,4 @@ if prompt := st.chat_input("What is up?"):
 
         print(f"Response: {accumulated_response}")
         # Add assistant response to chat history
-        st.session_state.messages.append(
-            {"role": "assistant", "content": accumulated_response}
-        )
+        st.session_state.messages.append({"role": "assistant", "content": accumulated_response})

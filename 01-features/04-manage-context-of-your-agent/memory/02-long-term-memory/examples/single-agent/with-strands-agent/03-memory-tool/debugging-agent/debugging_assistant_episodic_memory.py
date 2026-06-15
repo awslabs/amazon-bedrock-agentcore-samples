@@ -104,7 +104,12 @@ memory_client = boto3.client(
 )
 
 
-# Define semantic memory strategy for debugging sessions
+# Define the memory strategy for debugging sessions.
+# NOTE: although this tutorial is framed around "episodes" and "reflections", it is
+# configured with a SEMANTIC strategy. True episodic memory requires an
+# `episodicMemoryStrategy` with a `reflectionConfiguration` (and conversations that
+# conclude so the service detects episode completion). See the reference at
+# 02-long-term-memory/01-built-in-strategies/episodic.py.
 memory_name = "DebugAssistantEpisodic"
 
 episodic_strategy = {
@@ -271,8 +276,8 @@ if reflections:
 # 2. **retrieve_reflection_knowledge**: Retrieves synthesized insights and patterns from multiple episodes
 
 
-def count_tokens(text: str) -> int:
-    """Approximate token count for a text string."""
+def count_chars(text: str) -> int:
+    """Character count for a text string (a rough size proxy, not a token count)."""
     return len(text)
 
 
@@ -317,7 +322,7 @@ def linearize_episodes(episodes: List[Dict], include_steps: bool = True, include
                 output.append(f"\n**Reflection:** {reflection}\n")
 
     result = "\n".join(output)
-    logger.info(f"   Episode tokens: {count_tokens(result)}")
+    logger.info(f"   Episode size: {count_chars(result)} chars")
     return result
 
 
@@ -346,7 +351,7 @@ def linearize_reflections(reflections: List[Dict]) -> str:
         output.append(f"**Hints:** {reflection_data.get('hints', 'N/A')}\n")
 
     result = "\n".join(output)
-    logger.info(f"   Reflection tokens: {count_tokens(result)}")
+    logger.info(f"   Reflection size: {count_chars(result)} chars")
     return result
 
 
@@ -378,8 +383,11 @@ def retrieve_process(task: str, include_steps: bool = True) -> str:
     logger.info(f"🔍 Retrieving processes for task: {task} (include_steps={include_steps})")
 
     try:
-        # Search in episode namespace
-        namespace = f"debugging/{ACTOR_ID}/sessions/{session_id}/"
+        # Search across ALL of this actor's sessions. `session_id` is only defined inside
+        # the hydration loop (not in this tool's scope), and at query time we want episodes
+        # from every past session — so search the actor-level prefix, which `namespace=`
+        # matches by prefix (covers each "debugging/{ACTOR_ID}/sessions/<id>/" episode).
+        namespace = f"debugging/{ACTOR_ID}/sessions/"
 
         # Use boto3 client directly to retrieve memory records
         response = client.retrieve_memory_records(
@@ -427,7 +435,9 @@ def retrieve_reflection_knowledge(task: str, k: int = 5) -> str:
             memoryId=memory_id,
             namespace=namespace,
             searchCriteria={
-                "searchQuery": "memory leaks",
+                # Search by the caller's task, not a hardcoded query, so reflections
+                # are ranked for the problem at hand.
+                "searchQuery": task,
                 "metadataFilters": [
                     {
                         "left": {"metadataKey": "x-amz-agentcore-memory-recordType"},

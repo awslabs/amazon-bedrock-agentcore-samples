@@ -54,6 +54,7 @@ lib/
 !05-blueprints/**/lib/
 !02-use-cases/visa-b2b-account-payable-agent/infrastructure/lib/
 !04-infrastructure-as-code/cdk/typescript/knowledge-base-rag-agent/infrastructure/lib/
+!01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/05-community/gateway-mcp-inspector/client/src/lib/
 !06-workshops/01-AgentCore-runtime/01-hosting-agent/05-java-agents/01-springai-with-bedrock-model/infra/lib/
 !06-workshops/01-AgentCore-runtime/01-hosting-agent/05-java-agents/02-embabel-with-bedrock-model/infra/lib/
 !02-use-cases/lakehouse-agent/deployment/advanced-agentcore-policy-gateway-interceptor/lib/
@@ -268,28 +269,39 @@ plan/
 
 ### draw.io source files (keep rendered PNG only) ###
 *.drawio
-02-use-cases/automation-agents/it-incident-response-agent/.husky
-02-use-cases/automation-agents/it-incident-response-agent/.hooks
-02-use-cases/automation-agents/it-incident-response-agent/.github
-02-use-cases/automation-agents/it-incident-response-agent/setup.sh
-02-use-cases/automation-agents/it-incident-response-agent/SETUP.md
-02-use-cases/automation-agents/it-incident-response-agent/QUALITY-GATES-GETTING-STARTED.md
-02-use-cases/automation-agents/it-incident-response-agent/QUALITY_GATES_DELIVERY.md
-.gitignore
-02-use-cases/automation-agents/it-incident-response-agent/.lintstagedrc.json
-02-use-cases/automation-agents/it-incident-response-agent/CONTRIBUTING.md
-02-use-cases/automation-agents/it-incident-response-agent/QUALITY-GATES-SUMMARY.md
-02-use-cases/automation-agents/it-incident-response-agent/START-HERE.md
-02-use-cases/automation-agents/it-incident-response-agent/QUALITY-GATES-README.md
-02-use-cases/automation-agents/it-incident-response-agent/OBSERVABILITY_IMPLEMENTATION.md
-02-use-cases/automation-agents/it-incident-response-agent/OBSERVABILITY_DEPLOYMENT_SUMMARY.md
-02-use-cases/automation-agents/it-incident-response-agent/DEPLOY_TEST.sh
-02-use-cases/automation-agents/it-incident-response-agent/.env.local.bu
-02-use-cases/automation-agents/it-incident-response-agent/.env.bu
-02-use-cases/automation-agents/it-incident-response-agent/.env.bak
-02-use-cases/automation-agents/it-incident-response-agent/agentcore/cdk/.husky/pre-commit
-02-use-cases/automation-agents/it-incident-response-agent/docs/use-case-samples-evaluation.html
-02-use-cases/automation-agents/it-incident-response-agent/docs/use-case-samples-evaluation.md
-02-use-cases/automation-agents/it-incident-response-agent/docs/eval-style.css
-02-use-cases/automation-agents/it-incident-response-agent/agentcore/cdk/tmp_*.py
-02-use-cases/automation-agents/it-incident-response-agent/PUBLICATION_READINESS.md
+
+# Generated configuration and result files
+**/agents_config.json
+**/gateway_config.json
+**/config.json
+**/evals_results/
+**/results/
+**/*.zip
+
+# Docker files (generated)
+**/Dockerfile
+
+# Agent state and runtime files
+**/.agent_arn*
+**/agent_state_*.json
+**/optimize_state_*.json
+**/runtime_config.json
+
+# Evaluation and session results
+**/batch_eval_*_result.json
+**/recommendation_*_result.json
+**/session_results_*.json
+
+# Test and demo state files
+**/demo_state.json
+**/dp_demo_state.json
+**/test-results/
+**/TEST_REPORT_CARD.md
+
+# Policy test results
+01-features/07-centralize-and-govern-your-ai-infrastructure/02-policy/test-results/
+
+# Browser test report cards
+01-features/03-connect-your-agent-to-anything/02-browser/TEST_REPORT_CARD.md
+02-use-cases/use-case-assessment.md
+**/lambda_config.json

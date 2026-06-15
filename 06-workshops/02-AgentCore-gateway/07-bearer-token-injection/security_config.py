@@ -159,21 +159,11 @@ class SecurityConfig:
         """
         return {
             "DEMO_USERNAME": os.environ.get("DEMO_USERNAME", "testuser"),
-            "DEMO_SECRET_NAME": os.environ.get(
-                "DEMO_SECRET_NAME", "asana_integration_demo_agent"
-            ),
-            "ROLE_NAME": os.environ.get(
-                "ROLE_NAME", "AgentCoreGwyAsanaIntegrationRole"
-            ),
-            "POLICY_NAME": os.environ.get(
-                "POLICY_NAME", "AgentCoreGwyAsanaIntegrationPolicy"
-            ),
-            "MAX_REQUEST_SIZE": os.environ.get(
-                "MAX_REQUEST_SIZE", str(SecurityConfig.MAX_REQUEST_BODY_SIZE)
-            ),
-            "RATE_LIMIT": os.environ.get(
-                "RATE_LIMIT", str(SecurityConfig.DEFAULT_RATE_LIMIT)
-            ),
+            "DEMO_SECRET_NAME": os.environ.get("DEMO_SECRET_NAME", "asana_integration_demo_agent"),
+            "ROLE_NAME": os.environ.get("ROLE_NAME", "AgentCoreGwyAsanaIntegrationRole"),
+            "POLICY_NAME": os.environ.get("POLICY_NAME", "AgentCoreGwyAsanaIntegrationPolicy"),
+            "MAX_REQUEST_SIZE": os.environ.get("MAX_REQUEST_SIZE", str(SecurityConfig.MAX_REQUEST_BODY_SIZE)),
+            "RATE_LIMIT": os.environ.get("RATE_LIMIT", str(SecurityConfig.DEFAULT_RATE_LIMIT)),
         }
 
 

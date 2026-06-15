@@ -196,13 +196,9 @@ def get_bearer_token(config: dict, username: str, password: str) -> str:
 def _find_project_dir() -> str:
     for entry in os.listdir(SAMPLE_DIR):
         candidate = os.path.join(SAMPLE_DIR, entry)
-        if os.path.isdir(candidate) and os.path.isdir(
-            os.path.join(candidate, "agentcore")
-        ):
+        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
             return candidate
-    raise FileNotFoundError(
-        "No agentcore project directory found. Run 'agentcore create' first."
-    )
+    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
 def _find_in_json(obj, key):
@@ -230,9 +226,7 @@ def resolve_agent_arn() -> str:
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError(
-            "No deployed-state.json found. Run 'agentcore deploy -y' first."
-        )
+        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
     with open(state_file) as f:
         state = json.load(f)
     arn = _find_in_json(state, "runtimeArn")
@@ -252,11 +246,7 @@ def _format_response(text: str) -> str:
 def parse_event_stream(response: dict) -> str:
     parts: list[str] = []
     for event in response.get("response", []):
-        raw = (
-            event
-            if isinstance(event, bytes)
-            else event.get("chunk", {}).get("bytes", b"")
-        )
+        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -283,17 +273,13 @@ def parse_event_stream(response: dict) -> str:
 # ---------------------------------------------------------------------------
 # Helper: invoke agent
 # ---------------------------------------------------------------------------
-def invoke_agent(
-    agent_arn: str, prompt: str, bearer_token: str, user_id: str, region: str
-) -> str:
+def invoke_agent(agent_arn: str, prompt: str, bearer_token: str, user_id: str, region: str) -> str:
     client = boto3.client("bedrock-agentcore", region_name=region)
 
     def _inject_bearer(request, **kwargs):
         request.headers["Authorization"] = f"Bearer {bearer_token}"
 
-    client.meta.events.register(
-        "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
-    )
+    client.meta.events.register("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
     try:
         resp = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
@@ -303,9 +289,7 @@ def invoke_agent(
         )
         return parse_event_stream(resp)
     finally:
-        client.meta.events.unregister(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
-        )
+        client.meta.events.unregister("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
 
 
 # ---------------------------------------------------------------------------
@@ -386,11 +370,7 @@ def extract_consent_url(text: str) -> str | None:
             if url.startswith(prefix):
                 return url.rstrip(".,;")
     for url in urls:
-        if (
-            "oauth" in url.lower()
-            or "authorize" in url.lower()
-            or "consent" in url.lower()
-        ):
+        if "oauth" in url.lower() or "authorize" in url.lower() or "consent" in url.lower():
             return url.rstrip(".,;")
     return None
 
@@ -454,17 +434,13 @@ if not st.session_state.logged_in:
         )
 
         with st.form("login_form", clear_on_submit=False):
-            username = st.text_input(
-                "Username", value=config.get("username", "testuser")
-            )
+            username = st.text_input("Username", value=config.get("username", "testuser"))
             password = st.text_input(
                 "Password",
                 value=config.get("password", "AgentCoreTest1!"),
                 type="password",
             )
-            login_btn = st.form_submit_button(
-                "Sign In", use_container_width=True, type="primary"
-            )
+            login_btn = st.form_submit_button("Sign In", use_container_width=True, type="primary")
 
         if login_btn:
             with st.spinner("Authenticating..."):
@@ -543,9 +519,7 @@ with st.sidebar:
         "Select flow",
         FLOW_KEYS,
         format_func=lambda k: FLOW_LABELS[k],
-        index=FLOW_KEYS.index(st.session_state.selected_flow)
-        if st.session_state.selected_flow in FLOW_KEYS
-        else 0,
+        index=FLOW_KEYS.index(st.session_state.selected_flow) if st.session_state.selected_flow in FLOW_KEYS else 0,
         label_visibility="collapsed",
     )
 
@@ -597,19 +571,11 @@ with st.sidebar:
             )
 
             # Re-invoke button
-            if st.button(
-                "Re-invoke after consent", use_container_width=True, type="primary"
-            ):
+            if st.button("Re-invoke after consent", use_container_width=True, type="primary"):
                 st.session_state.consent_state = "completed"
-                if (
-                    st.session_state.last_3lo_prompt
-                    and st.session_state.jwt_token
-                    and st.session_state.agent_arn
-                ):
+                if st.session_state.last_3lo_prompt and st.session_state.jwt_token and st.session_state.agent_arn:
                     prompt = st.session_state.last_3lo_prompt
-                    st.session_state.chat_history.append(
-                        {"role": "user", "content": f"[Re-invoke] {prompt}"}
-                    )
+                    st.session_state.chat_history.append({"role": "user", "content": f"[Re-invoke] {prompt}"})
                     try:
                         t0 = time.time()
                         result = invoke_agent(
@@ -620,13 +586,9 @@ with st.sidebar:
                             config["region"],
                         )
                         st.session_state.last_response_time = round(time.time() - t0, 2)
-                        st.session_state.chat_history.append(
-                            {"role": "assistant", "content": result}
-                        )
+                        st.session_state.chat_history.append({"role": "assistant", "content": result})
                     except Exception as exc:
-                        st.session_state.chat_history.append(
-                            {"role": "assistant", "content": f"Error: {exc}"}
-                        )
+                        st.session_state.chat_history.append({"role": "assistant", "content": f"Error: {exc}"})
                     st.rerun()
 
         # Callback server indicator
@@ -643,9 +605,7 @@ with st.sidebar:
 
 # Gate: require agent ARN
 if not st.session_state.agent_arn:
-    st.warning(
-        "No deployed agent found. Resolve the Agent ARN from the sidebar, or run `agentcore deploy -y`."
-    )
+    st.warning("No deployed agent found. Resolve the Agent ARN from the sidebar, or run `agentcore deploy -y`.")
     st.stop()
 
 # -- Flow header --
@@ -706,15 +666,9 @@ if prompt_to_send:
                         st.session_state.consent_url = None
 
                 st.markdown(_format_response(result))
-                st.session_state.chat_history.append(
-                    {"role": "assistant", "content": result}
-                )
+                st.session_state.chat_history.append({"role": "assistant", "content": result})
 
-                if (
-                    is_3lo
-                    and st.session_state.consent_state == "pending"
-                    and st.session_state.consent_url
-                ):
+                if is_3lo and st.session_state.consent_state == "pending" and st.session_state.consent_url:
                     provider_label = "GitHub" if flow_key == "github" else "Google"
                     st.info(
                         f"Consent required: click **Authorize on {provider_label}** in the sidebar, "
@@ -724,8 +678,6 @@ if prompt_to_send:
             except Exception as exc:
                 error_msg = f"Error: {exc}"
                 st.error(error_msg)
-                st.session_state.chat_history.append(
-                    {"role": "assistant", "content": error_msg}
-                )
+                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
 
     st.rerun()

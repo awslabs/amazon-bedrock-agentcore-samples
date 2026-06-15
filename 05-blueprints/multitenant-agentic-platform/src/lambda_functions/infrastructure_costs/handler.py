@@ -128,11 +128,7 @@ def query_infrastructure_costs(tenant_ids):
                 if keys:
                     # Key format is "tenantId$value" or just the value
                     key = keys[0]
-                    tenant_id = (
-                        key.replace("tenantId$", "")
-                        if key.startswith("tenantId$")
-                        else key
-                    )
+                    tenant_id = key.replace("tenantId$", "") if key.startswith("tenantId$") else key
 
                     # Get cost amount
                     metrics = group.get("Metrics", {})

@@ -94,9 +94,7 @@ def format_preferences(prefs: dict) -> str:
     return ", ".join(enabled) if enabled else "No communication preferences set"
 
 
-def get_customer_profile(
-    customer_id: str = None, email: str = None, phone: str = None
-) -> str:
+def get_customer_profile(customer_id: str = None, email: str = None, phone: str = None) -> str:
     """
     Retrieve customer profile information using customer ID, email, or phone number.
 
@@ -127,9 +125,7 @@ def get_customer_profile(
 
     # Validate input parameters
     if not any([customer_id, email, phone]):
-        raise ValueError(
-            "Must provide at least one search parameter: customer_id, email, or phone"
-        )
+        raise ValueError("Must provide at least one search parameter: customer_id, email, or phone")
 
     # Validate formats
     if email and not validate_email(email):
@@ -168,9 +164,7 @@ def get_customer_profile(
             # Normalize phone number for search
             normalized_phone = re.sub(r"[\s\-$$]", "", phone)
             if not normalized_phone.startswith("+"):
-                normalized_phone = (
-                    "+1-" + normalized_phone if len(normalized_phone) == 10 else phone
-                )
+                normalized_phone = "+1-" + normalized_phone if len(normalized_phone) == 10 else phone
 
             response = table.query(
                 IndexName="phone-index",
@@ -295,9 +289,7 @@ def get_customer_profile(
         # Add recommendations based on profile
         recommendations = []
         if support_cases > 3:
-            recommendations.append(
-                "⚠️  High support case count - consider proactive outreach"
-            )
+            recommendations.append("⚠️  High support case count - consider proactive outreach")
 
         if lifetime_value > 2000:
             recommendations.append("💎 High-value customer - prioritize satisfaction")
@@ -306,9 +298,7 @@ def get_customer_profile(
             recommendations.append("🎉 Loyal customer - consider loyalty rewards")
 
         if total_purchases == 0:
-            recommendations.append(
-                "🆕 New customer - provide excellent first experience"
-            )
+            recommendations.append("🆕 New customer - provide excellent first experience")
 
         if recommendations:
             profile_info.extend(
@@ -334,9 +324,7 @@ def get_customer_profile(
 
     except ClientError as e:
         logger.error("DynamoDB Error:", e)
-        raise Exception(
-            f"Failed to retrieve customer profile: {e.response['Error']['Message']}"
-        )
+        raise Exception(f"Failed to retrieve customer profile: {e.response['Error']['Message']}")
     except Exception as e:
         logger.error("Unexpected Error:", str(e))
         raise Exception(f"Failed to retrieve customer profile: {str(e)}")

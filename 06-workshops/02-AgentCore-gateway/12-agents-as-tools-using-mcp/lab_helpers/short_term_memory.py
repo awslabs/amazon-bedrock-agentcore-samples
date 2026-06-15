@@ -85,8 +85,7 @@ class ShortTermMemoryHook(HookProvider):
         ]
 
         logger.debug(
-            f"ShortTermMemoryHook initialized with memory_id={memory_id}, "
-            f"max_context_turns={max_context_turns}"
+            f"ShortTermMemoryHook initialized with memory_id={memory_id}, max_context_turns={max_context_turns}"
         )
 
     def on_agent_initialized(self, event: AgentInitializedEvent) -> None:
@@ -112,9 +111,7 @@ class ShortTermMemoryHook(HookProvider):
                 )
                 return
 
-            logger.debug(
-                f"Loading memory for actor_id={actor_id}, session_id={session_id}"
-            )
+            logger.debug(f"Loading memory for actor_id={actor_id}, session_id={session_id}")
 
             # Retrieve recent conversation turns from memory
             recent_turns = self.memory_client.get_last_k_turns(
@@ -129,13 +126,10 @@ class ShortTermMemoryHook(HookProvider):
                 context = self._build_context_from_turns(recent_turns)
                 event.agent.system_prompt += f"\n\n{context}\n\nUse this information for additional background context."
                 logger.info(
-                    f"✅ Loaded {len(recent_turns)} conversation turns into agent context "
-                    f"(actor_id={actor_id})"
+                    f"✅ Loaded {len(recent_turns)} conversation turns into agent context (actor_id={actor_id})"
                 )
             else:
-                logger.info(
-                    f"No previous conversation history found for actor_id={actor_id}"
-                )
+                logger.info(f"No previous conversation history found for actor_id={actor_id}")
 
         except Exception as e:
             logger.error(
@@ -160,9 +154,7 @@ class ShortTermMemoryHook(HookProvider):
             session_id = event.agent.state.get("session_id")
 
             if not actor_id or not session_id:
-                logger.warning(
-                    "Cannot save message: Missing actor_id or session_id in agent state"
-                )
+                logger.warning("Cannot save message: Missing actor_id or session_id in agent state")
                 return
 
             # Get the most recent message
@@ -183,9 +175,7 @@ class ShortTermMemoryHook(HookProvider):
 
             # Skip empty messages (don't persist to memory if text is empty)
             if not message_text or not message_text.strip():
-                logger.debug(
-                    f"Skipping empty message (role={message_role}) - no content to persist"
-                )
+                logger.debug(f"Skipping empty message (role={message_role}) - no content to persist")
                 return
 
             # Save to memory
@@ -197,8 +187,7 @@ class ShortTermMemoryHook(HookProvider):
             )
 
             logger.debug(
-                f"✅ Persisted message (role={message_role}, length={len(message_text)}) "
-                f"for actor_id={actor_id}"
+                f"✅ Persisted message (role={message_role}, length={len(message_text)}) for actor_id={actor_id}"
             )
 
         except Exception as e:
@@ -252,9 +241,7 @@ class ShortTermMemoryHook(HookProvider):
                     text = str(content)
 
                 # Extract application information based on keywords
-                is_application_info = any(
-                    keyword in text for keyword in self.context_keywords
-                )
+                is_application_info = any(keyword in text for keyword in self.context_keywords)
 
                 if is_application_info and role == "assistant":
                     application_info.append(text)

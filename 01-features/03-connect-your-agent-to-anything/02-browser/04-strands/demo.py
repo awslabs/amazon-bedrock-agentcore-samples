@@ -72,9 +72,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Strands browser agent demo")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--prompt", default=None, help="Custom analysis prompt")
-    group.add_argument(
-        "--url", default=None, help="URL to analyse (use with --question)"
-    )
+    group.add_argument("--url", default=None, help="URL to analyse (use with --question)")
     parser.add_argument(
         "--question",
         default="Please provide a comprehensive analysis of this website.",

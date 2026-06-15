@@ -52,12 +52,8 @@ def setup(region: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Create CloudWatch log group/stream for LangGraph observability"
-    )
-    parser.add_argument(
-        "--region", default="us-east-1", help="AWS region (default: us-east-1)"
-    )
+    parser = argparse.ArgumentParser(description="Create CloudWatch log group/stream for LangGraph observability")
+    parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
     args = parser.parse_args()
     setup(args.region)
 

@@ -28,9 +28,7 @@ def load_config() -> dict:
         sys.exit(1)
 
 
-def execute_command(
-    client, arn: str, session_id: str, command: str, timeout: int = 60
-) -> int:
+def execute_command(client, arn: str, session_id: str, command: str, timeout: int = 60) -> int:
     """Execute a shell command in the runtime session and stream output.
 
     Returns the exit code.

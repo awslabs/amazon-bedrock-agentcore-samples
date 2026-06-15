@@ -89,9 +89,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -119,9 +117,7 @@ def create_execution_role() -> str:
                 "Effect": "Allow",
                 "Action": "cloudwatch:PutMetricData",
                 "Resource": "*",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "BedrockModelInvocation",

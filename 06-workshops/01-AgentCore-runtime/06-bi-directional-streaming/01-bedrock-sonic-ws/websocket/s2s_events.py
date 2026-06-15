@@ -95,16 +95,10 @@ class S2sEvent:
 
     @staticmethod
     def content_end(prompt_name, content_name):
-        return {
-            "event": {
-                "contentEnd": {"promptName": prompt_name, "contentName": content_name}
-            }
-        }
+        return {"event": {"contentEnd": {"promptName": prompt_name, "contentName": content_name}}}
 
     @staticmethod
-    def content_start_audio(
-        prompt_name, content_name, audio_input_config=DEFAULT_AUDIO_INPUT_CONFIG
-    ):
+    def content_start_audio(prompt_name, content_name, audio_input_config=DEFAULT_AUDIO_INPUT_CONFIG):
         return {
             "event": {
                 "contentStart": {
