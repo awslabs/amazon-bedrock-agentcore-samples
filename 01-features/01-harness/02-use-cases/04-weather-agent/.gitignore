@@ -6,4 +6,5 @@ backend.log
 frontend.log
 backend.pid
 frontend.pid
+pr-response.txt
 __pycache__/

@@ -289,10 +289,10 @@ function App() {
                     Refresh
                   </button>
                 </div>
-                {traces.length > 0 ? (
+                {traces.length > 0 && traces.some(t => t.trace_id && !t.error) ? (
                   <div>
                     <div className="traces-list">
-                      {traces.map((t, i) => (
+                      {traces.filter(t => t.trace_id).map((t, i) => (
                         <div key={i} className="trace-item">
                           <span className={`trace-dot ${t.has_error || t.has_fault ? 'error' : ''}`} />
                           <span className="trace-id">{t.trace_id}</span>
@@ -301,8 +301,13 @@ function App() {
                       ))}
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12 }}>
-                      Search these trace IDs in CloudWatch &gt; GenAI Observability &gt; Bedrock AgentCore &gt; Traces
+                      Search these trace IDs in CloudWatch &gt; GenAI Observability &gt; Bedrock AgentCore &gt; Traces (may take a few minutes to appear)
                     </p>
+                  </div>
+                ) : traces.length > 0 && (traces[0]?.error || traces.some(t => !t.trace_id)) ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">🔍</div>
+                    <p>Traces could not be loaded. Ensure CloudWatch Transaction Search is enabled in your account and region.</p>
                   </div>
                 ) : (
                   <div className="empty-state">

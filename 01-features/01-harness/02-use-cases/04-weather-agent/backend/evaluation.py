@@ -36,6 +36,15 @@ def run_batch_evaluation(harness_id: str, session_id: str, harness_name: str = N
     """Start a batch evaluation job and poll until complete. Returns results."""
     client = boto3.client("bedrock-agentcore", region_name=REGION)
 
+    if not hasattr(client, "start_batch_evaluation"):
+        return {
+            "error": (
+                "start_batch_evaluation is not available in your boto3 version. "
+                "Please upgrade: pip install 'boto3>=1.43.27'"
+            ),
+            "scores": [],
+        }
+
     # Wait for traces to be fully indexed in CloudWatch
     time.sleep(60)
 

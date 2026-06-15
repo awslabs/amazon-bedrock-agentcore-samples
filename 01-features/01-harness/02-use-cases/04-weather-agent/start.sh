@@ -66,9 +66,11 @@ if ! aws sts get-caller-identity &> /dev/null; then
     exit 1
 fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+CALLER_ARN=$(aws sts get-caller-identity --query Arn --output text)
 echo -e "  ${GREEN}AWS Account:${NC} $ACCOUNT_ID"
+echo -e "  ${GREEN}Identity:${NC} ${CALLER_ARN##*/}"
 
-REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+REGION="${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || echo 'us-east-1')}"
 export AWS_DEFAULT_REGION="$REGION"
 echo -e "  ${GREEN}Region:${NC} $REGION"
 echo ""

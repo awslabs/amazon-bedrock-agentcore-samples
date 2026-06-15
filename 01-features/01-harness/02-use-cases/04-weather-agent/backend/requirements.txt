@@ -1,4 +1,4 @@
-boto3
+boto3>=1.43.27
 fastapi
 uvicorn[standard]
 sse-starlette

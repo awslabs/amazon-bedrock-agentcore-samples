@@ -14,7 +14,7 @@
 
 A full-stack weather agent web app that integrates **four AgentCore pillars** in a single demo:
 
-1. **Gateway** — Managed proxy with an MCP target (Exa search) for tool routing and observability
+1. **AgentCore Gateway** — Creates a Gateway resource with an Exa MCP target, routing all tool calls through the managed proxy for centralized observability
 2. **Guardrails** — Bedrock guardrail that anonymizes PII (email, phone, address) in agent responses
 3. **Observability** — CloudWatch traces with full agent loop visibility
 4. **Evaluations** — Batch evaluation scoring with built-in evaluators (Helpfulness, Correctness, Coherence, etc.)
@@ -38,34 +38,37 @@ To stop servers: `Ctrl+C`. To delete AWS resources: `./cleanup.sh`.
 ## Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Frontend (React + Vite) — http://localhost:5173                │
-│  ┌──────────────────┐  ┌────────────────────────────────────┐ │
-│  │    Chat Panel     │  │  Weather / Traces / Evaluations    │ │
-│  │  (send queries)   │  │  (live cards, trace IDs, scores)   │ │
-│  └────────┬──────────┘  └─────────────────┬──────────────────┘ │
-└───────────┼───────────────────────────────┼────────────────────┘
-            │  POST /api/chat (SSE)         │  GET /api/traces
-            │                               │  POST /api/evaluate
-            ▼                               ▼
-┌────────────────────────────────────────────────────────────────┐
-│  Backend (FastAPI) — http://localhost:8000                      │
-│  ┌───────────┐ ┌────────┐ ┌─────────────┐ ┌───────────────┐  │
-│  │ resources │ │ agent  │ │observability│ │  evaluation   │  │
-│  │   .py     │ │  .py   │ │    .py      │ │     .py       │  │
-│  └─────┬─────┘ └───┬────┘ └──────┬──────┘ └───────┬───────┘  │
-└────────┼────────────┼─────────────┼────────────────┼───────────┘
-         │            │             │                │
-         ▼            ▼             ▼                ▼
-┌────────────────────────────────────────────────────────────────┐
-│  AWS (AgentCore + Bedrock + CloudWatch)                         │
-│                                                                │
-│  Gateway ───► Exa MCP ───► Web Search (live weather data)      │
-│  Harness ───► Claude Haiku 4.5 (agent orchestration)           │
-│  Guardrail ─► PII anonymization (email, phone, address)        │
-│  CloudWatch ► Trace observability (GenAI Observability)         │
-│  Batch Eval ► Built-in evaluators (Helpfulness, Correctness…)  │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Frontend (React + Vite) — http://localhost:5173                 │
+│                                                                  │
+│  ┌─────────────────────┐    ┌─────────────────────────────────┐  │
+│  │     Chat Panel       │   │  Weather / Traces / Evaluations │  │
+│  │   (send queries)     │   │  (live cards, trace IDs, scores)│  │
+│  └──────────┬───────────┘   └────────────────┬────────────────┘  │
+└─────────────┼─────────────────────────────────┼──────────────────┘
+              │                                 │
+              │  POST /api/chat (SSE)           │  GET /api/traces
+              │                                 │  POST /api/evaluate
+              ▼                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  Backend (FastAPI) — http://localhost:8000                       │
+│                                                                  │
+│  ┌────────────┐  ┌────────┐  ┌──────────────┐  ┌─────────────┐   │
+│  │ resources  │  │ agent  │  │observability │  │ evaluation  │   │
+│  │    .py     │  │  .py   │  │     .py      │  │    .py      │   │
+│  └─────┬──────┘  └───┬────┘  └──────┬───────┘  └──────┬──────┘   │
+└────────┼──────────────┼──────────────┼─────────────────┼─────────┘
+         │              │              │                  │
+         ▼              ▼              ▼                  ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  AWS (AgentCore + Bedrock + CloudWatch)                          │
+│                                                                  │
+│  AC Gateway ──► Exa MCP ──► Web Search (live weather data)       │
+│  Harness ─────► Claude Haiku 4.5 (agent orchestration)           │
+│  Guardrail ───► PII anonymization (email, phone, address)        │
+│  CloudWatch ──► Trace observability (GenAI Observability)        │
+│  Batch Eval ──► Built-in evaluators (Helpfulness, Correctness…)  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## How It Works
@@ -82,10 +85,10 @@ To stop servers: `Ctrl+C`. To delete AWS resources: `./cleanup.sh`.
 
 ## Key Features
 
-### Gateway Integration
-The Gateway acts as a managed proxy between the agent and external tool servers:
+### AgentCore Gateway
+The demo creates an AgentCore Gateway resource (`create_gateway` + `create_gateway_target`) and passes it to the harness as `type: "agentcore_gateway"`. The Gateway acts as a managed proxy between the agent and external tool servers:
 - Centralized routing for MCP tool traffic
-- Automatic observability (every tool call is traced)
+- Automatic observability (every tool call through the Gateway is traced)
 - Configurable auth (NONE in this demo, supports IAM/OAuth)
 
 ### Bedrock Guardrails
@@ -108,11 +111,11 @@ Results appear in the web app and are also visible in:
 - Node.js 18+
 - AWS CLI configured with credentials (`aws sts get-caller-identity` should work). Recommended region: **us-east-1** (`export AWS_DEFAULT_REGION=us-east-1`)
 - Model access enabled for Claude Haiku 4.5 in Amazon Bedrock
-- [CloudWatch Transaction Search](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search-getting-started.html) enabled — **required** for traces and batch evaluations to work. After enabling, it may take a few minutes before traces start appearing. Only traces from invocations *after* enabling will be indexed.
+- [CloudWatch Transaction Search](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html) enabled — **required** for traces and batch evaluations to work. After enabling, it may take a few minutes before traces start appearing. Only traces from invocations *after* enabling will be indexed.
 
 ## AWS Permissions Required
 
-Your IAM user or role needs the following policies:
+> **Note:** The policies below use broad access for simplicity in this demo. In production environments, follow the principle of least privilege and create custom IAM policies scoped to only the specific resources and actions your agent needs.
 
 | Policy | Purpose |
 |--------|---------|
