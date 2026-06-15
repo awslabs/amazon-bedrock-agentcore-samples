@@ -32,7 +32,7 @@ def _discover_log_group(harness_name: str) -> str | None:
     return None
 
 
-def run_batch_evaluation(harness_id: str, session_id: str, harness_name: str = None) -> dict:
+def run_batch_evaluation(harness_id: str, harness_name: str = None) -> dict:
     """Start a batch evaluation job and poll until complete. Returns results."""
     client = boto3.client("bedrock-agentcore", region_name=REGION)
 
@@ -44,9 +44,6 @@ def run_batch_evaluation(harness_id: str, session_id: str, harness_name: str = N
             ),
             "scores": [],
         }
-
-    # Wait for traces to be fully indexed in CloudWatch
-    time.sleep(60)
 
     # Discover the log group dynamically (it has a random suffix)
     log_group = None
@@ -75,9 +72,6 @@ def run_batch_evaluation(harness_id: str, session_id: str, harness_name: str = N
                 "cloudWatchLogs": {
                     "serviceNames": [service_name],
                     "logGroupNames": [log_group],
-                    "filterConfig": {
-                        "sessionIds": [session_id],
-                    },
                 }
             },
         )

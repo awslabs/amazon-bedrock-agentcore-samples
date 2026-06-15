@@ -227,6 +227,21 @@ def destroy_resources():
     except Exception as e:
         print(f"  Warning (batch evals): {e}")
 
+    # Delete recommendations created by this app
+    try:
+        recs = dp_client.list_recommendations()
+        for rec in recs.get("recommendations", recs.get("items", [])):
+            rec_name = rec.get("name", "")
+            rec_id = rec.get("recommendationId", "")
+            if rec_name.startswith("weather_rec_"):
+                try:
+                    dp_client.delete_recommendation(recommendationId=rec_id)
+                    print(f"  Deleted recommendation: {rec_name}")
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"  Warning (recommendations): {e}")
+
     delete_harness_role()
     STATE_FILE.unlink(missing_ok=True)
     print("[resources] Cleanup complete")

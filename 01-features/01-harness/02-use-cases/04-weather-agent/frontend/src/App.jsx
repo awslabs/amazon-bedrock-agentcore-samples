@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getStatus, streamChat, getTraces, runEvaluation } from './api';
+import { getStatus, streamChat, getTraces, runEvaluation, generateReport, runOptimization } from './api';
 
 function App() {
   const [ready, setReady] = useState(false);
@@ -12,6 +12,10 @@ function App() {
   const [traces, setTraces] = useState([]);
   const [evalResults, setEvalResults] = useState([]);
   const [evalLoading, setEvalLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportResult, setReportResult] = useState(null);
+  const [optimizeLoading, setOptimizeLoading] = useState(false);
+  const [optimizeResult, setOptimizeResult] = useState(null);
   const [evalBatchId, setEvalBatchId] = useState(null);
   const [weatherData, setWeatherData] = useState([]);
   const messagesEndRef = useRef(null);
@@ -141,6 +145,43 @@ function App() {
     setEvalLoading(false);
   };
 
+  const handleGenerateReport = async () => {
+    if (!sessionId) return;
+    setReportLoading(true);
+    setReportResult(null);
+    try {
+      const result = await generateReport(sessionId);
+      setReportResult(result);
+      if (result.success && result.file_data) {
+        const blob = new Blob(
+          [Uint8Array.from(atob(result.file_data), c => c.charCodeAt(0))],
+          { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename || 'weather_forecast.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      setReportResult({ success: false, error: e.message });
+    }
+    setReportLoading(false);
+  };
+
+  const handleOptimize = async () => {
+    setOptimizeLoading(true);
+    setOptimizeResult(null);
+    try {
+      const result = await runOptimization();
+      setOptimizeResult(result);
+    } catch (e) {
+      setOptimizeResult({ status: 'FAILED', error: e.message });
+    }
+    setOptimizeLoading(false);
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -255,6 +296,12 @@ function App() {
             <button className={activeTab === 'traces' ? 'active' : ''} onClick={() => setActiveTab('traces')}>
               Traces ({traces.length})
             </button>
+            <button className={activeTab === 'skills' ? 'active' : ''} onClick={() => setActiveTab('skills')}>
+              Skills
+            </button>
+            <button className={activeTab === 'optimize' ? 'active' : ''} onClick={() => setActiveTab('optimize')}>
+              Optimization
+            </button>
             <button className={activeTab === 'evals' ? 'active' : ''} onClick={() => setActiveTab('evals')}>
               Evaluations
             </button>
@@ -318,6 +365,51 @@ function App() {
               </div>
             )}
 
+            {activeTab === 'skills' && (
+              <div>
+                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>XLSX Report Generation</span>
+                  <button className="btn-secondary" onClick={handleGenerateReport} disabled={!sessionId || reportLoading}>
+                    {reportLoading ? 'Generating...' : 'Generate Report'}
+                  </button>
+                </div>
+                {reportLoading && (
+                  <div className="empty-state">
+                    <div className="spinner" style={{ width: 24, height: 24 }} />
+                    <p style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: '1.6' }}>
+                      Generating weather forecast spreadsheet using the xlsx skill... This typically takes 1-2 minutes.
+                    </p>
+                  </div>
+                )}
+                {!reportLoading && reportResult && (
+                  <div className="eval-item" style={{ textAlign: 'center', padding: 20 }}>
+                    {reportResult.success ? (
+                      <>
+                        <p style={{ color: 'var(--accent-green)', fontWeight: 500, marginBottom: 8 }}>Report generated and downloaded</p>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{reportResult.filename}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ color: 'var(--accent-red)', fontWeight: 500, marginBottom: 8 }}>Report generation failed</p>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{reportResult.error}</p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {!reportLoading && !reportResult && (
+                  <div className="empty-state">
+                    <div className="empty-icon">📊</div>
+                    <p style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
+                      Generate a 7-day weather forecast as an Excel spreadsheet using the AgentCore xlsx skill. The report will use the last city you asked about.
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12 }}>
+                      The skill is fetched from Git at invocation time — no container setup or pre-installation required.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'evals' && (
               <div>
                 <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -329,7 +421,7 @@ function App() {
                 {evalLoading && (
                   <div className="empty-state">
                     <div className="spinner" style={{ width: 24, height: 24 }} />
-                    <p style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: '1.6' }}>Running batch evaluation...<br/>Waiting for trace ingestion, then scoring the session.</p>
+                    <p style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: '1.6' }}>Running batch evaluation... This typically takes 2-5 minutes.</p>
                     <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>You can track progress in Bedrock AgentCore &gt; Evaluations &gt; Batch evaluation</p>
                   </div>
                 )}
@@ -357,7 +449,7 @@ function App() {
                       })}
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12, textAlign: 'center' }}>
-                      {evalBatchId && <><strong>{evalBatchId}</strong> — </>}View full details in Bedrock AgentCore &gt; Evaluations &gt; Batch evaluation
+                      View full details in Bedrock AgentCore &gt; Evaluations &gt; Batch evaluation{evalBatchId && <> — <strong>{evalBatchId}</strong></>}
                     </p>
                   </div>
                 )}
@@ -375,13 +467,73 @@ function App() {
               </div>
             )}
 
+            {activeTab === 'optimize' && (
+              <div>
+                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>System Prompt Recommendation</span>
+                  <button className="btn-secondary" onClick={handleOptimize} disabled={optimizeLoading}>
+                    {optimizeLoading ? 'Running...' : 'Optimize'}
+                  </button>
+                </div>
+                {optimizeLoading && (
+                  <div className="empty-state">
+                    <div className="spinner" style={{ width: 24, height: 24 }} />
+                    <p style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: '1.6' }}>
+                      Analyzing traces and generating an optimized system prompt... This typically takes 1-3 minutes.
+                    </p>
+                    <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                      You can track progress in Bedrock AgentCore &gt; Optimizations &gt; Recommendations
+                    </p>
+                  </div>
+                )}
+                {!optimizeLoading && optimizeResult && optimizeResult.status === 'COMPLETED' && (
+                  <div>
+                    <div className="eval-item" style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 6 }}>RECOMMENDED SYSTEM PROMPT</div>
+                      <p style={{ fontSize: '0.8rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                        {optimizeResult.recommended_prompt}
+                      </p>
+                    </div>
+                    {optimizeResult.explanation && (
+                      <div className="eval-item" style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 6 }}>EXPLANATION</div>
+                        <p style={{ fontSize: '0.8rem', lineHeight: '1.6' }}>
+                          {optimizeResult.explanation}
+                        </p>
+                      </div>
+                    )}
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12, textAlign: 'center' }}>
+                      View full details in Bedrock AgentCore &gt; Optimizations &gt; Recommendations — <strong>{optimizeResult.recommendation_name}</strong>
+                    </p>
+                  </div>
+                )}
+                {!optimizeLoading && optimizeResult && optimizeResult.status !== 'COMPLETED' && (
+                  <div className="eval-item" style={{ textAlign: 'center', padding: 20 }}>
+                    <p style={{ color: 'var(--accent-red)', fontWeight: 500, marginBottom: 8 }}>Optimization failed</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{optimizeResult.error}</p>
+                  </div>
+                )}
+                {!optimizeLoading && !optimizeResult && (
+                  <div className="empty-state">
+                    <div className="empty-icon">🚀</div>
+                    <p style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
+                      Analyze your agent's traces and generate an AI-improved system prompt optimized for goal success.
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12, lineHeight: '1.6' }}>
+                      Send some weather questions first, then click "Optimize" to generate a recommendation. View full details in Bedrock AgentCore &gt; Optimizations &gt; Recommendations.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </div>
 
       <div className="footer">
-        <span>AgentCore Harness Demo — Gateway + Guardrails + Observability + Evaluations</span>
-        <span>{status?.region}</span>
+        <span>AgentCore Harness Demo — Gateway + Guardrails + Skills + Observability + Evaluations + Optimization</span>
+        <span><span className="status-dot" style={{ display: 'inline-block', marginRight: 6 }} />{status?.region}</span>
       </div>
     </div>
   );

@@ -50,3 +50,20 @@ export async function runEvaluation(sessionId) {
   });
   return res.json();
 }
+
+export async function generateReport(sessionId, city) {
+  const res = await fetch(`${BASE}/api/generate-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, city }),
+  });
+  return res.json();
+}
+
+export async function runOptimization() {
+  const res = await fetch(`${BASE}/api/optimize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return res.json();
+}

@@ -14,6 +14,8 @@ from resources import ensure_resources
 from agent import invoke_agent
 from observability import get_recent_traces, get_transaction_search_status
 from evaluation import run_batch_evaluation
+from skills import generate_weather_report
+from optimization import run_optimization
 
 # Global state
 _state: dict = {}
@@ -48,6 +50,11 @@ class ChatRequest(BaseModel):
 
 class EvalRequest(BaseModel):
     session_id: str
+
+
+class ReportRequest(BaseModel):
+    session_id: str
+    city: str | None = None
 
 
 @app.get("/health")
@@ -112,10 +119,34 @@ async def evaluate(req: EvalRequest):
     result = await asyncio.to_thread(
         run_batch_evaluation,
         _state["harness_id"],
-        req.session_id,
         _state.get("harness_name"),
     )
     return {"session_id": req.session_id, **result}
+
+
+@app.post("/api/generate-report")
+async def generate_report(req: ReportRequest):
+    if not _state.get("harness_arn"):
+        raise HTTPException(503, "Resources not ready")
+
+    result = await asyncio.to_thread(
+        generate_weather_report,
+        _state["harness_arn"],
+        req.session_id,
+        req.city or "the cities discussed",
+    )
+    return result
+
+
+@app.post("/api/optimize")
+async def optimize():
+    if not _state.get("harness_name"):
+        raise HTTPException(503, "Resources not ready")
+
+    result = await asyncio.to_thread(
+        run_optimization, _state["harness_name"]
+    )
+    return result
 
 
 @app.get("/api/sessions")
