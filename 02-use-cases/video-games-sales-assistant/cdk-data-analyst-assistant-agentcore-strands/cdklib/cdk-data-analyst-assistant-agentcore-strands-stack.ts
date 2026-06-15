@@ -1,13 +1,17 @@
 /**
  * CDK Stack for AgentCore Strands Data Analyst Assistant
- * 
+ *
  * Infrastructure for a data analyst assistant powered by Amazon Bedrock AgentCore.
+ * Deploys everything in a single 'cdk deploy' — no manual post-steps required.
+ *
  * Components:
  * - Aurora PostgreSQL database containing video games sales data
+ * - Automatic data loading via Custom Resource (table creation + CSV import + read-only user)
  * - DynamoDB tables for query results
  * - VPC with networking and security configuration
  * - IAM roles and permissions for AgentCore
  * - S3 bucket for data imports
+ * - AgentCore Runtime, Memory, and Observability
  */
 
 import * as cdk from "aws-cdk-lib";
@@ -15,10 +19,13 @@ import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as rds from "aws-cdk-lib/aws-rds";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as cr from 'aws-cdk-lib/custom-resources';
 import * as path from 'path';
 import { aws_bedrockagentcore as bedrockagentcore } from 'aws-cdk-lib';
 
@@ -70,7 +77,7 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     // VPC containing public and private subnets for secure database access
     const vpc = new ec2.Vpc(this, "AssistantVPC", {
       ipAddresses: ec2.IpAddresses.cidr("10.0.0.0/21"),
-      maxAzs: 3,
+      maxAzs: 2,
       natGateways: 1,
       subnetConfiguration: [
         {
@@ -182,6 +189,62 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
       s3ImportRole: auroraS3Role,
       storageEncrypted: true, // Ensure storage encryption
     });
+
+    // ================================
+    // AUTOMATIC DATA LOADING (Custom Resource)
+    // ================================
+
+    // Upload CSV data file to S3 during deployment
+    const csvDeployment = new s3deploy.BucketDeployment(this, 'CsvDeployment', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, '../resources/database'))],
+      destinationBucket: importBucket,
+      retainOnDelete: false,
+    });
+
+    // Lambda function that initializes the database (table + data + read-only user)
+    const dataLoaderFn = new lambda.Function(this, 'DataLoaderFunction', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../resources/lambdas/data-loader')),
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 256,
+      initialPolicy: [
+        new iam.PolicyStatement({
+          actions: ['rds-data:ExecuteStatement', 'rds-data:BatchExecuteStatement'],
+          resources: [cluster.clusterArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [secret.secretArn, readOnlySecret.secretArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ['s3:GetObject', 's3:ListBucket'],
+          resources: [importBucket.bucketArn, `${importBucket.bucketArn}/*`],
+        }),
+      ],
+    });
+
+    // Custom Resource that triggers the data loader Lambda during cdk deploy
+    const dataLoaderCr = new cdk.CustomResource(this, 'DataLoaderCustomResource', {
+      serviceToken: new cr.Provider(this, 'DataLoaderProvider', {
+        onEventHandler: dataLoaderFn,
+      }).serviceToken,
+      properties: {
+        ClusterArn: cluster.clusterArn,
+        AdminSecretArn: secret.secretArn,
+        ReadOnlySecretArn: readOnlySecret.secretArn,
+        DatabaseName: databaseName.valueAsString,
+        BucketName: importBucket.bucketName,
+        S3FileKey: 'video_games_sales_no_headers.csv',
+        TableName: 'video_games_sales_units',
+        // Change this value to force re-import on next deploy
+        DeployTimestamp: Date.now().toString(),
+      },
+    });
+
+    // Ensure data loading happens after cluster and CSV upload are ready
+    dataLoaderCr.node.addDependency(cluster);
+    dataLoaderCr.node.addDependency(csvDeployment);
 
     // ================================
     // AGENTCORE IAM ROLE & PERMISSIONS
@@ -341,6 +404,7 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
                 'bedrock-agentcore:DeleteMemoryRecord',
                 'bedrock-agentcore:ListMemoryRecords',
                 'bedrock-agentcore:CreateEvent',
+                'bedrock-agentcore:DeleteEvent',
                 'bedrock-agentcore:ListSessions',
                 'bedrock-agentcore:ListEvents',
                 'bedrock-agentcore:GetEvent'
@@ -359,6 +423,30 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
               resources: [
                 'arn:aws:bedrock:*::foundation-model/*',
                 'arn:aws:bedrock:*:*:inference-profile/*'
+              ]
+            }),
+            // Gateway invocation permission
+            new iam.PolicyStatement({
+              sid: 'AgentCoreGatewayAccess',
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'bedrock-agentcore:InvokeGateway',
+                'bedrock-agentcore:GetGateway',
+                'bedrock-agentcore:ListGatewayTargets'
+              ],
+              resources: [
+                `arn:aws:bedrock-agentcore:${this.region}:${this.account}:gateway/*`
+              ]
+            }),
+            // Guardrail invocation permission
+            new iam.PolicyStatement({
+              sid: 'BedrockGuardrailAccess',
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'bedrock:ApplyGuardrail'
+              ],
+              resources: [
+                `arn:aws:bedrock:${this.region}:${this.account}:guardrail/*`
               ]
             }),
           ]
@@ -437,6 +525,354 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     });
 
     // ================================
+    // AGENTCORE GATEWAY + LAMBDA TARGET
+    // ================================
+
+    // Lambda function exposing PostgreSQL tools for Gateway
+    const dbToolsLambda = new lambda.Function(this, 'DbToolsLambda', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'lambda_function.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambdas/db_tools')),
+      timeout: cdk.Duration.minutes(2),
+      memorySize: 256,
+      environment: {
+        READONLY_SECRET_ARN: readOnlySecret.secretArn,
+        AURORA_RESOURCE_ARN: cluster.clusterArn,
+        DATABASE_NAME: databaseName.valueAsString,
+        MAX_RESPONSE_SIZE_BYTES: '1048576',
+      },
+      initialPolicy: [
+        new iam.PolicyStatement({
+          actions: ['rds-data:ExecuteStatement', 'rds-data:BatchExecuteStatement'],
+          resources: [cluster.clusterArn],
+        }),
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [readOnlySecret.secretArn],
+        }),
+      ],
+    });
+
+    // Allow AgentCore Gateway to invoke the Lambda
+    dbToolsLambda.addPermission('AllowAgentCoreGateway', {
+      principal: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+    });
+
+    // IAM role for Gateway to invoke Lambda targets and access Policy Engine
+    const gatewayRole = new iam.Role(this, 'GatewayRole', {
+      assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
+      inlinePolicies: {
+        'GatewayLambdaInvoke': new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              actions: ['lambda:InvokeFunction'],
+              resources: [dbToolsLambda.functionArn],
+            }),
+            new iam.PolicyStatement({
+              actions: [
+                'bedrock-agentcore:AuthorizeAction',
+                'bedrock-agentcore:PartiallyAuthorizeActions',
+                'bedrock-agentcore:GetPolicyEngine',
+                'bedrock-agentcore:CheckAuthorizePermissions',
+              ],
+              resources: [
+                `arn:aws:bedrock-agentcore:${this.region}:${this.account}:policy-engine/*`,
+                `arn:aws:bedrock-agentcore:${this.region}:${this.account}:gateway/*`,
+                `arn:aws:bedrock-agentcore:${this.region}:${this.account}:/policy-engines/*/target-resource/*`,
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
+    // Gateway resource (IAM-based auth — agent runtime invokes via its execution role)
+    const gateway = new bedrockagentcore.CfnGateway(this, 'ToolsGateway', {
+      name: `VideoGamesToolsGateway-${uniqueSuffix}`,
+      authorizerType: 'NONE',
+      protocolType: 'MCP',
+      roleArn: gatewayRole.roleArn,
+      description: 'Gateway exposing video game sales database tools as MCP targets',
+    });
+
+    // Register the Lambda as a Gateway target with inline tool schema
+    const gatewayTarget = new bedrockagentcore.CfnGatewayTarget(this, 'DbToolsGatewayTarget', {
+      gatewayIdentifier: gateway.attrGatewayIdentifier,
+      name: 'DatabaseToolsTarget',
+      description: 'PostgreSQL query tools for video game sales analysis',
+      credentialProviderConfigurations: [
+        { credentialProviderType: 'GATEWAY_IAM_ROLE' },
+      ],
+      targetConfiguration: {
+        mcp: {
+          lambda: {
+            lambdaArn: dbToolsLambda.functionArn,
+            toolSchema: {
+              inlinePayload: [
+                {
+                  name: 'get_tables_information',
+                  description: 'Get database schema metadata including table structures, columns, and relationships for the video game sales PostgreSQL database',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {},
+                    required: [],
+                  },
+                },
+                {
+                  name: 'execute_sql_query',
+                  description: 'Execute a read-only SQL query against the video game sales PostgreSQL database containing 64,000+ titles with regional sales, critic scores, genres, and release dates',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      sql_query: {
+                        type: 'string',
+                        description: 'The SQL query to execute (read-only SELECT statements only)',
+                      },
+                      description: {
+                        type: 'string',
+                        description: 'A clear description of what this query analyzes',
+                      },
+                    },
+                    required: ['sql_query', 'description'],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    gatewayTarget.addDependency(gateway);
+
+    // ================================
+    // AGENTCORE POLICY ENGINE (Cedar Authorization)
+    // ================================
+
+    // Policy Engine provides fine-grained Cedar-based authorization for Gateway tool calls
+    const policyEngine = new bedrockagentcore.CfnPolicyEngine(this, 'PolicyEngine', {
+      name: `VideoGamesSalesPolicy_${uniqueSuffix}`,
+      description: 'Cedar policies blocking PII field access and internal cost data queries through Gateway tools',
+    });
+
+    // Construct the Gateway ARN for Cedar resource constraints
+    const gatewayArn = `arn:aws:bedrock-agentcore:${this.region}:${this.account}:gateway/${gateway.attrGatewayIdentifier}`;
+
+    // Cedar policy: allow all tool calls (default permit) — must be created FIRST
+    // with IGNORE_ALL_FINDINGS to avoid Overly Permissive validation error.
+    // Forbid policies depend on this to avoid Overly Restrictive errors.
+    const allowDefaultPolicy = new bedrockagentcore.CfnPolicy(this, 'AllowDefaultPolicy', {
+      policyEngineId: policyEngine.attrPolicyEngineId,
+      name: 'allowDefaultToolAccess',
+      description: 'Permit all tool calls that are not explicitly forbidden',
+      definition: {
+        cedar: {
+          statement: cdk.Fn.sub(`permit(
+    principal,
+    action,
+    resource == AgentCore::Gateway::"\${GatewayArn}"
+);`, { GatewayArn: gatewayArn }),
+        },
+      },
+      validationMode: 'IGNORE_ALL_FINDINGS',
+    });
+    allowDefaultPolicy.addDependency(policyEngine);
+    allowDefaultPolicy.addDependency(gateway);
+
+    // Cedar policy: block SQL queries accessing PII-related columns
+    const blockPiiPolicy = new bedrockagentcore.CfnPolicy(this, 'BlockPiiFieldsPolicy', {
+      policyEngineId: policyEngine.attrPolicyEngineId,
+      name: 'blockPiiFieldAccess',
+      description: 'Deny execute_sql_query calls that reference PII columns (email, phone, ssn, address)',
+      definition: {
+        cedar: {
+          statement: cdk.Fn.sub(`forbid(
+    principal,
+    action == AgentCore::Action::"DatabaseToolsTarget___execute_sql_query",
+    resource == AgentCore::Gateway::"\${GatewayArn}"
+) when {
+    context.input has sql_query &&
+    (
+        context.input.sql_query like "*email*" ||
+        context.input.sql_query like "*phone*" ||
+        context.input.sql_query like "*ssn*" ||
+        context.input.sql_query like "*address*" ||
+        context.input.sql_query like "*credit_card*"
+    )
+};`, { GatewayArn: gatewayArn }),
+        },
+      },
+    });
+    blockPiiPolicy.addDependency(allowDefaultPolicy);
+
+    // Cedar policy: block SQL queries requesting internal cost/profit data
+    const blockCostPolicy = new bedrockagentcore.CfnPolicy(this, 'BlockCostDataPolicy', {
+      policyEngineId: policyEngine.attrPolicyEngineId,
+      name: 'blockInternalCostData',
+      description: 'Deny execute_sql_query calls that reference internal cost, margin, or profit columns',
+      definition: {
+        cedar: {
+          statement: cdk.Fn.sub(`forbid(
+    principal,
+    action == AgentCore::Action::"DatabaseToolsTarget___execute_sql_query",
+    resource == AgentCore::Gateway::"\${GatewayArn}"
+) when {
+    context.input has sql_query &&
+    (
+        context.input.sql_query like "*cost_per_unit*" ||
+        context.input.sql_query like "*profit_margin*" ||
+        context.input.sql_query like "*wholesale_price*" ||
+        context.input.sql_query like "*procurement*"
+    )
+};`, { GatewayArn: gatewayArn }),
+        },
+      },
+    });
+    blockCostPolicy.addDependency(allowDefaultPolicy);
+
+    // Attach Policy Engine to Gateway in ENFORCE mode
+    gateway.policyEngineConfiguration = {
+      arn: policyEngine.attrPolicyEngineArn,
+      mode: 'ENFORCE',
+    };
+
+    // ================================
+    // BEDROCK GUARDRAIL (Content Filtering)
+    // ================================
+
+    // Guardrail blocks PII exposure and internal cost data queries
+    const guardrail = new cdk.CfnResource(this, 'SalesGuardrailV2', {
+      type: 'AWS::Bedrock::Guardrail',
+      properties: {
+        Name: `VideoGamesSalesGuardrail_${uniqueSuffix}`,
+        Description: 'Content filtering for video game sales assistant - blocks PII and internal cost queries',
+        BlockedInputMessaging: 'I cannot help with requests for internal cost data or personal customer information. I can help you analyze public video game sales data.',
+        BlockedOutputsMessaging: 'I cannot provide internal cost data or personal customer information. Let me help you with video game sales analysis instead.',
+        TopicPolicyConfig: {
+          TopicsConfig: [
+            {
+              Name: 'InternalCostData',
+              Definition: 'Requests about internal cost of goods, profit margins, procurement pricing, or wholesale costs that are not part of public sales data',
+              Examples: [
+                'What is our cost per unit for this game?',
+                'Show me the profit margins by publisher',
+              ],
+              Type: 'DENY',
+            },
+            {
+              Name: 'RawCustomerPII',
+              Definition: 'Requests to expose individual customer personal information such as names, emails, phone numbers, or addresses',
+              Examples: [
+                'Show me customer email addresses',
+                'List all buyer names and phone numbers',
+              ],
+              Type: 'DENY',
+            },
+          ],
+        },
+        SensitiveInformationPolicyConfig: {
+          PiiEntitiesConfig: [
+            { Type: 'EMAIL', Action: 'ANONYMIZE' },
+            { Type: 'PHONE', Action: 'ANONYMIZE' },
+            { Type: 'US_SOCIAL_SECURITY_NUMBER', Action: 'BLOCK' },
+            { Type: 'CREDIT_DEBIT_CARD_NUMBER', Action: 'BLOCK' },
+          ],
+        },
+      },
+    });
+
+    // ================================
+    // AGENTCORE EVALUATORS (LLM-as-a-Judge)
+    // ================================
+
+    // SQL Accuracy Evaluator — judges whether generated SQL correctly answers the user's question
+    const sqlAccuracyEvaluator = new bedrockagentcore.CfnEvaluator(this, 'SqlAccuracyEvaluator', {
+      evaluatorName: `SqlAccuracy_${uniqueSuffix}`,
+      description: 'Evaluates whether the generated SQL query correctly answers the user question about video game sales data',
+      level: 'TRACE',
+      evaluatorConfig: {
+        llmAsAJudge: {
+          instructions: `You are evaluating a data analyst agent that generates SQL queries against a video games sales database.
+
+Context: {context}
+
+The assistant responded with: {assistant_turn}
+
+Evaluate:
+1. Does the SQL query correctly address what the user asked?
+2. Are the correct columns, aggregations, and filters used?
+3. Is the result accurate and complete?
+
+Score 5 if the SQL perfectly answers the question with correct logic.
+Score 4 if mostly correct with minor issues (e.g., missing a column).
+Score 3 if partially correct but has logical errors.
+Score 2 if the approach is wrong but shows some understanding.
+Score 1 if completely incorrect or irrelevant.`,
+          modelConfig: {
+            bedrockEvaluatorModelConfig: {
+              modelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+            },
+          },
+          ratingScale: {
+            numerical: [
+              { value: 1, label: 'Incorrect', definition: 'Completely incorrect SQL or irrelevant response' },
+              { value: 2, label: 'Poor', definition: 'Wrong approach but shows some understanding' },
+              { value: 3, label: 'Partial', definition: 'Partially correct with logical errors' },
+              { value: 4, label: 'Good', definition: 'Mostly correct with minor issues' },
+              { value: 5, label: 'Excellent', definition: 'Perfect SQL that correctly answers the question' },
+            ],
+          },
+        },
+      },
+    });
+
+    // Response Quality Evaluator — judges overall helpfulness and clarity of the response
+    const responseQualityEvaluator = new bedrockagentcore.CfnEvaluator(this, 'ResponseQualityEvaluator', {
+      evaluatorName: `ResponseQuality_${uniqueSuffix}`,
+      description: 'Evaluates the overall quality, clarity, and helpfulness of the agent response',
+      level: 'SESSION',
+      evaluatorConfig: {
+        llmAsAJudge: {
+          instructions: `You are evaluating the overall response quality of a video games sales data analyst assistant.
+
+Context: {context}
+
+Available tools: {available_tools}
+
+Actual tool trajectory: {actual_tool_trajectory}
+
+Evaluate the agent's response for:
+1. Clarity: Is the response well-structured and easy to understand?
+2. Completeness: Does it fully answer the user's question?
+3. Accuracy: Are the numbers and insights correct based on the data?
+4. Helpfulness: Does it provide useful context or insights beyond raw data?
+5. Appropriate scope: Does it stay within video game sales domain?
+
+Score 5 for excellent responses that are clear, complete, accurate, and insightful.
+Score 4 for good responses with minor areas for improvement.
+Score 3 for adequate responses that answer the question but lack depth.
+Score 2 for poor responses that are confusing or partially wrong.
+Score 1 for responses that fail to address the question or are incorrect.`,
+          modelConfig: {
+            bedrockEvaluatorModelConfig: {
+              modelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+            },
+          },
+          ratingScale: {
+            numerical: [
+              { value: 1, label: 'Failed', definition: 'Failed to address the question or incorrect' },
+              { value: 2, label: 'Poor', definition: 'Poor response — confusing or partially wrong' },
+              { value: 3, label: 'Adequate', definition: 'Adequate — answers question but lacks depth' },
+              { value: 4, label: 'Good', definition: 'Good — minor areas for improvement' },
+              { value: 5, label: 'Excellent', definition: 'Excellent — clear, complete, accurate, insightful' },
+            ],
+          },
+        },
+      },
+    });
+
+    // ================================
     // BEDROCK AGENTCORE RUNTIME
     // ================================
 
@@ -461,10 +897,15 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
         DATABASE_NAME: databaseName.valueAsString,
         QUESTION_ANSWERS_TABLE: rawQueryResults.tableName,
         MAX_RESPONSE_SIZE_BYTES: '1048576',
+        GATEWAY_URL: gateway.attrGatewayUrl,
+        GUARDRAIL_ID: cdk.Fn.select(1, cdk.Fn.split('guardrail/', guardrail.ref)),
+        GUARDRAIL_VERSION: 'DRAFT',
       },
     });
     
     agentRuntime.addDependency(agentMemory);
+    agentRuntime.addDependency(gateway);
+    agentRuntime.addDependency(guardrail as unknown as cdk.CfnResource);
 
     // ================================
     // BEDROCK AGENTCORE RUNTIME ENDPOINT
@@ -570,6 +1011,37 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     memoryLogDelivery.addDependency(memoryLogSource);
     memoryLogDelivery.addDependency(memoryLogDestination);
 
+    // --- AgentCore Gateway Logs ---
+
+    // CloudWatch Log Group for AgentCore Gateway invocation logs
+    const gatewayLogGroup = new logs.LogGroup(this, 'GatewayLogGroup', {
+      logGroupName: `/aws/vendedlogs/bedrock-agentcore/gateway/${gateway.attrGatewayIdentifier}`,
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Delivery Source — Gateway application logs
+    const gatewayLogSource = new logs.CfnDeliverySource(this, 'GatewayLogSource', {
+      name: `gw-${uniqueSuffix}-log-src`,
+      logType: 'APPLICATION_LOGS',
+      resourceArn: `arn:aws:bedrock-agentcore:${this.region}:${this.account}:gateway/${gateway.attrGatewayIdentifier}`,
+    });
+    gatewayLogSource.addDependency(gateway);
+
+    // Delivery Destination — CloudWatch Logs for gateway
+    const gatewayLogDestination = new logs.CfnDeliveryDestination(this, 'GatewayLogDestination', {
+      name: `gw-${uniqueSuffix}-log-dst`,
+      destinationResourceArn: gatewayLogGroup.logGroupArn,
+    });
+
+    // Delivery — connects gateway source to destination
+    const gatewayLogDelivery = new logs.CfnDelivery(this, 'GatewayLogDelivery', {
+      deliverySourceName: gatewayLogSource.ref,
+      deliveryDestinationArn: gatewayLogDestination.attrArn,
+    });
+    gatewayLogDelivery.addDependency(gatewayLogSource);
+    gatewayLogDelivery.addDependency(gatewayLogDestination);
+
     // ================================
     // CLOUDFORMATION OUTPUTS
     // ================================
@@ -612,6 +1084,31 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     new cdk.CfnOutput(this, "MemoryId", {
       value: agentMemory.attrMemoryId,
       description: "The ID of the AgentCore Memory",
+    });
+
+    new cdk.CfnOutput(this, "GatewayUrl", {
+      value: gateway.attrGatewayUrl,
+      description: "The MCP endpoint URL for the AgentCore Gateway",
+    });
+
+    new cdk.CfnOutput(this, "GuardrailId", {
+      value: guardrail.ref,
+      description: "The ID of the Bedrock Guardrail for content filtering",
+    });
+
+    new cdk.CfnOutput(this, "PolicyEngineId", {
+      value: policyEngine.attrPolicyEngineId,
+      description: "The ID of the AgentCore Policy Engine for Cedar authorization",
+    });
+
+    new cdk.CfnOutput(this, "SqlAccuracyEvaluatorArn", {
+      value: sqlAccuracyEvaluator.attrEvaluatorArn,
+      description: "The ARN of the SQL Accuracy evaluator",
+    });
+
+    new cdk.CfnOutput(this, "ResponseQualityEvaluatorArn", {
+      value: responseQualityEvaluator.attrEvaluatorArn,
+      description: "The ARN of the Response Quality evaluator",
     });
 
   }

@@ -10,3 +10,6 @@ cdk.out
 # Python
 __pycache__/
 *.pyc
+
+# CDK context (contains account-specific data, regenerated on deploy)
+cdk.context.json

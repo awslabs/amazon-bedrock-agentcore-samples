@@ -5,15 +5,38 @@ Deploy the complete infrastructure for a Data Analyst Assistant for Video Game S
 > [!NOTE]
 > **Working Directory**: Make sure you are in the `cdk-data-analyst-assistant-agentcore-strands/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
 
+## Architecture
+
+![Architecture](../images/architecture.png)
+
+The data flow through the system operates as follows:
+
+1. **User request** arrives at the AgentCore Runtime endpoint (via the front-end application or direct API invocation).
+2. **AgentCore Runtime** hosts the Strands Agent container, which processes the request using the configured Bedrock model.
+3. **Gateway (MCP)** provides tool access — the agent calls PostgreSQL query tools exposed as a Lambda target behind the AgentCore Gateway using the MCP protocol.
+4. **Policy Engine** (Cedar authorization) evaluates each tool call against deployed policies before execution, enforcing access control at the tool level.
+5. **Guardrails** filter input and output content, blocking PII exposure and off-limits topics before they reach the user.
+6. **Memory** persists conversation context — short-term memory within a session and long-term semantic facts across sessions.
+7. **Evaluators** run offline to measure SQL generation accuracy and response quality using LLM-as-a-Judge scoring.
+8. **Observability** captures runtime logs, memory extraction logs, gateway invocation logs, and X-Ray traces for full-stack debugging.
+
 ## Overview
 
 This CDK stack deploys a complete data analyst assistant powered by Amazon Bedrock AgentCore with the following components:
 
 ### Amazon Bedrock AgentCore Resources
 
-- **AgentCore Memory**: Long-term semantic memory with a "Facts" strategy (`/facts/{actorId}` namespace) for extracting and persisting knowledge across sessions per user, plus short-term event-based conversation history with 90-day retention
-- **AgentCore Runtime**: Container-based runtime hosting the Strands Agent with ARM64 architecture and DEFAULT endpoint
-- **Observability**: CloudWatch Logs delivery for runtime application logs and memory extraction, plus X-Ray traces for runtime invocations
+This sample demonstrates **all** Amazon Bedrock AgentCore features in a single production-grade deployment:
+
+| Feature | Description |
+|---------|-------------|
+| **Runtime** | Container-based runtime hosting the Strands Agent (ARM64, DEFAULT endpoint) |
+| **Memory** | Long-term semantic memory with "Facts" strategy (`/facts/{actorId}` namespace) plus short-term event-based conversation history with 90-day retention |
+| **Gateway (MCP)** | MCP-protocol gateway with a Lambda target exposing PostgreSQL query tools (`get_tables_information`, `execute_sql_query`) |
+| **Policy Engine (Cedar)** | Cedar authorization policies controlling which tools and data fields the agent can access |
+| **Guardrails** | Content filtering that blocks PII exposure, internal cost data queries, and raw customer information requests |
+| **Evaluators (LLM-as-a-Judge)** | Custom evaluators measuring SQL accuracy (TRACE level) and response quality (SESSION level) |
+| **Observability** | CloudWatch Logs delivery for runtime, memory extraction, and gateway invocations, plus X-Ray traces |
 
 ### Data Source and VPC Infrastructure
 
@@ -83,12 +106,17 @@ Default Parameters:
 **AgentCore Resources:**
 - AgentCore Memory with semantic "Facts" strategy, `/facts/{actorId}` namespace, and 90-day event retention
 - AgentCore Runtime (container-based, ARM64) with DEFAULT endpoint
+- AgentCore Gateway (MCP protocol) with Lambda target for database tools
+- Cedar authorization policies for tool-level access control
+- Bedrock Guardrail for content filtering
+- Custom evaluators (SqlAccuracy, ResponseQuality)
 - ECR repository with agent container image
 
 **Observability:**
 - Runtime application logs → CloudWatch Logs (`/aws/vendedlogs/bedrock-agentcore/<runtimeId>`)
 - Runtime traces → AWS X-Ray
 - Memory extraction logs → CloudWatch Logs (`/aws/vendedlogs/bedrock-agentcore/memory/<memoryId>`)
+- Gateway invocation logs → CloudWatch Logs (`/aws/vendedlogs/bedrock-agentcore/gateway/<gatewayId>`)
 - All log groups configured with 14-day retention
 
 **Data Infrastructure:**
@@ -107,6 +135,9 @@ Default Parameters:
   - `DATABASE_NAME`: Database name
   - `QUESTION_ANSWERS_TABLE`: DynamoDB table name
   - `MAX_RESPONSE_SIZE_BYTES`: Maximum response size (1MB)
+  - `GATEWAY_URL`: AgentCore Gateway endpoint URL for MCP tool access
+  - `GUARDRAIL_ID`: Bedrock Guardrail identifier for content filtering
+  - `GUARDRAIL_VERSION`: Bedrock Guardrail version (e.g., "DRAFT" or numeric version)
 
 ### Stack Outputs
 
@@ -132,6 +163,129 @@ The agent uses the [AgentCoreMemorySessionManager](https://strandsagents.com/doc
 - **Per-user isolation**: The `actorId` is the Cognito user `sub`, so each user's facts are completely isolated from other users.
 - **Async extraction**: LTM extraction takes 20-40 seconds after events are saved. Within the same session, STM handles continuity. LTM provides cross-session knowledge.
 
+## Gateway and Policy Engine
+
+### AgentCore Gateway (MCP Protocol)
+
+The AgentCore Gateway exposes database tools to the agent using the **Model Context Protocol (MCP)**. Instead of embedding tool logic directly in the agent container, the Gateway provides a managed MCP layer that routes tool calls to a Lambda function.
+
+**Gateway target tools:**
+
+| Tool | Description |
+|------|-------------|
+| `get_tables_information` | Returns database schema metadata (table structures, columns, data types) |
+| `execute_sql_query` | Executes a read-only SQL query against the PostgreSQL database |
+
+The Lambda target handles tool routing via `context.client_context.custom['bedrockAgentCoreToolName']`. No standalone MCP server is required — the Gateway provides the full MCP protocol layer.
+
+**Gateway URL format:**
+```
+https://gateway.bedrock-agentcore.<region>.amazonaws.com/gateways/<gatewayId>
+```
+
+### Policy Engine (Cedar Authorization)
+
+The Policy Engine uses **Cedar** policies to enforce fine-grained access control on tool invocations. Policies are evaluated before each tool call reaches the Lambda target.
+
+**Deployed policies:**
+
+| Policy | Effect | Description |
+|--------|--------|-------------|
+| Default Allow | `permit` | Allows all tool invocations by default (base policy) |
+| Block PII Fields | `forbid` | Blocks SQL queries that reference PII columns (e.g., `customer_email`, `customer_name`, `phone_number`) |
+| Block Cost Data | `forbid` | Blocks queries accessing internal cost columns (e.g., `unit_cost`, `wholesale_price`, `margin`) |
+
+Cedar policies follow a deny-overrides model: if any `forbid` policy matches, the request is denied regardless of `permit` policies.
+
+**Testing policy enforcement:**
+
+```bash
+# This should succeed — public sales data
+curl -X POST http://localhost:8080/invocations \
+-H "Content-Type: application/json" \
+-d '{"prompt": "What are the top 5 best-selling games?", "session_id": "'$SESSION_ID'", "user_id": "test-user"}'
+
+# This should be blocked — references internal cost data
+curl -X POST http://localhost:8080/invocations \
+-H "Content-Type: application/json" \
+-d '{"prompt": "Show me the profit margins by publisher", "session_id": "'$SESSION_ID'", "user_id": "test-user"}'
+```
+
+## Guardrails (Content Filtering)
+
+The deployment includes a **Bedrock Guardrail** that filters both input prompts and output responses to enforce content boundaries.
+
+### What the Guardrail Blocks
+
+**Topic-based filtering (DENY):**
+- **InternalCostData**: Requests about cost of goods, profit margins, procurement pricing, or wholesale costs that are not part of public sales data
+- **RawCustomerPII**: Requests to expose individual customer personal information (names, emails, phone numbers, addresses)
+
+**Sensitive information handling:**
+- `EMAIL` — anonymized in outputs
+- `PHONE` — anonymized in outputs
+- `US_SOCIAL_SECURITY_NUMBER` — blocked entirely
+- `CREDIT_DEBIT_CARD_NUMBER` — blocked entirely
+
+### Testing Guardrail Enforcement
+
+```bash
+# Should be blocked — internal cost data topic
+curl -X POST http://localhost:8080/invocations \
+-H "Content-Type: application/json" \
+-d '{"prompt": "What is our cost per unit for this game?", "session_id": "'$SESSION_ID'", "user_id": "test-user"}'
+
+# Should be blocked — customer PII topic
+curl -X POST http://localhost:8080/invocations \
+-H "Content-Type: application/json" \
+-d '{"prompt": "Show me customer email addresses", "session_id": "'$SESSION_ID'", "user_id": "test-user"}'
+
+# Should succeed — public sales data analysis
+curl -X POST http://localhost:8080/invocations \
+-H "Content-Type: application/json" \
+-d '{"prompt": "Which genre has the highest average critic score?", "session_id": "'$SESSION_ID'", "user_id": "test-user"}'
+```
+
+When a blocked topic is detected, the agent returns a safe refusal message:
+> "I cannot help with requests for internal cost data or personal customer information. I can help you analyze public video game sales data."
+
+## Evaluations
+
+The evaluation harness measures agent quality across two dimensions using custom **LLM-as-a-Judge** evaluators deployed to AgentCore.
+
+### Custom Evaluators
+
+| Evaluator | Level | What It Measures |
+|-----------|-------|-----------------|
+| **SqlAccuracy** | `TRACE` | Validates that generated SQL queries produce correct results compared to ground-truth expected outputs. Checks query structure, filtering logic, aggregation correctness, and result ordering. |
+| **ResponseQuality** | `SESSION` | Evaluates the natural language response for relevance, completeness, clarity, and appropriate handling of out-of-scope requests. |
+
+Additionally, the harness leverages **built-in evaluators**:
+- `Builtin.Correctness` — General answer correctness
+- `Builtin.GoalSuccessRate` — Whether the agent achieved the stated user goal
+
+### Running the Evaluation Harness
+
+```bash
+# Basic dataset evaluation (invokes agent with 8 test scenarios)
+python evaluations/evaluate.py --agent-runtime-arn $AGENT_RUNTIME_ARN
+
+# Include AgentCore built-in evaluators (requires X-Ray traces in CloudWatch)
+python evaluations/evaluate.py --agent-runtime-arn $AGENT_RUNTIME_ARN --use-agentcore-evals
+```
+
+The harness runs the following test scenarios covering SQL accuracy and response quality:
+- Aggregation queries (top-selling games, average scores)
+- Filtering queries (year-specific data, platform-specific data)
+- Comparison queries (regional sales comparisons)
+- Trend analysis (releases over time)
+- Out-of-scope handling (non-domain questions)
+
+Results are saved to `evaluations/eval_results.json` with per-scenario pass/fail status and an overall success rate.
+
+> [!NOTE]
+> The `--use-agentcore-evals` flag requires that the agent has been invoked at least once so that traces are available in CloudWatch Transaction Search. Allow 10-15 seconds after invocation for traces to propagate.
+
 ## Set Up the PostgreSQL Database
 
 1. Install required Python dependencies:
@@ -152,6 +306,11 @@ export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
 export BEDROCK_MODEL_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Parameters[?ParameterKey=='BedrockModelId'].ParameterValue" --output text)
 export MEMORY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='MemoryId'].OutputValue" --output text)
 export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
+
+# Gateway and Guardrail resources
+export GATEWAY_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='GatewayUrl'].OutputValue" --output text)
+export GUARDRAIL_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='GuardrailId'].OutputValue" --output text)
+export GUARDRAIL_VERSION=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='GuardrailVersion'].OutputValue" --output text)
 
 # Database resources
 export SECRET_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='SecretARN'].OutputValue" --output text)
@@ -177,6 +336,9 @@ BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID}
 # AgentCore Resources
 MEMORY_ID: ${MEMORY_ID}
 AGENT_RUNTIME_ARN: ${AGENT_RUNTIME_ARN}
+GATEWAY_URL: ${GATEWAY_URL}
+GUARDRAIL_ID: ${GUARDRAIL_ID}
+GUARDRAIL_VERSION: ${GUARDRAIL_VERSION}
 
 # Database Resources
 SECRET_ARN: ${SECRET_ARN}
@@ -268,6 +430,40 @@ curl -X POST http://localhost:8080/invocations \
 -d '{"prompt": "Give me a summary of our conversation", "session_id": "'$SESSION_ID'", "user_id": "local-test-user"}'
 ```
 
+## Script-Based Deployment (Alternative)
+
+For teams that prefer scripted or CI/CD-driven deployments over CDK, the repository includes a standalone deployment script at **[`../deploy.py`](../deploy.py)**.
+
+This script uses the native `bedrock-agentcore` SDK and `boto3` to deploy all AgentCore resources programmatically:
+
+1. **IAM execution role** with `bedrock-agentcore.amazonaws.com` trust policy
+2. **AgentCore Memory** (STM + LTM with semantic facts strategy)
+3. **AgentCore Runtime** (container-based, ARM64)
+4. **AgentCore Gateway** + Lambda target (PostgreSQL query tools via MCP)
+5. **Bedrock Guardrail** (PII + topic filtering)
+
+**Usage:**
+
+```bash
+# Full deployment
+python deploy.py --region us-east-1 \
+  --aurora-arn $AURORA_SERVERLESS_DB_CLUSTER_ARN \
+  --secret-arn $READONLY_SECRET_ARN \
+  --dynamodb-table $QUESTION_ANSWERS_TABLE \
+  --db-tools-lambda-arn $DB_TOOLS_LAMBDA_ARN
+
+# Skip guardrail creation (useful if guardrail already exists)
+python deploy.py --region us-east-1 --skip-guardrail
+
+# Use a pre-built container (skip CodeBuild)
+python deploy.py --region us-east-1 --container-uri 123456789012.dkr.ecr.us-east-1.amazonaws.com/my-agent:latest
+```
+
+> [!NOTE]
+> The script-based deployment requires that the Aurora PostgreSQL cluster and database tools Lambda are already deployed (via the CDK stack). Run `cdk deploy` first, then use `deploy.py` for subsequent AgentCore-only updates.
+
+Deployment outputs are saved to `deploy_outputs.json` with all resource ARNs and identifiers.
+
 ## Invoking the Agent
 
 Once deployed and data is loaded, you can invoke the agent using the AgentCore Runtime Endpoint. The endpoint name is available in the stack outputs as `AgentEndpointName`.
@@ -287,4 +483,3 @@ cdk destroy
 ## License
 
 This project is licensed under the Apache-2.0 License.
-

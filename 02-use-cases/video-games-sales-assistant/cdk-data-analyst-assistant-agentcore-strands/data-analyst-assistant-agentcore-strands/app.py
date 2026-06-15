@@ -2,26 +2,36 @@
 Video Games Sales Data Analyst Assistant - Main Application
 
 This application provides an intelligent data analyst assistant specialized in video game sales analysis.
-It leverages Amazon Bedrock Claude models for natural language processing, Aurora Serverless PostgreSQL
-for data storage, and AgentCore Memory (STM + LTM) for conversation context management.
+It leverages Amazon Bedrock Claude models for natural language processing, AgentCore Gateway for
+centralized tool access, Bedrock Guardrails for content filtering, and AgentCore Memory for
+conversation context management.
 
 Key Features:
-- Natural language to SQL query conversion
-- Video game sales data analysis and insights
+- Natural language to SQL query conversion via Gateway-hosted MCP tools
+- Bedrock Guardrail enforcement (blocks PII and internal cost queries)
 - Short-term memory (conversation persistence) and long-term semantic memory (facts across sessions)
 - Real-time streaming responses
-- Comprehensive error handling and logging
+- OpenTelemetry tracing via ADOT (agent invocations, tool calls, memory operations)
 """
 
 import json
 import os
 from uuid import uuid4
 
+# OpenTelemetry — ADOT auto-instruments Bedrock calls; we add custom spans for
+# tool execution, memory operations, and request-level context.
+from opentelemetry import trace, context, baggage
+from opentelemetry.trace import StatusCode
+
+tracer = trace.get_tracer("video-games-sales-assistant", "1.0.0")
+
 # Bedrock Agent Core imports
 from bedrock_agentcore import BedrockAgentCoreApp
-from strands import Agent, tool
+from strands import Agent
 from strands_tools import current_time
 from strands.models import BedrockModel
+from strands.tools.mcp import MCPClient
+from mcp.client.streamable_http import streamablehttp_client
 from bedrock_agentcore.memory.integrations.strands.config import (
     AgentCoreMemoryConfig,
     RetrievalConfig,
@@ -31,8 +41,7 @@ from bedrock_agentcore.memory.integrations.strands.session_manager import (
 )
 
 # Custom module imports
-from src.tools import get_tables_information, run_sql_query
-from src.utils import save_raw_query_result, load_file_content
+from src.utils import load_file_content
 
 # Retrieve AgentCore Memory ID
 memory_id = os.environ.get("MEMORY_ID")
@@ -41,6 +50,13 @@ memory_id = os.environ.get("MEMORY_ID")
 bedrock_model_id_env = os.environ.get(
     "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 )
+
+# Gateway URL for centralized MCP tools
+gateway_url = os.environ.get("GATEWAY_URL", "")
+
+# Guardrail configuration
+guardrail_id = os.environ.get("GUARDRAIL_ID", "")
+guardrail_version = os.environ.get("GUARDRAIL_VERSION", "DRAFT")
 
 # Initialize the Bedrock Agent Core app
 app = BedrockAgentCoreApp()
@@ -80,80 +96,11 @@ def load_system_prompt():
 DATA_ANALYST_SYSTEM_PROMPT = load_system_prompt()
 
 
-def create_execute_sql_query_tool(user_prompt: str, prompt_uuid: str):
-    """
-    Create a dynamic SQL query execution tool for video game sales data analysis.
-
-    Args:
-        user_prompt (str): The original user question about video game sales data
-        prompt_uuid (str): Unique identifier for tracking this analysis prompt
-
-    Returns:
-        function: Configured SQL execution tool with video game sales context
-    """
-
-    @tool
-    def execute_sql_query(sql_query: str, description: str) -> str:
-        """
-        Execute SQL queries against the video game sales database for data analysis.
-
-        Args:
-            sql_query (str): The SQL query to execute against the video game sales database
-            description (str): Clear description of what the query analyzes or retrieves
-
-        Returns:
-            str: JSON string containing query results, metadata, or error information
-        """
-        print("\n" + "=" * 60)
-        print("🎮 VIDEO GAME SALES DATA QUERY EXECUTION")
-        print("=" * 60)
-        print(f"📝 Analysis: {description}")
-        print(f"🔍 SQL Query: {sql_query[:200]}{'...' if len(sql_query) > 200 else ''}")
-        print(f"🆔 Prompt UUID: {prompt_uuid}")
-        print("-" * 60)
-
-        try:
-            print("⏳ Executing video game sales data query via RDS Data API...")
-            response_json = json.loads(run_sql_query(sql_query))
-
-            if "error" in response_json:
-                print(f"❌ Query execution failed: {response_json['error']}")
-                print("=" * 60 + "\n")
-                return json.dumps(response_json)
-
-            records_to_return = response_json.get("result", [])
-            message = response_json.get("message", "")
-
-            print("✅ Video game sales data query executed successfully")
-            print(f"📊 Data records retrieved: {len(records_to_return)}")
-
-            if message != "":
-                result = {"result": records_to_return, "message": message}
-            else:
-                result = {"result": records_to_return}
-
-            print("💾 Saving analysis results to DynamoDB for audit trail...")
-            save_result = save_raw_query_result(
-                prompt_uuid, user_prompt, sql_query, description, result, message
-            )
-
-            if not save_result["success"]:
-                print(f"⚠️  Failed to save analysis results: {save_result['error']}")
-                result["saved"] = False
-                result["save_error"] = save_result["error"]
-            else:
-                print("✅ Analysis results saved to DynamoDB audit trail")
-
-            print("=" * 60 + "\n")
-            return json.dumps(result)
-
-        except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            print(f"💥 EXCEPTION: {error_msg}")
-            print("=" * 60 + "\n")
-            return json.dumps({"error": error_msg})
-
-    return execute_sql_query
+def get_mcp_client():
+    """Create an MCP client connected to the AgentCore Gateway."""
+    if not gateway_url:
+        raise RuntimeError("GATEWAY_URL environment variable not set")
+    return MCPClient(lambda: streamablehttp_client(gateway_url))
 
 
 @app.entrypoint
@@ -184,109 +131,113 @@ async def agent_invocation(payload):
         user_id = payload.get("user_id", "guest")
         user_name = payload.get("user_name", "User")
 
-        print("\n" + "=" * 80)
-        print("🎮 VIDEO GAME SALES ANALYSIS REQUEST")
-        print("=" * 80)
-        print(
-            f"💬 User Query: {user_message[:100]}{'...' if len(user_message) > 100 else ''}"
-        )
-        print(f"🤖 Claude Model: {bedrock_model_id_env}")
-        print(f"🆔 Prompt UUID: {prompt_uuid}")
-        print(f"🌍 User Timezone: {user_timezone}")
-        print(f"🔗 Session ID: {session_id}")
-        print(f"👤 User ID: {user_id}")
-        print(f"👤 User Name: {user_name}")
-        print("-" * 80)
+        # Set OpenTelemetry baggage for trace correlation across spans
+        ctx = baggage.set_baggage("session.id", session_id)
+        ctx = baggage.set_baggage("user.id", user_id, context=ctx)
+        ctx = baggage.set_baggage("prompt.uuid", prompt_uuid, context=ctx)
+        token = context.attach(ctx)
 
-        # Initialize Claude model
-        print(f"🧠 Initializing Claude model: {bedrock_model_id_env}")
-        bedrock_model = BedrockModel(model_id=bedrock_model_id_env)
-        print("✅ Claude model ready")
+        print(f"Session: {session_id} | User: {user_id} | Model: {bedrock_model_id_env}")
 
-        # Configure AgentCore Memory with STM + LTM retrieval
-        print("-" * 80)
-        print("🧠 Configuring AgentCore Memory (STM + LTM)...")
-
-        agentcore_memory_config = AgentCoreMemoryConfig(
-            memory_id=memory_id,
-            session_id=session_id,
-            actor_id=user_id,
-            retrieval_config={
-                "/facts/{actorId}": RetrievalConfig(
-                    top_k=5,
-                    relevance_score=0.3,
-                ),
+        with tracer.start_as_current_span(
+            "agent_invocation",
+            attributes={
+                "gen_ai.system": "aws.bedrock",
+                "gen_ai.request.model": bedrock_model_id_env,
+                "session.id": session_id,
+                "user.id": user_id,
+                "prompt.uuid": prompt_uuid,
             },
-        )
+        ) as invocation_span:
+            # Initialize Claude model with Guardrail
+            model_kwargs = {"model_id": bedrock_model_id_env}
+            if guardrail_id:
+                model_kwargs["guardrail_id"] = guardrail_id
+                model_kwargs["guardrail_version"] = guardrail_version
+                model_kwargs["guardrail_trace"] = "enabled"
 
-        print(f"📋 Memory ID: {memory_id}")
-        print(f"👤 Actor ID: {user_id}")
-        print(f"🔗 Session ID: {session_id}")
-        print("📊 LTM retrieval: /facts/{actorId} (top_k=5, relevance>=0.3)")
+            bedrock_model = BedrockModel(**model_kwargs)
 
-        # Configure system prompt with user context
-        system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace(
-            "{timezone}", user_timezone
-        ).replace("{user_name}", user_name)
+            # Configure AgentCore Memory with STM + LTM retrieval
+            with tracer.start_as_current_span(
+                "memory_configure",
+                attributes={
+                    "memory.id": memory_id or "",
+                    "memory.session_id": session_id,
+                    "memory.actor_id": user_id,
+                },
+            ):
+                agentcore_memory_config = AgentCoreMemoryConfig(
+                    memory_id=memory_id,
+                    session_id=session_id,
+                    actor_id=user_id,
+                    retrieval_config={
+                        "/facts/{actorId}": RetrievalConfig(
+                            top_k=5,
+                            relevance_score=0.3,
+                        ),
+                    },
+                )
 
-        print("-" * 80)
-        print("🔧 Initializing agent with AgentCoreMemorySessionManager...")
+            # Configure system prompt with user context
+            system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace(
+                "{timezone}", user_timezone
+            ).replace("{user_name}", user_name)
 
-        # Initialize session manager (explicit close instead of context manager for async generator)
-        session_manager = AgentCoreMemorySessionManager(
-            agentcore_memory_config=agentcore_memory_config,
-            region_name=os.environ.get("AWS_REGION", "us-east-1"),
-        )
-
-        try:
-            # Create agent — session_manager handles STM loading, LTM retrieval, and message saving
-            agent = Agent(
-                model=bedrock_model,
-                system_prompt=system_prompt,
-                session_manager=session_manager,
-                tools=[
-                    get_tables_information,
-                    current_time,
-                    create_execute_sql_query_tool(user_message, prompt_uuid),
-                ],
-                callback_handler=None,
+            # Initialize session manager (explicit close instead of context manager for async generator)
+            session_manager = AgentCoreMemorySessionManager(
+                agentcore_memory_config=agentcore_memory_config,
+                region_name=os.environ.get("AWS_REGION", "us-east-1"),
             )
 
-            print("✅ Agent ready with AgentCore Memory (STM + LTM)")
-            print("   🔧 3 tools (database schema, time utilities, SQL execution)")
-
-            print("-" * 80)
-            print("🚀 Starting video game sales data analysis...")
-            print("=" * 80)
-
-            # Stream the response
-            tool_active = False
-
-            async for item in agent.stream_async(user_message):
-                if "event" in item:
-                    event = item["event"]
-
-                    if "contentBlockStart" in event and "toolUse" in event[
-                        "contentBlockStart"
-                    ].get("start", {}):
-                        tool_active = True
-                        yield json.dumps({"event": event}) + "\n"
-
-                    elif "contentBlockStop" in event and tool_active:
-                        tool_active = False
-                        yield json.dumps({"event": event}) + "\n"
-
-                elif "start_event_loop" in item:
-                    yield json.dumps(item) + "\n"
-                elif "current_tool_use" in item and tool_active:
-                    yield json.dumps(item["current_tool_use"]) + "\n"
-                elif "data" in item:
-                    yield json.dumps({"data": item["data"]}) + "\n"
-        finally:
             try:
-                session_manager.close()
-            except Exception as close_err:
-                print(f"⚠️ Memory flush warning (non-fatal): {close_err}")
+                # Connect to AgentCore Gateway for centralized MCP tools
+                mcp_client = get_mcp_client()
+                with mcp_client:
+                    gateway_tools = mcp_client.list_tools_sync()
+                    print(f"Gateway tools loaded: {len(gateway_tools)}")
+
+                    agent = Agent(
+                        model=bedrock_model,
+                        system_prompt=system_prompt,
+                        session_manager=session_manager,
+                        tools=[current_time] + gateway_tools,
+                        callback_handler=None,
+                    )
+
+                    # Stream the response
+                    tool_active = False
+
+                    async for item in agent.stream_async(user_message):
+                        if "event" in item:
+                            event = item["event"]
+
+                            if "contentBlockStart" in event and "toolUse" in event[
+                                "contentBlockStart"
+                            ].get("start", {}):
+                                tool_active = True
+                                yield json.dumps({"event": event}) + "\n"
+
+                            elif "contentBlockStop" in event and tool_active:
+                                tool_active = False
+                                yield json.dumps({"event": event}) + "\n"
+
+                        elif "start_event_loop" in item:
+                            yield json.dumps(item) + "\n"
+                        elif "current_tool_use" in item and tool_active:
+                            yield json.dumps(item["current_tool_use"]) + "\n"
+                        elif "data" in item:
+                            yield json.dumps({"data": item["data"]}) + "\n"
+
+                    invocation_span.set_status(StatusCode.OK)
+            finally:
+                with tracer.start_as_current_span("memory_flush"):
+                    try:
+                        session_manager.close()
+                    except Exception as close_err:
+                        print(f"Memory flush warning (non-fatal): {close_err}")
+
+        context.detach(token)
 
     except Exception as e:
         import traceback
@@ -294,17 +245,15 @@ async def agent_invocation(payload):
         tb = traceback.extract_tb(e.__traceback__)
         filename, line_number, function_name, text = tb[-1]
         print("\n" + "=" * 80)
-        print("💥 VIDEO GAME SALES ANALYSIS ERROR")
+        print("VIDEO GAME SALES ANALYSIS ERROR")
         print("=" * 80)
-        print(f"❌ Error: {str(e)}")
-        print(f"📍 Location: Line {line_number} in {filename}")
-        print(f"🔧 Function: {function_name}")
+        print(f"Error: {str(e)}")
+        print(f"Location: Line {line_number} in {filename}")
+        print(f"Function: {function_name}")
         if text:
-            print(f"💻 Code: {text}")
+            print(f"Code: {text}")
         print("=" * 80 + "\n")
 
-        # Send error as a proper data chunk so the frontend renders it as a normal
-        # assistant message and the user can continue the conversation.
         error_detail = str(e)[:200]
         error_msg = (
             "I'm sorry, I encountered a temporary issue processing your request. "
