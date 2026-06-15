@@ -60,9 +60,7 @@ DEPLOY_TEST.sh
 deploy_output.log
 .envrc
 .standards/
-.hooks/COMPLETION-SUMMARY.md
-.hooks/IMPLEMENTATION_SUMMARY.md
-.hooks/IMPLEMENTATION-CHECKLIST.md
+.hooks/
 
 # Docs build artifacts
 docs/diagrams
