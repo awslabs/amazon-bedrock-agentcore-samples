@@ -1,11 +1,12 @@
 # AgentCore Optimization
 
-End-to-end optimization workflow for an HR Assistant agent on Amazon Bedrock AgentCore runtime. Demonstrates how to measure baseline performance, generate AI-driven improvements, and validate them through A/B testing — without redeploying code.
+End-to-end optimization workflow for an HR Assistant agent on Amazon Bedrock AgentCore runtime. Covers baseline evaluation, AI-generated prompt improvements, and A/B testing via configuration bundles and target-based routing.
 
 ### What You Will Learn
 
 | Stage | Concepts Covered |
 |-------|-----------------|
+| **Failure Insights** | FailureAnalysis, UserIntent, ExecutionSummary: root cause clustering of agent failures |
 | **Baseline evaluation** | Batch evaluations on agent sessions |
 | **Recommendations** | System prompt optimization, tool description optimization from production traces |
 | **Configuration Bundles** | Versioned config containers, runtime config hooks, baggage-based injection |
@@ -21,6 +22,8 @@ End-to-end optimization workflow for an HR Assistant agent on Amazon Bedrock Age
 | AgentCore runtime | `bedrock-agentcore-control` | Hosts the HR Assistant container |
 | Configuration Bundle | `bedrock-agentcore-control` | Versioned system prompt and tool description storage |
 | Batch evaluation | `bedrock-agentcore` (DP) | Off-line scoring of historical sessions |
+| Batch insights | `bedrock-agentcore` (DP) | Root-cause failure clustering, user intent analysis, execution summaries |
+| Online insights config | `bedrock-agentcore-control` (CP) | Recurring daily insights over live agent traffic |
 | Recommendation | `bedrock-agentcore` (DP) | AI-generated prompt/tool improvements |
 | gateway + Targets | `bedrock-agentcore-control` | Traffic routing for A/B tests |
 | Online Eval Config | `bedrock-agentcore-control` | Continuous automatic session scoring |
@@ -40,7 +43,7 @@ End-to-end optimization workflow for an HR Assistant agent on Amazon Bedrock Age
 - Python 3.10+
 - Access to Amazon Bedrock models (Nova Lite) in your region
 
-> **Timing note:** CloudWatch ingestion takes 2–3 minutes after invoking the agent. Batch evaluations take 1–5 minutes. Recommendations take 2–5 minutes. Budget ~45 minutes for the full workflow.
+> **Timing note:** CloudWatch ingestion takes 2-3 minutes after invoking the agent. Batch evaluations take 1-5 minutes. Recommendations take 2-5 minutes. Budget ~45 minutes for the full workflow.
 
 ## Quick Start
 
@@ -52,6 +55,10 @@ python deploy.py --name HRAssistV1
 
 # Invoke the deployed agent
 python invoke.py --name HRAssistV1
+
+# [Optional] Run failure insights: generate traces then analyze with all 3 insight types
+# Requires preview SDK -- see "Failure Insights" section below for install instructions
+python insights.py --name HRAssistV1 --generate-traces
 
 # Run the full optimization workflow
 python optimize.py --name HRAssistV1
@@ -70,6 +77,93 @@ Install the AgentCore CLI:
 npm install -g @aws/agentcore
 agentcore --version   # should print 0.13.0 or later
 ```
+
+### Step 0: Failure Insights (Optional -- Pre-Optimization Diagnostics)
+
+Run insights before the optimization loop to see which sessions are failing and why. The results let you focus prompt and tool description changes on real problems.
+
+```bash
+# Install the preview SDK that adds insights API support (--force-reinstall upgrades botocore/boto3)
+pip install /path/to/Boto3CliV1Artifacts-dp/botocore-1.43.30-py3-none-any.whl \
+            /path/to/Boto3CliV1Artifacts-dp/boto3-1.43.30-py3-none-any.whl \
+            --force-reinstall
+
+# Make sure the agent is deployed first (deploy.py --name HRInsights849 --region us-west-2)
+
+# Generate failure-mode traces and run all three insight types:
+python insights.py --name HRInsights849 --generate-traces --region us-west-2
+
+# Run insights on existing traces from the last 7 days:
+python insights.py --name HRInsights849 --lookback-days 7
+
+# Run only FailureAnalysis (faster):
+python insights.py --name HRInsights849 --insight Builtin.Insight.FailureAnalysis
+
+# Run insights and create a recurring daily OnlineInsightsConfig:
+python insights.py --name HRInsights849 --generate-traces --online
+```
+
+**Using agentcore-cli** (requires a LENS-authorized account; tested with v0.19.0):
+
+```bash
+# Install the preview CLI:
+npm install -g aws-agentcore-0.19.0-20260612171356.tgz   # or later tarball
+
+# Prerequisites:
+# 1. Deploy the agent and create a CLI project first (deploy.py creates the runtime):
+python deploy.py --name HRInsightsCLI --region us-west-2
+
+# 2. Create a CLI project and register the deployed runtime:
+mkdir hr-insights-cli && cd hr-insights-cli
+agentcore create --name HRInsightsCLI --defaults --no-agent
+cd HRInsightsCLI
+cp -r ../utils/hr_assistant_agent.py agentcore/../app/HRInsightsCLI/main.py  # optional
+
+# [One-time] Add a recurring daily online-insights config (written to agentcore.json,
+# deployed via CDK):
+agentcore add online-insights \
+  --name HROnlineInsights849 \
+  --runtime HRInsightsCLI \
+  --insights Builtin.Insight.FailureAnalysis \
+  --insights Builtin.Insight.UserIntent \
+  --insights Builtin.Insight.ExecutionSummary \
+  --sampling-rate 100 \
+  --clustering-frequency DAILY \
+  --enable-on-create \
+  --json
+# Deploy to create the CloudFormation-managed online insights config:
+# agentcore deploy -y --json
+
+# Run a one-shot insights job over the last 7 days of traces:
+agentcore run insights \
+  --runtime HRInsightsCLI \
+  --insights Builtin.Insight.FailureAnalysis \
+  --insights Builtin.Insight.UserIntent \
+  --insights Builtin.Insight.ExecutionSummary \
+  --lookback-days 7 \
+  --wait \
+  --json
+
+# List all insights jobs (history):
+agentcore insights history --json
+
+# View results for a specific job:
+agentcore insights results --id <insights-job-id> --json
+
+# Chain insights into a system prompt recommendation:
+agentcore run recommendation \
+  --from-insights <insights-job-id> \
+  --type system-prompt \
+  --evaluator Builtin.GoalSuccessRate \
+  --inline "You are a helpful HR Assistant for Acme Corp..." \
+  --json
+```
+
+> **Notes:**
+> - `insights` and `evaluators` are mutually exclusive in a single batch job. Do not pass `--evaluator` to `agentcore run insights`.
+> - Schema names must match `^[a-zA-Z][a-zA-Z0-9_]{0,47}$` (no hyphens).
+> - LENS access must be enabled for your account. If you see `Account X is not authorized to use feature LENS`, contact your account admin.
+> - `agentcore view insights` is not available in v0.19.0 -- use `agentcore insights history` and `agentcore insights results` instead.
 
 ### Step 1: Deploy the HR Assistant
 
@@ -141,7 +235,7 @@ agentcore cb versions --bundle HRControl --json
 agentcore cb versions --bundle HRTreatment --json
 ```
 
-### Step 5a: A/B Test — Config-Bundle Routing
+### Step 5a: A/B Test -- Config-Bundle Routing
 
 ```bash
 # Create gateway
@@ -181,13 +275,13 @@ agentcore deploy
 agentcore ab-test HRBundleABTest
 ```
 
-### Step 5b: A/B Test — Target-Based Routing (Phased Rollout)
+### Step 5b: A/B Test -- Target-Based Routing (Phased Rollout)
 
 ```bash
 # Deploy v2 of the agent (with new code changes)
 agentcore create --name HRAssistantV2 --framework Strands --model-provider Bedrock --defaults
 cp utils/hr_assistant_agent.py app/HRAssistantV2/main.py
-# (Apply v2 code changes to main.py — e.g. add escalate_to_hr_manager tool)
+# (Apply v2 code changes to main.py -- e.g. add escalate_to_hr_manager tool)
 cd HRAssistantV2 && agentcore deploy
 
 # Add v2 gateway target
@@ -241,6 +335,121 @@ agentcore remove agent --name HRAssistantV2
 agentcore deploy -y
 ```
 
+## Failure Insights
+
+AgentCore Insights runs over historical agent traces and clusters sessions by failure type, user intent, and execution pattern. Run it before or alongside optimization to get specifics on what is going wrong, not just a score.
+
+### Three Insight Types
+
+| Insight | What It Produces |
+|---------|-----------------|
+| **FailureAnalysis** | Failure sessions clustered by category, subcategory, and root cause. Each root cause includes a fix recommendation and a list of affected session IDs. |
+| **UserIntent** | Sessions grouped by what the user was trying to do (e.g., "PTO balance inquiry", "policy lookup"). Useful for finding gaps between what users ask and what the agent handles. |
+| **ExecutionSummary** | Summary of how the agent executed across sessions: tool usage patterns, multi-turn flows, and common paths. Requires at least 3 sessions. |
+
+### Data Source
+
+Insights pull from the `aws/spans` CloudWatch log group, which receives OTel span documents from AgentCore Runtime via the `opentelemetry-instrument` entry point. Each session's tool calls, model calls, and errors are captured as spans and correlated by session ID.
+
+The runtime log group (`/aws/bedrock-agentcore/runtimes/...`) must also be included. Without it, the insights engine cannot resolve the log events that spans reference, which causes incomplete results.
+
+> `insights` and `evaluators` are mutually exclusive in the batch evaluation API. Use a separate batch job for each.
+
+### Running insights.py
+
+```bash
+# Prerequisites:
+# 1. Deploy the agent (creates agent_state_{name}.json):
+python deploy.py --name HRInsights849 --region us-west-2
+
+# 2. Install the preview SDK with insights API support:
+pip install /path/to/Boto3CliV1Artifacts-dp/botocore-1.43.30-py3-none-any.whl \
+            /path/to/Boto3CliV1Artifacts-dp/boto3-1.43.30-py3-none-any.whl \
+            --force-reinstall
+
+# 3a. Generate failure traces then run all insight types:
+python insights.py --name HRInsights849 --generate-traces
+
+# 3b. Run insights on existing traces from the last N days:
+python insights.py --name HRInsights849 --lookback-days 14
+
+# 3c. Run specific insights only:
+python insights.py --name HRInsights849 --insight Builtin.Insight.FailureAnalysis
+
+# 3d. Run insights and also create a recurring daily config:
+python insights.py --name HRInsights849 --generate-traces --online
+```
+
+The `--generate-traces` flag sends sessions across several failure categories:
+- **Unknown employee IDs** (`EMP-999`, `EMP-003`) -> tool returns "not found" errors
+- **Unsupported policy topics** (`sabbatical`, `floating_holiday`, `relocation`) -> tool returns error
+- **Unknown benefit types** (`gym`, `commuter`, `wellness`) -> tool returns error
+- **Unavailable pay periods** (`2019-12`, `2020-03`) -> tool returns "not found" error
+- **Invalid date formats** in PTO requests -> agent confusion / multi-turn failure
+- **Normal successful sessions** -> required for UserIntent and ExecutionSummary clustering
+
+### Reading the FailureAnalysis Output
+
+```
+FailureAnalysis (2 top-level categories)
+
+  Category: Tool Execution Failures  (sessions affected: 8)
+    Subcategory: Employee Lookup Failures
+      Root cause: Unknown Employee ID Errors (4 sessions)
+      Recommendation: Add input validation and a list of valid employee ID formats
+                       to the system prompt. Return a helpful error message with
+                       instructions to verify the employee ID.
+      Session IDs: ['3fa85f64-...', 'c3d4e5f6-...', ...]
+
+    Subcategory: Data Not Found
+      Root cause: Pay Stub Period Unavailable (2 sessions)
+      Recommendation: Document available pay periods in the tool description
+                       and add graceful handling when a period is not found.
+
+  Category: Out-of-Scope Requests  (sessions affected: 7)
+    Subcategory: Unsupported Policy Topics
+      Root cause: Missing Policy Coverage (4 sessions)
+      Recommendation: Expand the policy knowledge base or add a clear out-of-scope
+                       message when a policy topic is not available.
+```
+
+### Online Insights Config
+
+The `--online` flag creates an `OnlineEvaluationConfig` of type `INSIGHTS` that runs on a daily schedule. View results with `get_online_evaluation_config` or the CLI:
+
+```bash
+agentcore insights history --json
+agentcore insights results --id <id> --json
+```
+
+### Chaining Insights into Recommendations
+
+Pass the insights job ID to a recommendation to generate a system prompt that targets the identified failures:
+
+```bash
+# CLI:
+agentcore run recommendation \
+  --from-insights <insights-id> \
+  --type system-prompt \
+  --inline "You are a helpful HR Assistant for Acme Corp..." \
+  --json
+
+# Python (DP client):
+dp.start_recommendation(
+    name="HRSpRecFromInsights",
+    type="SYSTEM_PROMPT_RECOMMENDATION",
+    recommendationConfig={
+        "systemPromptRecommendationConfig": {
+            "systemPrompt": {"text": CURRENT_SYSTEM_PROMPT},
+            "agentTraces": {"batchEvaluation": {"batchEvaluationArn": INSIGHTS_EVAL_ARN}},
+            "evaluationConfig": {
+                "evaluators": [{"evaluatorArn": "arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate"}]
+            },
+        }
+    },
+)
+```
+
 ## How It Works
 
 ### Step 1: Deploy HR Assistant v1 (`deploy.py`)
@@ -249,13 +458,13 @@ Creates an IAM execution role, packages `utils/hr_assistant_agent.py` with ARM64
 
 State is saved to `agent_state_{name}.json` for use by subsequent scripts.
 
-The `--version v2` flag builds an enhanced version that adds an `escalate_to_hr_manager` tool and a more detailed system prompt baked into the code — used in the target-based A/B test.
+The `--version v2` flag builds an enhanced version that adds an `escalate_to_hr_manager` tool and a more detailed system prompt baked into the code. This is the version used in the target-based A/B test.
 
 ### Step 2: Configuration Bundles (`optimize.py`)
 
-A **Configuration Bundle** is a versioned container for agent configuration keyed by runtime ARN. The agent reads the bundle at invocation time via `BedrockAgentCoreContext.get_config_bundle()` — changing the system prompt or tool descriptions requires no redeployment.
+A **Configuration Bundle** is a versioned container for agent configuration keyed by runtime ARN. The agent reads the bundle at invocation time via `BedrockAgentCoreContext.get_config_bundle()`. Changing the system prompt or tool descriptions does not require redeployment.
 
-Each bundle call returns a `bundleId` (stable) and a `versionId` (immutable snapshot). Pass `parentVersionIds` on updates to record lineage and prevent accidental overwrites. Use `commitMessage` on every create and update to document why the config changed — just like a Git commit.
+Each bundle call returns a `bundleId` (stable) and a `versionId` (immutable snapshot). Pass `parentVersionIds` on updates to track lineage and prevent accidental overwrites. Use `commitMessage` on every create and update to document the change.
 
 #### Bundle lifecycle
 
@@ -267,8 +476,8 @@ Each bundle call returns a `bundleId` (stable) and a `versionId` (immutable snap
 | Compare | `get_configuration_bundle_version` | Diff two versions; useful for audits and rollback decisions |
 
 **What we create:**
-- **Control (C)** — original system prompt + original tool descriptions
-- **Treatment (T1)** — recommended system prompt + recommended tool descriptions
+- **Control (C)** -- original system prompt + original tool descriptions
+- **Treatment (T1)** -- recommended system prompt + recommended tool descriptions
 
 ### Step 3: Batch evaluation
 
@@ -286,51 +495,51 @@ AgentCore analyzes production traces and generates:
 - **System Prompt Recommendation**: rewrites your system prompt to improve a target metric
 - **Tool Description Recommendation**: improves tool descriptions so the agent selects tools more reliably
 
-Recommendations are returned as text and can be applied immediately via configuration bundles — no code changes needed.
+Recommendations are returned as text and can be applied immediately via configuration bundles. No code changes needed.
 
 ### Step 5: Config-Bundle A/B Test
 
-Use configuration bundle routing when the change you are testing is purely configuration — a different system prompt, a different model ID, or different tool descriptions. Both variants run on the **same runtime** with different configuration bundle versions.
+Use configuration bundle routing when the change is purely configuration: a different system prompt, model ID, or tool descriptions. Both variants run on the same runtime with different bundle versions.
 
 **Architecture:**
 ```
 User Request
-     │
-     ▼
-[gateway] ──50%──▶ [Control Bundle C]   ──┐
-     │                                     ├──▶ [HR runtime v1] ──▶ CloudWatch
-     └──50%──▶ [Treatment Bundle T1] ──────┘                            │
-                                                   [Online Eval Config] ◀┘
-                                                           │
-                                                   [A/B Test Results]
+     |
+     v
+[gateway] --50%--> [Control Bundle C]   --|
+     |                                    |--> [HR runtime v1] --> CloudWatch
+     +--50%--> [Treatment Bundle T1] -----|                            |
+                                                [Online Eval Config] <-+
+                                                        |
+                                                [A/B Test Results]
 ```
 
 The gateway injects the correct bundle reference into each request via W3C baggage headers. The agent reads it at runtime via `BedrockAgentCoreContext.get_config_bundle()`.
 
-**Session stickiness:** Once a session ID is assigned to a variant, all subsequent requests with that same session ID route to the same variant. This ensures a consistent experience within a session while distributing new sessions across variants according to your traffic weights.
+**Session stickiness:** Once a session ID is assigned to a variant, all requests with that session ID go to the same variant. New sessions are distributed across variants by weight.
 
-An **online evaluation config** automatically scores every session as it closes, without requiring explicit API calls per session. It monitors the agent's CloudWatch log group, detects when a session closes (after `sessionTimeoutMinutes` of inactivity), and runs the configured evaluators.
+An **online evaluation config** scores sessions automatically as they close. It watches the agent's CloudWatch log group, detects session close (after `sessionTimeoutMinutes` of inactivity), and runs the configured evaluators.
 
-**Results timeline:** Budget 10–15 minutes from your last request: session timeout (2 min) → evaluation (2–3 min) → aggregation (~5 min cycle). Poll until `analysisTimestamp` is populated.
+**Results timeline:** Budget 10-15 minutes from your last request: session timeout (2 min) -> evaluation (2-3 min) -> aggregation (~5 min cycle). Poll until `analysisTimestamp` is populated.
 
 ### Step 6: Target-Based A/B Test
 
-When code changes are involved (new tools, framework upgrade, or entirely different agent implementation), use target-based routing instead. It sends traffic to two **separate runtimes** — each registered as a different gateway target. Each variant has its own online evaluation config since they have different log groups.
+When the change involves code (new tools, framework upgrade, different agent implementation), use target-based routing. Traffic splits between two separate runtimes, each registered as a gateway target. Each variant needs its own online evaluation config because they have different log groups.
 
 **Architecture:**
 ```
-User ──► [gateway] ──90%──► [Target HRAgentV1 → HR runtime v1 (stable)]  ──► CloudWatch
-               │                                                                    │
-               └──10%──► [Target HRAgentV2 → HR runtime v2 (canary)]   ──► CloudWatch
-                                                                              │
-                                                           [Online Eval v1 + Online Eval v2]
-                                                                              │
+User --> [gateway] --90%--> [Target HRAgentV1 -> HR runtime v1 (stable)]  --> CloudWatch
+               |                                                                    |
+               +--10%--> [Target HRAgentV2 -> HR runtime v2 (canary)]   --> CloudWatch
+                                                                              |
+                                                         [Online Eval v1 + Online Eval v2]
+                                                                              |
                                                                     [A/B Test Results]
 ```
 
-**Phased rollout:** 10% canary → validate no regressions → 50% ramp → gather statistical significance → 100% cutover → decommission old runtime.
+**Phased rollout:** 10% canary -> validate no regressions -> 50% ramp -> gather statistical significance -> 100% cutover -> decommission old runtime.
 
-**`gatewayFilter.targetPaths`** scopes the A/B test routing rule to requests matching the control target's path, ensuring only traffic intended for this test is intercepted.
+**`gatewayFilter.targetPaths`** restricts the A/B routing rule to requests matching the control target's path, so only traffic for this test is affected.
 
 ## Files
 
@@ -338,7 +547,8 @@ User ──► [gateway] ──90%──► [Target HRAgentV1 → HR runtime v1 
 |:-----|:------------|
 | `deploy.py` | Deploys HR Assistant v1 or v2 to AgentCore runtime |
 | `invoke.py` | Invokes the deployed agent with sample HR queries |
-| `optimize.py` | End-to-end optimization workflow (Steps 2–8) |
+| `insights.py` | Runs FailureAnalysis, UserIntent, ExecutionSummary on agent traces |
+| `optimize.py` | End-to-end optimization workflow (Steps 2-8) |
 | `cleanup.py` | Deletes all AWS resources created by this tutorial |
 | `requirements.txt` | Python dependencies |
 | `utils/hr_assistant_agent.py` | HR Assistant agent with Configuration Bundle hook |
@@ -359,27 +569,27 @@ python invoke.py --name HRAssistV1 --prompt "How many vacation days do I get aft
 | | Config-Bundle Routing | Target-Based Routing |
 |---|---|---|
 | **What changes** | System prompt or config (no code change) | Agent code, tools, model, or framework |
-| **Redeployment needed** | No — config applied at request time | Yes — new runtime required |
+| **Redeployment needed** | No -- config applied at request time | Yes -- new runtime required |
 | **Runtimes needed** | One shared runtime | Two separate runtimes |
 | **Eval configs needed** | One shared online eval config | One per variant (different log groups) |
 | **Best for** | Prompt tuning, config experiments | Code releases, version upgrades |
 | **Traffic split** | Typically 50/50 | Typically 90/10 canary |
-| **Rollback** | Instant — update bundle version | runtime still running; shift weights back |
-| **Risk** | Very low | Higher — binary change |
+| **Rollback** | Instant -- update bundle version | runtime still running; shift weights back |
+| **Risk** | Very low | Higher -- binary change |
 
 ### Phased Rollout (Target-Based)
 
 ```
-10% canary  →  validate no regressions (errors, latency, quality drop)
-      ↓
-50% ramp    →  gather statistical significance
-      ↓
-100% promote →  complete cutover; decommission old runtime
+10% canary  ->  validate no regressions (errors, latency, quality drop)
+      |
+50% ramp    ->  gather statistical significance
+      |
+100% promote ->  complete cutover; decommission old runtime
 ```
 
 ### Configuration Bundle Hook
 
-The agent reads its system prompt **and tool descriptions** from the bundle on every model call — enabling live prompt updates and A/B testing without redeployment:
+The agent reads its system prompt and tool descriptions from the bundle on every model call. This supports live prompt updates and A/B testing without redeployment:
 
 ```python
 from bedrock_agentcore.runtime import BedrockAgentCoreContext
@@ -402,24 +612,25 @@ def _config_bundle_hook(event: BeforeModelCallEvent) -> None:
 agent.hooks.add_callback(BeforeModelCallEvent, _config_bundle_hook)
 ```
 
-This pattern allows testing both prompt changes and tool description improvements in the same A/B experiment.
+This supports testing both prompt changes and tool description improvements in the same A/B experiment.
 
 ## Next Steps
 
-- **Add custom evaluators**: Lambda-based code evaluators for deterministic policy compliance checks
+- **Add custom evaluators**: Lambda-based evaluators for deterministic policy checks
 - **Automate the loop**: Run batch evaluations in CI/CD to catch regressions before deployment
-- **Use recommendations iteratively**: Re-run recommendations after each traffic batch to compound improvements
-- **Multi-metric optimization**: Run separate recommendation jobs targeting different evaluators, then pick the best balance
-- **Increase canary exposure**: Use `update_ab_test` to gradually raise treatment weight (10% → 25% → 50% → 100%)
-- **Continuous monitoring**: Keep online eval configs enabled in production for zero-effort quality monitoring
+- **Use recommendations iteratively**: Re-run after each traffic batch to compound improvements
+- **Multi-metric optimization**: Run separate recommendation jobs for different evaluators, then pick the best result
+- **Increase canary exposure**: Use `update_ab_test` to gradually raise treatment weight (10% -> 25% -> 50% -> 100%)
+- **Continuous monitoring**: Leave online eval configs enabled in production
 
 ## Workflow Summary
 
 | Step | What you do | Key API |
 |------|-------------|---------|
+| 0 | Run failure insights to understand root causes (optional pre-optimization) | `start_batch_evaluation` (insights), `get_batch_evaluation` |
 | 1 | Deploy HR Assistant to AgentCore runtime | `create_agent_runtime` |
 | 2 | Create baseline Configuration Bundle and send traffic | `create_configuration_bundle`, `invoke_agent_runtime` |
-| 3 | Measure baseline performance with batch evaluation | `start_batch_evaluation` / `get_batch_evaluation` |
+| 3 | Measure baseline performance with batch evaluation | `start_batch_evaluation` (evaluators), `get_batch_evaluation` |
 | 4a | Generate improved system prompt from production traces | `start_recommendation` (SYSTEM_PROMPT) |
 | 4b | Generate improved tool descriptions from production traces | `start_recommendation` (TOOL_DESCRIPTION) |
 | 5 | Package control and treatment configs into bundles | `create_configuration_bundle` / `update_configuration_bundle` |
@@ -433,7 +644,7 @@ This pattern allows testing both prompt changes and tool description improvement
 
 | A/B Test Result | Action |
 |-----------------|--------|
-| **Config-bundle T1 wins** | Promote treatment bundle (`update_configuration_bundle`) as new default — no code deployment |
+| **Config-bundle T1 wins** | Promote treatment bundle (`update_configuration_bundle`) as new default -- no code deployment |
 | **Target-based v2 wins** | Ramp to 50%, then 100% cutover; delete v1 runtime |
 | **Regression detected** | Stop A/B test immediately (`update_ab_test(executionStatus="STOPPED")`), investigate |
 | **Inconclusive** | Continue sending traffic to accumulate sample size (p < 0.05 threshold) |
