@@ -41,8 +41,10 @@
     "@types/uuid": "^11.0.0",
     "aws-cdk-lib": "^2.241.0",
     "constructs": "^10.5.1",
+    "esbuild": "^0.25.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.7"
+    "eslint-config-next": "16.1.7",
+    "tsx": "^4.19.0"
   },
   "pnpm": {
     "overrides": {

@@ -9,7 +9,7 @@ applications:
             - nvm use 22
             - corepack enable
             - corepack prepare pnpm@latest --activate
-            - pnpm install --frozen-lockfile
+            - pnpm install
             - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
     frontend:
       phases:
@@ -19,7 +19,7 @@ applications:
             - nvm use 22
             - corepack enable
             - corepack prepare pnpm@latest --activate
-            - pnpm install --frozen-lockfile
+            - pnpm install
         build:
           commands:
             - export NEXT_TELEMETRY_DISABLED=1
