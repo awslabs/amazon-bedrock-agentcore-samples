@@ -1,0 +1,344 @@
+#!/usr/bin/env python3
+"""
+Mount S3 as the Harness Filesystem
+
+Every Harness session runs in an isolated microVM with its own ephemeral disk —
+when the session ends, that disk is gone. To keep artifacts around, you can mount
+an **S3 Files access point** into the VM. The agent then reads and writes a normal
+POSIX path (e.g. /mnt/data) that is backed by S3, so files survive session
+termination and are shared across sessions.
+
+This is configured on the Harness's environment:
+
+    environment={
+        "agentCoreRuntimeEnvironment": {
+            "filesystemConfigurations": [
+                {
+                    "s3FilesAccessPoint": {
+                        "accessPointArn": "<S3 Files access point ARN>",
+                        "mountPath": "/mnt/data",
+                    }
+                }
+            ]
+        }
+    }
+
+This sample demonstrates persistence across the session boundary:
+
+    1. Create a Harness with the S3 mount
+    2. Session A — ask the agent to WRITE a file under the mount path
+    3. Session B (fresh microVM) — ask the agent to READ that same file back
+       The file is still there because it lives in S3, not on the VM disk.
+
+Prerequisites
+-------------
+* An S3 Files access point backed by a bucket. Its ARN looks like:
+      arn:aws:s3files:<region>:<account>:file-system/fs-xxxx/access-point/fsap-xxxx
+  Provide it with --access-point-arn.
+* The Harness execution role must be allowed to use that access point. If this
+  script creates the role (the default), it attaches a scoped S3 policy for you.
+  If you pass --role-arn, make sure the role already has S3 access.
+
+Usage:
+    # Mount an existing S3 Files access point at /mnt/data and run the demo
+    python s3_filesystem.py \\
+        --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def
+
+    # Choose a different mount path and filename
+    python s3_filesystem.py \\
+        --access-point-arn arn:aws:s3files:... \\
+        --mount-path /mnt/shared \\
+        --filename trip-notes.md
+
+    # Keep the harness after the demo
+    python s3_filesystem.py --access-point-arn arn:aws:s3files:... --skip-cleanup
+
+    # See all options
+    python s3_filesystem.py --help
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+import uuid
+
+from pathlib import Path
+
+import boto3
+import botocore.exceptions
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from utils.iam import create_harness_role, ROLE_NAME
+from utils.client import get_agentcore_client, get_agentcore_control_client
+
+REGION = os.getenv("AWS_DEFAULT_REGION")
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+DEFAULT_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+DEFAULT_MOUNT_PATH = "/mnt/data"
+DEFAULT_FILENAME = "harness-note.md"
+S3_FILES_POLICY_NAME = "HarnessS3FilesAccess"
+
+# mountPath must match /mnt/<name> (see the service model: MountPath)
+MOUNT_PATH_PATTERN = re.compile(r"^/mnt/[a-zA-Z0-9._-]+/?$")
+
+HARNESS_POLL_INTERVAL = 5
+HARNESS_POLL_TIMEOUT = 180
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+parser = argparse.ArgumentParser(
+    description="Mount an S3 Files access point into a Harness and prove artifacts persist across sessions.",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+)
+parser.add_argument(
+    "--access-point-arn",
+    required=True,
+    metavar="ARN",
+    help="S3 Files access point ARN to mount (arn:aws:s3files:...:access-point/fsap-...)",
+)
+parser.add_argument(
+    "--mount-path",
+    default=DEFAULT_MOUNT_PATH,
+    metavar="PATH",
+    help=f"Where to mount it inside the VM (default: {DEFAULT_MOUNT_PATH})",
+)
+parser.add_argument(
+    "--filename",
+    default=DEFAULT_FILENAME,
+    metavar="NAME",
+    help=f"File the agent writes/reads under the mount (default: {DEFAULT_FILENAME})",
+)
+parser.add_argument(
+    "--model",
+    default=DEFAULT_MODEL,
+    metavar="MODEL_ID",
+    help=f"Bedrock model ID (default: {DEFAULT_MODEL})",
+)
+parser.add_argument(
+    "--role-arn",
+    default=None,
+    metavar="ARN",
+    help="Use an existing IAM execution role (must already allow the access point)",
+)
+parser.add_argument(
+    "--skip-cleanup",
+    action="store_true",
+    help="Keep the harness after the demo",
+)
+parser.add_argument(
+    "--raw-events",
+    action="store_true",
+    help="Print raw JSON streaming events from invoke",
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def attach_s3_files_policy(role_name, access_point_arn):
+    """Allow the execution role to mount and use the S3 Files access point.
+
+    Scoped to the single access point so the role only gets what this demo needs.
+    """
+    iam = boto3.client("iam")
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "S3FilesAccessPoint",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                    "s3:ListBucket",
+                    "s3:GetBucketLocation",
+                ],
+                "Resource": [access_point_arn, f"{access_point_arn}/object/*"],
+            }
+        ],
+    }
+    iam.put_role_policy(
+        RoleName=role_name,
+        PolicyName=S3_FILES_POLICY_NAME,
+        PolicyDocument=json.dumps(policy),
+    )
+    print(f"  Attached S3 access policy: {S3_FILES_POLICY_NAME}")
+
+
+def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
+    """Poll until a Harness reaches the target status or times out."""
+    deadline = time.monotonic() + timeout
+    while True:
+        resp = control.get_harness(harnessId=harness_id)
+        status = resp["harness"]["status"]
+        print(f"  Harness status: {status}")
+        if status == target_status:
+            return resp
+        if status in ("FAILED", "DELETE_FAILED"):
+            reason = resp["harness"].get("failureReason", "")
+            raise RuntimeError(f"Harness entered {status}. {reason}")
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
+        time.sleep(HARNESS_POLL_INTERVAL)
+
+
+def stream_response(client, harness_arn, session_id, message, model_id, raw=False):
+    """Invoke a Harness and stream the response to stdout."""
+    response = client.invoke_harness(
+        harnessArn=harness_arn,
+        runtimeSessionId=session_id,
+        messages=[{"role": "user", "content": [{"text": message}]}],
+        model={"bedrockModelConfig": {"modelId": model_id}},
+    )
+
+    full_text = ""
+    try:
+        for event in response["stream"]:
+            if raw:
+                print(json.dumps(event, default=str))
+                continue
+
+            if "contentBlockStart" in event:
+                start = event["contentBlockStart"].get("start", {})
+                if "toolUse" in start:
+                    print(f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True)
+            elif "contentBlockDelta" in event:
+                delta = event["contentBlockDelta"].get("delta", {})
+                if "text" in delta:
+                    print(delta["text"], end="", flush=True)
+                    full_text += delta["text"]
+            elif "messageStop" in event:
+                print()
+            elif "internalServerException" in event:
+                print(f"\n  Error: {event['internalServerException']}")
+    except botocore.exceptions.EventStreamError:
+        if not full_text:
+            raise
+
+    return full_text
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def main(args=None):
+    if args is None:
+        args = parser.parse_args()
+
+    if not MOUNT_PATH_PATTERN.match(args.mount_path):
+        parser.error(f"--mount-path must look like /mnt/<name> (got: {args.mount_path})")
+
+    control = get_agentcore_control_client()
+    client = get_agentcore_client()
+
+    mount = args.mount_path.rstrip("/")
+    remote_file = f"{mount}/{args.filename}"
+    harness_id = None
+
+    try:
+        # ── Step 0: IAM role (with S3 access) ─────────────────────────
+        print("=" * 60)
+        print("Step 0: IAM execution role")
+        print("=" * 60)
+        if args.role_arn:
+            role_arn = args.role_arn
+            print(f"  Using provided role: {role_arn}")
+            print("  (ensure it can access the S3 Files access point)")
+        else:
+            role_arn = create_harness_role()
+            attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
+            print("  Waiting for IAM propagation...")
+            time.sleep(10)
+
+        # ── Step 1: Create Harness with S3 mount ──────────────────────
+        print("\n" + "=" * 60)
+        print("Step 1: Create Harness with S3 mounted at " + mount)
+        print("=" * 60)
+        filesystem = [
+            {
+                "s3FilesAccessPoint": {
+                    "accessPointArn": args.access_point_arn,
+                    "mountPath": mount,
+                }
+            }
+        ]
+        print(f"  filesystemConfigurations = {json.dumps(filesystem)}")
+        harness_name = f"S3Mount_{uuid.uuid4().hex[:8]}"
+        resp = control.create_harness(
+            harnessName=harness_name,
+            executionRoleArn=role_arn,
+            environment={"agentCoreRuntimeEnvironment": {"filesystemConfigurations": filesystem}},
+            systemPrompt=[
+                {"text": f"You are a helpful assistant. A persistent S3-backed directory is mounted at {mount}."}
+            ],
+        )
+        harness_id = resp["harness"]["harnessId"]
+        harness_arn = resp["harness"]["arn"]
+        print(f"  Harness ID:  {harness_id}")
+        print(f"  Harness ARN: {harness_arn}")
+        poll_harness_status(control, harness_id)
+
+        # ── Step 2: Session A — write a file to the mount ─────────────
+        print("\n" + "=" * 60)
+        print("Step 2: Session A — write a file to the S3 mount")
+        print("=" * 60)
+        session_a = str(uuid.uuid4()).upper()
+        print(f"  Session A: {session_a}\n")
+        stream_response(
+            client,
+            harness_arn,
+            session_a,
+            f"Write a short markdown travel note about Amsterdam to {remote_file}. "
+            f"Confirm the absolute path you saved it to.",
+            args.model,
+            raw=args.raw_events,
+        )
+
+        # Give the S3-backed write a moment to flush before the next session.
+        time.sleep(5)
+
+        # ── Step 3: Session B — read it back from a fresh VM ──────────
+        print("\n" + "=" * 60)
+        print("Step 3: Session B (fresh microVM) — read the file back")
+        print("=" * 60)
+        session_b = str(uuid.uuid4()).upper()
+        print(f"  Session B: {session_b}")
+        print("  Different session = different VM disk. If the agent can still")
+        print("  read the file, it's because the mount is backed by S3.\n")
+        stream_response(
+            client,
+            harness_arn,
+            session_b,
+            f"Read the file {remote_file} and show me its contents verbatim.",
+            args.model,
+            raw=args.raw_events,
+        )
+
+        print("\n" + "=" * 60)
+        print("Done! The file written in Session A was readable in Session B.")
+        print("=" * 60)
+
+    finally:
+        if not args.skip_cleanup and harness_id:
+            print("\nCleaning up...")
+            try:
+                control.delete_harness(harnessId=harness_id)
+                print(f"  Deleted harness: {harness_id}")
+            except Exception as e:
+                print(f"  Warning: failed to delete harness: {e}")
+            print("  Note: the S3 bucket and access point are left intact.")
+
+
+if __name__ == "__main__":
+    main()
