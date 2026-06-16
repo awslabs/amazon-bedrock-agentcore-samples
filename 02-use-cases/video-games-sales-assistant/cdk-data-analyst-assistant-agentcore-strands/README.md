@@ -97,6 +97,9 @@ Deploy the infrastructure:
 cdk deploy
 ```
 
+> [!NOTE]
+> If you are using [Finch](https://runfinch.com/) instead of Docker Desktop, prefix the command with `CDK_DOCKER=finch cdk deploy` to use Finch for container image builds.
+
 Default Parameters:
 - **DatabaseName**: "video_games_sales" - Name of the database
 - **BedrockModelId**: "us.anthropic.claude-haiku-4-5-20251001-v1:0" - Bedrock model ID for the agent
