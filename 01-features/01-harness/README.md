@@ -27,7 +27,7 @@ self-contained — copy any folder and it runs independently.
 - **By end-to-end scenario** → `02-use-cases/<use-case>/`
 - **By tool type** → MCP: `04-mcp-integration/`, Browser: `01-travel-agent/` (Part 5), Skills: `05-agent-skills/` (custom) and `08-aws-skills/` (native AWS Skills)
 - **Auth patterns** → `07-oauth/` (JWT inbound + OAuth outbound)
-- **Persistent storage** → `09-s3-filesystem/` (mount S3 as the agent filesystem; includes an LLM-wiki knowledge base)
+- **Persistent storage** → `09-s3-filesystem/` (mount S3 as the agent filesystem; includes an LLM wiki)
 - **Orchestration** → `10-stepfunctions-orchestration/` (Step Functions drives the harness lifecycle)
 - **Build an agent with AWS Skills** → `02-use-cases/03-aws-builder-agent/` (harness + AWS Skills = an AWS engineering agent)
 
@@ -109,8 +109,8 @@ python 01-advanced-examples/08-aws-skills/aws_skills.py
 python 01-advanced-examples/09-s3-filesystem/s3_filesystem.py \
     --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx
 
-# S3-backed LLM wiki / knowledge base (ingest → query → lint)
-python 01-advanced-examples/09-s3-filesystem/s3_knowledge_base.py \
+# S3-backed LLM wiki (ingest → query → lint)
+python 01-advanced-examples/09-s3-filesystem/s3_llm_wiki.py \
     --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx
 
 # Step Functions orchestration (create → invoke → delete lifecycle)

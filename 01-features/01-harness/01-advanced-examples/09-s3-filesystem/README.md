@@ -22,7 +22,7 @@ sessions.
 | File | What it shows |
 |---|---|
 | [`s3_filesystem.py`](s3_filesystem.py) | **The mechanism.** Session A writes a file under the mount; Session B (a brand-new microVM) reads it back — only possible because the file lives in S3, not on the VM disk. |
-| [`s3_knowledge_base.py`](s3_knowledge_base.py) | **The use case: a persistent LLM wiki / knowledge base.** The agent builds and maintains a compounding markdown wiki on the S3 mount across sessions (ingest → query → lint). |
+| [`s3_llm_wiki.py`](s3_llm_wiki.py) | **The use case: a persistent LLM wiki.** The agent builds and maintains a compounding markdown wiki on the S3 mount across sessions (ingest → query → lint). |
 
 The first script proves the persistence boundary; the second shows *why you'd
 want it*.
@@ -73,22 +73,25 @@ attaches a scoped S3 policy for you.
 
 **IAM scope**: The execution role only needs access to the single access point — the script attaches a narrowly scoped policy.
 
-## Use case: a persistent LLM wiki / knowledge base
+## Use case: a persistent LLM wiki
 
-[`s3_knowledge_base.py`](s3_knowledge_base.py) turns the S3 mount into a
+[`s3_llm_wiki.py`](s3_llm_wiki.py) turns the S3 mount into a
 **persistent, compounding LLM wiki**, following the pattern Andrej Karpathy
 describes in [this gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f):
 rather than re-deriving answers from raw documents on every query (classic RAG),
 the agent **builds and maintains a markdown wiki once and keeps it current**, so
 knowledge becomes a compounding artifact.
 
+> This is a self-maintained markdown wiki on the agent's filesystem — it is
+> unrelated to the **Amazon Bedrock Knowledge Bases** feature.
+
 The S3 mount is what makes this possible — the wiki must outlive any single
 session and be shared across invocations. Three layers live under the mount:
 
 ```
-/mnt/kb/
+/mnt/wiki/
   sources/   raw, immutable inputs (the agent reads, never edits)
-  wiki/      LLM-owned markdown: summaries, entity pages, concept pages ([[cross-linked]])
+  pages/     LLM-owned markdown: summaries, entity pages, concept pages ([[cross-linked]])
   AGENTS.md  the schema (how the wiki is organized)
   index.md   catalog of pages
   log.md     append-only history
@@ -135,10 +138,10 @@ python s3_filesystem.py \
 
 ```bash
 # 2) The LLM wiki — full demo (bootstrap, ingest, query, lint)
-python s3_knowledge_base.py \
+python s3_llm_wiki.py \
     --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def
 
 # Query the existing wiki (it compounds — answers get filed back)
-python s3_knowledge_base.py --access-point-arn arn:aws:s3files:... \
+python s3_llm_wiki.py --access-point-arn arn:aws:s3files:... \
     --op query -m "How does the LLM wiki pattern differ from RAG?"
 ```
