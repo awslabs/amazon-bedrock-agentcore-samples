@@ -34,20 +34,25 @@ microVM boundary:
     query    answer a question from the wiki, filing the answer back as a page
     lint     health-check: find contradictions, stale claims, orphan pages
 
+An S3 Files mount requires the Harness to run in **VPC network mode** (pass the
+subnet(s) and security group(s) that can reach the access point's mount target).
+
 Usage:
     # Full demo: bootstrap schema, ingest two sources, query, lint
     python s3_llm_wiki.py \\
-        --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def
+        --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def \\
+        --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678
 
     # Run a single operation against an existing wiki harness/mount
     python s3_llm_wiki.py --access-point-arn arn:aws:s3files:... \\
+        --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678 \\
         --op query -m "What do we know about retrieval-augmented generation?"
 
     # Custom mount path
-    python s3_llm_wiki.py --access-point-arn arn:aws:s3files:... --mount-path /mnt/notes
+    python s3_llm_wiki.py --access-point-arn ... --subnet-ids ... --security-group-ids ... --mount-path /mnt/notes
 
     # Keep the harness after the demo
-    python s3_llm_wiki.py --access-point-arn arn:aws:s3files:... --skip-cleanup
+    python s3_llm_wiki.py --access-point-arn ... --subnet-ids ... --security-group-ids ... --skip-cleanup
 
     # See all options
     python s3_llm_wiki.py --help
@@ -109,6 +114,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("--access-point-arn", required=True, metavar="ARN",
                     help="S3 Files access point ARN to mount (arn:aws:s3files:...:access-point/fsap-...)")
+parser.add_argument("--subnet-ids", required=True, nargs="+", metavar="SUBNET",
+                    help="VPC subnet(s) that can reach the access point's mount target (NFS/2049)")
+parser.add_argument("--security-group-ids", required=True, nargs="+", metavar="SG",
+                    help="Security group(s) allowing NFS (2049) to the mount target")
 parser.add_argument("--mount-path", default=DEFAULT_MOUNT_PATH, metavar="PATH",
                     help=f"Where to mount the wiki inside the VM (default: {DEFAULT_MOUNT_PATH})")
 parser.add_argument("--op", choices=["all", "ingest", "query", "lint"], default="all",
@@ -124,26 +133,33 @@ parser.add_argument("--raw-events", action="store_true", help="Print raw JSON st
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-def attach_s3_files_policy(role_name, access_point_arn):
-    """Allow the execution role to read/write through the S3 Files access point."""
+def attach_s3_files_policy(role_name):
+    """Allow the execution role to discover and mount S3 Files access points."""
     iam = boto3.client("iam")
     policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
-                "Sid": "S3FilesAccessPoint",
+                "Sid": "S3FilesDescribe",
                 "Effect": "Allow",
                 "Action": [
-                    "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
-                    "s3:ListBucket", "s3:GetBucketLocation",
+                    "s3files:ListMountTargets", "s3files:ListAccessPoints", "s3files:ListFileSystems",
+                    "s3files:GetMountTarget", "s3files:GetAccessPoint", "s3files:GetFileSystem",
+                    "s3files:DescribeMountTargets",
                 ],
-                "Resource": [access_point_arn, f"{access_point_arn}/object/*"],
-            }
+                "Resource": "*",
+            },
+            {
+                "Sid": "S3FilesClientMount",
+                "Effect": "Allow",
+                "Action": ["s3files:ClientMount", "s3files:ClientWrite", "s3files:ClientRootAccess"],
+                "Resource": "*",
+            },
         ],
     }
     iam.put_role_policy(RoleName=role_name, PolicyName=S3_FILES_POLICY_NAME,
                         PolicyDocument=json.dumps(policy))
-    print(f"  Attached S3 access policy: {S3_FILES_POLICY_NAME}")
+    print(f"  Attached S3 Files access policy: {S3_FILES_POLICY_NAME}")
 
 
 def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
@@ -257,20 +273,31 @@ def main(args=None):
             print("  (ensure it can access the S3 Files access point)")
         else:
             role_arn = create_harness_role()
-            attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
+            attach_s3_files_policy(ROLE_NAME)
             print("  Waiting for IAM propagation...")
             time.sleep(10)
 
-        # ── Step 1: Create harness with the wiki mounted ──────────────
+        # ── Step 1: Create harness with the wiki mounted (VPC mode) ───
         print("\n" + "=" * 60)
         print(f"Step 1: Create harness with the wiki mounted at {mount}")
         print("=" * 60)
+        # S3 Files mounts require VPC network mode so the microVM can reach the
+        # access point's mount target over your VPC.
+        network = {
+            "networkMode": "VPC",
+            "networkModeConfig": {"subnets": args.subnet_ids, "securityGroups": args.security_group_ids},
+        }
         filesystem = [{"s3FilesAccessPoint": {"accessPointArn": args.access_point_arn, "mountPath": mount}}]
         harness_name = f"S3LlmWiki_{uuid.uuid4().hex[:8]}"
         resp = control.create_harness(
             harnessName=harness_name,
             executionRoleArn=role_arn,
-            environment={"agentCoreRuntimeEnvironment": {"filesystemConfigurations": filesystem}},
+            environment={
+                "agentCoreRuntimeEnvironment": {
+                    "networkConfiguration": network,
+                    "filesystemConfigurations": filesystem,
+                }
+            },
         )
         harness_id = resp["harness"]["harnessId"]
         harness_arn = resp["harness"]["arn"]

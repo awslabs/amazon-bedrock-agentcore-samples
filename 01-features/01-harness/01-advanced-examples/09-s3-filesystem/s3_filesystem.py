@@ -8,10 +8,20 @@ an **S3 Files access point** into the VM. The agent then reads and writes a norm
 POSIX path (e.g. /mnt/data) that is backed by S3, so files survive session
 termination and are shared across sessions.
 
-This is configured on the Harness's environment:
+An S3 Files mount requires the Harness to run in **VPC network mode** — the
+microVM reaches the access point's NFS mount target over your VPC. So the
+environment carries both a `networkConfiguration` (VPC + subnets + security
+groups) and the `filesystemConfigurations`:
 
     environment={
         "agentCoreRuntimeEnvironment": {
+            "networkConfiguration": {
+                "networkMode": "VPC",
+                "networkModeConfig": {
+                    "subnets": ["subnet-..."],
+                    "securityGroups": ["sg-..."],
+                },
+            },
             "filesystemConfigurations": [
                 {
                     "s3FilesAccessPoint": {
@@ -19,39 +29,46 @@ This is configured on the Harness's environment:
                         "mountPath": "/mnt/data",
                     }
                 }
-            ]
+            ],
         }
     }
 
 This sample demonstrates persistence across the session boundary:
 
-    1. Create a Harness with the S3 mount
+    1. Create a Harness with the S3 mount (in your VPC)
     2. Session A — ask the agent to WRITE a file under the mount path
     3. Session B (fresh microVM) — ask the agent to READ that same file back
        The file is still there because it lives in S3, not on the VM disk.
 
 Prerequisites
 -------------
-* An S3 Files access point backed by a bucket. Its ARN looks like:
+* An S3 Files access point backed by a bucket, with a mount target in the subnet
+  you pass below. Its ARN looks like:
       arn:aws:s3files:<region>:<account>:file-system/fs-xxxx/access-point/fsap-xxxx
   Provide it with --access-point-arn.
-* The Harness execution role must be allowed to use that access point. If this
-  script creates the role (the default), it attaches a scoped S3 policy for you.
-  If you pass --role-arn, make sure the role already has S3 access.
+* The subnet(s) and security group(s) that can reach the mount target (NFS/2049).
+  The subnet needs a network path to the mount target (same VPC; for a public
+  subnet ensure egress, or use a private subnet with a NAT/endpoint).
+* The Harness execution role must be allowed to mount the access point. If this
+  script creates the role (the default), it attaches the required `s3files`
+  permissions for you. If you pass --role-arn, make sure it already has them.
 
 Usage:
     # Mount an existing S3 Files access point at /mnt/data and run the demo
     python s3_filesystem.py \\
-        --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def
+        --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def \\
+        --subnet-ids subnet-0abc1234 \\
+        --security-group-ids sg-0def5678
 
     # Choose a different mount path and filename
     python s3_filesystem.py \\
         --access-point-arn arn:aws:s3files:... \\
+        --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678 \\
         --mount-path /mnt/shared \\
         --filename trip-notes.md
 
     # Keep the harness after the demo
-    python s3_filesystem.py --access-point-arn arn:aws:s3files:... --skip-cleanup
+    python s3_filesystem.py --access-point-arn ... --subnet-ids ... --security-group-ids ... --skip-cleanup
 
     # See all options
     python s3_filesystem.py --help
@@ -107,6 +124,20 @@ parser.add_argument(
     help="S3 Files access point ARN to mount (arn:aws:s3files:...:access-point/fsap-...)",
 )
 parser.add_argument(
+    "--subnet-ids",
+    required=True,
+    nargs="+",
+    metavar="SUBNET",
+    help="VPC subnet(s) that can reach the access point's mount target (NFS/2049)",
+)
+parser.add_argument(
+    "--security-group-ids",
+    required=True,
+    nargs="+",
+    metavar="SG",
+    help="Security group(s) allowing NFS (2049) to the mount target",
+)
+parser.add_argument(
     "--mount-path",
     default=DEFAULT_MOUNT_PATH,
     metavar="PATH",
@@ -145,27 +176,40 @@ parser.add_argument(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def attach_s3_files_policy(role_name, access_point_arn):
-    """Allow the execution role to mount and use the S3 Files access point.
+def attach_s3_files_policy(role_name):
+    """Allow the execution role to discover and mount S3 Files access points.
 
-    Scoped to the single access point so the role only gets what this demo needs.
+    The runtime validates these `s3files` permissions at create time and uses the
+    client-mount actions when the microVM mounts the access point.
     """
     iam = boto3.client("iam")
     policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
-                "Sid": "S3FilesAccessPoint",
+                "Sid": "S3FilesDescribe",
                 "Effect": "Allow",
                 "Action": [
-                    "s3:GetObject",
-                    "s3:PutObject",
-                    "s3:DeleteObject",
-                    "s3:ListBucket",
-                    "s3:GetBucketLocation",
+                    "s3files:ListMountTargets",
+                    "s3files:ListAccessPoints",
+                    "s3files:ListFileSystems",
+                    "s3files:GetMountTarget",
+                    "s3files:GetAccessPoint",
+                    "s3files:GetFileSystem",
+                    "s3files:DescribeMountTargets",
                 ],
-                "Resource": [access_point_arn, f"{access_point_arn}/object/*"],
-            }
+                "Resource": "*",
+            },
+            {
+                "Sid": "S3FilesClientMount",
+                "Effect": "Allow",
+                "Action": [
+                    "s3files:ClientMount",
+                    "s3files:ClientWrite",
+                    "s3files:ClientRootAccess",
+                ],
+                "Resource": "*",
+            },
         ],
     }
     iam.put_role_policy(
@@ -173,7 +217,7 @@ def attach_s3_files_policy(role_name, access_point_arn):
         PolicyName=S3_FILES_POLICY_NAME,
         PolicyDocument=json.dumps(policy),
     )
-    print(f"  Attached S3 access policy: {S3_FILES_POLICY_NAME}")
+    print(f"  Attached S3 Files access policy: {S3_FILES_POLICY_NAME}")
 
 
 def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
@@ -257,14 +301,23 @@ def main(args=None):
             print("  (ensure it can access the S3 Files access point)")
         else:
             role_arn = create_harness_role()
-            attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
+            attach_s3_files_policy(ROLE_NAME)
             print("  Waiting for IAM propagation...")
             time.sleep(10)
 
-        # ── Step 1: Create Harness with S3 mount ──────────────────────
+        # ── Step 1: Create Harness with S3 mount (VPC network mode) ───
         print("\n" + "=" * 60)
         print("Step 1: Create Harness with S3 mounted at " + mount)
         print("=" * 60)
+        # S3 Files mounts require VPC network mode so the microVM can reach the
+        # access point's mount target over your VPC.
+        network = {
+            "networkMode": "VPC",
+            "networkModeConfig": {
+                "subnets": args.subnet_ids,
+                "securityGroups": args.security_group_ids,
+            },
+        }
         filesystem = [
             {
                 "s3FilesAccessPoint": {
@@ -273,12 +326,18 @@ def main(args=None):
                 }
             }
         ]
+        print(f"  networkConfiguration = {json.dumps(network)}")
         print(f"  filesystemConfigurations = {json.dumps(filesystem)}")
         harness_name = f"S3Mount_{uuid.uuid4().hex[:8]}"
         resp = control.create_harness(
             harnessName=harness_name,
             executionRoleArn=role_arn,
-            environment={"agentCoreRuntimeEnvironment": {"filesystemConfigurations": filesystem}},
+            environment={
+                "agentCoreRuntimeEnvironment": {
+                    "networkConfiguration": network,
+                    "filesystemConfigurations": filesystem,
+                }
+            },
             systemPrompt=[
                 {"text": f"You are a helpful assistant. A persistent S3-backed directory is mounted at {mount}."}
             ],

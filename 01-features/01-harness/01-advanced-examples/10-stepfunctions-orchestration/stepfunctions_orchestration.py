@@ -187,7 +187,12 @@ def build_definition(lambda_arn):
                 "Type": "Choice",
                 "Choices": [
                     {"Variable": "$.created.status", "StringEquals": "READY", "Next": "InvokeHarness"},
+                    # Any terminal failure status -> clean up / fail fast. Matching
+                    # only "FAILED" would loop forever on CREATE_FAILED, since the
+                    # default branch goes back to WaitForReady.
                     {"Variable": "$.created.status", "StringEquals": "FAILED", "Next": "DeleteOnFailure"},
+                    {"Variable": "$.created.status", "StringEquals": "CREATE_FAILED", "Next": "DeleteOnFailure"},
+                    {"Variable": "$.created.status", "StringEquals": "UPDATE_FAILED", "Next": "DeleteOnFailure"},
                     {"Variable": "$.created.status", "StringEquals": "DELETE_FAILED", "Next": "Fail"},
                 ],
                 "Default": "WaitForReady",
@@ -253,6 +258,12 @@ def create_lambda_role(iam, account_id, role_name, harness_role_arn):
                     "bedrock-agentcore:GetHarness",
                     "bedrock-agentcore:DeleteHarness",
                     "bedrock-agentcore:InvokeHarness",
+                    # Creating/Getting/Deleting a Harness provisions an underlying
+                    # AgentRuntime, so the matching runtime actions are required too.
+                    "bedrock-agentcore:CreateAgentRuntime",
+                    "bedrock-agentcore:GetAgentRuntime",
+                    "bedrock-agentcore:DeleteAgentRuntime",
+                    "bedrock-agentcore:UpdateAgentRuntime",
                 ],
                 "Resource": "*",
             },

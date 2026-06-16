@@ -105,13 +105,15 @@ python 01-advanced-examples/05-agent-skills/agent_skills.py
 # AWS Skills (native skill bundles from the AWS Agent Toolkit)
 python 01-advanced-examples/08-aws-skills/aws_skills.py
 
-# S3 filesystem mount (persistent storage across sessions)
+# S3 filesystem mount (persistent storage across sessions; requires VPC subnets + SGs)
 python 01-advanced-examples/09-s3-filesystem/s3_filesystem.py \
-    --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx
+    --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx \
+    --subnet-ids subnet-xxxx --security-group-ids sg-xxxx
 
 # S3-backed LLM wiki (ingest → query → lint)
 python 01-advanced-examples/09-s3-filesystem/s3_llm_wiki.py \
-    --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx
+    --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx \
+    --subnet-ids subnet-xxxx --security-group-ids sg-xxxx
 
 # Step Functions orchestration (create → invoke → delete lifecycle)
 python 01-advanced-examples/10-stepfunctions-orchestration/stepfunctions_orchestration.py

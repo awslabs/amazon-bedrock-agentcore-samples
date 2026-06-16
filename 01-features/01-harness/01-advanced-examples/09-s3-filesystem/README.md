@@ -29,11 +29,20 @@ want it*.
 
 ## Configuration
 
-S3 mounts are set on the harness environment:
+An S3 Files mount requires the harness to run in **VPC network mode** — the
+microVM reaches the access point's mount target over your VPC. So the
+environment carries both a `networkConfiguration` and the `filesystemConfigurations`:
 
 ```python
 environment={
     "agentCoreRuntimeEnvironment": {
+        "networkConfiguration": {
+            "networkMode": "VPC",
+            "networkModeConfig": {
+                "subnets": ["subnet-0abc1234"],
+                "securityGroups": ["sg-0def5678"],
+            },
+        },
         "filesystemConfigurations": [
             {
                 "s3FilesAccessPoint": {
@@ -41,21 +50,27 @@ environment={
                     "mountPath": "/mnt/data",
                 }
             }
-        ]
+        ],
     }
 }
 ```
 
 `mountPath` must look like `/mnt/<name>`. The execution role must be allowed to
-read/write through the access point — when this script creates the role, it
-attaches a scoped S3 policy for you.
+mount the access point — when this script creates the role, it attaches the
+required `s3files` permissions (`ClientMount`/`ClientWrite`/`ClientRootAccess`
+plus the `List*`/`Get*` discovery actions) for you.
 
 ## Prerequisites
 
-- An **S3 Files access point** backed by a bucket. Its ARN looks like:
+- An **S3 Files access point** backed by a bucket, with a **mount target** in the
+  subnet you pass. Its ARN looks like:
   `arn:aws:s3files:<region>:<account>:file-system/fs-xxxx/access-point/fsap-xxxx`
-- If you bring your own execution role (`--role-arn`), it must already permit
-  that access point.
+- The **subnet(s) and security group(s)** that can reach the mount target over
+  NFS (port 2049). The subnet needs a network path to the mount target — same
+  VPC, and for a public subnet ensure egress (or use a private subnet with a NAT
+  or S3 Files endpoint).
+- If you bring your own execution role (`--role-arn`), it must already have the
+  `s3files` mount permissions above.
 
 ## Sample Prompts
 
@@ -127,11 +142,14 @@ pip install -r ../../requirements.txt
 ```bash
 # 1) The mechanism — prove persistence across sessions
 python s3_filesystem.py \
-    --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def
+    --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def \
+    --subnet-ids subnet-0abc1234 \
+    --security-group-ids sg-0def5678
 
 # Custom mount path + filename
 python s3_filesystem.py \
     --access-point-arn arn:aws:s3files:... \
+    --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678 \
     --mount-path /mnt/shared \
     --filename trip-notes.md
 ```
@@ -139,9 +157,11 @@ python s3_filesystem.py \
 ```bash
 # 2) The LLM wiki — full demo (bootstrap, ingest, query, lint)
 python s3_llm_wiki.py \
-    --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def
+    --access-point-arn arn:aws:s3files:us-west-2:111122223333:file-system/fs-abc/access-point/fsap-def \
+    --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678
 
 # Query the existing wiki (it compounds — answers get filed back)
 python s3_llm_wiki.py --access-point-arn arn:aws:s3files:... \
+    --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678 \
     --op query -m "How does the LLM wiki pattern differ from RAG?"
 ```
