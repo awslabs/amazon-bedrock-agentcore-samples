@@ -133,27 +133,32 @@ parser.add_argument("--raw-events", action="store_true", help="Print raw JSON st
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-def attach_s3_files_policy(role_name):
-    """Allow the execution role to discover and mount S3 Files access points."""
+def attach_s3_files_policy(role_name, access_point_arn):
+    """Allow the execution role to validate and mount the S3 Files access point.
+
+    * `s3files:GetAccessPoint` on `*` — the runtime validates this at harness
+      create time. Keep it unscoped; a scoped/conditioned form is rejected at
+      create with "Ensure the role has s3files:GetAccessPoint".
+    * `s3files:ClientMount`/`ClientWrite` — used when the microVM mounts the
+      access point; scoped to the file system with an AccessPointArn condition.
+    """
+    fs_arn = access_point_arn.split("/access-point/")[0]
     iam = boto3.client("iam")
     policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
-                "Sid": "S3FilesDescribe",
+                "Sid": "S3FilesValidate",
                 "Effect": "Allow",
-                "Action": [
-                    "s3files:ListMountTargets", "s3files:ListAccessPoints", "s3files:ListFileSystems",
-                    "s3files:GetMountTarget", "s3files:GetAccessPoint", "s3files:GetFileSystem",
-                    "s3files:DescribeMountTargets",
-                ],
+                "Action": ["s3files:GetAccessPoint"],
                 "Resource": "*",
             },
             {
                 "Sid": "S3FilesClientMount",
                 "Effect": "Allow",
-                "Action": ["s3files:ClientMount", "s3files:ClientWrite", "s3files:ClientRootAccess"],
-                "Resource": "*",
+                "Action": ["s3files:ClientMount", "s3files:ClientWrite"],
+                "Resource": fs_arn,
+                "Condition": {"ArnEquals": {"s3files:AccessPointArn": access_point_arn}},
             },
         ],
     }
@@ -273,7 +278,7 @@ def main(args=None):
             print("  (ensure it can access the S3 Files access point)")
         else:
             role_arn = create_harness_role()
-            attach_s3_files_policy(ROLE_NAME)
+            attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
             print("  Waiting for IAM propagation...")
             time.sleep(10)
 

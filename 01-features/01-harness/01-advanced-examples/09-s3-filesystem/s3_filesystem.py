@@ -46,9 +46,11 @@ Prerequisites
   you pass below. Its ARN looks like:
       arn:aws:s3files:<region>:<account>:file-system/fs-xxxx/access-point/fsap-xxxx
   Provide it with --access-point-arn.
-* The subnet(s) and security group(s) that can reach the mount target (NFS/2049).
-  The subnet needs a network path to the mount target (same VPC; for a public
-  subnet ensure egress, or use a private subnet with a NAT/endpoint).
+* The subnet(s) and security group(s) that reach the mount target. The Harness
+  must be in the same VPC as the mount target, the subnet(s) you pass must be in an
+  Availability Zone that has a mount target, and the security group(s) must allow
+  NFS (port 2049). Use private subnets with egress (a route to a NAT gateway) —
+  VPC-mode Harnesses run in private networking and public subnets won't connect.
 * The Harness execution role must be allowed to mount the access point. If this
   script creates the role (the default), it attaches the required `s3files`
   permissions for you. If you pass --role-arn, make sure it already has them.
@@ -176,39 +178,32 @@ parser.add_argument(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def attach_s3_files_policy(role_name):
-    """Allow the execution role to discover and mount S3 Files access points.
+def attach_s3_files_policy(role_name, access_point_arn):
+    """Allow the execution role to validate and mount the S3 Files access point.
 
-    The runtime validates these `s3files` permissions at create time and uses the
-    client-mount actions when the microVM mounts the access point.
+    * `s3files:GetAccessPoint` on `*` — the runtime validates this at harness
+      create time. Keep it unscoped; a scoped/conditioned form is rejected at
+      create with "Ensure the role has s3files:GetAccessPoint".
+    * `s3files:ClientMount`/`ClientWrite` — used when the microVM mounts the
+      access point; scoped to the file system with an AccessPointArn condition.
     """
+    fs_arn = access_point_arn.split("/access-point/")[0]
     iam = boto3.client("iam")
     policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
-                "Sid": "S3FilesDescribe",
+                "Sid": "S3FilesValidate",
                 "Effect": "Allow",
-                "Action": [
-                    "s3files:ListMountTargets",
-                    "s3files:ListAccessPoints",
-                    "s3files:ListFileSystems",
-                    "s3files:GetMountTarget",
-                    "s3files:GetAccessPoint",
-                    "s3files:GetFileSystem",
-                    "s3files:DescribeMountTargets",
-                ],
+                "Action": ["s3files:GetAccessPoint"],
                 "Resource": "*",
             },
             {
                 "Sid": "S3FilesClientMount",
                 "Effect": "Allow",
-                "Action": [
-                    "s3files:ClientMount",
-                    "s3files:ClientWrite",
-                    "s3files:ClientRootAccess",
-                ],
-                "Resource": "*",
+                "Action": ["s3files:ClientMount", "s3files:ClientWrite"],
+                "Resource": fs_arn,
+                "Condition": {"ArnEquals": {"s3files:AccessPointArn": access_point_arn}},
             },
         ],
     }
@@ -301,7 +296,7 @@ def main(args=None):
             print("  (ensure it can access the S3 Files access point)")
         else:
             role_arn = create_harness_role()
-            attach_s3_files_policy(ROLE_NAME)
+            attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
             print("  Waiting for IAM propagation...")
             time.sleep(10)
 

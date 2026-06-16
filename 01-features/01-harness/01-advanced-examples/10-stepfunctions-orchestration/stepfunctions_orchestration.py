@@ -1,41 +1,52 @@
 #!/usr/bin/env python3
 """
-Orchestrate a Harness with AWS Step Functions
+Invoke a Harness from AWS Step Functions (native integration)
 
-A Harness has a lifecycle — create, wait until READY, invoke, delete — that maps
-naturally onto a state machine. This sample builds a Step Functions **STANDARD**
-workflow that drives that lifecycle end to end:
+Step Functions has an **optimized service integration** for AgentCore Harness:
+a Task state can call `InvokeHarness` directly — no Lambda, no glue code. In
+Workflow Studio it shows up as the **AgentCore InvokeHarness** state.
 
-    CreateHarness ─▶ WaitForReady ─▶ GetStatus ─▶ (READY?) ─▶ InvokeHarness ─▶ DeleteHarness ─▶ Done
-                          ▲                │
-                          └──── not ready ─┘
+    {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::bedrockagentcore:invokeHarness",
+      "Arguments": {
+        "HarnessArn": "arn:aws:bedrock-agentcore:...:harness/my-harness",
+        "RuntimeSessionId": "{% $uuid() %}",
+        "Messages": [{ "Role": "user", "Content": [{ "Text": "..." }] }]
+      },
+      "End": true
+    }
 
-Why a Lambda task worker (instead of a native SFN service integration)?
-  * `InvokeHarness` returns a streaming response; a Step Functions SDK
-    integration can't consume a stream. The Lambda drains the stream and
-    returns the final text.
-  * One small Lambda dispatches on an `action` field (create / status /
-    invoke / delete), so the whole lifecycle is one deployable unit.
+This sample builds a STANDARD state machine with that one native Task, runs it
+against a harness, and reads back the agent's answer. The state machine puts the
+agent into a workflow step you can wire retries, catches, choices, and Maps
+around — the usual Step Functions toolbox.
 
-The script provisions everything it needs, runs one execution, prints the
-result, and tears it all down:
+Notes on the native integration (from the Step Functions docs):
+  * Parameters are **PascalCase** (`HarnessArn`, `Messages`, `Model`), even
+    though the underlying API is camelCase.
+  * Only the **Request-Response** pattern is supported (no .sync / .waitForToken).
+  * The response is **Converse-shaped**: `Output.Message.Content[].Text`,
+    `StopReason`, `Usage`. Only the final assistant turn is returned.
+  * The Task has a 15-minute max; keep the harness timeout under that.
+  * The Step Functions resource URI uses `bedrockagentcore` (no hyphen); the
+    harness ARN uses `bedrock-agentcore` (with hyphen).
 
-    1. IAM roles  — Harness execution role (shared helper), Lambda role, SFN role
-    2. Lambda     — the action-dispatched task worker (zipped & deployed inline)
-    3. State machine — the ASL definition above
-    4. Execution  — start it, poll until it finishes, print the agent's answer
-    5. Cleanup    — delete the state machine, Lambda, roles (the workflow deletes
-                    the harness itself)
+The script creates a harness (boto3 control plane), builds + runs the state
+machine, prints the answer, and tears everything down.
 
 Usage:
-    # Run the full orchestration demo
+    # Run the demo end to end
     python stepfunctions_orchestration.py
 
-    # Ask the orchestrated agent something specific
+    # Ask the agent something specific
     python stepfunctions_orchestration.py \\
         -m "List three serverless patterns for event-driven apps."
 
-    # Keep the state machine + Lambda after the demo (inspect in the console)
+    # Reuse an existing harness instead of creating one
+    python stepfunctions_orchestration.py --harness-arn arn:aws:bedrock-agentcore:...:harness/my-harness
+
+    # Keep the state machine (and harness) after the demo
     python stepfunctions_orchestration.py --skip-cleanup
 
     # See all options
@@ -43,13 +54,11 @@ Usage:
 """
 
 import argparse
-import io
 import json
 import os
 import sys
 import time
 import uuid
-import zipfile
 
 from pathlib import Path
 
@@ -59,6 +68,7 @@ import botocore.exceptions
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.iam import create_harness_role
+from utils.client import get_agentcore_control_client
 
 REGION = os.getenv("AWS_DEFAULT_REGION")
 
@@ -69,386 +79,131 @@ REGION = os.getenv("AWS_DEFAULT_REGION")
 DEFAULT_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_PROMPT = "In two sentences, what is AWS Step Functions and when should I use it?"
 
-LAMBDA_RUNTIME = "python3.12"
-LAMBDA_HANDLER = "index.handler"
-LAMBDA_TIMEOUT = 300  # InvokeHarness can run the agent loop for a while
-
+HARNESS_POLL_INTERVAL = 5
+HARNESS_POLL_TIMEOUT = 180
 EXECUTION_POLL_INTERVAL = 5
 EXECUTION_POLL_TIMEOUT = 600
-
-
-# ---------------------------------------------------------------------------
-# Lambda task worker — deployed inline. Dispatches on `action`.
-# ---------------------------------------------------------------------------
-LAMBDA_SOURCE = '''
-import uuid
-import boto3
-
-control = boto3.client("bedrock-agentcore-control")
-data = boto3.client("bedrock-agentcore")
-
-
-def _create(event):
-    cfg = event["input"]
-    kwargs = {
-        "harnessName": cfg["harnessName"],
-        "executionRoleArn": cfg["executionRoleArn"],
-    }
-    if cfg.get("skills"):
-        kwargs["skills"] = cfg["skills"]
-    resp = control.create_harness(**kwargs)
-    h = resp["harness"]
-    return {"harnessId": h["harnessId"], "harnessArn": h["arn"], "status": h["status"]}
-
-
-def _status(event):
-    resp = control.get_harness(harnessId=event["harnessId"])
-    h = resp["harness"]
-    return {"harnessId": h["harnessId"], "harnessArn": h["arn"], "status": h["status"]}
-
-
-def _invoke(event):
-    session_id = str(uuid.uuid4()).upper()
-    resp = data.invoke_harness(
-        harnessArn=event["harnessArn"],
-        runtimeSessionId=session_id,
-        messages=[{"role": "user", "content": [{"text": event["message"]}]}],
-        model={"bedrockModelConfig": {"modelId": event["model"]}},
-    )
-    text = ""
-    for ev in resp["stream"]:
-        if "contentBlockDelta" in ev:
-            delta = ev["contentBlockDelta"].get("delta", {})
-            if "text" in delta:
-                text += delta["text"]
-    return {"sessionId": session_id, "text": text}
-
-
-def _delete(event):
-    control.delete_harness(harnessId=event["harnessId"])
-    return {"deleted": event["harnessId"]}
-
-
-HANDLERS = {"create": _create, "status": _status, "invoke": _invoke, "delete": _delete}
-
-
-def handler(event, context):
-    action = event["action"]
-    return HANDLERS[action](event)
-'''
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser(
-    description="Drive the full Harness lifecycle from a Step Functions state machine.",
+    description="Invoke an AgentCore Harness from a Step Functions state machine (native integration).",
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
-parser.add_argument("--message", "-m", default=DEFAULT_PROMPT, help="Prompt the orchestrated agent answers")
+parser.add_argument("--message", "-m", default=DEFAULT_PROMPT, help="Prompt the agent answers")
 parser.add_argument("--model", default=DEFAULT_MODEL, metavar="MODEL_ID", help=f"Bedrock model ID (default: {DEFAULT_MODEL})")
-parser.add_argument("--role-arn", default=None, metavar="ARN", help="Existing Harness execution role ARN")
-parser.add_argument("--skip-cleanup", action="store_true", help="Keep the state machine + Lambda after the demo")
+parser.add_argument("--harness-arn", default=None, metavar="ARN", help="Use an existing harness instead of creating one")
+parser.add_argument("--role-arn", default=None, metavar="ARN", help="Existing Harness execution role ARN (when creating a harness)")
+parser.add_argument("--skip-cleanup", action="store_true", help="Keep the state machine (and any created harness)")
 
 
 # ---------------------------------------------------------------------------
-# State machine definition (ASL)
+# State machine definition (ASL) — one native AgentCore Task
 # ---------------------------------------------------------------------------
-def build_definition(lambda_arn):
-    """Amazon States Language definition that orchestrates the harness lifecycle.
+def build_definition(harness_arn, model_id):
+    """A STANDARD state machine with a single native InvokeHarness Task.
 
-    State I/O threads the harness identifiers forward via ResultPath so each
-    task receives exactly the fields it needs.
+    The agent's message comes from the execution input ($states.input.message).
+    Retry/Catch show the recommended error handling for the integration.
     """
     return {
-        "Comment": "Create, wait for, invoke, and delete a Harness",
-        "StartAt": "CreateHarness",
+        "Comment": "Invoke an AgentCore Harness via the native Step Functions integration",
+        "QueryLanguage": "JSONata",
+        "StartAt": "InvokeHarness",
         "States": {
-            "CreateHarness": {
-                "Type": "Task",
-                "Resource": lambda_arn,
-                "Parameters": {"action": "create", "input.$": "$"},
-                "ResultPath": "$.created",
-                "Next": "WaitForReady",
-            },
-            "WaitForReady": {
-                "Type": "Wait",
-                "Seconds": 5,
-                "Next": "GetStatus",
-            },
-            "GetStatus": {
-                "Type": "Task",
-                "Resource": lambda_arn,
-                "Parameters": {"action": "status", "harnessId.$": "$.created.harnessId"},
-                "ResultPath": "$.created",
-                "Next": "CheckStatus",
-            },
-            "CheckStatus": {
-                "Type": "Choice",
-                "Choices": [
-                    {"Variable": "$.created.status", "StringEquals": "READY", "Next": "InvokeHarness"},
-                    # Any terminal failure status -> clean up / fail fast. Matching
-                    # only "FAILED" would loop forever on CREATE_FAILED, since the
-                    # default branch goes back to WaitForReady.
-                    {"Variable": "$.created.status", "StringEquals": "FAILED", "Next": "DeleteOnFailure"},
-                    {"Variable": "$.created.status", "StringEquals": "CREATE_FAILED", "Next": "DeleteOnFailure"},
-                    {"Variable": "$.created.status", "StringEquals": "UPDATE_FAILED", "Next": "DeleteOnFailure"},
-                    {"Variable": "$.created.status", "StringEquals": "DELETE_FAILED", "Next": "Fail"},
-                ],
-                "Default": "WaitForReady",
-            },
             "InvokeHarness": {
                 "Type": "Task",
-                "Resource": lambda_arn,
-                "Parameters": {
-                    "action": "invoke",
-                    "harnessArn.$": "$.created.harnessArn",
-                    "message.$": "$.message",
-                    "model.$": "$.model",
+                "Resource": "arn:aws:states:::bedrockagentcore:invokeHarness",
+                "Arguments": {
+                    "HarnessArn": harness_arn,
+                    "RuntimeSessionId": "{% $uuid() %}",
+                    "Messages": [
+                        {"Role": "user", "Content": [{"Text": "{% $states.input.message %}"}]}
+                    ],
+                    "Model": {"BedrockModelConfig": {"ModelId": model_id}},
+                    "TimeoutSeconds": 600,
                 },
-                "ResultPath": "$.invokeResult",
-                "Next": "DeleteHarness",
+                "Retry": [
+                    {
+                        "ErrorEquals": ["BedrockAgentCore.ThrottlingException"],
+                        "IntervalSeconds": 2,
+                        "MaxAttempts": 3,
+                        "BackoffRate": 2.0,
+                    }
+                ],
+                "Catch": [
+                    {"ErrorEquals": ["States.ALL"], "Next": "HandleError"}
+                ],
+                "End": True,
             },
-            "DeleteHarness": {
-                "Type": "Task",
-                "Resource": lambda_arn,
-                "Parameters": {"action": "delete", "harnessId.$": "$.created.harnessId"},
-                "ResultPath": "$.deleteResult",
-                "Next": "Done",
+            "HandleError": {
+                "Type": "Fail",
+                "Error": "InvokeHarnessFailed",
+                "Cause": "The AgentCore InvokeHarness task failed",
             },
-            "DeleteOnFailure": {
-                "Type": "Task",
-                "Resource": lambda_arn,
-                "Parameters": {"action": "delete", "harnessId.$": "$.created.harnessId"},
-                "ResultPath": "$.deleteResult",
-                "Next": "Fail",
-            },
-            "Done": {"Type": "Succeed"},
-            "Fail": {"Type": "Fail", "Error": "HarnessNotReady", "Cause": "Harness did not reach READY"},
         },
     }
 
 
 # ---------------------------------------------------------------------------
-# Provisioning helpers
+# Helpers
 # ---------------------------------------------------------------------------
-def create_lambda_role(iam, account_id, role_name, harness_role_arn):
-    """Role the Lambda assumes: logs + agentcore lifecycle/invoke + passrole + model invoke."""
-    trust = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}
-        ],
-    }
-    arn = _ensure_role(iam, role_name, trust)
-    policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Sid": "Logs",
-                "Effect": "Allow",
-                "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-                "Resource": "*",
-            },
-            {
-                "Sid": "HarnessLifecycle",
-                "Effect": "Allow",
-                "Action": [
-                    "bedrock-agentcore:CreateHarness",
-                    "bedrock-agentcore:GetHarness",
-                    "bedrock-agentcore:DeleteHarness",
-                    "bedrock-agentcore:InvokeHarness",
-                    # Creating/Getting/Deleting a Harness provisions an underlying
-                    # AgentRuntime, so the matching runtime actions are required too.
-                    "bedrock-agentcore:CreateAgentRuntime",
-                    "bedrock-agentcore:GetAgentRuntime",
-                    "bedrock-agentcore:DeleteAgentRuntime",
-                    "bedrock-agentcore:UpdateAgentRuntime",
-                ],
-                "Resource": "*",
-            },
-            {"Sid": "PassExecutionRole", "Effect": "Allow", "Action": "iam:PassRole", "Resource": harness_role_arn},
-        ],
-    }
-    iam.put_role_policy(RoleName=role_name, PolicyName="LambdaHarnessPolicy", PolicyDocument=json.dumps(policy))
-    return arn
+def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
+    """Poll until a Harness reaches the target status or times out."""
+    deadline = time.monotonic() + timeout
+    while True:
+        resp = control.get_harness(harnessId=harness_id)
+        status = resp["harness"]["status"]
+        print(f"  Harness status: {status}")
+        if status == target_status:
+            return resp
+        if status in ("FAILED", "CREATE_FAILED", "DELETE_FAILED"):
+            raise RuntimeError(f"Harness entered {status}: {resp['harness'].get('failureReason')}")
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
+        time.sleep(HARNESS_POLL_INTERVAL)
 
 
-def create_sfn_role(iam, role_name, lambda_arn):
-    """Role Step Functions assumes: permission to invoke the task Lambda."""
+def create_sfn_role(iam, role_name, harness_arn):
+    """Role Step Functions assumes: permission to invoke the harness directly.
+
+    With the native integration, Step Functions calls InvokeHarness itself — so
+    the STATE MACHINE role (not a Lambda) needs bedrock-agentcore:InvokeHarness.
+    """
     trust = {
         "Version": "2012-10-17",
         "Statement": [
             {"Effect": "Allow", "Principal": {"Service": "states.amazonaws.com"}, "Action": "sts:AssumeRole"}
         ],
     }
-    arn = _ensure_role(iam, role_name, trust)
+    try:
+        arn = iam.get_role(RoleName=role_name)["Role"]["Arn"]
+    except iam.exceptions.NoSuchEntityException:
+        arn = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust))["Role"]["Arn"]
     policy = {
         "Version": "2012-10-17",
-        "Statement": [{"Effect": "Allow", "Action": "lambda:InvokeFunction", "Resource": lambda_arn}],
+        "Statement": [
+            {
+                "Sid": "InvokeHarness",
+                "Effect": "Allow",
+                "Action": ["bedrock-agentcore:InvokeHarness", "bedrock-agentcore:InvokeAgentRuntime"],
+                "Resource": harness_arn,
+            }
+        ],
     }
-    iam.put_role_policy(RoleName=role_name, PolicyName="SfnInvokeLambdaPolicy", PolicyDocument=json.dumps(policy))
+    iam.put_role_policy(RoleName=role_name, PolicyName="SfnInvokeHarnessPolicy", PolicyDocument=json.dumps(policy))
     return arn
 
 
-def _ensure_role(iam, role_name, trust):
-    """Create a role (idempotent); return its ARN."""
-    try:
-        return iam.get_role(RoleName=role_name)["Role"]["Arn"]
-    except iam.exceptions.NoSuchEntityException:
-        resp = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust))
-        return resp["Role"]["Arn"]
-
-
-def zip_lambda_source():
-    """Package the inline Lambda source into an in-memory zip for create_function."""
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("index.py", LAMBDA_SOURCE)
-    buf.seek(0)
-    return buf.read()
-
-
-def create_task_lambda(lam, fn_name, role_arn):
-    """Deploy the task Lambda, retrying while IAM role propagation settles."""
-    code = zip_lambda_source()
-    deadline = time.monotonic() + 60
-    while True:
-        try:
-            resp = lam.create_function(
-                FunctionName=fn_name,
-                Runtime=LAMBDA_RUNTIME,
-                Role=role_arn,
-                Handler=LAMBDA_HANDLER,
-                Code={"ZipFile": code},
-                Timeout=LAMBDA_TIMEOUT,
-                MemorySize=256,
-            )
-            return resp["FunctionArn"]
-        except lam.exceptions.InvalidParameterValueException:
-            # Role not yet assumable by Lambda — wait and retry.
-            if time.monotonic() > deadline:
-                raise
-            time.sleep(5)
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-def main(args=None):
-    if args is None:
-        args = parser.parse_args()
-
-    iam = boto3.client("iam")
-    lam = boto3.client("lambda", region_name=REGION)
-    sfn = boto3.client("stepfunctions", region_name=REGION)
-    account_id = boto3.client("sts").get_caller_identity()["Account"]
-
-    suffix = uuid.uuid4().hex[:8]
-    lambda_name = f"harness-task-{suffix}"
-    lambda_role_name = f"HarnessSfnLambdaRole-{suffix}"
-    sfn_role_name = f"HarnessSfnRole-{suffix}"
-    state_machine_name = f"HarnessLifecycle-{suffix}"
-
-    lambda_arn = None
-    state_machine_arn = None
-    created_roles = []
-
-    try:
-        # ── Step 0: IAM — Harness execution role ──────────────────────
-        print("=" * 60)
-        print("Step 0: IAM roles")
-        print("=" * 60)
-        if args.role_arn:
-            harness_role_arn = args.role_arn
-            print(f"  Harness execution role (provided): {harness_role_arn}")
-        else:
-            harness_role_arn = create_harness_role()
-
-        lambda_role_arn = create_lambda_role(iam, account_id, lambda_role_name, harness_role_arn)
-        created_roles.append((lambda_role_name, ["LambdaHarnessPolicy"]))
-        print(f"  Lambda role: {lambda_role_arn}")
-
-        print("  Waiting for IAM propagation...")
-        time.sleep(10)
-
-        # ── Step 1: Deploy the task Lambda ────────────────────────────
-        print("\n" + "=" * 60)
-        print("Step 1: Deploy task Lambda")
-        print("=" * 60)
-        lambda_arn = create_task_lambda(lam, lambda_name, lambda_role_arn)
-        print(f"  Lambda ARN: {lambda_arn}")
-
-        sfn_role_arn = create_sfn_role(iam, sfn_role_name, lambda_arn)
-        created_roles.append((sfn_role_name, ["SfnInvokeLambdaPolicy"]))
-        print(f"  Step Functions role: {sfn_role_arn}")
-        time.sleep(10)
-
-        # ── Step 2: Create the state machine ──────────────────────────
-        print("\n" + "=" * 60)
-        print("Step 2: Create state machine")
-        print("=" * 60)
-        definition = build_definition(lambda_arn)
-        resp = _create_state_machine(sfn, state_machine_name, definition, sfn_role_arn)
-        state_machine_arn = resp["stateMachineArn"]
-        print(f"  State machine ARN: {state_machine_arn}")
-
-        # ── Step 3: Start an execution ────────────────────────────────
-        print("\n" + "=" * 60)
-        print("Step 3: Start execution")
-        print("=" * 60)
-        execution_input = {
-            "harnessName": f"SfnHarness_{suffix}",
-            "executionRoleArn": harness_role_arn,
-            "message": args.message,
-            "model": args.model,
-        }
-        exec_resp = sfn.start_execution(
-            stateMachineArn=state_machine_arn,
-            name=f"run-{uuid.uuid4().hex[:8]}",
-            input=json.dumps(execution_input),
-        )
-        execution_arn = exec_resp["executionArn"]
-        print(f"  Execution ARN: {execution_arn}")
-        print(f"  Message: {args.message}\n")
-
-        result = poll_execution(sfn, execution_arn)
-
-        # ── Step 4: Show the agent's answer ───────────────────────────
-        print("\n" + "=" * 60)
-        print("Step 4: Result")
-        print("=" * 60)
-        status = result["status"]
-        print(f"  Execution status: {status}")
-        if status == "SUCCEEDED":
-            output = json.loads(result["output"])
-            answer = output.get("invokeResult", {}).get("text", "")
-            print(f"\n  Agent answer:\n  {answer}\n")
-        else:
-            print(f"  {result.get('error')}: {result.get('cause')}")
-
-        print("=" * 60)
-        print("Done!")
-        print("=" * 60)
-
-    finally:
-        if not args.skip_cleanup:
-            print("\nCleaning up...")
-            _cleanup(iam, lam, sfn, state_machine_arn, lambda_name, created_roles)
-        else:
-            print("\n--skip-cleanup set — leaving state machine, Lambda, and roles in place.")
-
-
-def _create_state_machine(sfn, name, definition, role_arn):
-    """Create the STANDARD state machine, retrying while the SFN role propagates."""
+def create_state_machine(sfn, name, definition, role_arn):
+    """Create the STANDARD state machine, retrying while the role propagates."""
     deadline = time.monotonic() + 60
     while True:
         try:
             return sfn.create_state_machine(
-                name=name,
-                definition=json.dumps(definition),
-                roleArn=role_arn,
-                type="STANDARD",
+                name=name, definition=json.dumps(definition), roleArn=role_arn, type="STANDARD"
             )
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "AccessDeniedException" and time.monotonic() < deadline:
@@ -471,8 +226,113 @@ def poll_execution(sfn, execution_arn, timeout=EXECUTION_POLL_TIMEOUT):
         time.sleep(EXECUTION_POLL_INTERVAL)
 
 
-def _cleanup(iam, lam, sfn, state_machine_arn, lambda_name, created_roles):
-    """Delete the state machine, Lambda, and IAM roles. Best-effort."""
+def extract_answer(output):
+    """Pull the assistant text out of the Converse-shaped native-integration output."""
+    msg = (output or {}).get("Output", {}).get("Message", {})
+    return "".join(block.get("Text", "") for block in msg.get("Content", []))
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def main(args=None):
+    if args is None:
+        args = parser.parse_args()
+
+    iam = boto3.client("iam")
+    sfn = boto3.client("stepfunctions", region_name=REGION)
+    control = get_agentcore_control_client()
+
+    suffix = uuid.uuid4().hex[:8]
+    sfn_role_name = f"HarnessSfnRole-{suffix}"
+    state_machine_name = f"HarnessInvoke-{suffix}"
+
+    created_harness_id = None
+    state_machine_arn = None
+    sfn_role_name_created = None
+
+    try:
+        # ── Step 1: Ensure a harness exists ───────────────────────────
+        print("=" * 60)
+        print("Step 1: Harness")
+        print("=" * 60)
+        if args.harness_arn:
+            harness_arn = args.harness_arn
+            print(f"  Using existing harness: {harness_arn}")
+        else:
+            role_arn = args.role_arn or create_harness_role()
+            if not args.role_arn:
+                print("  Waiting for IAM propagation...")
+                time.sleep(10)
+            resp = control.create_harness(
+                harnessName=f"SfnHarness_{suffix}",
+                executionRoleArn=role_arn,
+                systemPrompt=[{"text": "You are a concise, helpful assistant."}],
+            )
+            created_harness_id = resp["harness"]["harnessId"]
+            harness_arn = resp["harness"]["arn"]
+            print(f"  Created harness: {created_harness_id}")
+            poll_harness_status(control, created_harness_id)
+
+        # ── Step 2: Step Functions role (InvokeHarness) ───────────────
+        print("\n" + "=" * 60)
+        print("Step 2: Step Functions execution role")
+        print("=" * 60)
+        sfn_role_arn = create_sfn_role(iam, sfn_role_name, harness_arn)
+        sfn_role_name_created = sfn_role_name
+        print(f"  Role: {sfn_role_arn}")
+        time.sleep(10)
+
+        # ── Step 3: Create the state machine ──────────────────────────
+        print("\n" + "=" * 60)
+        print("Step 3: Create state machine (native InvokeHarness task)")
+        print("=" * 60)
+        definition = build_definition(harness_arn, args.model)
+        sm = create_state_machine(sfn, state_machine_name, definition, sfn_role_arn)
+        state_machine_arn = sm["stateMachineArn"]
+        print(f"  State machine ARN: {state_machine_arn}")
+
+        # ── Step 4: Start an execution ────────────────────────────────
+        print("\n" + "=" * 60)
+        print("Step 4: Start execution")
+        print("=" * 60)
+        print(f"  Message: {args.message}\n")
+        exec_resp = sfn.start_execution(
+            stateMachineArn=state_machine_arn,
+            name=f"run-{uuid.uuid4().hex[:8]}",
+            input=json.dumps({"message": args.message}),
+        )
+        result = poll_execution(sfn, exec_resp["executionArn"])
+
+        # ── Step 5: Show the agent's answer ───────────────────────────
+        print("\n" + "=" * 60)
+        print("Step 5: Result")
+        print("=" * 60)
+        status = result["status"]
+        print(f"  Execution status: {status}")
+        if status == "SUCCEEDED":
+            output = json.loads(result["output"])
+            print(f"\n  Agent answer:\n  {extract_answer(output)}\n")
+            usage = output.get("Usage", {})
+            if usage:
+                print(f"  Tokens: {usage}")
+        else:
+            print(f"  {result.get('error')}: {result.get('cause')}")
+
+        print("=" * 60)
+        print("Done!")
+        print("=" * 60)
+
+    finally:
+        if not args.skip_cleanup:
+            print("\nCleaning up...")
+            _cleanup(iam, sfn, control, state_machine_arn, sfn_role_name_created, created_harness_id)
+        else:
+            print("\n--skip-cleanup set — leaving resources in place.")
+
+
+def _cleanup(iam, sfn, control, state_machine_arn, sfn_role_name, harness_id):
+    """Delete the state machine, SFN role, and any harness this script created."""
     if state_machine_arn:
         try:
             sfn.delete_state_machine(stateMachineArn=state_machine_arn)
@@ -480,23 +340,23 @@ def _cleanup(iam, lam, sfn, state_machine_arn, lambda_name, created_roles):
         except Exception as e:
             print(f"  Warning: failed to delete state machine: {e}")
 
-    try:
-        lam.delete_function(FunctionName=lambda_name)
-        print(f"  Deleted Lambda: {lambda_name}")
-    except Exception as e:
-        print(f"  Warning: failed to delete Lambda: {e}")
-
-    for role_name, policies in created_roles:
-        for policy_name in policies:
-            try:
-                iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
-            except Exception:
-                pass
+    if sfn_role_name:
         try:
-            iam.delete_role(RoleName=role_name)
-            print(f"  Deleted role: {role_name}")
+            iam.delete_role_policy(RoleName=sfn_role_name, PolicyName="SfnInvokeHarnessPolicy")
+        except Exception:
+            pass
+        try:
+            iam.delete_role(RoleName=sfn_role_name)
+            print(f"  Deleted role: {sfn_role_name}")
         except Exception as e:
-            print(f"  Warning: failed to delete role {role_name}: {e}")
+            print(f"  Warning: failed to delete role {sfn_role_name}: {e}")
+
+    if harness_id:
+        try:
+            control.delete_harness(harnessId=harness_id)
+            print(f"  Deleted harness: {harness_id}")
+        except Exception as e:
+            print(f"  Warning: failed to delete harness: {e}")
 
 
 if __name__ == "__main__":

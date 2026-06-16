@@ -28,7 +28,7 @@ self-contained — copy any folder and it runs independently.
 - **By tool type** → MCP: `04-mcp-integration/`, Browser: `01-travel-agent/` (Part 5), Skills: `05-agent-skills/` (custom) and `08-aws-skills/` (native AWS Skills)
 - **Auth patterns** → `07-oauth/` (JWT inbound + OAuth outbound)
 - **Persistent storage** → `09-s3-filesystem/` (mount S3 as the agent filesystem; includes an LLM wiki)
-- **Orchestration** → `10-stepfunctions-orchestration/` (Step Functions drives the harness lifecycle)
+- **Orchestration** → `10-stepfunctions-orchestration/` (invoke a harness from Step Functions via the native integration)
 - **Build an agent with AWS Skills** → `02-use-cases/03-aws-builder-agent/` (harness + AWS Skills = an AWS engineering agent)
 
 ## AgentCore CLI
@@ -115,7 +115,7 @@ python 01-advanced-examples/09-s3-filesystem/s3_llm_wiki.py \
     --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx \
     --subnet-ids subnet-xxxx --security-group-ids sg-xxxx
 
-# Step Functions orchestration (create → invoke → delete lifecycle)
+# Step Functions native integration (invoke a harness from a state machine)
 python 01-advanced-examples/10-stepfunctions-orchestration/stepfunctions_orchestration.py
 
 # OAuth + JWT auth

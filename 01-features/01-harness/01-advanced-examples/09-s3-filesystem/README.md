@@ -57,18 +57,25 @@ environment={
 
 `mountPath` must look like `/mnt/<name>`. The execution role must be allowed to
 mount the access point — when this script creates the role, it attaches the
-required `s3files` permissions (`ClientMount`/`ClientWrite`/`ClientRootAccess`
-plus the `List*`/`Get*` discovery actions) for you.
+required `s3files` permissions for you: `s3files:GetAccessPoint` (the runtime
+validates this at create time, so it stays unscoped) plus `s3files:ClientMount`
+and `s3files:ClientWrite` (scoped to the file system with an `AccessPointArn`
+condition, used when the microVM mounts the access point).
 
 ## Prerequisites
 
 - An **S3 Files access point** backed by a bucket, with a **mount target** in the
   subnet you pass. Its ARN looks like:
   `arn:aws:s3files:<region>:<account>:file-system/fs-xxxx/access-point/fsap-xxxx`
-- The **subnet(s) and security group(s)** that can reach the mount target over
-  NFS (port 2049). The subnet needs a network path to the mount target — same
-  VPC, and for a public subnet ensure egress (or use a private subnet with a NAT
-  or S3 Files endpoint).
+- The **subnet(s) and security group(s)** that reach the mount target. The Harness
+  must be in the **same VPC** as the mount target, the subnet(s) you pass must be
+  in an **Availability Zone that has a mount target**, and the security group(s)
+  must allow **NFS (port 2049)** between the Harness and the mount target (a
+  self-referencing security group is the simplest setup).
+- **Use private subnets with egress** (a route to a NAT gateway). VPC-mode
+  Harnesses run in private networking; public subnets do not give the microVM the
+  connectivity it needs and the invoke will fail. See
+  [Configure AgentCore for VPC](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-vpc.html).
 - If you bring your own execution role (`--role-arn`), it must already have the
   `s3files` mount permissions above.
 
