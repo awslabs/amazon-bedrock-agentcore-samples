@@ -1,16 +1,6 @@
 version: 1
 applications:
   - appRoot: 02-use-cases/video-games-sales-assistant/amplify-video-games-sales-assistant-agentcore-strands
-    backend:
-      phases:
-        build:
-          commands:
-            - nvm install 22
-            - nvm use 22
-            - corepack enable
-            - corepack prepare pnpm@latest --activate
-            - pnpm install
-            - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
     frontend:
       phases:
         preBuild:

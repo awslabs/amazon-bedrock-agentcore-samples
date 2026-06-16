@@ -42,7 +42,8 @@ yarn-error.log*
 next-env.d.ts
 
 # Amplify Gen 2
-amplify_outputs.json
+# amplify_outputs.json is committed so Amplify Hosting can build without pipeline-deploy
+!amplify_outputs.json
 .amplify/
 amplify/.amplify/
 .amplifyrc
