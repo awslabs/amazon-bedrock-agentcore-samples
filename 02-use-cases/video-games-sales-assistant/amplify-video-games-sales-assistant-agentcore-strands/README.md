@@ -2,7 +2,7 @@
 
 This tutorial guides you through setting up a Next.js web application that integrates with your **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)** deployment, creating a Data Analyst Assistant for Video Game Sales.
 
-This is the Next.js + Amplify Gen 2 version of the original React application. It uses the same AgentCore backend but replaces the React + Amplify Gen 1 frontend with a modern Next.js App Router architecture, Tailwind CSS, and Amplify Gen 2 for authentication and IAM.
+The frontend is built with Next.js App Router, Tailwind CSS, and Amplify Gen 2 for authentication and IAM.
 
 > [!NOTE]
 > **Working Directory**: Make sure you are in the `amplify-video-games-sales-assistant-agentcore-strands/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
@@ -26,7 +26,7 @@ The application consists of two main components:
 
 Before you begin, ensure you have:
 
-- [Node.js version 18+](https://nodejs.org/en/download/package-manager)
+- [Node.js version 22+](https://nodejs.org/en/download/package-manager)
 - [pnpm](https://pnpm.io/installation)
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) configured with credentials
 - A deployed Amazon Bedrock AgentCore runtime (from the CDK stack in this repository)
@@ -304,8 +304,6 @@ The following images showcase a conversational experience analysis that includes
 - **Conversation summary and data analysis conclusion**
 
 ![Summary and conclusion of analysis conversation](../images/preview5.png)
-
-## Thank You
 
 ## License
 

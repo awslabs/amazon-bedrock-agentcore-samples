@@ -473,7 +473,7 @@ Once deployed and data is loaded, you can invoke the agent using the AgentCore R
 
 ## Next Step
 
-You can now proceed to the **[Front-End Implementation - Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application](../amplify-video-games-sales-assistant-agentcore-strands/))**.
+You can now proceed to the **[Front-End Implementation](../amplify-video-games-sales-assistant-agentcore-strands/)**.
 
 ## Cleaning-up Resources (Optional)
 

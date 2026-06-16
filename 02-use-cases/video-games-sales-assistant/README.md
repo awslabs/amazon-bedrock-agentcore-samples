@@ -1,6 +1,6 @@
 # Video Games Sales Data Analyst Assistant
 
-> **Full-stack AI agent** powered by Amazon Bedrock AgentCore, Strands Agents SDK, and AWS Amplify Gen 2 — demonstrating Runtime, Memory, Gateway, Observability, Policy, Evaluations, and Identity in a single sample.
+> **Full-stack AI agent** powered by Amazon Bedrock AgentCore, Strands Agents SDK, and AWS Amplify Gen 2 — demonstrating **all** AgentCore features (Runtime, Memory, Gateway, Policy Engine, Guardrails, Evaluators, Observability, and Identity) in a single deployable sample.
 
 A production-grade reference solution that lets users interact with a PostgreSQL database of 64,000+ video game titles through natural language conversations, receive AI-generated SQL analysis, view results in tabular and chart formats, and retain cross-session memory of insights.
 
@@ -8,19 +8,170 @@ A production-grade reference solution that lets users interact with a PostgreSQL
 
 ## Architecture
 
-![Architecture Diagram](./images/gen-ai-assistant-diagram.png)
+![Architecture Diagram](./images/architecture.png)
+
+### How It Works
+
+1. **User** opens the Next.js frontend (hosted on Amplify Hosting or locally) and signs in via Amazon Cognito
+2. **Cognito Identity Pool** issues temporary IAM credentials scoped to the authenticated role
+3. **Frontend** invokes the AgentCore Runtime via `InvokeAgentRuntime` (SSE streaming)
+4. **AgentCore Runtime** hosts the Strands Agent, which processes the user's question using Claude Haiku 4.5
+5. **Bedrock Guardrails** filter input/output — blocking PII exposure and off-limits topics (internal cost data)
+6. **Agent** makes tool calls to the **AgentCore Gateway** (MCP Protocol) to query the database
+7. **Policy Engine** evaluates Cedar authorization policies before each tool call (blocks PII fields, cost columns)
+8. **Gateway** invokes the **DB Tools Lambda** (MCP Target) which executes read-only SQL via RDS Data API against **Aurora PostgreSQL**
+9. **AgentCore Memory** saves conversation events (STM) and asynchronously extracts semantic facts (LTM) for cross-session knowledge
+10. **AgentCore Observability** captures runtime logs, gateway invocation logs, memory extraction logs, and X-Ray traces → delivers to CloudWatch
+11. **AgentCore Evaluators** run offline to measure SQL accuracy and response quality using LLM-as-Judge scoring
 
 ### AgentCore Features Used
 
 | Feature | What It Does in This Sample |
 |---------|----------------------------|
-| **Runtime** | Hosts the Strands Agent in a container (ARM64). Provides `/invocations` streaming endpoint and `/ping` health check. |
-| **Memory** | **STM**: conversation history scoped by `sessionId` + `actorId`. **LTM**: semantic "Facts" strategy extracting knowledge into `/facts/{actorId}` namespace. 90-day event retention. |
-| **Gateway** | Exposes PostgreSQL query tools (`get_tables_information`, `execute_sql_query`) as a Lambda target behind an MCP Gateway — decoupling the agent from direct tool implementations. |
-| **Observability** | OpenTelemetry tracing via ADOT auto-instrumentation. Custom spans for agent invocations, SQL execution, memory operations. Traces flow to CloudWatch Transaction Search + X-Ray. |
-| **Policy (Guardrails)** | Bedrock Guardrail blocks queries for internal cost data and raw PII. Topic + sensitive information policies enforce content filtering at the model layer. |
-| **Evaluations** | Evaluation harness measuring SQL generation accuracy and response quality across 8 test scenarios, with support for AgentCore built-in evaluators. |
-| **Identity** | Cognito User Pool (via Amplify Gen 2) authenticates frontend users. Each user's `sub` maps to the `actorId` for memory isolation. |
+| **Runtime** | Hosts the Strands Agent in a managed container (ARM64, DEFAULT endpoint) |
+| **Memory** | **STM**: conversation history per session. **LTM**: semantic "Facts" strategy extracting knowledge into `/facts/{actorId}` namespace. 90-day retention. |
+| **Gateway (MCP)** | Exposes `get_tables_information()` and `execute_sql_query()` as Lambda targets behind an MCP Gateway |
+| **Policy Engine (Cedar)** | Cedar policies block SQL queries referencing PII columns or internal cost fields |
+| **Guardrails** | Topic-based deny (cost data, raw PII) + sensitive info handling (anonymize email/phone, block SSN/credit cards) |
+| **Evaluators** | Custom LLM-as-Judge evaluators: SqlAccuracy (TRACE level) and ResponseQuality (SESSION level) |
+| **Observability** | CloudWatch Logs delivery for runtime, gateway, and memory. X-Ray traces for end-to-end request tracing. |
+| **Identity** | Cognito User Pool authenticates users. Each user's `sub` maps to `actorId` for memory isolation. |
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **AWS Account** with [Bedrock model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) enabled for Claude Haiku 4.5
+- **AWS CLI** v2 configured (`aws sts get-caller-identity` should return your account)
+- **Node.js** 22+ and **[pnpm](https://pnpm.io/installation)** 9+
+- **Python** 3.10+
+- **Docker** running (for building the agent container image)
+- **AWS CDK** installed (`npm install -g aws-cdk`)
+
+> [!NOTE]
+> If you are using [Finch](https://runfinch.com/) instead of Docker Desktop, prefix CDK commands with `CDK_DOCKER=finch`.
+
+## Deploy End-to-End
+
+The entire solution deploys in 4 steps. Total time: ~15 minutes.
+
+### Step 1: Deploy Backend Infrastructure (CDK)
+
+This deploys: VPC, Aurora PostgreSQL, DynamoDB, S3, Lambda, and all AgentCore resources (Runtime, Memory, Gateway, Policy Engine, Guardrails, Evaluators, Observability).
+
+```bash
+cd cdk-data-analyst-assistant-agentcore-strands
+pnpm install
+cdk bootstrap    # First time only
+cdk deploy
+```
+
+> [!NOTE]
+> If you are using Finch: `CDK_DOCKER=finch cdk deploy`
+
+Create the RDS service-linked role if this is a new account:
+```bash
+aws iam create-service-linked-role --aws-service-name rds.amazonaws.com
+```
+
+### Step 2: Load Sample Data
+
+Still in the `cdk-data-analyst-assistant-agentcore-strands/` directory:
+
+```bash
+# Set environment variables from CDK outputs
+export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
+export SECRET_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='SecretARN'].OutputValue" --output text)
+export READONLY_SECRET_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='ReadOnlySecretARN'].OutputValue" --output text)
+export AURORA_SERVERLESS_DB_CLUSTER_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AuroraServerlessDBClusterARN'].OutputValue" --output text)
+export DATABASE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Parameters[?ParameterKey=='DatabaseName'].ParameterValue" --output text)
+export DATA_SOURCE_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='DataSourceBucketName'].OutputValue" --output text)
+export TABLE_NAME="video_games_sales_units"
+
+# Create tables and load 64,000+ records
+python3 resources/create-sales-database.py
+
+# Create read-only database user (least privilege)
+python3 resources/create-readonly-user.py
+```
+
+### Step 3: Configure and Start the Frontend
+
+```bash
+cd ../amplify-video-games-sales-assistant-agentcore-strands
+pnpm install
+```
+
+Generate the `.env.local` from CDK outputs (or run `../setup-frontend.sh`):
+
+```bash
+export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
+export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
+export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
+export MEMORY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='MemoryId'].OutputValue" --output text)
+
+cat > .env.local << EOF
+AGENT_RUNTIME_ARN=$AGENT_RUNTIME_ARN
+QUESTION_ANSWERS_TABLE_NAME=$QUESTION_ANSWERS_TABLE_NAME
+MEMORY_ID=$MEMORY_ID
+AGENT_ENDPOINT_NAME=DEFAULT
+MODEL_ID_FOR_CHART=us.anthropic.claude-haiku-4-5-20251001-v1:0
+APP_NAME=Data Analyst Assistant
+WELCOME_MESSAGE=I'm your AI Data Analyst Assistant for video game sales. Ask me anything about sales trends, top games, publisher performance, and more!
+EOF
+```
+
+### Step 4: Deploy Authentication and Start
+
+Deploy Cognito User Pool + Identity Pool + IAM policies:
+
+```bash
+QUESTION_ANSWERS_TABLE_NAME="$QUESTION_ANSWERS_TABLE_NAME" \
+AGENT_RUNTIME_ARN="$AGENT_RUNTIME_ARN" \
+MEMORY_ID="$MEMORY_ID" \
+pnpm ampx sandbox
+```
+
+Wait for `✔ Deployment completed. File written: amplify_outputs.json`, then in another terminal:
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), create an account, and start chatting!
+
+## Test the Agent
+
+Try these queries to exercise different features:
+
+| Query | Tests |
+|-------|-------|
+| "What is the structure of your data?" | Tool call → `get_tables_information()` |
+| "What are the top 5 best-selling games?" | SQL generation → `execute_sql_query()` |
+| "What were total sales by region 2000-2010?" | Complex aggregation + chart generation |
+| "Which developers get the best reviews?" | Multi-column analysis |
+| "What is our cost per unit?" | **Guardrail blocks** (internal cost data topic) |
+| "Show me customer email addresses" | **Guardrail blocks** (raw PII topic) |
+| "Show profit margins by publisher" | **Policy Engine blocks** (Cedar denies cost columns) |
+| "Give me a summary of our conversation" | Memory recall (STM within session) |
+
+## Run Evaluations
+
+Measure agent quality with the evaluation harness:
+
+```bash
+# Run custom evaluators (SqlAccuracy + ResponseQuality)
+python3 evaluations/evaluate.py --agent-runtime-arn $AGENT_RUNTIME_ARN
+
+# Also include AgentCore built-in evaluators (Correctness, GoalSuccessRate)
+python3 evaluations/evaluate.py --agent-runtime-arn $AGENT_RUNTIME_ARN --use-agentcore-evals
+```
+
+Results are saved to `evaluations/eval_results.json`.
+
+## Deploy Frontend to AWS Amplify Hosting (Optional)
+
+For a production URL instead of `localhost:3000`, deploy to Amplify Hosting. See the [Frontend README](./amplify-video-games-sales-assistant-agentcore-strands/README.md#deploy-your-application-with-amplify-hosting-optional) for detailed instructions.
 
 ## Data Model
 
@@ -28,418 +179,90 @@ A production-grade reference solution that lets users interact with a PostgreSQL
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `title` | TEXT | Game title (unique per record) |
+| `title` | TEXT | Game title |
 | `console` | TEXT | Platform (PS4, Xbox One, Switch, etc.) |
-| `genre` | TEXT | Game genre (Action, Sports, RPG, etc.) |
+| `genre` | TEXT | Genre (Action, Sports, RPG, etc.) |
 | `publisher` | TEXT | Publisher name |
 | `developer` | TEXT | Developer studio |
 | `critic_score` | NUMERIC(3,1) | Metacritic score (0–10) |
-| `na_sales` | NUMERIC(4,2) | North America sales (millions of units) |
-| `jp_sales` | NUMERIC(4,2) | Japan sales (millions of units) |
-| `pal_sales` | NUMERIC(4,2) | Europe & Africa sales (millions of units) |
-| `other_sales` | NUMERIC(4,2) | Rest of world sales (millions of units) |
+| `na_sales` | NUMERIC(4,2) | North America sales (millions) |
+| `jp_sales` | NUMERIC(4,2) | Japan sales (millions) |
+| `pal_sales` | NUMERIC(4,2) | Europe & Africa sales (millions) |
+| `other_sales` | NUMERIC(4,2) | Rest of world sales (millions) |
 | `release_date` | DATE | Release date |
 
-**64,016 titles** from 1971 to 2024.
-
-### DynamoDB — `RawQueryResults`
-
-Stores SQL query results for the frontend audit trail:
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `id` (PK) | String | Query UUID |
-| `my_timestamp` (SK) | Number | Epoch milliseconds |
-| `sql_query` | String | Executed SQL statement |
-| `sql_query_description` | String | What the query retrieves |
-| `user_prompt` | String | Original user question |
-| `data` | String | JSON-serialized query results |
-
-## Prerequisites
-
-- **AWS Account** with Bedrock model access enabled (Claude Haiku 4.5)
-- **AWS CLI** v2 configured (`aws configure`)
-- **Node.js** 20+ and **pnpm** 9+
-- **Python** 3.12+
-- **Docker** running (for container builds)
-- **AgentCore CLI**: `npm install -g @aws/agentcore`
-
-## Quickstart (5 commands)
-
-```bash
-# 1. Deploy backend infrastructure (Aurora, DynamoDB, VPC, AgentCore resources)
-cd cdk-data-analyst-assistant-agentcore-strands
-npm install && npx cdk deploy --all
-
-# 2. Load video game sales data into Aurora
-python3 resources/create-sales-database.py
-python3 resources/create-readonly-user.py
-
-# 3. Deploy agent to AgentCore (alternative to CDK-managed runtime)
-cd ..
-agentcore deploy
-
-# 4. Start the Amplify frontend (local dev)
-cd amplify-video-games-sales-assistant-agentcore-strands
-pnpm install && pnpm ampx sandbox
-
-# 5. Open browser
-open http://localhost:3000
-```
-
-## Detailed Setup
-
-### Option A: AgentCore CLI Deploy (Recommended for Development)
-
-The `agentcore/agentcore.json` config defines all AgentCore resources. The CLI handles packaging, CDK synthesis, and deployment:
-
-```bash
-# Install the AgentCore CLI
-npm install -g @aws/agentcore
-
-# From the project root
-agentcore deploy
-```
-
-After deployment:
-```bash
-# Check resource status
-agentcore status
-
-# Invoke the agent directly
-agentcore invoke "What are the top 5 selling games?"
-
-# Stream logs
-agentcore logs
-
-# View traces
-agentcore traces list
-```
-
-### Option B: Script-based Deploy (Recommended for CI/CD)
-
-The `deploy.py` script uses boto3 directly for teams that need programmatic/scripted deployments:
-
-```bash
-# Deploy with CDK outputs
-python deploy.py \
-  --region us-east-1 \
-  --aurora-arn arn:aws:rds:us-east-1:123456789012:cluster:assistant-cluster \
-  --secret-arn arn:aws:secretsmanager:us-east-1:123456789012:secret:ReadOnlySecret-xxx \
-  --dynamodb-table RawQueryResults-xxx \
-  --db-tools-lambda-arn arn:aws:lambda:us-east-1:123456789012:function:DatabaseTools
-
-# Or with a pre-built container
-python deploy.py \
-  --region us-east-1 \
-  --container-uri 123456789012.dkr.ecr.us-east-1.amazonaws.com/video-games-agent:latest \
-  --aurora-arn ... \
-  --secret-arn ...
-```
-
-The script creates: IAM role, Memory, Runtime, Gateway + Lambda target, and Guardrail. Outputs are saved to `deploy_outputs.json`.
-
-### Option C: Full CDK Deploy (Production Infrastructure)
-
-The CDK stack deploys the complete infrastructure including VPC, Aurora, DynamoDB, and all AgentCore resources:
-
-```bash
-cd cdk-data-analyst-assistant-agentcore-strands
-npm install
-npx cdk bootstrap   # First time only
-npx cdk deploy --all
-```
-
-CDK outputs provide the ARNs needed for the frontend `.env.local`:
-- `AgentRuntimeArn`
-- `MemoryId`
-- `QuestionAnswersTableName`
-- `AuroraServerlessDBClusterARN`
-- `ReadOnlySecretARN`
-
-### Data Loading
-
-After the CDK stack deploys Aurora:
-
-```bash
-cd cdk-data-analyst-assistant-agentcore-strands/resources
-
-# Create tables and import CSV data (uses RDS Data API)
-python3 create-sales-database.py
-
-# Create read-only user for the agent (least-privilege)
-python3 create-readonly-user.py
-```
-
-### Frontend Setup (Amplify Gen 2)
-
-```bash
-cd amplify-video-games-sales-assistant-agentcore-strands
-pnpm install
-```
-
-Create `.env.local` from the CDK outputs:
-```env
-AGENT_RUNTIME_ARN=arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/xxx
-QUESTION_ANSWERS_TABLE_NAME=RawQueryResults-xxx
-MEMORY_ID=xxx-xxx-xxx
-AGENT_ENDPOINT_NAME=DEFAULT
-MODEL_ID_FOR_CHART=us.anthropic.claude-haiku-4-5-20251001-v1:0
-APP_NAME=Data Analyst Assistant
-WELCOME_MESSAGE=I'm your AI Data Analyst Assistant for video game sales. Ask me anything about sales trends, top games, publisher performance, and more!
-```
-
-Deploy Cognito + IAM (local sandbox):
-```bash
-pnpm ampx sandbox
-```
-
-Start the dev server:
-```bash
-pnpm dev
-# Open http://localhost:3000
-```
-
-For production hosting, connect the repository to AWS Amplify Hosting and configure environment variables in the Amplify Console.
-
-## AgentCore Gateway
-
-The Gateway exposes the database tools as an MCP endpoint. No standalone MCP server is needed — tools are registered as **Lambda targets** with inline schemas.
-
-### How It Works
-
-1. **At deploy time**: `deploy.py` registers the Lambda as a Gateway target with the tool schema (`lambdas/db_tools/tool_schema.json`)
-2. **At runtime**: The agent connects to the Gateway as an MCP client, discovers available tools via `tools/list`, and calls them via `tools/call`
-3. **Gateway handles**: Authentication, tool routing, Lambda invocation, MCP protocol conversion
-
-### Lambda Handler
-
-The Lambda at `lambdas/db_tools/lambda_function.py` extracts the tool name from context:
-```python
-tool_name = context.client_context.custom['bedrockAgentCoreToolName']
-# Format: {targetId}___get_tables_information
-tool_name = tool_name[tool_name.index("___") + 3:]
-```
-
-### Tool Schema
-
-Registered inline during gateway target creation:
-```json
-[
-  {
-    "name": "get_tables_information",
-    "description": "Get database schema metadata...",
-    "inputSchema": { "type": "object", "properties": {} }
-  },
-  {
-    "name": "execute_sql_query",
-    "description": "Execute a read-only SQL query...",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "sql_query": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["sql_query", "description"]
-    }
-  }
-]
-```
-
-## Observability
-
-The agent uses OpenTelemetry via AWS Distro for OpenTelemetry (ADOT):
-
-### Setup
-
-1. `aws-opentelemetry-distro>=0.10.0` in `requirements.txt`
-2. Dockerfile CMD: `opentelemetry-instrument python -m app`
-3. Custom spans in `app.py` for agent invocations, SQL execution, and memory operations
-
-### What Gets Traced
-
-| Span | Attributes |
-|------|-----------|
-| `agent_invocation` | `gen_ai.system`, `gen_ai.request.model`, `session.id`, `user.id`, `prompt.uuid` |
-| `execute_sql_query` | `db.system`, `db.statement`, `db.result.row_count`, `db.result.saved` |
-| `memory_configure` | `memory.id`, `memory.session_id`, `memory.actor_id` |
-| `memory_flush` | (timing of session close) |
-
-ADOT auto-instruments Bedrock model invocations and HTTP calls. Combined with AgentCore service-generated metrics, you get full end-to-end visibility in CloudWatch GenAI Observability.
-
-### Viewing Traces
-
-```bash
-# Via AgentCore CLI
-agentcore traces list
-agentcore logs
-
-# Via CloudWatch Console
-# Navigate to Application Signals > Transaction Search
-```
-
-## Policy (Guardrails)
-
-The Bedrock Guardrail blocks:
-
-| Policy | Type | What It Blocks |
-|--------|------|----------------|
-| InternalCostData | Topic DENY | Queries about margins, wholesale costs, procurement pricing |
-| RawCustomerPII | Topic DENY | Requests to expose customer emails, phones, addresses |
-| EMAIL, PHONE | PII ANONYMIZE | Redacts emails/phones if they appear in responses |
-| SSN, Credit Card | PII BLOCK | Hard-blocks SSN and credit card numbers |
-
-The guardrail is created by `deploy.py` and can be attached to the Strands agent via `guardrail_config`.
-
-## Evaluations
-
-Run the evaluation harness to measure agent quality:
-
-```bash
-python evaluations/evaluate.py \
-  --region us-east-1 \
-  --agent-runtime-arn arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/xxx
-
-# Also run AgentCore built-in evaluators (requires traces in CloudWatch)
-python evaluations/evaluate.py \
-  --region us-east-1 \
-  --agent-runtime-arn <ARN> \
-  --use-agentcore-evals
-```
-
-### Test Scenarios
-
-The harness includes 8 scenarios covering:
-- **SQL aggregation**: Top sellers, averages by genre
-- **Filtering**: Year/console/publisher-specific queries
-- **Comparison**: Regional sales comparison
-- **Trend analysis**: Releases over time
-- **Out-of-scope**: Non-video-game questions (should decline gracefully)
-
-Results are saved to `evaluations/eval_results.json`.
+**64,016 titles** from 1971 to 2024. Source: [Video Game Sales (Kaggle)](https://www.kaggle.com/datasets/asaniczka/video-game-sales-2024) — [ODC Attribution License](https://opendatacommons.org/licenses/odbl/1-0/).
 
 ## Project Structure
 
 ```
 video-games-sales-assistant/
-├── README.md                          # This file
-├── deploy.py                          # Script-based deployment (boto3)
-├── agentcore/                         # AgentCore CLI project config
-│   ├── agentcore.json                 # Resource declarations
-│   └── aws-targets.json               # Account/region targets
-├── lambdas/                           # Gateway Lambda targets
-│   └── db_tools/
-│       ├── lambda_function.py         # Tool routing handler
-│       └── tool_schema.json           # MCP tool definitions
-├── evaluations/                       # Evaluation harness
-│   └── evaluate.py                    # SQL accuracy + response quality tests
-├── cdk-data-analyst-assistant-agentcore-strands/  # CDK backend
-│   ├── cdklib/                        # CDK stack (Aurora, VPC, DynamoDB, AgentCore)
-│   ├── resources/                     # Data loading scripts + CSV
-│   └── data-analyst-assistant-agentcore-strands/  # Agent code
-│       ├── app.py                     # Agent entrypoint (Strands + OTEL)
-│       ├── Dockerfile                 # Container with ADOT
-│       ├── requirements.txt           # Python dependencies
-│       ├── instructions.txt           # System prompt
-│       └── src/                       # Tools and utilities
-└── amplify-video-games-sales-assistant-agentcore-strands/  # Frontend
-    ├── amplify/                       # Amplify Gen 2 (Cognito + IAM)
-    ├── src/                           # Next.js App Router
-    └── .env.local.example             # Environment variables template
+├── README.md                              ← You are here (overview + deploy guide)
+├── setup-frontend.sh                      ← Auto-generates .env.local from CDK outputs
+├── evaluations/                           ← Evaluation harness
+│   └── evaluate.py                        ← SQL accuracy + response quality tests
+│
+├── cdk-data-analyst-assistant-agentcore-strands/    ← Backend (CDK)
+│   ├── README.md                          ← Deep dive: CDK stack, Gateway, Policy, Guardrails, Evals
+│   ├── cdklib/                            ← CDK stack definition
+│   ├── resources/                         ← Data loading scripts + CSV
+│   └── data-analyst-assistant-agentcore-strands/    ← Agent code
+│       ├── app.py                         ← Strands Agent entrypoint
+│       ├── Dockerfile                     ← Container with ADOT instrumentation
+│       └── instructions.txt               ← System prompt
+│
+└── amplify-video-games-sales-assistant-agentcore-strands/  ← Frontend (Next.js)
+    ├── README.md                          ← Deep dive: Auth, routes, AWS calls, Amplify Hosting
+    ├── amplify/                           ← Amplify Gen 2 (Cognito + IAM policies)
+    ├── src/                               ← Next.js App Router + Tailwind CSS
+    └── .env.local.example                 ← Environment variables template
 ```
 
-## Customization
+## Deep Dive
 
-### Use a Different Database
+| Topic | Where to Look |
+|-------|---------------|
+| CDK stack details, Cedar policies, Guardrail config, Evaluators | [Backend README](./cdk-data-analyst-assistant-agentcore-strands/README.md) |
+| Frontend routes, AWS SDK calls, Amplify Hosting deployment | [Frontend README](./amplify-video-games-sales-assistant-agentcore-strands/README.md) |
+| Agent code, system prompt, tools | [`data-analyst-assistant-agentcore-strands/`](./cdk-data-analyst-assistant-agentcore-strands/data-analyst-assistant-agentcore-strands/) |
+| Gateway Lambda handler | [`lambdas/db_tools/`](./lambdas/db_tools/) |
 
-1. Replace `lambdas/db_tools/lambda_function.py` with your database connection logic
-2. Update `tool_schema.json` to describe your tables
-3. Update `instructions.txt` system prompt with your domain context
-4. Modify `resources/` data loading scripts for your schema
+## Application Screenshots
 
-### Change the Model
+![Welcome screen with AgentCore branding](./images/preview.png)
+![Agent conversation with SQL query execution](./images/preview2.png)
+![Chart visualization from query results](./images/preview4.png)
 
-Set `BEDROCK_MODEL_ID` environment variable. The agent works with any Bedrock-supported model:
-```bash
-# Claude Sonnet 4.6
-BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-6-20250514-v1:0
-
-# Claude Haiku 4.5 (default, fastest)
-BEDROCK_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
-```
-
-### Add More Tools
-
-1. Define the tool in `lambdas/db_tools/tool_schema.json`
-2. Add the handler logic in `lambda_function.py`
-3. The Gateway automatically discovers and exposes new tools to the agent
-
-## Cleanup
+## Clean Up
 
 ```bash
-# 1. Delete CDK stack (Aurora, DynamoDB, VPC, AgentCore resources)
+# 1. Delete CDK stack (all backend resources)
 cd cdk-data-analyst-assistant-agentcore-strands
-npx cdk destroy --all
+cdk destroy
 
-# 2. Delete Amplify sandbox
+# 2. Delete Amplify sandbox (Cognito + IAM)
 cd ../amplify-video-games-sales-assistant-agentcore-strands
 pnpm ampx sandbox delete
 
-# 3. (If using deploy.py) Delete resources manually or via AWS Console:
-#    - AgentCore Runtime, Memory, Gateway
-#    - IAM role: VideoGamesSalesAgentRole
-#    - Bedrock Guardrail: VideoGamesSalesGuardrail
-#    - Lambda: DatabaseTools
+# 3. If using Amplify Hosting: delete the app from Amplify Console
 ```
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| `agentcore deploy` fails | Ensure Docker is running and you have `bedrock-agentcore:*` permissions |
-| Agent returns empty responses | Check CloudWatch logs: `agentcore logs` or `/aws/bedrock-agentcore/runtimes/{id}` |
-| Memory facts not appearing | LTM extraction is async (20-40s). Wait, then check `/facts/{actorId}` namespace |
-| SQL queries fail | Verify `READONLY_SECRET_ARN` and `AURORA_RESOURCE_ARN` env vars. Run `create-readonly-user.py` |
-| Frontend can't invoke agent | Check `.env.local` has correct `AGENT_RUNTIME_ARN`. Verify Cognito Identity Pool IAM policy includes `bedrock-agentcore:InvokeAgentRuntime` |
-| Gateway tools not discovered | Ensure Lambda has resource policy allowing `bedrock-agentcore.amazonaws.com` to invoke it |
-| Traces not appearing | Enable CloudWatch Transaction Search. Verify Dockerfile uses `opentelemetry-instrument` in CMD |
-| Guardrail not blocking | Verify guardrail is attached to the agent. Check `deploy_outputs.json` for guardrail ID |
-
-## Deployment Options Comparison
-
-| Method | Best For | What It Deploys |
-|--------|----------|-----------------|
-| `agentcore deploy` | Local dev, quick iteration | Runtime + Memory (reads `agentcore.json`) |
-| `python deploy.py` | CI/CD pipelines, full control | IAM + Memory + Runtime + Gateway + Guardrail |
-| `npx cdk deploy` | Production, full infrastructure | VPC + Aurora + DynamoDB + S3 + all AgentCore resources |
-
-> **Recommended flow**: Use CDK for infrastructure (Aurora, VPC, DynamoDB), then `agentcore deploy` or `deploy.py` for the agent layer.
-
-## Application Features
-
-| Feature | Screenshot |
-|---------|-----------|
-| Welcome screen with Memory Facts | ![Welcome](./images/preview.png) |
-| Long-term Memory Facts panel | ![Memory](./images/preview1.png) |
-| Agent conversation with tool use | ![Conversation](./images/preview2.png) |
-| Query results in tabular format | ![Results](./images/preview3.png) |
-| Auto-generated chart visualization | ![Chart](./images/preview4.png) |
-| Conversation summary | ![Summary](./images/preview5.png) |
-
-## References
-
-- [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/)
-- [AgentCore CLI Getting Started](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-cli.html)
-- [Strands Agents SDK](https://strandsagents.com/)
-- [AWS Amplify Gen 2](https://docs.amplify.aws/)
-- [AgentCore Gateway — Lambda Targets](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-add-target-lambda.html)
-- [AgentCore Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html)
+| CDK deploy fails on container build | Ensure Docker/Finch is running. Use `CDK_DOCKER=finch` for Finch. |
+| Agent returns empty responses | Check CloudWatch logs at `/aws/vendedlogs/bedrock-agentcore/<runtimeId>` |
+| Memory facts not appearing | LTM extraction is async (20-40s). Wait and query again in a new session. |
+| SQL queries fail | Verify `create-readonly-user.py` ran successfully. Check Lambda logs. |
+| Frontend can't invoke agent | Ensure `.env.local` has correct `AGENT_RUNTIME_ARN`. Run `ampx sandbox` to deploy IAM policies. |
+| Guardrail not blocking | Check CDK deployed the guardrail. Verify `GUARDRAIL_ID` env var in runtime. |
+| Gateway tools not discovered | Ensure Lambda resource policy allows `bedrock-agentcore.amazonaws.com`. |
 
 ## Important
 
-> This sample application is for demonstration purposes and is not production-ready. Validate the code with your organization's security best practices before deploying to production.
-
-Enhance AI safety by implementing [Amazon Bedrock Guardrails](https://aws.amazon.com/bedrock/guardrails/) via the [Strands Agents SDK guardrails integration](https://strandsagents.com/latest/user-guide/safety-security/guardrails/).
+> [!IMPORTANT]
+> This sample application is for demonstration purposes. Validate the code with your organization's security best practices before deploying to production.
 
 ## License
 
