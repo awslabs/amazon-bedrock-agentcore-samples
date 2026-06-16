@@ -132,6 +132,7 @@ async def generate_report(req: ReportRequest):
     result = await asyncio.to_thread(
         generate_weather_report,
         _state["harness_arn"],
+        _state["harness_id"],
         req.session_id,
         req.city or "the cities discussed",
     )

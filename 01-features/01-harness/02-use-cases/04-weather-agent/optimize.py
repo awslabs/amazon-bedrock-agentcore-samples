@@ -105,7 +105,7 @@ def cleanup_recommendations():
     """Delete all weather_rec_* recommendations."""
     try:
         resp = dp_client.list_recommendations()
-        recs = resp.get("recommendations", resp.get("items", []))
+        recs = resp.get("recommendationSummaries", resp.get("recommendations", resp.get("items", [])))
         count = 0
         for rec in recs:
             name = rec.get("name", "")

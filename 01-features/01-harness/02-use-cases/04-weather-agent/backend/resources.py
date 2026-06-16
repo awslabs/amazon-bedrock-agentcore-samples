@@ -17,7 +17,7 @@ STATE_FILE = Path(__file__).parent.parent / "resource_info.json"
 REGION = os.environ.get("AWS_DEFAULT_REGION") or boto3.session.Session().region_name or "us-east-1"
 
 
-def _poll(get_fn, extract_fn, target="READY", timeout=120, interval=5):
+def _poll(get_fn, extract_fn, target="READY", timeout=300, interval=5):
     deadline = time.monotonic() + timeout
     while True:
         resp = get_fn()
@@ -230,7 +230,7 @@ def destroy_resources():
     # Delete recommendations created by this app
     try:
         recs = dp_client.list_recommendations()
-        for rec in recs.get("recommendations", recs.get("items", [])):
+        for rec in recs.get("recommendationSummaries", recs.get("recommendations", recs.get("items", []))):
             rec_name = rec.get("name", "")
             rec_id = rec.get("recommendationId", "")
             if rec_name.startswith("weather_rec_"):

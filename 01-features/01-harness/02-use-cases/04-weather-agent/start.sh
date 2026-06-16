@@ -85,8 +85,9 @@ fi
 
 source venv/bin/activate
 pip install --upgrade pip -q 2>&1 | grep -i error || true
-pip install -r backend/requirements.txt -q 2>&1 | grep -i error || true
-echo -e "  ${GREEN}Python dependencies ready${NC}"
+pip install --upgrade -r backend/requirements.txt -q 2>&1 | grep -i error || true
+BOTO_VERSION=$(python3 -c "import boto3; print(boto3.__version__)" 2>/dev/null)
+echo -e "  ${GREEN}Python dependencies ready${NC} (boto3: $BOTO_VERSION)"
 echo ""
 
 # ── Step 3: Frontend dependencies ────────────────────────────────────────────
@@ -116,8 +117,8 @@ sleep 1
 )
 
 # Wait for backend to be ready
-echo "  Waiting for backend (this includes AWS resource provisioning)..."
-MAX_WAIT=180
+echo "  Waiting for backend (this includes AWS resource provisioning, may take 3-5 minutes)..."
+MAX_WAIT=360
 ELAPSED=0
 while [ $ELAPSED -lt $MAX_WAIT ]; do
     if curl -s http://localhost:8000/health > /dev/null 2>&1; then

@@ -414,7 +414,7 @@ function App() {
               <div>
                 <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Batch Evaluation</span>
-                  <button className="btn-secondary" onClick={handleEval} disabled={!sessionId || evalLoading}>
+                  <button className="btn-secondary" onClick={handleEval} disabled={!sessionId || evalLoading || optimizeLoading}>
                     {evalLoading ? 'Running...' : 'Run Eval'}
                   </button>
                 </div>
@@ -422,7 +422,7 @@ function App() {
                   <div className="empty-state">
                     <div className="spinner" style={{ width: 24, height: 24 }} />
                     <p style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: '1.6' }}>Running batch evaluation... This typically takes 2-5 minutes.</p>
-                    <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>You can track progress in Bedrock AgentCore &gt; Evaluations &gt; Batch evaluation</p>
+                    <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>Optimization is disabled while evaluation is running. You can track progress in Bedrock AgentCore &gt; Evaluations &gt; Batch evaluation.</p>
                   </div>
                 )}
                 {!evalLoading && evalResults.length > 0 && (
@@ -448,6 +448,11 @@ function App() {
                         );
                       })}
                     </div>
+                    {evalResults.some(r => r.evaluator === 'Error') && (
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12, textAlign: 'center' }}>
+                        This may happen if Transaction Search was recently enabled and traces haven't fully indexed yet. Try again in a few minutes.
+                      </p>
+                    )}
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12, textAlign: 'center' }}>
                       View full details in Bedrock AgentCore &gt; Evaluations &gt; Batch evaluation{evalBatchId && <> — <strong>{evalBatchId}</strong></>}
                     </p>
@@ -471,7 +476,7 @@ function App() {
               <div>
                 <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>System Prompt Recommendation</span>
-                  <button className="btn-secondary" onClick={handleOptimize} disabled={optimizeLoading}>
+                  <button className="btn-secondary" onClick={handleOptimize} disabled={optimizeLoading || evalLoading}>
                     {optimizeLoading ? 'Running...' : 'Optimize'}
                   </button>
                 </div>
@@ -482,7 +487,7 @@ function App() {
                       Analyzing traces and generating an optimized system prompt... This typically takes 1-3 minutes.
                     </p>
                     <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                      You can track progress in Bedrock AgentCore &gt; Optimizations &gt; Recommendations
+                      Evaluations is disabled while optimization is running. You can track progress in Bedrock AgentCore &gt; Optimizations &gt; Recommendations.
                     </p>
                   </div>
                 )}
@@ -511,6 +516,7 @@ function App() {
                   <div className="eval-item" style={{ textAlign: 'center', padding: 20 }}>
                     <p style={{ color: 'var(--accent-red)', fontWeight: 500, marginBottom: 8 }}>Optimization failed</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{optimizeResult.error}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 12 }}>Traces may need more time to index. Try again after a few minutes, or send more weather questions first.</p>
                   </div>
                 )}
                 {!optimizeLoading && !optimizeResult && (

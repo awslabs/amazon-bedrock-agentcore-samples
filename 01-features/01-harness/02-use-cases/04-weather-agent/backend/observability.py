@@ -16,13 +16,7 @@ def get_recent_traces(harness_name: str = None, minutes: int = 10) -> list[dict]
     end_time = int(time.time())
     start_time = end_time - (minutes * 60)
 
-    # Filter by harness service name if available
-    service_filter = ""
-    if harness_name:
-        service_filter = f"| filter resource.attributes.`service.name` = 'harness_{harness_name}.DEFAULT' or @message like 'harness_{harness_name}'"
-
-    query = f"""fields traceId, name, @timestamp, @duration
-{service_filter}
+    query = """fields traceId, @timestamp
 | filter ispresent(traceId) and traceId != ''
 | stats count() as spans by traceId
 | sort @timestamp desc
