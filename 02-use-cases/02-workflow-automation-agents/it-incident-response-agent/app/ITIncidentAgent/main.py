@@ -309,6 +309,7 @@ def _build_query(ticket: dict) -> str:
 # `"type": "stage"` so consumers that buffer the whole response and take the
 # last JSON object (Lambda trigger, tests) still pick up the final result dict.
 
+
 def _stage_event(stage: str, label: str, detail: str = "") -> str:
     """Serialize a real-time pipeline stage marker as a JSON line."""
     return json.dumps({"type": "stage", "stage": stage, "label": label, "detail": detail})
