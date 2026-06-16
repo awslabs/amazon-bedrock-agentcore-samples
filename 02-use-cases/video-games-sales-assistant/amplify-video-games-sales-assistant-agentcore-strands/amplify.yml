@@ -10,7 +10,7 @@ applications:
             - corepack enable
             - corepack prepare pnpm@latest --activate
             - pnpm install
-            - 'printf ''{"auth":{"user_pool_id":"%s","aws_region":"%s","user_pool_client_id":"%s","identity_pool_id":"%s","mfa_methods":[],"standard_required_attributes":["email"],"username_attributes":["email"],"user_verification_types":["email"],"groups":[],"mfa_configuration":"NONE","password_policy":{"min_length":8,"require_lowercase":true,"require_numbers":true,"require_symbols":true,"require_uppercase":true},"unauthenticated_identities_enabled":true},"version":"1.4"}\n'' "$COGNITO_USER_POOL_ID" "$AWS_REGION" "$COGNITO_USER_POOL_CLIENT_ID" "$COGNITO_IDENTITY_POOL_ID" > amplify_outputs.json'
+            - 'printf ''{"auth":{"user_pool_id":"%s","aws_region":"%s","user_pool_client_id":"%s","identity_pool_id":"%s","mfa_methods":[],"standard_required_attributes":["email"],"username_attributes":["email"],"user_verification_types":["email"],"groups":[],"mfa_configuration":"NONE","password_policy":{"min_length":8,"require_lowercase":true,"require_numbers":true,"require_symbols":true,"require_uppercase":true},"unauthenticated_identities_enabled":true},"version":"1.4"}\n'' "$AMPLIFY_USERPOOL_ID" "$REGION" "$AMPLIFY_WEBCLIENT_ID" "$AMPLIFY_IDENTITYPOOL_ID" > amplify_outputs.json'
         build:
           commands:
             - export NEXT_TELEMETRY_DISABLED=1
