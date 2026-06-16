@@ -302,6 +302,52 @@ def _build_query(ticket: dict) -> str:
     )
 
 
+# ─── Real-time pipeline stage events ─────────────────────────────────────────
+# The Runtime streams every `yield` from this generator as an SSE `data:` line.
+# We emit a structured stage marker at each real phase boundary so the UI can
+# narrate genuine progress instead of guessing on a timer. Stage markers carry
+# `"type": "stage"` so consumers that buffer the whole response and take the
+# last JSON object (Lambda trigger, tests) still pick up the final result dict.
+
+def _stage_event(stage: str, label: str, detail: str = "") -> str:
+    """Serialize a real-time pipeline stage marker as a JSON line."""
+    return json.dumps({"type": "stage", "stage": stage, "label": label, "detail": detail})
+
+
+# Friendly (label, detail) for the tools the agent may call. These surface as
+# live stages the moment the model decides to invoke each tool.
+_TOOL_STAGES = {
+    "lookup_user": (
+        "Looking up the requester",
+        "Fetching the requester's profile, quotas, and recent incident history",
+    ),
+    "get_process_info": (
+        "Checking service status",
+        "Looking up the status and known issues of the named service / process",
+    ),
+    "query_kb": (
+        "Searching the knowledge base",
+        "Retrieving matching runbook guidance from the IT knowledge base",
+    ),
+    "create_change_request": (
+        "Creating a change request",
+        "Recording the corrective action and stamping the requester",
+    ),
+}
+
+
+def _tool_stage(name: str) -> tuple[str, str]:
+    """Map a tool name to a human-readable (label, detail) for live status.
+
+    Jira tools are prefixed (e.g. ``jira___getIssue``); anything not explicitly
+    mapped falls back to a cleaned form of the raw tool name.
+    """
+    if name in _TOOL_STAGES:
+        return _TOOL_STAGES[name]
+    pretty = name.replace("jira___", "Jira: ").replace("_", " ").strip()
+    return (f"Using {pretty}", "")
+
+
 @app.entrypoint
 async def invoke(payload, context):
     """Main entrypoint called by AgentCore Runtime."""
@@ -405,6 +451,11 @@ async def invoke(payload, context):
         # Both title AND description reach the model via _build_query, so both
         # must be sanitized — PII in a ticket title would otherwise bypass the
         # guardrail.
+        yield _stage_event(
+            "guardrail",
+            "Sanitizing ticket content",
+            "Applying the PII / content guardrail before model invocation",
+        )
         if not is_jira_mode:
             payload_for_agent = {
                 **payload,
@@ -415,6 +466,11 @@ async def invoke(payload, context):
             payload_for_agent = payload
 
         # STEP: MEMORY ENRICHMENT — Retrieve past incidents for this requester
+        yield _stage_event(
+            "memory",
+            "Retrieving incident history",
+            "Searching AgentCore Memory for this requester's past incidents",
+        )
         past_incidents = retrieve_past_incidents(
             requester_id=requester_id,
             query=f"prior incidents for {requester_id}",
@@ -439,6 +495,11 @@ async def invoke(payload, context):
                 system_prompt = SYSTEM_PROMPT
 
         # STEP: MULTI-MCP — Connect to Gateway + optionally Jira with safe fallback
+        yield _stage_event(
+            "tools",
+            "Connecting to tools",
+            "Establishing Gateway + MCP tool connections (user lookup, service status, runbooks)",
+        )
         mcp_clients, tool_warnings = get_all_mcp_clients_safe()
         tools = mcp_clients if mcp_clients else []
 
@@ -484,7 +545,28 @@ async def invoke(payload, context):
         else:
             user_query = _build_query(payload_for_agent)
 
-        result = agent(user_query)
+        yield _stage_event(
+            "diagnose",
+            "Diagnosing the issue",
+            "Reasoning over the symptoms and selecting the right tools",
+        )
+
+        # Stream the agent's event loop so real tool calls surface as live
+        # stages. Each distinct tool invocation (tracked by toolUseId) is
+        # announced once, the moment the model decides to call it. The terminal
+        # AgentResultEvent carries the final AgentResult under "result".
+        result = None
+        seen_tool_ids: set[str] = set()
+        async for event in agent.stream_async(user_query):
+            tool_use = event.get("current_tool_use") or {}
+            tool_id = tool_use.get("toolUseId")
+            tool_name = tool_use.get("name")
+            if tool_id and tool_name and tool_id not in seen_tool_ids:
+                seen_tool_ids.add(tool_id)
+                label, detail = _tool_stage(tool_name)
+                yield _stage_event("tool", label, detail)
+            if "result" in event:
+                result = event["result"]
 
         # Extract resolution text defensively. The model may return an empty
         # content list or non-text content (a tool-only turn, a refusal, or a
@@ -505,9 +587,19 @@ async def invoke(payload, context):
         # STEP: ACT — Write resolution to ticket store (DDB mode only)
         # In Jira mode, the agent already commented + transitioned via MCP tools.
         if not is_jira_mode:
+            yield _stage_event(
+                "persist",
+                "Saving the resolution",
+                "Writing the resolution to the ticket store",
+            )
             _resolve_ticket(ticket_id, resolution)
 
         # STEP: EMIT — Publish downstream event for consumers
+        yield _stage_event(
+            "emit",
+            "Publishing the resolution event",
+            "Emitting the TicketResolved event for downstream consumers",
+        )
         _emit_resolution_event(ticket_id, resolution, requester_id)
 
         logger.info("%s %s resolved successfully", "Issue" if is_jira_mode else "Ticket", ticket_id)

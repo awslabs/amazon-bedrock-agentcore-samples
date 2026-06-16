@@ -18,7 +18,11 @@ logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 CHANGES_TABLE = os.environ["CHANGES_TABLE"]
 USERS_TABLE = os.environ["USERS_TABLE"]
 
-_ddb = boto3.resource("dynamodb")
+# Use boto3.client (NOT resource.meta.client) for transact_write_items.
+# resource.meta.client applies the resource layer's type serialization which
+# double-encodes DynamoDB-typed values (e.g. {"N":"1"} → {"M":{"N":{"S":"1"}}})
+# causing "Incorrect operand type: MAP" errors.
+_ddb = boto3.client("dynamodb")
 
 # Input validation constants
 MAX_ID_LENGTH = 128
@@ -95,7 +99,7 @@ def lambda_handler(event, context):
     # retry after a partial failure would create a duplicate change record.
     # transact_write_items uses the low-level client, so attribute values must
     # be DynamoDB-typed.
-    _ddb.meta.client.transact_write_items(
+    _ddb.transact_write_items(
         TransactItems=[
             {
                 "Put": {

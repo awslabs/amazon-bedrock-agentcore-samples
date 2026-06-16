@@ -201,6 +201,35 @@ Two formats supported:
 
 ---
 
+## Real-Time Progress Streaming
+
+The entrypoint is an **async generator**, so AgentCore Runtime streams every
+`yield` to the caller as a Server-Sent Event (`text/event-stream`). The agent
+uses this to surface genuine per-phase progress instead of a single terminal
+blob:
+
+- At each phase boundary it yields a structured marker
+  `{"type": "stage", "stage": <id>, "label": ..., "detail": ...}` —
+  `guardrail` → `memory` → `tools` → `diagnose` → (one `tool` marker per real
+  tool call) → `persist` → `emit`.
+- The REASON/ACT loop runs via `agent.stream_async(...)` (not a blocking
+  `agent(...)` call), so each real tool invocation (`lookup_user`,
+  `get_process_info`, `query_kb`, `create_change_request`, Jira tools) is
+  announced the moment the model decides to call it (deduped by `toolUseId`).
+- The **final result** is still yielded last as
+  `{"ticket_id", "status", "resolution", ...}`. Consumers that buffer the whole
+  response and take the last JSON object (the trigger Lambda, tests) are
+  unaffected; the stage markers carry `"type": "stage"` and are ignored by
+  last-object-wins parsing.
+
+> Note: the Runtime `json.dumps()` each yielded value, so a yielded
+> `json.dumps({...})` string lands on the wire double-encoded
+> (`data: "{...}"`). Streaming consumers decode each line twice (string → dict)
+> to recover the marker — the dashboard's `_extract_resolution` already does
+> this two-pass decode.
+
+---
+
 ## File Map (where to find each piece)
 
 ### Configuration (source of truth)
