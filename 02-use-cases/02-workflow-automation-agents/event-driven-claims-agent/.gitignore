@@ -20,6 +20,11 @@ cdk.out/
 .env
 .env.local
 cdk.context.json
+cdk-outputs.json
+agentcore/cdk/cdk.out/
+agentcore/cdk/dist/
+agentcore/aws-targets.json
+agentcore/.cli/
 
 # OS
 .DS_Store
