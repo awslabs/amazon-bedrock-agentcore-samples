@@ -5,29 +5,37 @@ Agent 1 (Claims Processor): Evaluates claim, verifies policy, makes ACCEPT/REJEC
 Agent 2 (Validation Agent): Reviews decision, assigns confidence score, routes accordingly
 """
 
-import os
-import re
-
 import base64
+import json
 import urllib.parse
 import urllib.request
-import json
+import uuid
+
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.tools.mcp import MCPClient
-from mcp.client.streamable_http import streamablehttp_client
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
+
+from config import (
+    GATEWAY_CLIENT_ID,
+    GATEWAY_CLIENT_SECRET,
+    GATEWAY_OAUTH_SCOPES,
+    GATEWAY_TOKEN_ENDPOINT,
+    GATEWAY_URL,
+)
+from memory.session import get_memory_session_manager
 from model.load import load_model
+from parsing import parse_confidence, parse_decision
+from tools.structured_output import (
+    get_last_decision,
+    get_last_validation,
+    reset_state,
+    submit_decision,
+    submit_validation,
+)
 
 app = BedrockAgentCoreApp()
 log = app.logger
-
-GATEWAY_URL = os.environ.get("AGENTCORE_GATEWAY_URL", os.environ.get("AGENTCORE_GATEWAY_CLAIMS_GATEWAY_URL", ""))
-
-# Gateway OAuth config (injected by CDK WorkloadIdentity)
-GATEWAY_TOKEN_ENDPOINT = os.environ.get("AGENTCORE_GATEWAY_TOKEN_ENDPOINT", "")
-GATEWAY_OAUTH_SCOPES = os.environ.get("AGENTCORE_GATEWAY_OAUTH_SCOPES", "")
-GATEWAY_CLIENT_ID = os.environ.get("AGENTCORE_GATEWAY_CLIENT_ID", "")
-GATEWAY_CLIENT_SECRET = os.environ.get("AGENTCORE_GATEWAY_CLIENT_SECRET", "")
 
 PROCESSOR_PROMPT = """You are a Claims Processor for SecureGuard Insurance.
 
@@ -52,6 +60,7 @@ Rules:
 - REJECT if policy is inactive, amount exceeds coverage limit, or claim type not covered
 - ACCEPT if policy is active, amount within limits, and claim type is covered
 - Always note the deductible amount in your reasoning
+- After making your decision, you MUST call the submit_decision tool with all fields filled in.
 """
 
 VALIDATOR_PROMPT = """You are a Claims Validation Agent for SecureGuard Insurance.
@@ -82,6 +91,7 @@ Rules:
 - Be skeptical of high-value claims (>$25k) — lower confidence unless clearly justified
 - Flag if the description is vague or lacks detail
 - Flag if the category seems mismatched with the description
+- After completing your validation, you MUST call the submit_validation tool with all fields.
 """
 
 _processor = None
@@ -139,13 +149,26 @@ def get_mcp_client():
     return _mcp_client
 
 
-def get_processor():
+def get_processor(session_manager=None):
+    """Create or return the Claims Processor agent.
+
+    When a session_manager is provided, a fresh agent is created for that session
+    (memory is per-invocation). Without memory, the cached singleton is reused.
+    """
     global _processor
+    if session_manager is not None:
+        # Per-invocation agent with memory — enables cross-session recall
+        return Agent(
+            model=load_model(),
+            system_prompt=PROCESSOR_PROMPT,
+            tools=[get_mcp_client(), submit_decision],
+            session_manager=session_manager,
+        )
     if _processor is None:
         _processor = Agent(
             model=load_model(),
             system_prompt=PROCESSOR_PROMPT,
-            tools=[get_mcp_client()],
+            tools=[get_mcp_client(), submit_decision],
         )
     return _processor
 
@@ -156,32 +179,9 @@ def get_validator():
         _validator = Agent(
             model=load_model(),
             system_prompt=VALIDATOR_PROMPT,
-            tools=[get_mcp_client()],
+            tools=[get_mcp_client(), submit_validation],
         )
     return _validator
-
-
-def parse_confidence(text):
-    """Extract confidence score from validator output."""
-    match = re.search(r"CONFIDENCE:\s*(\d+)", text)
-    if match:
-        return int(match.group(1))
-    return 50
-
-
-def parse_decision(text):
-    """Extract ACCEPT/REJECT from processor output."""
-    # Try multiple patterns (streamed text may have markdown formatting)
-    match = re.search(r"DECISION[:\s*\*]*\s*(ACCEPT|REJECT)", text, re.IGNORECASE)
-    if not match:
-        # Handle markdown bold: **DECISION: ACCEPT** or DECISION: **ACCEPT**
-        match = re.search(r"DECISION.*?(ACCEPT|REJECT)", text[:500], re.IGNORECASE | re.DOTALL)
-    if match:
-        return match.group(1).upper()
-    # Default: if "ACCEPT" appears in first 500 chars, assume accepted
-    if "ACCEPT" in text[:500].upper():
-        return "ACCEPT"
-    return "REJECT"
 
 
 @app.entrypoint
@@ -189,9 +189,35 @@ async def invoke(payload, context):
     """Dual-agent claim processing with confidence-based routing."""
     log.info("Processing claim with dual-agent architecture...")
 
+    # --- PAYLOAD PARSING (handles agentcore dev wrapping) ---
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except json.JSONDecodeError:
+            payload = {"prompt": payload}
+
+    # Unwrap nested JSON from agentcore dev's {"prompt": "<json>"} wrapper
+    if "prompt" in payload and "policy_number" not in payload:
+        prompt_value = payload["prompt"]
+        if isinstance(prompt_value, str):
+            try:
+                parsed = json.loads(prompt_value)
+                if isinstance(parsed, dict):
+                    payload = parsed
+            except (json.JSONDecodeError, TypeError):
+                pass  # Natural language prompt, keep as-is
+
     prompt = payload.get("prompt", "")
     source = payload.get("source")
     claimant_email = payload.get("claimant_email")
+
+    # Reset structured output state between invocations
+    reset_state()
+
+    # Extract actor/session identifiers for memory
+    # Use claimant_email as actor_id for cross-session recall of repeat claimants
+    actor_id = claimant_email or payload.get("user_id", "anonymous")
+    session_id = f"claim-{actor_id}-{uuid.uuid4().hex}"
 
     if source or claimant_email:
         metadata_parts = []
@@ -201,16 +227,26 @@ async def invoke(payload, context):
             metadata_parts.append(f"Claimant email: {claimant_email}")
         prompt = f"[{' | '.join(metadata_parts)}]\n\n{prompt}"
 
+    # --- Memory: graceful degradation ---
+    session_manager = None
+    try:
+        session_manager = get_memory_session_manager(session_id, actor_id)
+    except Exception as exc:
+        log.warning("Memory unavailable (running without memory): %s", exc)
+
     # --- Phase 1: Claims Processor ---
     yield "## Phase 1: Claims Processing\n\n"
 
-    processor = get_processor()
+    processor = get_processor(session_manager=session_manager)
     processor_response = ""
     stream = processor.stream_async(prompt)
     async for event in stream:
         if "data" in event and isinstance(event["data"], str):
             processor_response += event["data"]
             yield event["data"]
+
+    # Prefer structured output from tool call; fall back to regex parsing
+    structured_decision = get_last_decision()
 
     # --- Phase 2: Validation Agent ---
     yield "\n\n---\n## Phase 2: Validation & Routing\n\n"
@@ -231,22 +267,30 @@ Please validate this decision and assign a confidence score."""
             validator_response += event["data"]
             yield event["data"]
 
+    # Prefer structured output from tool call; fall back to regex parsing
+    structured_validation = get_last_validation()
+
     # --- Phase 3: Routing ---
     yield "\n\n---\n## Phase 3: Execution\n\n"
 
-    confidence = parse_confidence(validator_response)
-
-    # Route based on validator's explicit ROUTING directive
-    if "HUMAN_REVIEW" in validator_response:
-        routing = "HUMAN_REVIEW"
-    elif "AUTO_APPROVE" in validator_response:
-        routing = "AUTO_APPROVE"
-    elif confidence >= 80:
-        routing = "AUTO_APPROVE"
+    if structured_validation:
+        confidence = structured_validation["confidence"]
+        routing = structured_validation["routing"]
     else:
-        routing = "HUMAN_REVIEW"
+        confidence = parse_confidence(validator_response)
+        if "HUMAN_REVIEW" in validator_response:
+            routing = "HUMAN_REVIEW"
+        elif "AUTO_APPROVE" in validator_response:
+            routing = "AUTO_APPROVE"
+        elif confidence >= 80:
+            routing = "AUTO_APPROVE"
+        else:
+            routing = "HUMAN_REVIEW"
 
-    decision = parse_decision(processor_response)
+    if structured_decision:
+        decision = structured_decision["decision"]
+    else:
+        decision = parse_decision(processor_response)
 
     if decision == "REJECT":
         yield f"**Claim rejected** (confidence: {confidence}/100)\n\n"
