@@ -1,9 +1,10 @@
 import json
+import os
 import boto3
 from boto3.dynamodb.conditions import Attr
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("ClaimsAgent-Claims")
+table = dynamodb.Table(os.environ.get("CLAIMS_TABLE", "ClaimsAgent-Claims"))
 
 
 def handler(event, context):
