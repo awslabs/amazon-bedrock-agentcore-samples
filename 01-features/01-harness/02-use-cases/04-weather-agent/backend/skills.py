@@ -70,7 +70,7 @@ def _download_file(client, harness_arn: str, session_id: str) -> str:
     return b64_data.strip().replace("\n", "")
 
 
-def _try_git_skill(client, harness_arn: str, session_id: str, city: str) -> dict | None:
+def _try_git_skill(client, harness_arn: str, session_id: str, city: str) -> str | None:
     """Try invoking with Git-based skill fetch (newer boto3 only)."""
     try:
         response = client.invoke_harness(
@@ -87,12 +87,16 @@ def _try_git_skill(client, harness_arn: str, session_id: str, city: str) -> dict
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
                     agent_text += delta["text"]
+            elif "internalServerException" in event:
+                print(f"[skills] Stream error: {event['internalServerException']}")
+                return None
+        print(f"[skills] Git skill completed. Agent response length: {len(agent_text)}")
         return agent_text
     except ParamValidationError:
         print("[skills] Git-based skill not supported, falling back to path approach")
         return None
     except Exception as e:
-        print(f"[skills] Git-based skill failed: {e}")
+        print(f"[skills] Git-based skill exception: {type(e).__name__}: {e}")
         return None
 
 
@@ -141,6 +145,14 @@ def _install_skill_path(client, control, harness_id: str, harness_arn: str, sess
 
 def generate_weather_report(harness_arn: str, harness_id: str, session_id: str, city: str = "the cities discussed") -> dict:
     """Generate a weather forecast XLSX report. Tries Git skill first, falls back to path."""
+    try:
+        return _generate_report_inner(harness_arn, harness_id, session_id, city)
+    except Exception as e:
+        print(f"[skills] Unhandled exception: {type(e).__name__}: {e}")
+        return {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+
+def _generate_report_inner(harness_arn: str, harness_id: str, session_id: str, city: str) -> dict:
     client = get_agentcore_client(config=Config(read_timeout=360))
     control = get_agentcore_control_client()
 

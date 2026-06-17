@@ -94,10 +94,29 @@ def run_batch_evaluation(harness_id: str, harness_name: str = None) -> dict:
             pass
 
     if status not in ("COMPLETED", "COMPLETED_WITH_ERRORS"):
+        # Try to get failure details
+        failure_reason = ""
+        try:
+            failure_reason = result.get("failureReasons", result.get("statusReason", ""))
+            if not failure_reason:
+                # Check evaluationResults for per-session errors
+                eval_res = result.get("evaluationResults", {})
+                failed_count = eval_res.get("numberOfSessionsFailed", 0)
+                completed_count = eval_res.get("numberOfSessionsCompleted", 0)
+                if failed_count > 0:
+                    failure_reason = f"{failed_count} session(s) failed, {completed_count} completed"
+        except Exception:
+            pass
+        error_msg = f"Evaluation did not complete (status: {status})"
+        if failure_reason:
+            error_msg += f". {failure_reason}"
+        print(f"[eval] Failed: {error_msg}")
+        print(f"[eval] Full response: {result}")
         return {
             "batch_id": batch_id,
+            "batch_name": batch_name,
             "status": status,
-            "error": f"Evaluation did not complete (status: {status})",
+            "error": error_msg,
             "scores": [],
         }
 
