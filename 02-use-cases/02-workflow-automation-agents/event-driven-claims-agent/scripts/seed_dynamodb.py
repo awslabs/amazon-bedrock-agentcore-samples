@@ -58,7 +58,7 @@ def seed_policies(region):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--region", default="eu-west-1")
+    parser.add_argument("--region", default="us-west-2")
     args = parser.parse_args()
     print(f"🌱 Seeding DynamoDB in {args.region}...")
     seed_policies(args.region)

@@ -26,12 +26,19 @@ import boto3
 def get_cognito_token(region: str) -> tuple[str, str]:
     """Get M2M token from Cognito using client_credentials flow."""
     cf = boto3.client("cloudformation", region_name=region)
-    outputs = cf.describe_stacks(StackName="ClaimsInfraStack")["Stacks"][0]["Outputs"]
+    outputs = cf.describe_stacks(StackName="AgentCore-ClaimsAgent-dev")["Stacks"][0]["Outputs"]
     output_map = {o["OutputKey"]: o["OutputValue"] for o in outputs}
 
-    user_pool_id = output_map["UserPoolId"]
-    client_id = output_map["UserPoolClientId"]
-    runtime_arn = output_map.get("RuntimeArn", "")
+    # CDK auto-generates output keys with hash suffixes — find by prefix
+    def find_output(prefix):
+        for key, val in output_map.items():
+            if key.startswith(prefix) or key == prefix:
+                return val
+        return ""
+
+    user_pool_id = find_output("InfraUserPoolId")
+    client_id = find_output("InfraUserPoolClientId")
+    runtime_arn = find_output("RuntimeArn")
 
     # Get client secret
     cognito = boto3.client("cognito-idp", region_name=region)
