@@ -14,7 +14,7 @@
 
 This example runs OpenAI's **GPT-5.4** on an AgentCore harness by routing inference through the
 OpenAI-compatible **Mantle** endpoint. It builds on
-[08-mantle-endpoint](../08-mantle-endpoint) (which uses the open-weight `gpt-oss-120b`); the
+[the endpoint example](../endpoint) (which uses the open-weight `gpt-oss-120b`); the
 difference here is the model and one important constraint that comes with it.
 
 ## What you learn
@@ -154,6 +154,6 @@ Removes the harness and memory, deletes the CDK stack, and removes the local wor
 
 ## Where to next
 
-- **[08-mantle-endpoint](../08-mantle-endpoint)** — the same Mantle path with the open-weight `gpt-oss-120b`.
-- **[06-getting-started-with-agent-inspector](../06-getting-started-with-agent-inspector)** — the default (Converse) harness + Agent Inspector walkthrough.
+- **[endpoint](../endpoint)** — the same Mantle path with the open-weight `gpt-oss-120b`.
+- **[08-getting-started-with-agent-inspector](../../08-getting-started-with-agent-inspector)** — the default (Converse) harness + Agent Inspector walkthrough.
 - **[Endpoints supported by Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html)** — `bedrock-runtime` vs `bedrock-mantle`.
