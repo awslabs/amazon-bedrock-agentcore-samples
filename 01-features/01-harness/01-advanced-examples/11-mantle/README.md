@@ -13,7 +13,7 @@ Two walkthroughs, smallest first:
   only, so it must use `--api-format responses`. Builds on the endpoint example.
 
 For the LiteLLM routing variant of the same Mantle path (a credential provider plus
-`--model-provider lite_llm`), see **[../10-litellm-mantle](../10-litellm-mantle)**.
+`--model-provider lite_llm`), see **[../12-litellm-mantle](../12-litellm-mantle)**.
 
 Both subfolders are self-contained: each has its own `demo.sh`, `cleanup.sh`, `README.md`, and
 recording. Start with whichever model you have access to.

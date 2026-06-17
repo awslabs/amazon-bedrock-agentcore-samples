@@ -155,5 +155,5 @@ Removes the harness and memory, deletes the CDK stack, and removes the local wor
 ## Where to next
 
 - **[endpoint](../endpoint)** — the same Mantle path with the open-weight `gpt-oss-120b`.
-- **[08-getting-started-with-agent-inspector](../../08-getting-started-with-agent-inspector)** — the default (Converse) harness + Agent Inspector walkthrough.
+- **[10-getting-started-with-agent-inspector](../../10-getting-started-with-agent-inspector)** — the default (Converse) harness + Agent Inspector walkthrough.
 - **[Endpoints supported by Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html)** — `bedrock-runtime` vs `bedrock-mantle`.

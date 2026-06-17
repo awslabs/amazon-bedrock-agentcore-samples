@@ -168,6 +168,6 @@ Removes the harness and memory, deletes the CDK stack, and removes the local wor
 
 ## Where to next
 
-- **[08-getting-started-with-agent-inspector](../../08-getting-started-with-agent-inspector)** — the default (Converse) harness + Agent Inspector walkthrough this builds on.
+- **[10-getting-started-with-agent-inspector](../../10-getting-started-with-agent-inspector)** — the default (Converse) harness + Agent Inspector walkthrough this builds on.
 - **[Endpoints supported by Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html)** — `bedrock-runtime` vs `bedrock-mantle`.
 - **[AgentCore harness dev guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness.html)** — the full harness reference.
