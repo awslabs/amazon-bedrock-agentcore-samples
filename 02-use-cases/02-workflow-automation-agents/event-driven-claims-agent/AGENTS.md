@@ -1,141 +1,175 @@
-# AgentCore Project
+# Event-Driven Claims Agent — AI Coding Assistant Context
 
-This project contains configuration and infrastructure for an Amazon Bedrock AgentCore application.
+> **For humans:** This file provides context for AI coding assistants (Kiro, Cursor, Claude Code, GitHub Copilot). For the human-readable documentation, see [docs/](./docs/README.md), [README.md](./README.md), or [docs/tutorial.md](./docs/tutorial.md).
 
-The `agentcore/` directory is a declarative model of the project. The `agentcore/cdk/` subdirectory uses the
-`@aws/agentcore-cdk` L3 constructs to deploy the configuration to AWS.
+This project is an **event-driven insurance claims processor** built on Amazon Bedrock AgentCore. It uses a dual-agent architecture (Claims Processor + Validation Agent) and deploys as a single CloudFormation stack (`AgentCore-ClaimsAgent-dev`) via the AgentCore CLI.
 
-## Mental Model
+> **Important:** AgentCore resources (Runtime, Gateway, Memory, PolicyEngine, OnlineEval) are declared in `agentcore/agentcore.json` and managed by the AgentCore CLI. Supplementary infrastructure (DynamoDB, Lambda tools, SNS, S3, Cognito, EventBridge) is defined in the TypeScript CDK app at `agentcore/cdk/lib/infra-construct.ts`. Use `agentcore validate` and `agentcore dev` while iterating; run `agentcore deploy --target dev` to deploy everything together.
 
-The project uses a **flat resource model**. Agents, memories, credentials, gateways, evaluators, and policies are
-independent top-level arrays in `agentcore.json`. There is no binding between resources in the schema — each resource is
-provisioned independently. Agents discover memories and credentials at runtime via environment variables or SDK calls.
-Tags defined in `agentcore.json` flow through to deployed CloudFormation resources.
+---
 
-## Critical Invariants
+## Architecture
 
-1. **Schema-First Authority:** The `.json` files are the source of truth. Do not modify agent behavior by editing
-   generated CDK code in `cdk/`.
-2. **Resource Identity:** The `name` field determines the CloudFormation Logical ID.
-   - **Renaming** a resource will **destroy and recreate** it.
-   - **Modifying** other fields will update the resource **in-place**.
-3. **Schema Validation:** If your JSON conforms to the types in `.llm-context/`, it will deploy successfully. Run
-   `agentcore validate` to check.
-4. **Resource Removal:** Use `agentcore remove` to remove resources. Run `agentcore deploy` after removal to tear down
-   deployed infrastructure.
+```
+S3 upload (claims-inbox/)
+  → EventBridge rule
+    → Trigger Lambda (lambdas/trigger/handler.py)
+        reads S3 object, gets Cognito M2M JWT, invokes Runtime via HTTPS
+      → AgentCore Runtime (Container: app/claimsagent/)
+          Phase 1: Claims Processor → lookup_policy → ACCEPT/REJECT decision
+          Phase 2: Validation Agent → reviews decision → CONFIDENCE + ROUTING
+          Phase 3: Execution → create_claim / human_review / send_notification
+        → AgentCore Gateway (MCP, Cognito M2M auth, Cedar policy enforcement)
+            → 6 Lambda tool functions (lambdas/<tool>/handler.py)
+```
+
+**Auth:** All callers use Cognito M2M JWT (`client_credentials` flow) — not SigV4.
+
+---
 
 ## Directory Structure
 
 ```
-myProject/
-├── AGENTS.md               # This file — AI coding assistant context
+event-driven-claims-agent/
+├── AGENTS.md                          # This file
+├── CLAUDE.md                          # Claude Code guidance
+├── README.md                          # Full project documentation
+├── deploy.sh                          # One-command deploy (runs CDK)
+├── app/claimsagent/
+│   ├── Dockerfile                     # Multi-stage, Python 3.12, ARM64
+│   ├── main.py                        # All agent logic: prompts, agents, routing
+│   ├── model/load.py                  # BedrockModel (global.anthropic.claude-sonnet-4-6)
+│   ├── mcp_client/client.py           # Stub — MCPClient is configured in main.py
+│   └── requirements.txt              # Add new runtime deps HERE (used by Dockerfile)
+├── lambdas/                           # One directory per Gateway tool
+│   ├── schemas/                       # MCP tool schemas (JSON) — matched by CDK
+│   ├── trigger/handler.py             # EventBridge → Runtime invocation
+│   ├── create_claim/handler.py        # DDB put on ClaimsTable
+│   ├── policy_lookup/handler.py       # DDB get on PoliciesTable
+│   ├── list_pending_claims/handler.py # DDB scan for pending_review claims
+│   ├── resolve_claim/handler.py       # DDB update on ClaimsTable + ReviewsTable
+│   ├── human_review/handler.py        # DDB put on ReviewsTable + SNS publish
+│   └── notification/handler.py        # SES send email
 ├── agentcore/
-│   ├── agentcore.json      # Main project config (AgentCoreProjectSpec)
-│   ├── aws-targets.json    # Deployment targets (account + region)
-│   ├── .env.local          # Secrets — API keys (gitignored)
-│   ├── .llm-context/       # TypeScript type definitions for AI assistants
-│   │   ├── README.md       # Guide to using schema files
-│   │   ├── agentcore.ts    # AgentCoreProjectSpec types
-│   │   ├── aws-targets.ts  # AWS deployment target types
-│   │   └── mcp.ts          # Gateway and MCP tool types
-│   └── cdk/                # AWS CDK project (@aws/agentcore-cdk L3 constructs)
-├── app/                    # Agent application code
-└── evaluators/             # Custom evaluator code (if any)
+│   ├── agentcore.json                 # Declarative AgentCore resources (Runtime/Gateway/Memory/PolicyEngine/Eval)
+│   ├── aws-targets.json               # Deployment targets (account + region)
+│   └── cdk/lib/
+│       ├── infra-construct.ts         # Supplementary AWS infra (DynamoDB, S3, SNS, Cognito, EventBridge, Lambdas)
+│       └── cdk-stack.ts               # Integration: wires infra ARNs + JWT authorizer + runtime env vars
+├── scripts/
+│   ├── deploy.sh                      # Deploy helper
+│   ├── seed_dynamodb.py              # Populate test policies
+│   ├── test_invoke.py                # Direct Runtime invocation (JWT auth)
+│   ├── test_e2e.py                   # Full E2E test suite (5 scenarios)
+│   ├── test_cedar.py                 # Cedar policy enforcement tests
+│   ├── test_local.py                 # Local dev invocation helper
+│   └── lint.sh                       # py_compile + ruff checks
+├── docs/
+│   ├── ARCHITECTURE.md               # System design and data flows
+│   ├── deployment.md                 # Step-by-step deploy, verify, teardown
+│   ├── decisions/                    # Architectural decision records (ADR-0001..0010)
+│   └── CONFIGURATION.md             # All config surfaces reference
+└── tests/
+    └── sample-claim-email.txt        # Email for E2E test 5 (uses POL-67890)
 ```
 
-## Schema Reference
+---
 
-The `agentcore/.llm-context/` directory contains TypeScript type definitions optimized for AI coding assistants. Each
-file maps to a JSON config file and includes validation constraints as comments (`@regex`, `@min`, `@max`).
+## Build, Test, Deploy
 
-| JSON Config | Schema File | Root Type |
-| --- | --- | --- |
-| `agentcore/agentcore.json` | `agentcore/.llm-context/agentcore.ts` | `AgentCoreProjectSpec` |
-| `agentcore/agentcore.json` (gateways) | `agentcore/.llm-context/mcp.ts` | `AgentCoreMcpSpec` |
-| `agentcore/aws-targets.json` | `agentcore/.llm-context/aws-targets.ts` | `AwsDeploymentTarget[]` |
-
-### Key Types
-
-- **AgentCoreProjectSpec**: Root config with `runtimes`, `memories`, `credentials`, `agentCoreGateways`, `evaluators`, `onlineEvalConfigs`, `policyEngines` arrays
-- **AgentEnvSpec**: Agent configuration (build type, entrypoint, code location, runtime version, network mode)
-- **Memory**: Memory resource with strategies (SEMANTIC, SUMMARIZATION, USER_PREFERENCE, EPISODIC) and expiry
-- **Credential**: API key or OAuth credential provider
-- **AgentCoreGateway**: MCP gateway with targets (Lambda, MCP server, OpenAPI, Smithy, API Gateway)
-- **Evaluator**: LLM-as-a-Judge or code-based evaluator
-- **OnlineEvalConfig**: Continuous evaluation pipeline bound to an agent
-
-### Common Enum Values
-
-- **BuildType**: `'CodeZip'` | `'Container'`
-- **NetworkMode**: `'PUBLIC'` | `'VPC'`
-- **RuntimeVersion**: `'PYTHON_3_10'` | `'PYTHON_3_11'` | `'PYTHON_3_12'` | `'PYTHON_3_13'` | `'PYTHON_3_14'` | `'NODE_18'` | `'NODE_20'` | `'NODE_22'`
-- **MemoryStrategyType**: `'SEMANTIC'` | `'SUMMARIZATION'` | `'USER_PREFERENCE'` | `'EPISODIC'`
-- **GatewayTargetType**: `'lambda'` | `'mcpServer'` | `'openApiSchema'` | `'smithyModel'` | `'apiGateway'` | `'lambdaFunctionArn'`
-- **ModelProvider**: `'Bedrock'` | `'Gemini'` | `'OpenAI'` | `'Anthropic'`
-
-### Build Types
-
-- **CodeZip**: Python source packaged as a zip and deployed directly to AgentCore Runtime.
-- **Container**: Docker image built in CodeBuild (ARM64), pushed to a per-agent ECR repository. Requires a `Dockerfile`
-  in the agent's `codeLocation` directory. For local development (`agentcore dev`), the container is built and run
-  locally with volume-mounted hot-reload.
-
-### Supported Frameworks (for template agents)
-
-- **Strands** — Bedrock, Anthropic, OpenAI, Gemini
-- **LangChain/LangGraph** — Bedrock, Anthropic, OpenAI, Gemini
-- **GoogleADK** — Gemini
-- **OpenAI Agents** — OpenAI
-- **Autogen** — Bedrock, Anthropic, OpenAI, Gemini
-
-### Protocols
-
-- **HTTP** — Standard HTTP agent endpoint
-- **MCP** — Model Context Protocol server
-- **A2A** — Agent-to-Agent protocol (Google A2A)
-
-## Deployment
-
-Deployments are orchestrated through the CLI:
-
+### Deploy everything
 ```bash
-agentcore deploy    # Synthesizes CDK and deploys to AWS
-agentcore status    # Shows deployment status
+./deploy.sh [region]          # defaults to us-west-2
 ```
 
-Alternatively, deploy directly via CDK:
+This runs: configure target → npm install (CDK) → uv sync (agent) → `agentcore validate` → cdk bootstrap → `agentcore deploy --target dev` → seed DynamoDB → prints test commands.
 
+### Manual AgentCore / CDK operations
 ```bash
-cd agentcore/cdk
-npm install
-npx cdk synth
-npx cdk deploy
+agentcore validate                       # validate agentcore.json
+agentcore deploy --target dev --yes      # deploy everything
+agentcore destroy --target dev --yes     # tear down
+
+# Drive the underlying TypeScript CDK directly:
+cd agentcore/cdk && npm install && npx cdk diff
 ```
 
-## Editing Schemas
+### Invoke the agent (requires deployed stack)
+```bash
+python3 scripts/test_invoke.py --region us-west-2
+python3 scripts/test_invoke.py --region us-west-2 --prompt 'File a claim for POL-12345. $5000 storm damage.'
+```
 
-When modifying JSON config files:
+### Run E2E tests
+```bash
+python3 scripts/test_e2e.py --region us-west-2
+python3 scripts/test_e2e.py --region us-west-2 --test 2   # Cedar block test
+```
 
-1. Read the corresponding `agentcore/.llm-context/*.ts` file for type definitions
-2. Check validation constraint comments (`@regex`, `@min`, `@max`)
-3. Use exact enum values as string literals
-4. Use CloudFormation-safe names (alphanumeric, start with letter)
-5. Run `agentcore validate` to verify changes
+### Lint
+```bash
+./scripts/lint.sh
+# or manually:
+find app/ lambdas/ scripts/ -name "*.py" -exec python3 -m py_compile {} \;
+```
 
-## CLI Commands
+---
 
-| Command | Description |
-| --- | --- |
-| `agentcore create` | Create a new project |
-| `agentcore add <resource>` | Add agent, memory, credential, gateway, evaluator, policy |
-| `agentcore remove <resource>` | Remove a resource |
-| `agentcore dev` | Run agent locally with hot-reload |
-| `agentcore deploy` | Deploy to AWS |
-| `agentcore status` | Show deployment status |
-| `agentcore invoke` | Invoke agent (local or deployed) |
-| `agentcore logs` | View agent logs |
-| `agentcore traces` | View agent traces |
-| `agentcore eval` | Run evaluations against an agent |
-| `agentcore package` | Package agent artifacts |
-| `agentcore validate` | Validate configuration |
-| `agentcore pause` / `resume` | Pause or resume a deployed agent |
+## Key Invariants
+
+1. **Lambda handlers return `json.dumps({...})` directly** — no `{statusCode, body}` envelope. The Gateway strips the HTTP wrapper.
+2. **Agent routing controls claim status** — the `create_claim` Lambda accepts `status` and `decision` as optional parameters from the agent. Do not add routing logic to the Lambda itself.
+3. **Tool schemas live in `lambdas/schemas/`** — each file maps to a Gateway target in the CDK stack via `ToolSchema.from_local_asset(...)`. Keep schemas in sync with Lambda parameters.
+4. **Container build, not CodeZip** — runtime deps go in `app/claimsagent/requirements.txt`. The Dockerfile installs from this file.
+5. **`agentcore/agentcore.json` is the source of truth for AgentCore resources** (Runtime, Gateway, Memory, PolicyEngine, OnlineEval). Supplementary AWS infra is in `agentcore/cdk/lib/infra-construct.ts`; `cdk-stack.ts` wires the two together (patches Lambda ARNs + the Gateway CUSTOM_JWT authorizer, injects runtime env vars). Don't hand-edit generated CDK output.
+
+---
+
+## Environment Variables
+
+### Runtime container (set by CDK)
+| Variable | Purpose |
+|---|---|
+| `AGENTCORE_GATEWAY_URL` | MCP Gateway HTTPS endpoint |
+| `AGENTCORE_GATEWAY_TOKEN_ENDPOINT` | Cognito OAuth2 token URL |
+| `AGENTCORE_GATEWAY_OAUTH_SCOPES` | `agentcore/invoke` |
+| `AGENTCORE_GATEWAY_CLIENT_ID` | Cognito app client ID |
+| `AGENTCORE_GATEWAY_CLIENT_SECRET` | Cognito app client secret |
+
+### Lambda functions (set by CDK)
+| Variable | Lambda(s) | Value |
+|---|---|---|
+| `CLAIMS_TABLE` | create_claim, list_pending, resolve_claim | `ClaimsAgent-Claims` |
+| `POLICIES_TABLE` | policy_lookup | `ClaimsAgent-Policies` |
+| `REVIEWS_TABLE` | human_review, resolve_claim | `ClaimsAgent-Reviews` |
+| `REVIEW_SNS_TOPIC_ARN` | human_review | SNS topic ARN |
+| `SENDER_EMAIL` | notification | SES verified sender |
+
+### Trigger Lambda (set by CDK)
+| Variable | Purpose |
+|---|---|
+| `AGENTCORE_RUNTIME_ARN` | Runtime ARN for HTTPS invocation |
+| `COGNITO_USER_POOL_ID` | For M2M token retrieval |
+| `COGNITO_CLIENT_ID` | M2M client |
+| `COGNITO_CLIENT_SECRET` | M2M secret |
+| `COGNITO_TOKEN_ENDPOINT` | OAuth2 token URL |
+
+---
+
+## Test Policies (seeded by `seed_dynamodb.py`)
+
+| Policy Number | Holder | Type | Coverage | Status |
+|---|---|---|---|---|
+| `POL-12345` | John Smith | auto | $50,000 | active |
+| `POL-67890` | Jane Doe | home | $250,000 | active |
+| `POL-11111` | Bob Johnson | auto | $75,000 | active |
+
+---
+
+## Cedar Policies
+
+Two policies (in `agentcore/agentcore.json` under `policyEngines`) enforce authorization at the Gateway:
+- **AllowAllTools** — `permit(principal, action, resource is AgentCore::Gateway)`
+- **BlockExcessiveClaims** — `forbid` when `context.toolName == "create-claim"` and `context.input.estimated_amount >= 100000`
+
+Both use `IGNORE_ALL_FINDINGS` validation mode (required for the permit-all policy).
