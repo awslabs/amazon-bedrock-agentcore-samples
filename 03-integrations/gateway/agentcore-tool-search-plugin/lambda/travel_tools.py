@@ -27,9 +27,6 @@ Domains covered:
 - Trip Planning (2 tools): create itinerary, travel tips
 """
 
-import json
-
-
 DELIMITER = "___"
 
 
@@ -1075,7 +1072,6 @@ def create_itinerary(args):
     """Create a trip itinerary based on destination and preferences."""
     destination = args.get("destination", "New York")
     days = args.get("days", 3)
-    interests = args.get("interests", ["sightseeing", "food", "culture"])
 
     itinerary = {
         "destination": destination,
@@ -1134,7 +1130,6 @@ def create_itinerary(args):
 def get_travel_tips(args):
     """Get travel tips and recommendations for a destination."""
     destination = args.get("destination", "New York")
-    category = args.get("category", "general")
 
     tips = {
         "destination": destination,

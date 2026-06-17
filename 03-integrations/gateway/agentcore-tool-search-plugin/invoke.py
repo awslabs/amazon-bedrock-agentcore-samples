@@ -73,10 +73,10 @@ def invoke():
         # Show which tools were dynamically loaded
         tools_config = agent.tool_registry.get_all_tools_config()
         print()
-        print(f"  ┌─ Tools loaded by semantic search ─────────────────────────")
+        print("  ┌─ Tools loaded by semantic search ─────────────────────────")
         for tool_name in sorted(tools_config.keys()):
             print(f"  │  • {tool_name}")
-        print(f"  └───────────────────────────────────────────────────────────")
+        print("  └───────────────────────────────────────────────────────────")
         print()
         print(f"  Response: {response}")
         print()
