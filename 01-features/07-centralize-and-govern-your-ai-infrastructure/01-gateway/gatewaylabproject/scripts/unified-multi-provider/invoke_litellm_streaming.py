@@ -36,8 +36,8 @@ def _ignore_loop_shutdown_noise(unraisable):
 sys.unraisablehook = _ignore_loop_shutdown_noise
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from env_utils import get_required_env, load_env
-from inference_demo import gateway_token, inference_base_url
+from env_utils import get_required_env, load_env  # noqa: E402
+from inference_demo import gateway_token, inference_base_url  # noqa: E402
 
 
 def litellm_stream(base_url, token, gateway_model, indent="    "):
