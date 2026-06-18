@@ -2,6 +2,7 @@
 """Seed DynamoDB tables with sample data."""
 
 import argparse
+
 import boto3
 
 

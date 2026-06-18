@@ -268,7 +268,7 @@ To: claims@secureguard-insurance.com
 
 Dear Claims Department,
 
-I am writing to file a claim under my policy POL-67890. 
+I am writing to file a claim under my policy POL-67890.
 
 Yesterday afternoon, a tree branch fell on my roof during a storm, causing significant damage to my home's structure. I have had a contractor come out for an initial assessment, and they estimate the repairs will cost approximately $15,000.
 

@@ -12,10 +12,6 @@ import urllib.request
 import uuid
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from mcp.client.streamable_http import streamablehttp_client
-from strands import Agent
-from strands.tools.mcp import MCPClient
-
 from config import (
     GATEWAY_CLIENT_ID,
     GATEWAY_CLIENT_SECRET,
@@ -23,9 +19,12 @@ from config import (
     GATEWAY_TOKEN_ENDPOINT,
     GATEWAY_URL,
 )
+from mcp.client.streamable_http import streamablehttp_client
 from memory.session import get_memory_session_manager
 from model.load import load_model
 from parsing import parse_confidence, parse_decision
+from strands import Agent
+from strands.tools.mcp import MCPClient
 from tools.structured_output import (
     get_last_decision,
     get_last_validation,

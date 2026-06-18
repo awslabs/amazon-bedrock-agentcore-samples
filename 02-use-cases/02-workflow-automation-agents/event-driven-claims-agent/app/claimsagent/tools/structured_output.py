@@ -12,6 +12,7 @@ request ``context`` instead of module globals.
 """
 
 import json
+
 from strands import tool
 
 # Shared state for capturing structured outputs from agents (single-flight; see module docstring)

@@ -1,6 +1,5 @@
-from strands.models.bedrock import BedrockModel
-
 from config import AGENT_MODEL_ID
+from strands.models.bedrock import BedrockModel
 
 
 def load_model() -> BedrockModel:

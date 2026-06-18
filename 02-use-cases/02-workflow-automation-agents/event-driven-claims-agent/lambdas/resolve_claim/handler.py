@@ -1,7 +1,8 @@
 import json
 import os
-import boto3
 from datetime import datetime, timezone
+
+import boto3
 
 dynamodb = boto3.resource("dynamodb")
 claims_table = dynamodb.Table(os.environ.get("CLAIMS_TABLE", "ClaimsAgent-Claims"))
