@@ -47,9 +47,7 @@ import boto3
 
 # ── Parse arguments ───────────────────────────────────────────────────────
 
-parser = argparse.ArgumentParser(
-    description="AgentCore Insights (FailureAnalysis, UserIntent, ExecutionSummary)"
-)
+parser = argparse.ArgumentParser(description="AgentCore Insights (FailureAnalysis, UserIntent, ExecutionSummary)")
 parser.add_argument("--name", required=True, help="Runtime name (matches agent_state_{name}.json)")
 parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
 parser.add_argument(
@@ -90,8 +88,7 @@ LOOKBACK_DAYS = args.lookback_days
 STATE_FILE = Path(f"agent_state_{args.name}.json")
 if not STATE_FILE.exists():
     raise FileNotFoundError(
-        f"{STATE_FILE} not found. "
-        f"Run 'python deploy.py --name {args.name} --region {REGION}' first."
+        f"{STATE_FILE} not found. Run 'python deploy.py --name {args.name} --region {REGION}' first."
     )
 
 state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
@@ -219,10 +216,7 @@ if args.generate_traces:
 
         print(f"  [{i + 1:2d}] {status_tag} {session_id[:8]}... [{emp_id}] {prompt[:60]}")
 
-    print(
-        f"\nSent {success_count} OK, {error_count} errors "
-        "(invoke errors; tool errors are expected)"
-    )
+    print(f"\nSent {success_count} OK, {error_count} errors (invoke errors; tool errors are expected)")
     print("Waiting 3 minutes for traces to propagate to CloudWatch...")
 
     for remaining in range(180, 0, -30):
@@ -231,9 +225,7 @@ if args.generate_traces:
 
     print("CloudWatch ingestion complete.")
 else:
-    print(
-        "\n(Skipping trace generation — use --generate-traces to send failure-mode sessions first)"
-    )
+    print("\n(Skipping trace generation — use --generate-traces to send failure-mode sessions first)")
 
 # ── Step 2: Run Batch Insights ─────────────────────────────────────────────
 #
@@ -253,10 +245,7 @@ start_time = now - timedelta(days=LOOKBACK_DAYS)
 EVAL_NAME = f"HRInsights{uuid.uuid4().hex[:8]}"
 
 print(f"Batch eval name : {EVAL_NAME}")
-print(
-    f"Time range      : {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-    f"to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
-)
+print(f"Time range      : {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
 print(f"Service name    : {SERVICE_NAME}")
 print(f"Log groups      : {LOG_GROUP_NAMES}")
 
@@ -301,10 +290,7 @@ while True:
     status = result["status"]
     processed = result.get("statistics", {}).get("processedSessionCount", "?")
     failed = result.get("statistics", {}).get("failedSessionCount", "?")
-    print(
-        f"  Poll {poll:3d}  [{time.strftime('%H:%M:%S')}]"
-        f"  status={status}  processed={processed}  failed={failed}"
-    )
+    print(f"  Poll {poll:3d}  [{time.strftime('%H:%M:%S')}]  status={status}  processed={processed}  failed={failed}")
 
     if status in TERMINAL:
         break
@@ -336,9 +322,7 @@ if fa:
             cat_name = cat.get("name", "(unnamed)")
             sub_cats = cat.get("subCategories", [])
             total_affected = sum(
-                rc.get("affectedSessionCount", 0)
-                for sc in sub_cats
-                for rc in sc.get("rootCauses", [])
+                rc.get("affectedSessionCount", 0) for sc in sub_cats for rc in sc.get("rootCauses", [])
             )
             print(f"\n  Category: {cat_name}  (sessions affected: {total_affected})")
 
@@ -466,10 +450,7 @@ if args.online:
     )
     print()
     print("To archive (disable) this config:")
-    print(
-        f"  ctrl.update_online_evaluation_config("
-        f"onlineEvaluationConfigId='{ONLINE_ID}', executionStatus='DISABLED')"
-    )
+    print(f"  ctrl.update_online_evaluation_config(onlineEvaluationConfigId='{ONLINE_ID}', executionStatus='DISABLED')")
 
 # ── Summary ────────────────────────────────────────────────────────────────
 
