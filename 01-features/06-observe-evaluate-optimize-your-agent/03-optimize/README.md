@@ -1,19 +1,19 @@
-# AgentCore Optimization
+# AgentCore optimization
 
-End-to-end optimization workflow for an HR Assistant agent on Amazon Bedrock AgentCore runtime. Covers baseline evaluation, AI-generated prompt improvements, and A/B testing via configuration bundles and target-based routing.
+End-to-end optimization workflow for an HR Assistant agent on Amazon Bedrock AgentCore runtime. Covers automated insights to detect agent failures, run baseline evaluation, get recommendations to improve the agent, and A/B testing via configuration bundles and target-based routing.
 
 ### What You Will Learn
 
 | Stage | Concepts Covered |
 |-------|-----------------|
-| **Failure Insights** | FailureAnalysis, UserIntent, ExecutionSummary: root cause clustering of agent failures |
+| **Insights** | FailureAnalysis, UserIntent, ExecutionSummary: root cause clustering of agent failures |
 | **Baseline evaluation** | Batch evaluations on agent sessions |
 | **Recommendations** | System prompt optimization, tool description optimization from production traces |
 | **Configuration Bundles** | Versioned config containers, runtime config hooks, baggage-based injection |
 | **A/B Test: Config-Bundle Routing** | Prompt-level A/B testing without redeployment, online evaluation, statistical analysis |
 | **A/B Test: Target-Based Routing** | Code-level A/B testing, phased rollout (90/10 canary), multi-runtime comparison |
 
-![AgentCore optimization](images/ac-optimization.png)
+![AgentCore optimization](images/observe-eval-improve.png)
 
 ### Key Components
 
@@ -100,69 +100,6 @@ python insights.py --name HRInsights849 --insight Builtin.Insight.FailureAnalysi
 python insights.py --name HRInsights849 --generate-traces --online
 ```
 
-**Using agentcore-cli** (v0.20.1+, requires an AgentCore project with a deployed runtime):
-
-The CLI insights commands operate within an `agentcore` project. You must have already created a project with `agentcore create` and deployed it with `agentcore deploy` before running these commands. The `--runtime` flag refers to a runtime name defined in your project's `agentcore.json`.
-
-```bash
-# Install the CLI:
-npm install -g @aws/agentcore@latest
-
-# 1. Create a project and add the HR assistant as an agent:
-mkdir hr-insights-cli && cd hr-insights-cli
-agentcore create --name HRInsightsCLI --defaults
-# Follow prompts or use: --framework Strands --model-provider Bedrock
-
-# Copy the HR assistant implementation:
-cp /path/to/utils/hr_assistant_agent.py app/HRInsightsCLI/main.py
-
-# Deploy (builds container, pushes to ECR, creates the AgentCore runtime):
-agentcore deploy -y
-
-# 2. Run a one-shot insights job over the last 7 days of traces:
-agentcore run insights \
-  --runtime HRInsightsCLI \
-  --insights Builtin.Insight.FailureAnalysis \
-  --insights Builtin.Insight.UserIntent \
-  --insights Builtin.Insight.ExecutionSummary \
-  --lookback-days 7 \
-  --wait \
-  --json
-
-# 3. List all insights jobs for this project:
-agentcore insights history --json
-
-# 4. View results for a specific job:
-agentcore insights results --id <insights-job-id> --json
-
-# 5. Add a recurring daily online-insights config:
-agentcore add online-insights \
-  --name HROnlineInsights \
-  --runtime HRInsightsCLI \
-  --insights Builtin.Insight.FailureAnalysis \
-  --insights Builtin.Insight.UserIntent \
-  --insights Builtin.Insight.ExecutionSummary \
-  --sampling-rate 100 \
-  --clustering-frequency DAILY \
-  --enable-on-create
-agentcore deploy -y
-
-# 6. Chain insights into a system prompt recommendation:
-agentcore run recommendation \
-  --runtime HRInsightsCLI \
-  --from-insights <insights-job-id> \
-  --type system-prompt \
-  --evaluator Builtin.GoalSuccessRate \
-  --inline "You are a helpful HR Assistant for Acme Corp..." \
-  --json
-```
-
-Notes:
-- `insights` and `evaluators` are mutually exclusive in a single batch job. Do not pass `--evaluator` to `agentcore run insights`.
-- Resource names must match `^[a-zA-Z][a-zA-Z0-9_]{0,47}$` (letters, numbers, underscores; no hyphens).
-- `agentcore insights history` and `agentcore insights results` must be run from inside the project directory.
-- The `--from-insights` flag on `agentcore run recommendation` reads failure root causes from the insights job and uses them to guide the system prompt rewrite.
-
 ### Step 1: Deploy the HR Assistant
 
 ```bash
@@ -195,7 +132,46 @@ agentcore run batch-evaluation \
   --evaluator Builtin.GoalSuccessRate Builtin.Helpfulness Builtin.Correctness
 ```
 
-### Step 3: Get Recommendations
+### Step 3: Run Failure Insights
+
+After generating traffic, run insights to understand which sessions are failing and why before optimizing. The CLI insights commands require an `agentcore` project with a deployed runtime (v0.20.1+).
+
+```bash
+# Run a one-shot insights job over the last 7 days of traces:
+agentcore run insights \
+  --runtime HRAssistant \
+  --insights Builtin.Insight.FailureAnalysis \
+  --insights Builtin.Insight.UserIntent \
+  --insights Builtin.Insight.ExecutionSummary \
+  --lookback-days 7 \
+  --wait \
+  --json
+
+# List all insights jobs for this project:
+agentcore insights history --json
+
+# View results for a specific job:
+agentcore insights results --id <insights-job-id> --json
+
+# Add a recurring daily online-insights config:
+agentcore add online-insights \
+  --name HROnlineInsights \
+  --runtime HRAssistant \
+  --insights Builtin.Insight.FailureAnalysis \
+  --insights Builtin.Insight.UserIntent \
+  --insights Builtin.Insight.ExecutionSummary \
+  --sampling-rate 100 \
+  --clustering-frequency DAILY \
+  --enable-on-create
+agentcore deploy -y
+```
+
+Notes:
+- `insights` and `evaluators` are mutually exclusive in a single batch job. Do not pass `--evaluator` to `agentcore run insights`.
+- Resource names must match `^[a-zA-Z][a-zA-Z0-9_]{0,47}$` (letters, numbers, underscores; no hyphens).
+- `agentcore insights history` and `agentcore insights results` must be run from inside the project directory.
+
+### Step 4: Get Recommendations
 
 ```bash
 # System prompt recommendation (optimize for GoalSuccessRate)
@@ -213,7 +189,7 @@ agentcore run recommendation \
   --tools "get_policy:Look up an HR policy by name"
 ```
 
-### Step 4: Create Configuration Bundles
+### Step 5: Create Configuration Bundles
 
 ```bash
 # Create control bundle (original prompt)
@@ -233,7 +209,7 @@ agentcore cb versions --bundle HRControl --json
 agentcore cb versions --bundle HRTreatment --json
 ```
 
-### Step 5a: A/B Test -- Config-Bundle Routing
+### Step 6a: A/B Test -- Config-Bundle Routing
 
 ```bash
 # Create gateway
@@ -273,7 +249,7 @@ agentcore deploy
 agentcore ab-test HRBundleABTest
 ```
 
-### Step 5b: A/B Test -- Target-Based Routing (Phased Rollout)
+### Step 6b: A/B Test -- Target-Based Routing (Phased Rollout)
 
 ```bash
 # Deploy v2 of the agent (with new code changes)
@@ -316,7 +292,7 @@ agentcore ab-test HRTargetABTest
 agentcore stop ab-test HRTargetABTest
 ```
 
-### Step 6: Cleanup
+### Step 7: Cleanup
 
 ```bash
 agentcore stop ab-test HRBundleABTest
