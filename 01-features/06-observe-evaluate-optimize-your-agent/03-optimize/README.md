@@ -56,7 +56,7 @@ python deploy.py --name HRAssistV1
 # Invoke the deployed agent
 python invoke.py --name HRAssistV1
 
-# [Optional] Run failure insights: generate traces then analyze with all 3 insight types
+# [Optional] Run insights: generate traces then analyze with all 3 insight types
 python insights.py --name HRAssistV1 --generate-traces
 
 # Run the full optimization workflow
@@ -109,7 +109,7 @@ agentcore run batch-evaluation \
   --evaluator Builtin.GoalSuccessRate Builtin.Helpfulness Builtin.Correctness
 ```
 
-### Step 3: Run Failure Insights
+### Step 3: Run Insights
 
 After generating traffic, run insights to understand which sessions are failing and why before optimizing. The CLI insights commands require an `agentcore` project with a deployed runtime (v0.20.1+).
 
