@@ -119,3 +119,5 @@
 - Gui Ruggiero (guiruggiero)
 - Visakh Madathil (vmmadathil)
 - JobRamos (jobdram)
+- Srividya Ponnada (psrivi)
+- Bharathi Srinivasan (bhrsrini)
