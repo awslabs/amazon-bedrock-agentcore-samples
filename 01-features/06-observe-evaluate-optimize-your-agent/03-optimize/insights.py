@@ -31,13 +31,8 @@ Prerequisites:
     1. Deploy the HR Assistant agent:
          python deploy.py --name HRInsights849 --region us-west-2
 
-    2. Install the preview SDK (adds insights API support):
-         pip install \\
-           /path/to/Boto3CliV1Artifacts-dp/botocore-1.43.30-py3-none-any.whl \\
-           /path/to/Boto3CliV1Artifacts-dp/boto3-1.43.30-py3-none-any.whl \\
-           --force-reinstall
-
-       Typical path: ../../../../../../Evaluations/Evo/Boto3CliV1Artifacts-dp/
+    2. Install dependencies:
+         pip install -r requirements.txt
 """
 
 import argparse
@@ -399,11 +394,15 @@ else:
 
 # ── 4d: Error details per insight ─────────────────────────────────────────
 
-error_details = result.get("errorDetails", {})
+error_details = result.get("errorDetails", [])
 if error_details:
     print(f"\n--- Error details ---")
-    for key, val in error_details.items():
-        print(f"  {key}: {val}")
+    if isinstance(error_details, dict):
+        for key, val in error_details.items():
+            print(f"  {key}: {val}")
+    else:
+        for item in error_details:
+            print(f"  {item}")
 
 # ── Step 5: Online Insights Config (optional) ──────────────────────────────
 #
@@ -420,13 +419,18 @@ if args.online:
     online_resp = ctrl.create_online_evaluation_config(
         onlineEvaluationConfigName=ONLINE_NAME,
         description="HR Assistant daily insights: FailureAnalysis, UserIntent, ExecutionSummary",
-        onlineEvaluationConfigType="INSIGHTS",
-        agentSelector={"serviceNames": [SERVICE_NAME]},
-        insightsConfig={
-            "insights": [{"insightId": iid} for iid in SELECTED_INSIGHTS],
-            "samplingRate": 100,
-            "clusteringConfig": {"frequencies": ["DAILY"]},
+        rule={
+            "samplingConfig": {"samplingPercentage": 100},
         },
+        dataSourceConfig={
+            "cloudWatchLogs": {
+                "logGroupNames": LOG_GROUP_NAMES,
+                "serviceNames": [SERVICE_NAME],
+            }
+        },
+        insights=[{"insightId": iid} for iid in SELECTED_INSIGHTS],
+        clusteringConfig={"frequencies": ["DAILY"]},
+        evaluationExecutionRoleArn=ROLE_ARN,
         enableOnCreate=True,
         clientToken=str(uuid.uuid4()),
     )

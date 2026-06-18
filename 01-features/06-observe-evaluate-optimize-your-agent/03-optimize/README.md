@@ -57,7 +57,6 @@ python deploy.py --name HRAssistV1
 python invoke.py --name HRAssistV1
 
 # [Optional] Run failure insights: generate traces then analyze with all 3 insight types
-# Requires preview SDK -- see "Failure Insights" section below for install instructions
 python insights.py --name HRAssistV1 --generate-traces
 
 # Run the full optimization workflow
@@ -74,8 +73,8 @@ The following commands reproduce the full optimization workflow from the command
 Install the AgentCore CLI:
 
 ```bash
-npm install -g @aws/agentcore
-agentcore --version   # should print 0.13.0 or later
+npm install -g @aws/agentcore@latest
+agentcore --version   # 0.20.1 or later
 ```
 
 ### Step 0: Failure Insights (Optional -- Pre-Optimization Diagnostics)
@@ -83,10 +82,8 @@ agentcore --version   # should print 0.13.0 or later
 Run insights before the optimization loop to see which sessions are failing and why. The results let you focus prompt and tool description changes on real problems.
 
 ```bash
-# Install the preview SDK that adds insights API support (--force-reinstall upgrades botocore/boto3)
-pip install /path/to/Boto3CliV1Artifacts-dp/botocore-1.43.30-py3-none-any.whl \
-            /path/to/Boto3CliV1Artifacts-dp/boto3-1.43.30-py3-none-any.whl \
-            --force-reinstall
+# Install dependencies (boto3 1.43.32+ and bedrock-agentcore 1.15.0+ include the insights API):
+pip install -r requirements.txt
 
 # Make sure the agent is deployed first (deploy.py --name HRInsights849 --region us-west-2)
 
@@ -103,38 +100,26 @@ python insights.py --name HRInsights849 --insight Builtin.Insight.FailureAnalysi
 python insights.py --name HRInsights849 --generate-traces --online
 ```
 
-**Using agentcore-cli** (requires a LENS-authorized account; tested with v0.19.0):
+**Using agentcore-cli** (v0.20.1+, requires an AgentCore project with a deployed runtime):
+
+The CLI insights commands operate within an `agentcore` project. You must have already created a project with `agentcore create` and deployed it with `agentcore deploy` before running these commands. The `--runtime` flag refers to a runtime name defined in your project's `agentcore.json`.
 
 ```bash
-# Install the preview CLI:
-npm install -g aws-agentcore-0.19.0-20260612171356.tgz   # or later tarball
+# Install the CLI:
+npm install -g @aws/agentcore@latest
 
-# Prerequisites:
-# 1. Deploy the agent and create a CLI project first (deploy.py creates the runtime):
-python deploy.py --name HRInsightsCLI --region us-west-2
-
-# 2. Create a CLI project and register the deployed runtime:
+# 1. Create a project and add the HR assistant as an agent:
 mkdir hr-insights-cli && cd hr-insights-cli
-agentcore create --name HRInsightsCLI --defaults --no-agent
-cd HRInsightsCLI
-cp -r ../utils/hr_assistant_agent.py agentcore/../app/HRInsightsCLI/main.py  # optional
+agentcore create --name HRInsightsCLI --defaults
+# Follow prompts or use: --framework Strands --model-provider Bedrock
 
-# [One-time] Add a recurring daily online-insights config (written to agentcore.json,
-# deployed via CDK):
-agentcore add online-insights \
-  --name HROnlineInsights849 \
-  --runtime HRInsightsCLI \
-  --insights Builtin.Insight.FailureAnalysis \
-  --insights Builtin.Insight.UserIntent \
-  --insights Builtin.Insight.ExecutionSummary \
-  --sampling-rate 100 \
-  --clustering-frequency DAILY \
-  --enable-on-create \
-  --json
-# Deploy to create the CloudFormation-managed online insights config:
-# agentcore deploy -y --json
+# Copy the HR assistant implementation:
+cp /path/to/utils/hr_assistant_agent.py app/HRInsightsCLI/main.py
 
-# Run a one-shot insights job over the last 7 days of traces:
+# Deploy (builds container, pushes to ECR, creates the AgentCore runtime):
+agentcore deploy -y
+
+# 2. Run a one-shot insights job over the last 7 days of traces:
 agentcore run insights \
   --runtime HRInsightsCLI \
   --insights Builtin.Insight.FailureAnalysis \
@@ -144,14 +129,27 @@ agentcore run insights \
   --wait \
   --json
 
-# List all insights jobs (history):
+# 3. List all insights jobs for this project:
 agentcore insights history --json
 
-# View results for a specific job:
+# 4. View results for a specific job:
 agentcore insights results --id <insights-job-id> --json
 
-# Chain insights into a system prompt recommendation:
+# 5. Add a recurring daily online-insights config:
+agentcore add online-insights \
+  --name HROnlineInsights \
+  --runtime HRInsightsCLI \
+  --insights Builtin.Insight.FailureAnalysis \
+  --insights Builtin.Insight.UserIntent \
+  --insights Builtin.Insight.ExecutionSummary \
+  --sampling-rate 100 \
+  --clustering-frequency DAILY \
+  --enable-on-create
+agentcore deploy -y
+
+# 6. Chain insights into a system prompt recommendation:
 agentcore run recommendation \
+  --runtime HRInsightsCLI \
   --from-insights <insights-job-id> \
   --type system-prompt \
   --evaluator Builtin.GoalSuccessRate \
@@ -159,11 +157,11 @@ agentcore run recommendation \
   --json
 ```
 
-> **Notes:**
-> - `insights` and `evaluators` are mutually exclusive in a single batch job. Do not pass `--evaluator` to `agentcore run insights`.
-> - Schema names must match `^[a-zA-Z][a-zA-Z0-9_]{0,47}$` (no hyphens).
-> - LENS access must be enabled for your account. If you see `Account X is not authorized to use feature LENS`, contact your account admin.
-> - `agentcore view insights` is not available in v0.19.0 -- use `agentcore insights history` and `agentcore insights results` instead.
+Notes:
+- `insights` and `evaluators` are mutually exclusive in a single batch job. Do not pass `--evaluator` to `agentcore run insights`.
+- Resource names must match `^[a-zA-Z][a-zA-Z0-9_]{0,47}$` (letters, numbers, underscores; no hyphens).
+- `agentcore insights history` and `agentcore insights results` must be run from inside the project directory.
+- The `--from-insights` flag on `agentcore run recommendation` reads failure root causes from the insights job and uses them to guide the system prompt rewrite.
 
 ### Step 1: Deploy the HR Assistant
 
@@ -337,35 +335,95 @@ agentcore deploy -y
 
 ## Failure Insights
 
-AgentCore Insights runs over historical agent traces and clusters sessions by failure type, user intent, and execution pattern. Run it before or alongside optimization to get specifics on what is going wrong, not just a score.
+AgentCore Insights analyzes agent sessions to identify failure patterns, extract user intents, and summarize execution behavior. It extends batch evaluation by providing triage analysis that goes beyond scoring: it tells you why your agent fails and what your users are trying to accomplish. After per-session analysis, the service clusters results across sessions to surface recurring patterns.
+
+Insights is in public preview. See the [AgentCore Insights documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/insights.html) for the latest API details.
 
 ### Three Insight Types
 
 | Insight | What It Produces |
 |---------|-----------------|
-| **FailureAnalysis** | Failure sessions clustered by category, subcategory, and root cause. Each root cause includes a fix recommendation and a list of affected session IDs. |
-| **UserIntent** | Sessions grouped by what the user was trying to do (e.g., "PTO balance inquiry", "policy lookup"). Useful for finding gaps between what users ask and what the agent handles. |
-| **ExecutionSummary** | Summary of how the agent executed across sessions: tool usage patterns, multi-turn flows, and common paths. Requires at least 3 sessions. |
+| **FailureAnalysis** | Identifies failures, categorizes them using a signal taxonomy (see below), traces root causes to specific spans, and provides fix recommendations. Results appear as a three-level hierarchy: failure categories, subcategories, and root cause clusters with affected session IDs. |
+| **UserIntent** | Extracts what users were trying to accomplish in each session, then clusters similar intents together. Shows the most common use cases your agent handles and reveals gaps between user requests and agent capabilities. |
+| **ExecutionSummary** | Summarizes the approach the agent took and the outcome for each session, then clusters similar execution patterns. Requires at least 3 sessions. |
+
+### FailureAnalysis Signal Taxonomy
+
+Each failure in the response includes one or more `signals` — the specific evidence the service found at a span level. Each signal has a `category` (a machine-readable taxonomy label), `evidence` (a quoted description of what went wrong in that span), and `confidence` (0–1 float).
+
+The signal categories returned by the API:
+
+| Category | What it means |
+|---|---|
+| `hallucination-category-hall-capabilities` | Agent invented constraints or limitations for a tool that do not exist in the tool spec (e.g., "this tool only supports years 2025-2026" when no such constraint is documented) |
+| `hallucination-category-hall-misunderstand` | Agent misread the tool result and reported a different value (e.g., tool returned "5% match", agent reported "6%") |
+| `hallucination-category-hall-usage` | Agent asserted knowledge of a tool's contents without calling it (e.g., "sabbatical leave is not in the available topics" without calling `lookup_hr_policy`) |
+| `task-instruction-category-non-compliance` | Agent violated an explicit instruction in the system prompt (e.g., system prompt says "always use available tools", agent answered without calling any tool) |
+| `orchestration-related-errors-category-premature-termination` | Agent terminated the task without attempting a relevant tool call, rather than calling the tool and handling any error it returns |
+| `llm-output-category-nonsensical` | Agent output was incoherent or exposed internal artifacts — unresolved template placeholders, raw `<thinking>` tags, or other content that should not appear in a user-facing response |
+| `repetitive-behavior-category-repetition-info` | Agent asked for information the user had already provided in the same session |
+
+Each `affectedSessions` entry under a root cause contains:
+- `sessionId` — the session where this failure occurred
+- `explanation` — a sentence citing the specific span ID and what went wrong
+- `fixType` — `SYSTEM_PROMPT_FIX` (addressable via prompt change) or `OTHERS` (backend or data issue)
+- `recommendation` — a concrete instruction to add to the system prompt
+- `failureSpans[]` — the span(s) where the failure was detected, each with `spanId`, `traceId`, and `signals[]`
+
+Example from a real run:
+
+```json
+{
+  "sessionId": "3b927bee-...",
+  "explanation": "At span 619f31562100b9b6, the agent concluded without ever invoking get_pay_stub, because it hallucinated a non-existent date-range constraint.",
+  "fixType": "SYSTEM_PROMPT_FIX",
+  "recommendation": "Add a guardrail requiring the agent to attempt tool calls before concluding a request cannot be fulfilled.",
+  "failureSpans": [{
+    "spanId": "619f31562100b9b6",
+    "traceId": "6a3080fa61c3929d7c75522421a71cec",
+    "signals": [{
+      "category": "hallucination-category-hall-capabilities",
+      "evidence": "Agent claims get_pay_stub only supports 2025-2026, but the tool definition has no such constraint documented.",
+      "confidence": 0.9
+    }]
+  }]
+}
+```
+
+### How Insights Are Triggered
+
+Insights run in two modes:
+
+**One-time (batch):** Call `start_batch_evaluation` with an `insights` list. Results come back through `get_batch_evaluation`. Use this for on-demand analysis over a specific time range.
+
+**Recurring (scheduled):** Create an `OnlineEvaluationConfig` with a `clusteringConfig` frequency (`DAILY`, `WEEKLY`, or `MONTHLY`). The service automatically triggers batch evaluation jobs on that cadence. Per-session analysis runs continuously; clustered results are generated during each scheduled batch job.
+
+### From Triage to Optimization
+
+After insights identifies failure patterns, you can feed those findings into the Recommendations API to generate an improved system prompt:
+
+1. Run insights to identify recurring failure categories and root causes.
+2. Call `start_recommendation` with your current system prompt, pointing it at the same agent traces (or pass the insights batch evaluation ARN directly).
+3. Use A/B testing to compare the original and recommended configurations with live traffic.
+
+The `insights.py --online` flag and the `agentcore run recommendation --from-insights <id>` CLI command both implement this flow.
 
 ### Data Source
 
 Insights pull from the `aws/spans` CloudWatch log group, which receives OTel span documents from AgentCore Runtime via the `opentelemetry-instrument` entry point. Each session's tool calls, model calls, and errors are captured as spans and correlated by session ID.
 
-The runtime log group (`/aws/bedrock-agentcore/runtimes/...`) must also be included. Without it, the insights engine cannot resolve the log events that spans reference, which causes incomplete results.
+The runtime log group (`/aws/bedrock-agentcore/runtimes/...`) must also be included. Without it, the insights engine cannot resolve the log events that spans reference, which produces incomplete results.
 
-> `insights` and `evaluators` are mutually exclusive in the batch evaluation API. Use a separate batch job for each.
+`insights` and `evaluators` are mutually exclusive in the batch evaluation API. Use a separate batch job for each.
 
 ### Running insights.py
 
 ```bash
-# Prerequisites:
-# 1. Deploy the agent (creates agent_state_{name}.json):
-python deploy.py --name HRInsights849 --region us-west-2
+# 1. Install dependencies:
+pip install -r requirements.txt
 
-# 2. Install the preview SDK with insights API support:
-pip install /path/to/Boto3CliV1Artifacts-dp/botocore-1.43.30-py3-none-any.whl \
-            /path/to/Boto3CliV1Artifacts-dp/boto3-1.43.30-py3-none-any.whl \
-            --force-reinstall
+# 2. Deploy the agent (creates agent_state_{name}.json):
+python deploy.py --name HRInsights849 --region us-west-2
 
 # 3a. Generate failure traces then run all insight types:
 python insights.py --name HRInsights849 --generate-traces
@@ -415,11 +473,35 @@ FailureAnalysis (2 top-level categories)
 
 ### Online Insights Config
 
-The `--online` flag creates an `OnlineEvaluationConfig` of type `INSIGHTS` that runs on a daily schedule. View results with `get_online_evaluation_config` or the CLI:
+The `--online` flag creates an `OnlineEvaluationConfig` that runs on a daily schedule. It uses `clusteringConfig` with `frequencies: ["DAILY"]` to re-cluster sessions automatically. View results with `get_online_evaluation_config` or the CLI:
 
 ```bash
+# Run from inside your agentcore project directory:
 agentcore insights history --json
 agentcore insights results --id <id> --json
+```
+
+The Python SDK call (used by `insights.py --online`):
+
+```python
+ctrl.create_online_evaluation_config(
+    onlineEvaluationConfigName="HROnlineInsights",
+    rule={"samplingConfig": {"samplingPercentage": 100}},
+    dataSourceConfig={
+        "cloudWatchLogs": {
+            "logGroupNames": ["aws/spans", "/aws/bedrock-agentcore/runtimes/<runtime-id>-DEFAULT"],
+            "serviceNames": ["<runtime-name>.DEFAULT"],
+        }
+    },
+    insights=[
+        {"insightId": "Builtin.Insight.FailureAnalysis"},
+        {"insightId": "Builtin.Insight.UserIntent"},
+        {"insightId": "Builtin.Insight.ExecutionSummary"},
+    ],
+    clusteringConfig={"frequencies": ["DAILY"]},
+    evaluationExecutionRoleArn=ROLE_ARN,
+    enableOnCreate=True,
+)
 ```
 
 ### Chaining Insights into Recommendations

@@ -131,7 +131,7 @@
           "evaluator_id": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "explanation": "The agent's response includes all key facts from the expected response: employee EMP-001 has a total of 15 PTO days, 5 days used, and 10 days remaining. The information is clearly communicated and matches the expected response in content and clarity.",
@@ -159,7 +159,7 @@
           "evaluator_id": "HRAssertionChecker_38475b67-24XRuv49sA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorId": "HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorName": "HRAssertionChecker_38475b67",
               "context": {
@@ -309,7 +309,7 @@
           "evaluator_id": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "explanation": "The agent's response includes all key facts mentioned in the expected response: accrual of 15 days of PTO per year, the requirement for PTO requests to be submitted at least 2 business days in advance, and the rollover of up to 5 unused days. The agent's response also includes additional details such as the increase in accrual after 3 years and the rule that PTO cannot be taken in advance of accrual, which are not mentioned in the expected response but do not contradict it.",
@@ -337,7 +337,7 @@
           "evaluator_id": "HRAssertionChecker_38475b67-24XRuv49sA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorId": "HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorName": "HRAssertionChecker_38475b67",
               "explanation": "The agent followed the expected tool trajectory by calling 'lookup_hr_policy' with the topic 'pto'. Additionally, the agent mentioned both the 15-day annual accrual for full-time employees and the 2 business day advance notice requirement, fulfilling all assertions.",
@@ -493,7 +493,7 @@
           "evaluator_id": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "explanation": "The agent's response does not contain the specific details about the company's 401k match policy, which are key facts in the expected response. Instead, the agent informs the user that it doesn't have access to the information. Therefore, the response is factually different and missing key information from the expected response.",
@@ -520,7 +520,7 @@
           "evaluator_id": "HRAssertionChecker_38475b67-24XRuv49sA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorId": "HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorName": "HRAssertionChecker_38475b67",
               "context": {
@@ -670,7 +670,7 @@
           "evaluator_id": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "context": {
@@ -692,7 +692,7 @@
           "evaluator_id": "HRAssertionChecker_38475b67-24XRuv49sA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorId": "HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorName": "HRAssertionChecker_38475b67",
               "context": {
@@ -893,7 +893,7 @@
           "evaluator_id": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "explanation": "The agent's response includes all the key facts from the expected response, such as the premium coverage percentages and the available health insurance plans. The agent's response also provides additional details like deductibles and open enrollment timing, which are not present in the expected response. However, these additional details do not detract from the core information that matches the expected response.",
@@ -916,7 +916,7 @@
               ]
             },
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "explanation": "The agent's response includes all the key facts from the expected response: 100% coverage for preventive care, 80% for basic restorative care, 50% for major restorative care, and an annual maximum of $2,000. The agent's response also includes additional details about the orthodontia lifetime maximum, which is not mentioned in the expected response but does not detract from the match. Therefore, the response is semantically equivalent to the expected response.",
@@ -939,7 +939,7 @@
               ]
             },
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorId": "HRResponseSimilarity_38475b67-bEzzNp4GLA",
               "evaluatorName": "HRResponseSimilarity_38475b67",
               "context": {
@@ -961,7 +961,7 @@
           "evaluator_id": "HRAssertionChecker_38475b67-24XRuv49sA",
           "results": [
             {
-              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
+              "evaluatorArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:evaluator/HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorId": "HRAssertionChecker_38475b67-24XRuv49sA",
               "evaluatorName": "HRAssertionChecker_38475b67",
               "explanation": "The agent followed the expected tool trajectory by calling 'get_benefits_summary' three times, which matches the expected sequence. Additionally, the agent satisfied all assertions: it correctly described health, dental, and 401k benefits in their respective turns, and it maintained the conversational context across all three turns. Therefore, the agent fulfilled all the session requirements.",

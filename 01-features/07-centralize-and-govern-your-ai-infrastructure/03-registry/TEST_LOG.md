@@ -3,7 +3,7 @@
 **Date:** 2026-05-18 / 2026-05-19
 **Source:** `06-workshops/10-Agent-Registry` (amazon-bedrock-agentcore-samples fork)
 **Target:** `02-features/06-centralize-and-govern-your-ai-infrastructure/03-registry` (private staging)
-**AWS Account:** 849138760372 | **Region:** us-west-2
+**AWS Account:** 123456789012 | **Region:** us-west-2
 
 ---
 

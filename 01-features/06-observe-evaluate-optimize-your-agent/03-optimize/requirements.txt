@@ -1,15 +1,5 @@
-bedrock-agentcore>=1.7.0
-boto3>=1.43.0
+bedrock-agentcore>=1.15.0
+boto3>=1.43.32
 strands-agents[otel]
 aws-opentelemetry-distro
 requests
-
-# insights.py requires a preview SDK with AgentCore Insights API support.
-# Install from the preview WHL files (force-reinstall to upgrade botocore/boto3):
-#
-#   pip install /path/to/Boto3CliV1Artifacts-dp/botocore-1.43.30-py3-none-any.whl \
-#               /path/to/Boto3CliV1Artifacts-dp/boto3-1.43.30-py3-none-any.whl \
-#               --force-reinstall
-#
-# The preview WHL adds the start_batch_evaluation(insights=[...]) and
-# create_online_evaluation_config(insightsConfig=...) operations.
