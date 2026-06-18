@@ -77,29 +77,6 @@ npm install -g @aws/agentcore@latest
 agentcore --version   # 0.20.1 or later
 ```
 
-### Step 0: Failure Insights (Optional -- Pre-Optimization Diagnostics)
-
-Run insights before the optimization loop to see which sessions are failing and why. The results let you focus prompt and tool description changes on real problems.
-
-```bash
-# Install dependencies (boto3 1.43.32+ and bedrock-agentcore 1.15.0+ include the insights API):
-pip install -r requirements.txt
-
-# Make sure the agent is deployed first (deploy.py --name HRInsights849 --region us-west-2)
-
-# Generate failure-mode traces and run all three insight types:
-python insights.py --name HRInsights849 --generate-traces --region us-west-2
-
-# Run insights on existing traces from the last 7 days:
-python insights.py --name HRInsights849 --lookback-days 7
-
-# Run only FailureAnalysis (faster):
-python insights.py --name HRInsights849 --insight Builtin.Insight.FailureAnalysis
-
-# Run insights and create a recurring daily OnlineInsightsConfig:
-python insights.py --name HRInsights849 --generate-traces --online
-```
-
 ### Step 1: Deploy the HR Assistant
 
 ```bash
