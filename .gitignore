@@ -286,6 +286,8 @@ plan/
 **/agent_state_*.json
 **/optimize_state_*.json
 **/runtime_config.json
+**/aws-targets.json
+**/.cli/deployed-state.json
 
 # Evaluation and session results
 **/batch_eval_*_result.json
