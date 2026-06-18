@@ -46,10 +46,12 @@ def get_cognito_token(region: str) -> tuple[str, str]:
     token_endpoint = f"https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
 
     creds = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
-    data = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "scope": "agentcore/invoke",
-    }).encode()
+    data = urllib.parse.urlencode(
+        {
+            "grant_type": "client_credentials",
+            "scope": "agentcore/invoke",
+        }
+    ).encode()
 
     req = urllib.request.Request(
         token_endpoint,

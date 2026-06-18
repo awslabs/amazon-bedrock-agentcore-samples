@@ -14,9 +14,7 @@ import sys
 import unittest
 
 # Make app/claimsagent importable without installing the package.
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "app", "claimsagent")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app", "claimsagent"))
 
 from parsing import parse_confidence, parse_decision  # noqa: E402
 

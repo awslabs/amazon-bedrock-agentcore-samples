@@ -44,9 +44,14 @@ def invoke_and_stream(runtime_arn: str, region: str, prompt: str):
     session = BotocoreSession()
     credentials = session.get_credentials().get_frozen_credentials()
 
-    aws_request = AWSRequest(method="POST", url=url, data=payload, headers={
-        "Content-Type": "application/json",
-    })
+    aws_request = AWSRequest(
+        method="POST",
+        url=url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+        },
+    )
     SigV4Auth(credentials, "bedrock-agentcore", region).add_auth(aws_request)
 
     req = urllib.request.Request(
