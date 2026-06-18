@@ -91,7 +91,7 @@ def build_rules(managed_mode):
     managed_mode is "count" or "block"; it controls whether the managed rule
     group runs in COUNT (observe) or BLOCK (enforce) mode via an override.
     """
-    managed_override = {"count": {}} if managed_mode == "count" else {"none": {}}
+    managed_override = {"Count": {}} if managed_mode == "count" else {"None": {}}
     return [
         {
             "Name": "common-rule-set",
@@ -181,11 +181,8 @@ def main():
     web_acl_id = acl["Summary"]["Id"]
     print(f"  Web ACL ARN: {web_acl_arn}")
 
-    # --- 3. Associate the web ACL with the gateway ---
-    print("\n--- Associating web ACL with gateway ---")
-    wafv2.associate_web_acl(WebACLArn=web_acl_arn, ResourceArn=gateway_arn)
-    print("  Associated.")
-
+    # Persist immediately so cleanup can delete the web ACL even if the
+    # association step below fails (otherwise the ACL is orphaned).
     save_env(
         {
             "GATEWAY_ID": gateway_id,
@@ -196,6 +193,12 @@ def main():
             "WEB_ACL_ARN": web_acl_arn,
         }
     )
+
+    # --- 3. Associate the web ACL with the gateway ---
+    print("\n--- Associating web ACL with gateway ---")
+    wafv2.associate_web_acl(WebACLArn=web_acl_arn, ResourceArn=gateway_arn)
+    print("  Associated.")
+
     print("\n  Saved target + web ACL details to .env")
     print("\nNext: uv run python scripts/waf/invoke.py")
 

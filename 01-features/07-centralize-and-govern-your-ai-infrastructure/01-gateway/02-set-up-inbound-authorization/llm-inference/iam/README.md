@@ -12,8 +12,6 @@ With `authorizerType: AWS_IAM`, the gateway authenticates callers by validating 
 > [!NOTE]
 > Inbound auth (client to gateway) is independent of outbound auth (gateway to provider). The two targets use different outbound mechanisms, but a caller reaches both the same way: a SigV4-signed request.
 
-<!-- ![Architecture](images/architecture.png) -->
-
 ## How it works
 
 1. The caller signs the request with AWS SigV4 (service `bedrock-agentcore`) using their AWS credentials.

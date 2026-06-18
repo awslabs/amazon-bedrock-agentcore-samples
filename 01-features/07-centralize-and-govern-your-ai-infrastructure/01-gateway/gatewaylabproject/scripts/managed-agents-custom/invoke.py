@@ -1,8 +1,10 @@
 """Demo: Drive a Claude Managed Agents session through the gateway (requests).
 
-Runs the full Managed Agents flow against the CUSTOM HTTP passthrough target:
-create an agent, create an environment, start a session, send a user message,
-and stream the agent's events back over SSE.
+Runs the Managed Agents flow against the CUSTOM HTTP passthrough target: create
+an agent, create an environment, start a session, and send a user message.
+Streaming the agent's events back over SSE is shown in sdk_demo.py (the Anthropic
+SDK opens the stream before sending the event, which the API requires); plain
+requests cannot easily express that ordering, so it is omitted here.
 
 Auth model: the caller presents the Entra ID gateway JWT inbound
 (Authorization: Bearer) AND its own Claude key as x-api-key. The gateway
@@ -19,7 +21,6 @@ Usage:
     uv run python scripts/managed-agents-custom/invoke.py
 """
 
-import json
 import os
 import sys
 
@@ -122,7 +123,9 @@ def main():
     session_id = sess.json()["id"]
     print(f"  Session ID: {session_id}")
 
-    # 4. Send a user message (buffered until the stream attaches)
+    # 4. Send a user message. Managed Agents buffers the event until an SSE
+    # stream attaches; this demo sends it and confirms acceptance. To stream the
+    # agent's events back, use sdk_demo.py (the SDK opens the stream first).
     print("--- Sending user message ---")
     sent = requests.post(
         f"{base}/v1/sessions/{session_id}/events",
@@ -138,30 +141,7 @@ def main():
         timeout=60,
     )
     sent.raise_for_status()
-
-    # 5. Open the SSE stream and process events as they arrive
-    print("--- Streaming agent events ---\n")
-    with requests.get(
-        f"{base}/v1/sessions/{session_id}/stream",
-        headers={**headers, "Accept": "text/event-stream"},
-        stream=True,
-        timeout=300,
-    ) as stream:
-        stream.raise_for_status()
-        for line in stream.iter_lines(decode_unicode=True):
-            if not line or not line.startswith("data:"):
-                continue
-            event = json.loads(line[len("data:") :].strip())
-            etype = event.get("type")
-            if etype == "agent.message":
-                for block in event.get("content", []):
-                    if block.get("type") == "text":
-                        print(block["text"], end="", flush=True)
-            elif etype == "agent.tool_use":
-                print(f"\n[Using tool: {event.get('name')}]")
-            elif etype == "session.status_idle":
-                print("\n\nAgent finished.")
-                break
+    print("  Message accepted. Stream the response with sdk_demo.py.")
 
 
 if __name__ == "__main__":

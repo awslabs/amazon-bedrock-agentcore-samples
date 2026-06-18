@@ -190,7 +190,7 @@ def main():
             api_key_provider_arn=cred["credentialProviderArn"],
             credential_parameter_name="Authorization",
             credential_location="HEADER",
-            credential_prefix="Bearer ",
+            credential_prefix="Bearer",
         )
         saved["GEMINI_TARGET_ID"] = gemini_target["targetId"]
         wait_ready(admin, gateway_id, gemini_target["targetId"])

@@ -6,25 +6,12 @@ The GitHub MCP server exposes GitHub repositories, issues, pull requests, and mo
 
 ## Architecture
 
-<!-- ![Architecture](images/architecture.png) -->
+![arch](../images/architecture.png)
 
 | Component | Role |
 | :-- | :-- |
 | AgentCore Gateway | Fronts `api.githubcopilot.com` as an `http.passthrough` MCP target; no inbound auth, forwards the caller's Authorization header outbound |
 | GitHub MCP server | Hosted MCP server serving GitHub repository, issue, and pull-request tools |
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant GW as AgentCore Gateway
-    participant GH as GitHub MCP
-
-    Client->>GW: 1. MCP request to /github/mcp (Authorization: Bearer github-token)
-    Note over GW: No inbound auth (authorizerType NONE)
-    GW->>GH: 2. Forward to api.githubcopilot.com/mcp/ (Authorization passed through)
-    GH-->>GW: 3. MCP response
-    GW-->>Client: 4. MCP response
-```
 
 Path-based routing forwards `{GATEWAY_URL}/{targetName}/{path}` to `https://api.githubcopilot.com/mcp/{path}`.
 
@@ -94,38 +81,44 @@ The script calls `create_gateway_target` with this configuration:
   },
   "credentialProviderConfigurations": [
     { "credentialProviderType": "JWT_PASSTHROUGH" }
-  ]
+  ],
+  "metadataConfiguration": {
+    "allowedRequestHeaders": [
+      "Mcp-Session-Id",
+      "Content-Type",
+      "Accept"
+    ],
+    "allowedResponseHeaders": [
+      "Mcp-Session-Id",
+      "Content-Type"
+    ]
+  }
 }
 ```
 
 - `protocolType: MCP` gets a default schema, so no `schema` is needed (unlike `CUSTOM`).
 - `JWT_PASSTHROUGH` forwards the inbound `Authorization` header outbound unchanged. The gateway does not store a GitHub token; the client supplies its own. This is supported on passthrough targets with `NONE` or `CUSTOM_JWT` inbound auth.
+- MCP streamable-http issues an `Mcp-Session-Id` on `initialize` that the client echoes on later calls, and replies with SSE (`Content-Type: text/event-stream`). The target allowlists both as request and response headers so MCP clients can complete the handshake and parse the stream through the gateway. Without the `Content-Type` response allowlist, a client fails with `Unexpected token 'e', "event: mes"... is not valid JSON`.
 
-### Step 3: Verify
-
-```bash
-agentcore status
-```
-
-The `github` target should reach `READY`.
 
 ## Demo
 
-Call the GitHub MCP server through the gateway. With `authorizerType=NONE`, no gateway token is needed; send your GitHub token as the `Authorization` header, which the gateway forwards to GitHub.
+Call the GitHub MCP server through the gateway. With `authorizerType=NONE`, no gateway token is needed; your GitHub token is forwarded as the `Authorization` header to GitHub.
+
+MCP over streamable-http requires an `initialize` handshake followed by `notifications/initialized` before any other call, and the server replies with SSE. The demo script runs that full handshake through the gateway, parses the SSE response, and lists the tools. It reads `GATEWAY_URL`, `TARGET_NAME`, and `GITHUB_TOKEN`:
 
 ```bash
-export GITHUB_TOKEN="<your-github-token>"
+export GITHUB_TOKEN="<your-github-pat>"
 
-curl -sS -X POST "${GATEWAY_URL}/github/mcp" \
-  -H "Authorization: Bearer $GITHUB_TOKEN" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+uv run python scripts/github-mcp-passthrough/invoke.py
 ```
 
 The GitHub MCP server exposes tools for repositories, issues, and pull requests. A valid GitHub token is required (unlike Context7, the GitHub MCP server has no unauthenticated tier).
 
-You can also point any MCP client at `${GATEWAY_URL}/github/mcp` with the same `Authorization` header.
+![GitHub MCP server answering through the gateway](../images/github.gif)
+
+> [!IMPORTANT]
+> The inspector parses the response by its `Content-Type`. The target must allowlist `Content-Type` (and `Mcp-Session-Id`) as response headers (Step 2); otherwise the gateway strips them and the inspector fails to complete the handshake or parse the SSE stream (`Unexpected token 'e', "event: mes"... is not valid JSON`).
 
 ## Cleanup
 

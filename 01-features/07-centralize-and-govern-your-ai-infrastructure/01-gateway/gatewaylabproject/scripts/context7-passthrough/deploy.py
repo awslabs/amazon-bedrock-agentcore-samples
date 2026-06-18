@@ -87,6 +87,21 @@ def main():
         credentialProviderConfigurations=[
             {"credentialProviderType": "JWT_PASSTHROUGH"}
         ],
+        # MCP streamable-http issues an Mcp-Session-Id on initialize that the
+        # client echoes on later calls, and replies with SSE (text/event-stream).
+        # Allowlist both so MCP clients (e.g. the MCP Inspector) can complete the
+        # handshake and parse the stream through the gateway.
+        metadataConfiguration={
+            "allowedRequestHeaders": [
+                "Mcp-Session-Id",
+                "Content-Type",
+                "Accept",
+            ],
+            "allowedResponseHeaders": [
+                "Mcp-Session-Id",
+                "Content-Type",
+            ],
+        },
     )
     target_id = target["targetId"]
     print(f"  Target ID: {target_id}")

@@ -110,8 +110,15 @@ def main():
     print("=" * 60)
     result = mcp.call_tool(websearch_tool, {"query": query, "maxResults": 5})
 
+    # call_tool returns the JSON-RPC envelope; the MCP content is nested under
+    # "result". Unwrap it (fall back to top level for older shapes).
+    tool_result = result.get("result", result)
+    if tool_result.get("error") or result.get("error"):
+        print(f"\n  Tool error: {result.get('error') or tool_result.get('error')}")
+        return
+
     # The tool returns MCP content; the first text block is JSON with results.
-    for block in result.get("content", []):
+    for block in tool_result.get("content", []):
         if block.get("type") == "text":
             try:
                 payload = json.loads(block["text"])

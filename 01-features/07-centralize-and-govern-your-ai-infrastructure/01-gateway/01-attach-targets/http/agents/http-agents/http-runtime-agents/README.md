@@ -8,7 +8,7 @@ This tutorial uses an AWS Documentation assistant (a Strands HTTP agent) that an
 
 ## Architecture
 
-<!-- ![Architecture](images/architecture.png) -->
+![arch](../../images/agents.png)
 
 | Component | Role |
 | :-- | :-- |
@@ -16,29 +16,6 @@ This tutorial uses an AWS Documentation assistant (a Strands HTTP agent) that an
 | AgentCore Runtime | Hosts the AWS docs HTTP agent (protocol `HTTP`); validates the OBO exchanged token on inbound |
 | AgentCore Identity | Stores the OBO credential provider the gateway uses for the token exchange |
 | Microsoft Entra ID | Issues the inbound user token and performs the OBO token exchange |
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Entra as Microsoft Entra ID
-    participant GW as AgentCore Gateway
-    participant RT as AgentCore Runtime (HTTP)
-
-    User->>Entra: 1. Sign in (browser)
-    Entra-->>User: 2. Access token (aud: api://gateway-app, scp: access_as_user)
-
-    User->>GW: 3. POST /invocations with bearer token
-
-    Note over GW: Validate JWT via Entra ID OIDC (v1.0)
-
-    GW->>Entra: 4. OBO exchange (jwt-bearer grant, on_behalf_of)
-    Entra-->>GW: 5. Token scoped to api://runtime-app/.default
-
-    GW->>RT: 6. Forward request with exchanged token
-    Note over RT: Validate JWT (aud: api://runtime-app)
-    RT-->>GW: 7. Response (AWS docs answer)
-    GW-->>User: 8. HTTP response
-```
 
 ## Prerequisites
 
@@ -77,7 +54,7 @@ This tutorial registers **two** Entra ID applications. Keep their IDs straight:
 1. Go to [entra.microsoft.com](https://entra.microsoft.com) -> **App registrations** -> **New registration**
 2. Name: `HTTP-Runtime-Resource`, Single tenant, **Register**
 3. From **Overview**, copy **Application (client) ID** -> `MICROSOFT_RUNTIME_CLIENT_ID` and **Directory (tenant) ID** -> `MICROSOFT_TENANT_ID`
-4. **Expose an API** -> set **Application ID URI** (accept the default `api://<runtime-client-id>`)
+4. **Expose an API** -> set **Application ID URI** (accept the default `api://<runtime-client-id>`) -> **+ Add a scope** named `access_as_user` (consent: Admins and users, Enabled). This delegated scope is what the gateway app requests in step 1.2.6.
 
 #### 1.2 Gateway app (middle tier)
 
@@ -86,7 +63,7 @@ This tutorial registers **two** Entra ID applications. Keep their IDs straight:
 3. **Certificates & secrets** -> **+ New client secret**. Copy the **Value** -> `MICROSOFT_GATEWAY_CLIENT_SECRET`
 4. **Expose an API** -> **+ Add a scope** named `access_as_user` (consent: Admins and users, Enabled)
 5. **Authentication** -> **+ Add a platform** -> **Web** -> redirect URI `http://localhost:9090/oauth2/callback` -> **Configure**
-6. **API permissions** -> **+ Add a permission** -> **My APIs** -> select `HTTP-Runtime-Resource` -> **Delegated permissions** -> add its exposed scope
+6. **API permissions** -> **+ Add a permission** -> **My APIs** tab (not "APIs my organization uses") -> select `HTTP-Runtime-Resource` -> **Delegated permissions** -> add the `access_as_user` scope exposed in step 1.1.4
 7. **API permissions** -> **Grant admin consent for [tenant]** -> **Yes** (all permissions should show green checkmarks)
 
 > [!NOTE]
@@ -151,32 +128,26 @@ echo "Runtime URL: $RUNTIME_URL"
 
 ### Step 4: Test the runtime directly
 
-Invoke the deployed runtime with the AgentCore CLI, which handles inbound auth for you:
+The runtime is registered with `CUSTOM_JWT` inbound auth (Step 2), so `agentcore invoke` needs a bearer token; it does not auto-fetch one. The runtime validates the **runtime** app audience, so mint a token for that resource. Sign in against the gateway app (which holds the delegated permission to the runtime's `access_as_user` scope from step 1.2.6), passing `--scope` so the token is issued for the runtime audience. From the [`gatewaylabproject/`](../../../../../gatewaylabproject/) directory:
 
 ```bash
-agentcore invoke --runtime aws_docs_http --json '{"prompt":"In one sentence, what is Amazon S3?"}'
+uv run scripts/obo-token-exchange/token_callback_server.py \
+  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET \
+  --scope "api://$MICROSOFT_RUNTIME_CLIENT_ID/access_as_user openid profile email"
+```
+
+Sign in when the browser opens, then read the captured token and invoke the runtime with it:
+
+```bash
+export RUNTIME_TOKEN="<Put Bearer Token>"
+
+agentcore invoke --runtime aws_docs_http \
+  --bearer-token "$RUNTIME_TOKEN" \
+  --json '{"prompt":"In one sentence, what is Amazon S3?"}'
 ```
 
 The agent answers from the AWS documentation and returns a `result`.
 
-To prepare for the gateway demo, acquire an Entra ID user token. The runtime's
-inbound auth validates the runtime app audience, so sign in through the gateway
-app and let the OBO lab's callback server capture the token. From the
-[`gatewaylabproject/`](../../../../../gatewaylabproject/) directory:
-
-```bash
-python3 scripts/obo-token-exchange/token_callback_server.py \
-  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET
-```
-
-Sign in when the browser opens, then read the captured token:
-
-```bash
-export BEARER_TOKEN=$(curl -sS http://localhost:9090/token \
-  | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
-
-echo "Bearer token: $BEARER_TOKEN"
-```
 
 ### Step 5: Create the gateway
 
@@ -280,6 +251,17 @@ agentcore status
 
 ## Demo
 
+Next, acquire the **gateway-audience** token used for the gateway demo below. The gateway validates the gateway app audience (Step 5), so run the callback server **without** `--scope` (the default requests the gateway app's own scope):
+
+```bash
+uv run scripts/obo-token-exchange/token_callback_server.py \
+  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET
+
+export BEARER_TOKEN="<Put Bearer Token>"
+
+echo "Bearer token: $BEARER_TOKEN"
+```
+
 Call the agent through the gateway with your **Entra ID user token** from Step 4. The gateway validates it, OBO exchanges it for a runtime scoped token, and forwards the request. HTTP targets use path based routing of the form `{GATEWAY_URL}/{targetName}/invocations`.
 
 ```bash
@@ -293,6 +275,8 @@ curl -sS -X POST "${GATEWAY_URL}/http-runtime-target/invocations" \
 ```
 
 The agent answers from the AWS documentation and returns a `result`.
+
+![AWS docs HTTP agent answering through the gateway](../images/runtime.gif)
 
 ## Cleanup
 

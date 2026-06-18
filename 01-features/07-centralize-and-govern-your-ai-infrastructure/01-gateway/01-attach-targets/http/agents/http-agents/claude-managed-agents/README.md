@@ -6,7 +6,7 @@ Claude Managed Agents is a pre-built, configurable agent harness that runs in ma
 
 ## Architecture
 
-<!-- ![Architecture](images/architecture.png) -->
+![arch](../../images/agents.png)
 
 | Component | Role |
 | :-- | :-- |
@@ -14,23 +14,6 @@ Claude Managed Agents is a pre-built, configurable agent harness that runs in ma
 | AgentCore Identity | Not used for outbound here; the client supplies its own Claude key |
 | Microsoft Entra ID | Issues the inbound JWT that authorizes the caller to the gateway |
 | Claude Managed Agents | The managed agent harness on `api.anthropic.com` (agent, environment, session, events) |
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Entra as Microsoft Entra ID
-    participant GW as AgentCore Gateway
-    participant CMA as Claude Managed Agents
-
-    Client->>Entra: 1. Sign in (browser)
-    Entra-->>Client: 2. Access token (aud: api://gateway-app)
-
-    Client->>GW: 3. POST /claude-managed-agents/v1/... (Authorization: Bearer, x-api-key)
-    Note over GW: Validate JWT via Entra ID OIDC
-    GW->>CMA: 4. Forward to api.anthropic.com/v1/... (x-api-key + anthropic-* headers)
-    CMA-->>GW: 5. Response / SSE stream
-    GW-->>Client: 6. Response / SSE stream
-```
 
 Path-based routing forwards `{GATEWAY_URL}/{targetName}/{path}` to `https://api.anthropic.com/{path}`. For example `POST {GATEWAY_URL}/claude-managed-agents/v1/agents` reaches `POST https://api.anthropic.com/v1/agents`.
 
@@ -57,7 +40,7 @@ Path-based routing forwards `{GATEWAY_URL}/{targetName}/{path}` to `https://api.
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with credentials (`aws configure`)
 - [IAM permissions](https://github.com/aws/agentcore-cli/blob/main/docs/PERMISSIONS.md)
 - A [Claude API key](https://platform.claude.com/settings/keys) with Claude Managed Agents beta access
-- A Microsoft Entra ID gateway app registration. This tutorial reuses the gateway from the [A2A agent](../../a2a-agents/agentcore-runtime/) and [HTTP agent](../http-agents/) labs; follow their Step 1 to register the gateway app and record `MICROSOFT_TENANT_ID` and `MICROSOFT_GATEWAY_CLIENT_ID`.
+- A Microsoft Entra ID gateway app registration. This tutorial reuses the gateway from the [A2A agent](../../a2a-agents/agentcore-runtime/) and [HTTP agent](../http-runtime-agents/) labs; follow their Step 1 to register the gateway app and record `MICROSOFT_TENANT_ID` and `MICROSOFT_GATEWAY_CLIENT_ID`.
 
 ## Deployment Steps
 
@@ -134,14 +117,6 @@ The script calls `create_gateway_target` with this configuration:
 - `protocolType: CUSTOM` marks this as a proprietary protocol; unlike `MCP` and `A2A` (which get a default schema), CUSTOM targets must supply a `schema` to enable policy-engine features such as guardrails.
 - The schema `source` is either `inlinePayload` (the schema content as a string, used here) or `s3` (an S3 URI such as `s3://DOC-EXAMPLE-BUCKET/service-schema.yaml`).
 
-### Step 4: Verify
-
-```bash
-agentcore status
-```
-
-The `claude-managed-agents` target should reach `READY`.
-
 ## Set up and run a Managed Agent
 
 The Managed Agents flow is: create an **agent**, create an **environment**, start a **session**, send a user **event**, and stream the response. Every request goes through the gateway at `${GATEWAY_URL}/claude-managed-agents/v1/...`, carrying the Entra JWT (`Authorization: Bearer`) and your Claude key (`x-api-key`). All Managed Agents requests require the `managed-agents-2026-04-01` beta header.
@@ -199,15 +174,9 @@ curl -sS "$BASE/v1/sessions/$SESSION_ID/events" \
   -H "anthropic-beta: managed-agents-2026-04-01" \
   -H "content-type: application/json" \
   -d '{"events":[{"type":"user.message","content":[{"type":"text","text":"Create a Python script that generates the first 20 Fibonacci numbers and saves them to fibonacci.txt"}]}]}'
-
-# 5. Stream the response
-curl -sS -N "$BASE/v1/sessions/$SESSION_ID/stream" \
-  -H "Authorization: Bearer $BEARER_TOKEN" \
-  -H "x-api-key: $CLAUDE_API_KEY" \
-  -H "anthropic-version: 2023-06-01" \
-  -H "anthropic-beta: managed-agents-2026-04-01" \
-  -H "Accept: text/event-stream"
 ```
+
+To stream the agent's events back over SSE, use the Anthropic SDK (Option 3). The SSE stream must be opened **before** the user event is sent, which the SDK handles for you.
 
 ### Option 2: Python (requests)
 
@@ -218,7 +187,7 @@ uv sync
 uv run python scripts/managed-agents-custom/invoke.py
 ```
 
-It runs the full agent -> environment -> session -> events -> stream flow and prints the agent's output. It reads `GATEWAY_URL`, `TARGET_NAME`, `BEARER_TOKEN`, and `CLAUDE_API_KEY`.
+It runs the agent -> environment -> session -> events flow and confirms the message was accepted. It reads `GATEWAY_URL`, `TARGET_NAME`, `BEARER_TOKEN`, and `CLAUDE_API_KEY`. To stream the agent's events back, use the Anthropic SDK (Option 3), which opens the SSE stream before sending the event as the API requires.
 
 ### Option 3: Anthropic SDK
 
@@ -227,6 +196,8 @@ uv run python scripts/managed-agents-custom/sdk_demo.py
 ```
 
 Same flow using the Anthropic Python SDK pointed at the gateway target. The SDK sends the Entra JWT as `Authorization: Bearer` (via `auth_token`) and the Claude key as an `x-api-key` default header.
+
+![Claude Managed Agent running through the gateway](../images/claude-demo.gif)
 
 ## Cleanup
 

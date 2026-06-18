@@ -3,7 +3,7 @@
 Creates an http.passthrough target (protocolType MCP) whose endpoint is the
 runtime's invocation URL (capture it with `agentcore status --json` -> the
 agent's invocationUrl). Outbound auth uses JWT_PASSTHROUGH: the gateway forwards
-the caller's inbound Authorization header (a Cognito bearer) to the runtime,
+the caller's inbound Authorization header (an Entra ID bearer) to the runtime,
 whose CUSTOM_JWT inbound auth validates it.
 
 The runtime also requires the X-Amzn-Bedrock-AgentCore-Runtime-Session-Id header,
@@ -84,7 +84,7 @@ def main():
 
     print(f"--- Creating MCP HTTP passthrough target '{TARGET_NAME}' ---")
     # JWT_PASSTHROUGH outbound: the gateway forwards the caller's inbound
-    # Authorization header (a Cognito bearer) to the runtime unchanged. The
+    # Authorization header (an Entra ID bearer) to the runtime unchanged. The
     # runtime also needs the session-id header, so it is allowlisted alongside
     # Content-Type and Accept. MCP protocolType gets a default schema.
     target = control.create_gateway_target(
@@ -104,8 +104,18 @@ def main():
         metadataConfiguration={
             "allowedRequestHeaders": [
                 "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id",
+                # MCP streamable-http issues a session id on initialize that the
+                # client must echo on later calls; allow it inbound and outbound.
+                "Mcp-Session-Id",
                 "Content-Type",
                 "Accept",
+            ],
+            "allowedResponseHeaders": [
+                "Mcp-Session-Id",
+                # MCP responses are SSE (text/event-stream). Forward the
+                # response Content-Type so MCP clients (e.g. a2a/MCP inspectors)
+                # parse the stream instead of failing to JSON-decode it.
+                "Content-Type",
             ],
         },
     )

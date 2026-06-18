@@ -6,25 +6,12 @@ Context7 provides up-to-date library and framework documentation as MCP tools. I
 
 ## Architecture
 
-<!-- ![Architecture](images/architecture.png) -->
+![arch](../images/architecture.png)
 
 | Component | Role |
 | :-- | :-- |
 | AgentCore Gateway | Fronts `mcp.context7.com` as an `http.passthrough` MCP target; no inbound auth, forwards the caller's Authorization header outbound |
 | Context7 MCP server | Public MCP server serving library documentation tools |
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant GW as AgentCore Gateway
-    participant C7 as Context7 MCP
-
-    Client->>GW: 1. MCP request to /context7/mcp (Authorization: Bearer ctx7sk-...)
-    Note over GW: No inbound auth (authorizerType NONE)
-    GW->>C7: 2. Forward to mcp.context7.com/mcp (Authorization passed through)
-    C7-->>GW: 3. MCP response
-    GW-->>Client: 4. MCP response
-```
 
 Path-based routing forwards `{GATEWAY_URL}/{targetName}/{path}` to `https://mcp.context7.com/{path}`.
 
@@ -94,38 +81,45 @@ The script calls `create_gateway_target` with this configuration:
   },
   "credentialProviderConfigurations": [
     { "credentialProviderType": "JWT_PASSTHROUGH" }
-  ]
+  ],
+  "metadataConfiguration": {
+    "allowedRequestHeaders": [
+      "Mcp-Session-Id",
+      "Content-Type",
+      "Accept"
+    ],
+    "allowedResponseHeaders": [
+      "Mcp-Session-Id",
+      "Content-Type"
+    ]
+  }
 }
 ```
 
 - `protocolType: MCP` gets a default schema, so no `schema` is needed (unlike `CUSTOM`).
 - `JWT_PASSTHROUGH` forwards the inbound `Authorization` header outbound unchanged. The gateway does not store a Context7 key; the client supplies its own. This is supported on passthrough targets with `NONE` or `CUSTOM_JWT` inbound auth.
-
-### Step 3: Verify
-
-```bash
-agentcore status
-```
-
-The `context7` target should reach `READY`.
+- MCP streamable-http issues an `Mcp-Session-Id` on `initialize` that the client echoes on later calls, and replies with SSE (`Content-Type: text/event-stream`). The target allowlists both as request and response headers so MCP clients can complete the handshake and parse the stream through the gateway. Without the `Content-Type` response allowlist, a client fails with `Unexpected token 'e', "event: mes"... is not valid JSON`.
 
 ## Demo
 
-Call the Context7 MCP server through the gateway. With `authorizerType=NONE`, no gateway token is needed; send your Context7 API key (optional) as the `Authorization` header, which the gateway forwards to Context7.
+Call the Context7 MCP server through the gateway. With `authorizerType=NONE`, no gateway token is needed; an optional Context7 API key is forwarded as the `Authorization` header to Context7 for higher rate limits.
 
-List the available tools:
+MCP over streamable-http requires an `initialize` handshake followed by `notifications/initialized` before any other call, and the server replies with SSE. The demo script runs that full handshake through the gateway, parses the SSE response, and lists the tools. It reads `GATEWAY_URL`, `TARGET_NAME`, and optional `CONTEXT7_API_KEY`:
 
 ```bash
-curl -sS -X POST "${GATEWAY_URL}/context7/mcp" \
-  -H "Authorization: Bearer ${CONTEXT7_API_KEY:-}" \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+uv run python scripts/context7-passthrough/invoke.py
 ```
 
-Context7 exposes documentation tools such as `resolve-library-id` and `get-library-docs`. Without an API key, omit the `Authorization` header (Context7 serves unauthenticated requests at a lower rate limit).
+Context7 exposes documentation tools such as `resolve-library-id` and `get-library-docs`. Without an API key, the script omits the `Authorization` header (Context7 serves unauthenticated requests at a lower rate limit).
 
-You can also point any MCP client at `${GATEWAY_URL}/context7/mcp` with the same `Authorization` header.
+### Explore with an MCP inspector
+
+You can also connect an MCP client such as the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to the gateway target. Point it at `${GATEWAY_URL}/context7/mcp` (streamable-http transport); add `Authorization: Bearer <ctx7sk-...>` if you have a Context7 API key, or leave it empty for the unauthenticated tier. The inspector runs the `initialize`/`initialized` handshake for you, then lists and calls the documentation tools.
+
+> [!IMPORTANT]
+> The inspector parses the response by its `Content-Type`. The target must allowlist `Content-Type` (and `Mcp-Session-Id`) as response headers (Step 2); otherwise the gateway strips them and the inspector fails to complete the handshake or parse the SSE stream (`Unexpected token 'e', "event: mes"... is not valid JSON`).
+
+![Context7 MCP server answering through the gateway](../images/context7.gif)
 
 ## Cleanup
 

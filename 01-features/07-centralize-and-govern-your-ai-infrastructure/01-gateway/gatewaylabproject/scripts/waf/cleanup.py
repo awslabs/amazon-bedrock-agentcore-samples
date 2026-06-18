@@ -58,6 +58,18 @@ def main():
             print(f"  Error: {e}")
 
     # --- Delete the web ACL (needs a fresh LockToken from get_web_acl) ---
+    # Fall back to looking the ACL up by name if WEB_ACL_ID is not in .env
+    # (e.g. deploy crashed, or .env was already removed), so a partially
+    # created ACL is never orphaned.
+    if not web_acl_id:
+        try:
+            for acl in wafv2.list_web_acls(Scope="REGIONAL")["WebACLs"]:
+                if acl["Name"] == WEB_ACL_NAME:
+                    web_acl_id = acl["Id"]
+                    break
+        except Exception as e:  # noqa: BLE001
+            print(f"  Could not list web ACLs: {e}")
+
     if web_acl_id:
         print("--- Deleting web ACL ---")
         try:

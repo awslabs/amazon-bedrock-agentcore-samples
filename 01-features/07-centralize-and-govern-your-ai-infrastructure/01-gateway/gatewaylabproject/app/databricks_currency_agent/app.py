@@ -39,9 +39,10 @@ def get_exchange_rate(from_currency: str, to_currency: str) -> dict:
         to_currency: ISO 4217 code to convert to (for example, EUR).
     """
     resp = httpx.get(
-        "https://api.frankfurter.app/latest",
-        params={"from": from_currency.upper(), "to": to_currency.upper()},
+        "https://api.frankfurter.dev/v1/latest",
+        params={"base": from_currency.upper(), "symbols": to_currency.upper()},
         timeout=30,
+        follow_redirects=True,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -98,8 +99,13 @@ class CurrencyAgentExecutor(AgentExecutor):
 agent_card = AgentCard(
     name="Currency Agent",
     description="Converts currencies and answers exchange-rate questions.",
-    # Relative URL: Databricks Apps serve behind a reverse proxy.
-    url="/",
+    # Defaults to a relative "/" (Databricks Apps serve behind a reverse proxy).
+    # Set AGENT_CARD_URL to an absolute URL when an A2A client reads the card and
+    # follows its `url` to send messages: clients that cannot resolve a relative
+    # URL need the absolute address. Point it at the gateway target URL
+    # (for example https://<gateway>/databricks-a2a/) so message/send routes back
+    # through the gateway rather than directly to the app.
+    url=os.getenv("AGENT_CARD_URL", "/"),
     version="1.0.0",
     defaultInputModes=["text/plain"],
     defaultOutputModes=["text/plain"],

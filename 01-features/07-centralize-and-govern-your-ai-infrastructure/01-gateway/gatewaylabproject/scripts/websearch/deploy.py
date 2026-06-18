@@ -70,6 +70,10 @@ def main():
         gateway_id,
         name="web-search-tool",
         connector_id="web-search",
+        # The connector requires a configurations list. An empty
+        # parameterValues enables the WebSearch tool with its defaults; add a
+        # domain filter later with set_domain_filter.py.
+        configurations=[{"name": "WebSearch", "parameterValues": {}}],
     )
     target_id = target["targetId"]
 

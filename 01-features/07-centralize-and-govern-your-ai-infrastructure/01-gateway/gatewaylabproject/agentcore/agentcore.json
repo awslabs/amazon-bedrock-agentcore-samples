@@ -9,6 +9,7 @@
   },
   "runtimes": [],
   "memories": [],
+  "knowledgeBases": [],
   "credentials": [],
   "evaluators": [],
   "onlineEvalConfigs": [],
@@ -16,7 +17,6 @@
   "policyEngines": [],
   "configBundles": [],
   "abTests": [],
-  "httpGateways": [],
   "harnesses": [],
   "datasets": [],
   "payments": []

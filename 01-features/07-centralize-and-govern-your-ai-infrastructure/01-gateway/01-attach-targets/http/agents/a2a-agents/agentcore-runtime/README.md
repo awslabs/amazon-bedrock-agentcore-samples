@@ -8,7 +8,7 @@ This tutorial uses a self contained A2A monitoring agent (built with the `a2a-sd
 
 ## Architecture
 
-<!-- ![Architecture](images/architecture.png) -->
+![arch](../../images/agents.png)
 
 | Component | Role |
 | :-- | :-- |
@@ -16,29 +16,6 @@ This tutorial uses a self contained A2A monitoring agent (built with the `a2a-sd
 | AgentCore Runtime | Hosts the A2A monitoring agent (protocol `A2A`); validates the OBO exchanged token on inbound |
 | AgentCore Identity | Stores the OBO credential provider the gateway uses for the token exchange |
 | Microsoft Entra ID | Issues the inbound user token and performs the OBO token exchange |
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Entra as Microsoft Entra ID
-    participant GW as AgentCore Gateway
-    participant RT as AgentCore Runtime (A2A)
-
-    User->>Entra: 1. Sign in (browser)
-    Entra-->>User: 2. Access token (aud: api://gateway-app, scp: access_as_user)
-
-    User->>GW: 3. A2A message/send with bearer token
-
-    Note over GW: Validate JWT via Entra ID OIDC (v1.0)
-
-    GW->>Entra: 4. OBO exchange (jwt-bearer grant, on_behalf_of)
-    Entra-->>GW: 5. Token scoped to api://runtime-app/.default
-
-    GW->>RT: 6. Forward A2A request with exchanged token
-    Note over RT: Validate JWT (aud: api://runtime-app)
-    RT-->>GW: 7. A2A artifact (CloudWatch answer)
-    GW-->>User: 8. A2A response
-```
 
 ## Prerequisites
 
@@ -77,7 +54,7 @@ This tutorial registers **two** Entra ID applications. Keep their IDs straight:
 1. Go to [entra.microsoft.com](https://entra.microsoft.com) -> **App registrations** -> **New registration**
 2. Name: `A2A-Runtime-Resource`, Single tenant, **Register**
 3. From **Overview**, copy **Application (client) ID** -> `MICROSOFT_RUNTIME_CLIENT_ID` and **Directory (tenant) ID** -> `MICROSOFT_TENANT_ID`
-4. **Expose an API** -> set **Application ID URI** (accept the default `api://<runtime-client-id>`)
+4. **Expose an API** -> set **Application ID URI** (accept the default `api://<runtime-client-id>`) -> **+ Add a scope** named `access_as_user` (consent: Admins and users, Enabled). This delegated scope is what the gateway app requests in step 1.2.6.
 
 #### 1.2 Gateway app (middle tier)
 
@@ -86,7 +63,7 @@ This tutorial registers **two** Entra ID applications. Keep their IDs straight:
 3. **Certificates & secrets** -> **+ New client secret**. Copy the **Value** -> `MICROSOFT_GATEWAY_CLIENT_SECRET`
 4. **Expose an API** -> **+ Add a scope** named `access_as_user` (consent: Admins and users, Enabled)
 5. **Authentication** -> **+ Add a platform** -> **Web** -> redirect URI `http://localhost:9090/oauth2/callback` -> **Configure**
-6. **API permissions** -> **+ Add a permission** -> **My APIs** -> select `A2A-Runtime-Resource` -> **Delegated permissions** -> add its exposed scope
+6. **API permissions** -> **+ Add a permission** -> **My APIs** tab (not "APIs my organization uses") -> select `A2A-Runtime-Resource` -> **Delegated permissions** -> add the `access_as_user` scope exposed in step 1.1.4
 7. **API permissions** -> **Grant admin consent for [tenant]** -> **Yes** (all permissions should show green checkmarks)
 
 > [!NOTE]
@@ -194,11 +171,16 @@ aws iam put-role-policy \
 
 The runtime's inbound auth validates the runtime app audience, so acquire a user
 token for that resource. The OBO lab's callback server handles the browser sign
-in and captures the token. From the [`gatewaylabproject/`](../../../../../gatewaylabproject/) directory:
+in and captures the token. You sign in against the gateway app (which holds the
+delegated permission to the runtime's `access_as_user` scope from step 1.2.6),
+but pass `--scope` so the token is issued for the **runtime** audience
+(`api://<runtime-client-id>`), which is what the runtime validates on inbound.
+From the [`gatewaylabproject/`](../../../../../gatewaylabproject/) directory:
 
 ```bash
-python3 scripts/obo-token-exchange/token_callback_server.py \
-  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET
+uv run scripts/obo-token-exchange/token_callback_server.py \
+  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET \
+  --scope "api://$MICROSOFT_RUNTIME_CLIENT_ID/access_as_user openid profile email"
 ```
 
 Sign in when the browser opens, then read the captured token:
@@ -238,7 +220,7 @@ Click **Connect**. Once connected, the inspector shows the agent card and lets y
 HTTP targets attach to a gateway that has no protocol type set, so this step uses boto3. The script creates the gateway with Entra ID v1.0 inbound auth, validating the gateway app audience, and writes the gateway ID and URL to a script local `.env`.
 
 > [!NOTE]
-> This gateway (`runtime-agents-gateway`) is shared with the [HTTP agent on AgentCore Runtime](../../http-agents/http-agents/) lab. If you already created it there, this script detects the existing gateway and reuses it instead of creating a new one.
+> This gateway (`runtime-agents-gateway`) is shared with the [HTTP agent on AgentCore Runtime](../../http-agents/http-runtime-agents/) lab. If you already created it there, this script detects the existing gateway and reuses it instead of creating a new one.
 
 ```bash
 uv run python scripts/a2a-runtime-target/deploy_gateway.py \
@@ -320,15 +302,22 @@ The script calls `create_gateway_target`. The `agentcoreRuntime` block points th
 - `customParameters.requested_token_use: on_behalf_of` is required for the Entra ID OBO endpoint.
 - The provider ARN must point at a provider created with `onBehalfOfTokenExchangeConfig` (Step 6).
 
-Verify the target reaches `READY`:
-
-```bash
-agentcore status
-```
-
 ## Demo
 
-Call the agent through the gateway with your **Entra ID user token** from Step 4. The gateway validates it, OBO exchanges it for a runtime scoped token, and forwards the A2A request. HTTP targets use path based routing of the form `{GATEWAY_URL}/{targetName}/invocations`.
+Call the agent through the gateway with an **Entra ID user token scoped to the gateway app**. The gateway validates it, OBO exchanges it for a runtime scoped token, and forwards the A2A request. HTTP targets use path based routing of the form `{GATEWAY_URL}/{targetName}/invocations`.
+
+> [!IMPORTANT]
+> This step needs a **gateway-audience** token (`api://<gateway-client-id>`), which is different from the **runtime-audience** token Step 4 used for the direct inspector test. The gateway was created (Step 5) with `--allowed-audience "api://$MICROSOFT_GATEWAY_CLIENT_ID"`, so a runtime-audience token is rejected here with `insufficient_scope`. Mint the gateway-audience token by running the callback server **without** `--scope` (the default requests the gateway app's own scope):
+>
+> ```bash
+> lsof -ti :9090 | xargs kill 2>/dev/null
+> uv run scripts/obo-token-exchange/token_callback_server.py \
+>   $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET
+>
+> export BEARER_TOKEN="<PlaceBearerToken>"
+> ```
+>
+> The gateway then performs the OBO exchange to the runtime audience internally; you never hand the gateway a runtime-audience token yourself.
 
 ```bash
 export SESSION_ID=$(python3 -c "import uuid; print((uuid.uuid4().hex + uuid.uuid4().hex)[:40])")
@@ -355,6 +344,22 @@ The agent reads CloudWatch through its local tools and returns the result as an
 A2A artifact.
 
 You can also explore the agent interactively with the [a2a-inspector](https://github.com/a2aproject/a2a-inspector), as shown in [Step 4](#step-4-test-the-agent-on-a2a-inspector):
+
+Fetch the agent card through the gateway. HTTP targets use the same path based routing, so the card sits under the target's `invocations` path. Use the **gateway-audience** `BEARER_TOKEN` from the demo above:
+
+```bash
+export GATEWAY_AGENT_CARD_URL="${GATEWAY_URL}/a2a-runtime-target/invocations/.well-known/agent-card.json"
+
+echo "Gateway agent card URL: $GATEWAY_AGENT_CARD_URL"
+
+curl -sS "$GATEWAY_AGENT_CARD_URL" \
+  -H "Authorization: Bearer $BEARER_TOKEN" | python3 -m json.tool
+```
+
+The card describes the agent (name, version, capabilities, and skills). Its `url` field comes from the agent's `AGENTCORE_RUNTIME_URL` environment variable (see [`app/monitoring_a2a_agent/main.py`](../../../../../gatewaylabproject/app/monitoring_a2a_agent/main.py)) and defaults to the runtime invocation URL.
+
+> [!IMPORTANT]
+> An A2A client such as the [a2a-inspector](https://github.com/a2aproject/a2a-inspector) reads the card, then sends `message/send` to the card's `url` field. With the default value that URL is the **runtime** invocation URL, so the inspector calls the runtime directly and bypasses the gateway. That direct call requires a **runtime-audience** token (the Step 4 token), not the gateway-audience token, otherwise it returns `401 Unauthorized`. To make a card-following client route `message/send` back through the gateway (and the OBO exchange), set `AGENTCORE_RUNTIME_URL` to the gateway target URL `{GATEWAY_URL}/a2a-runtime-target/invocations/` when registering the agent in Step 2, so the card advertises the gateway path instead of the runtime URL. Fetching the card and calling the runtime directly (Step 4) continue to work either way.
 
 ![A2A monitoring agent answering a CloudWatch query](../images/cloudwatch-a2a.gif)
 

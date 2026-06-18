@@ -67,8 +67,10 @@ def main():
 
     host = args.workspace_host.replace("https://", "").rstrip("/")
     # Databricks publishes OAuth/OIDC metadata at the workspace OIDC path; the
-    # token endpoint it advertises is https://<host>/oidc/v1/token.
-    discovery_url = f"https://{host}/oidc/.well-known/oauth-authorization-server"
+    # token endpoint it advertises is https://<host>/oidc/v1/token. AgentCore
+    # requires the discovery URL to end with .well-known/openid-configuration,
+    # which Databricks also serves (same token endpoint, client_credentials).
+    discovery_url = f"https://{host}/oidc/.well-known/openid-configuration"
 
     region = boto3.Session().region_name
     admin = GatewayBoto3Client(region=region)
@@ -82,6 +84,9 @@ def main():
                 "oauthDiscovery": {"discoveryUrl": discovery_url},
                 "clientId": args.client_id,
                 "clientSecret": args.client_secret,
+                # Databricks accepts HTTP Basic client auth at its token
+                # endpoint (the same scheme as `curl -u client_id:secret`).
+                "clientAuthenticationMethod": "CLIENT_SECRET_BASIC",
             }
         },
     )

@@ -6,7 +6,7 @@ This tutorial uses a currency-conversion agent (LangGraph + a Databricks-served 
 
 ## Architecture
 
-<!-- ![Architecture](images/architecture.png) -->
+![arch](../../images/agents.png)
 
 | Component | Role |
 | :-- | :-- |
@@ -14,25 +14,6 @@ This tutorial uses a currency-conversion agent (LangGraph + a Databricks-served 
 | AgentCore Identity | Stores the Databricks OAuth credential provider the gateway uses outbound |
 | Microsoft Entra ID | Issues the inbound JWT that authorizes the caller to the gateway |
 | Databricks Apps | Hosts the A2A currency agent; enforces Databricks OAuth Bearer auth |
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Entra as Microsoft Entra ID
-    participant GW as AgentCore Gateway
-    participant DBX as Databricks (OAuth + App)
-
-    Client->>Entra: 1. Sign in (browser)
-    Entra-->>Client: 2. Access token (aud: api://gateway-app)
-
-    Client->>GW: 3. A2A message/send (Authorization: Bearer entra-jwt)
-    Note over GW: Validate JWT via Entra ID OIDC
-    GW->>DBX: 4. client_credentials to /oidc/v1/token (service principal)
-    DBX-->>GW: 5. Databricks access token
-    GW->>DBX: 6. Forward A2A request to the App (Authorization: Bearer dbx-token)
-    DBX-->>GW: 7. A2A response
-    GW-->>Client: 8. A2A response
-```
 
 Path-based routing forwards `{GATEWAY_URL}/{targetName}/{path}` to the Databricks App URL.
 
@@ -59,7 +40,7 @@ Path-based routing forwards `{GATEWAY_URL}/{targetName}/{path}` to the Databrick
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with credentials (`aws configure`)
 - [IAM permissions](https://github.com/aws/agentcore-cli/blob/main/docs/PERMISSIONS.md)
 - A Databricks workspace with Databricks Apps enabled, and a **service principal** with an OAuth secret
-- A Microsoft Entra ID gateway app registration. This tutorial reuses the gateway from the [A2A agent](../agentcore-runtime/) and [HTTP agent](../../http-agents/http-agents/) labs; follow their Step 1 to register the gateway app and record `MICROSOFT_TENANT_ID` and `MICROSOFT_GATEWAY_CLIENT_ID`.
+- A Microsoft Entra ID gateway app registration. This tutorial reuses the gateway from the [A2A agent](../agentcore-runtime/) and [HTTP agent](../../http-agents/http-runtime-agents/) labs; follow their Step 1 to register the gateway app and record `MICROSOFT_TENANT_ID` and `MICROSOFT_GATEWAY_CLIENT_ID`.
 
 ## Deployment Steps
 
@@ -72,17 +53,67 @@ The agent code is at [`gatewaylabproject/app/databricks_currency_agent/`](../../
 
 1. In your Databricks workspace, go to **Compute** -> **Apps** -> **Create app** -> **Custom**.
 2. Point the app at the `app/databricks_currency_agent/` code (sync it into your workspace or a connected repo).
-3. The start command is defined in [`app.yaml`](../../../../../gatewaylabproject/app/databricks_currency_agent/app.yaml): `command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]`.
-4. Click **Deploy**, then open the app and copy its URL.
+3. Point `MODEL_ID` at a Databricks model serving endpoint that exists in your workspace. The agent defaults to `databricks-claude-sonnet-4`; if that endpoint name is not served in your workspace the agent returns `ENDPOINT_NOT_FOUND` (note that workspace endpoint names may omit the `databricks-` prefix, e.g. `claude-sonnet-4`). List the endpoints available to you:
+
+   ```bash
+   databricks serving-endpoints list -o json \
+     | python3 -c "import sys, json; [print(e['name']) for e in json.load(sys.stdin)]"
+   ```
+
+   Databricks Apps read environment variables from [`app.yaml`](../../../../../gatewaylabproject/app/databricks_currency_agent/app.yaml) (there is no separate environment-variable UI). Set `MODEL_ID` there to an endpoint from the list above:
+
+   ```yaml
+   command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+   env:
+     - name: 'MODEL_ID'
+       value: 'claude-sonnet-4'
+   ```
+4. Click **Deploy**, then open the app and copy its URL. Re-deploy whenever you change `app.yaml`.
 
 ```bash
 export DATABRICKS_APP_URL="https://<app-name>-<id>.cloud.databricksapps.com"
 ```
 
 > [!NOTE]
-> The agent card uses a relative `url="/"` because Databricks Apps serve behind a reverse proxy. The agent is hosted on Databricks Apps, not AgentCore Runtime.
+> The agent card's `url` defaults to a relative `/` (Databricks Apps serve behind a reverse proxy). That works for direct access, but A2A clients that read the card and follow its `url` to send messages (for example the [a2a-inspector](https://github.com/a2aproject/a2a-inspector)) need an **absolute** URL, otherwise the send fails with `Request URL is missing an 'http://' or 'https://' protocol`. To route those clients back through the gateway, set the `AGENT_CARD_URL` environment variable in `app.yaml` to the gateway target URL `{GATEWAY_URL}/databricks-a2a/` and re-deploy. The gateway URL is created in Step 3, so add this after that step:
+>
+> ```yaml
+> env:
+>   - name: 'MODEL_ID'
+>     value: 'claude-sonnet-4'
+>   - name: 'AGENT_CARD_URL'
+>     value: 'https://<your-gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.com/databricks-a2a/'
+> ```
+
+> [!NOTE]
+> The agent calls the LLM as the **app's own service principal** (Databricks injects its `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` into the app), not the gateway service principal from Step 2. That app service principal needs **Can Query** on the `MODEL_ID` serving endpoint, otherwise the agent returns `403 PERMISSION_DENIED`. Grant it under **Serving** -> open the endpoint -> **Permissions** -> add the app's service principal -> **Can Query**. You can find the app service principal's client ID in the app's "App authorization" panel (or in the `403` error body).
+
+> [!NOTE]
+> The bundled `requirements.txt` pins the `a2a-sdk`, `langchain`, `langgraph`, and `databricks-langchain` stack below their 1.0 releases. Those majors changed import paths (for example `a2a.server.apps` was removed), so an unpinned install crashes the app on startup. Keep the upper bounds when editing dependencies.
 
 ### Step 2: Export credentials
+
+Where to find each value:
+
+- `MICROSOFT_TENANT_ID` and `MICROSOFT_GATEWAY_CLIENT_ID` come from the gateway app registration in Entra ID (see the [A2A agent](../agentcore-runtime/) lab Step 1.2).
+- `DATABRICKS_WORKSPACE_HOST` is your workspace URL without the scheme or trailing slash (the hostname in your browser address bar, for example `dbc-xxxxxxxx-xxxx.cloud.databricks.com`).
+- `DATABRICKS_SP_CLIENT_ID` / `DATABRICKS_SP_CLIENT_SECRET` come from a **service principal you control** with an OAuth secret:
+  1. **Settings** -> **Identity and access** -> **Service principals** -> **Add service principal** (for example `A2ACurrencyAgent`). Leave the default workspace entitlements (Workspace access on); admin access is not needed.
+  2. Open that service principal -> **Secrets** (OAuth secrets) -> **Generate secret**. Copy the **Client ID** (the service principal's Application ID, a GUID) to `DATABRICKS_SP_CLIENT_ID`, and the generated **Secret** value (shown once) to `DATABRICKS_SP_CLIENT_SECRET`.
+  3. Grant the service principal **CAN USE** on the App so its `client_credentials` token is accepted: open the App's **Overview** tab -> **Share** -> select the service principal -> permission level **CAN USE** -> **Add** -> **Save**. Without this, the App's OAuth proxy rejects the token and returns a `302` redirect to its login endpoint instead of invoking the agent.
+
+  Verify the credentials are accepted before wiring them into the gateway (expect `HTTP 200` with an `access_token`):
+
+  ```bash
+  curl -sS -o /dev/null -w "HTTP %{http_code}\n" -X POST \
+    "https://$DATABRICKS_WORKSPACE_HOST/oidc/v1/token" \
+    -u "$DATABRICKS_SP_CLIENT_ID:$DATABRICKS_SP_CLIENT_SECRET" \
+    -d "grant_type=client_credentials" -d "scope=all-apis"
+  ```
+
+> [!NOTE]
+> Do not use the **OAuth2 App Client ID** shown under the app's "User authorization" panel, nor the app's auto-created service principal (whose secret you cannot read). Both lead to authentication failures. Use a service principal you created with its own OAuth secret, as above. This tutorial uses the service-principal (machine to machine) path.
 
 ```bash
 export MICROSOFT_TENANT_ID=""               # Directory (tenant) ID
@@ -174,35 +205,23 @@ The script calls `create_gateway_target` with this configuration:
 - `protocolType: A2A` gets a default schema, so no `schema` is needed (unlike `CUSTOM`).
 - `grantType: CLIENT_CREDENTIALS` mints a Databricks service-principal token outbound. HTTP passthrough targets support `OAUTH` (not `API_KEY`), so this is the correct outbound type for Databricks OAuth.
 
-### Step 6: Verify
-
-```bash
-agentcore status
-```
-
-The `databricks-a2a` target should reach `READY`.
-
 ## Demo
 
 Call the agent through the gateway with your Entra ID token. Acquire one by reusing the OBO lab's callback server (from the [`gatewaylabproject/`](../../../../../gatewaylabproject/) directory):
 
 ```bash
-python3 scripts/obo-token-exchange/token_callback_server.py \
-  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID "<gateway-app-client-secret>"
+uv run scripts/obo-token-exchange/token_callback_server.py \
+  $MICROSOFT_TENANT_ID $MICROSOFT_GATEWAY_CLIENT_ID $MICROSOFT_GATEWAY_CLIENT_SECRET
 
-export BEARER_TOKEN=$(curl -sS http://localhost:9090/token \
-  | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+export BEARER_TOKEN="<PlaceBearerToken>"
 ```
 
 Send an A2A `message/send` through the gateway. The gateway validates the Entra JWT, mints a Databricks token, and forwards the request:
 
 ```bash
-export SESSION_ID=$(python3 -c "import uuid; print((uuid.uuid4().hex + uuid.uuid4().hex)[:40])")
-
 curl -sS -X POST "${GATEWAY_URL}/databricks-a2a/" \
   -H "Authorization: Bearer $BEARER_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: $SESSION_ID" \
   -d '{
     "jsonrpc": "2.0",
     "id": "1",
@@ -217,7 +236,35 @@ curl -sS -X POST "${GATEWAY_URL}/databricks-a2a/" \
   }'
 ```
 
-The currency agent returns the conversion as an A2A artifact. You can also point an [a2a-sdk](https://github.com/a2aproject/a2a-inspector) client at `${GATEWAY_URL}/databricks-a2a` with the same headers.
+The currency agent returns the conversion as an A2A artifact.
+
+Fetch the agent card through the gateway. HTTP passthrough targets use path based routing, so the card sits under the target path:
+
+```bash
+export GATEWAY_AGENT_CARD_URL="${GATEWAY_URL}/databricks-a2a/.well-known/agent-card.json"
+
+echo "Gateway agent card URL: $GATEWAY_AGENT_CARD_URL"
+
+curl -sS "$GATEWAY_AGENT_CARD_URL" \
+  -H "Authorization: Bearer $BEARER_TOKEN" | python3 -m json.tool
+```
+
+The card describes the agent (name, version, capabilities, and skills). Its `url` is whatever you set via `AGENT_CARD_URL` (Step 1); leave it relative (`/`) only if no card-following client needs it.
+
+### Explore with the a2a-inspector
+
+You can also drive the agent from the [a2a-inspector](https://github.com/a2aproject/a2a-inspector). Start it per its README, then in the UI set the **Agent Card URL** to:
+
+```
+${GATEWAY_URL}/databricks-a2a/.well-known/agent-card.json
+```
+
+Under **Custom Headers**, add `Authorization: Bearer <BEARER_TOKEN>` (the gateway-audience token from above). The inspector fetches the card, then sends `message/send` to the card's `url`.
+
+> [!IMPORTANT]
+> The inspector follows the card's `url` field to send messages, and it requires an **absolute** URL. With the default relative `url="/"` the send fails with `Request URL is missing an 'http://' or 'https://' protocol`. Set `AGENT_CARD_URL` in `app.yaml` to the gateway target URL (`{GATEWAY_URL}/databricks-a2a/`) and re-deploy (see Step 1), so the inspector routes `message/send` back through the gateway.
+
+![Currency agent answering a conversion query through the gateway](../images/databricks-a2a.gif)
 
 ## Cleanup
 

@@ -171,6 +171,8 @@ uv sync
 
 Connect the [AgentCore Gateway MCP Inspector](../../../../05-community/gateway-mcp-inspector/) to your gateway, select the WebSearch tool, and run a query interactively.
 
+![demo](./images/demo.gif)
+
 ### Option 2: MCP client
 
 [`invoke.py`](../../../../gatewaylabproject/scripts/websearch/invoke.py) lists the gateway tools, finds the WebSearch tool, calls it, and prints the structured results. The tool name is prefixed by the target name (`{target}___WebSearch`):
