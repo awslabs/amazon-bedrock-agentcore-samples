@@ -300,17 +300,12 @@ The `--version v2` flag builds an enhanced version that adds an `escalate_to_hr_
 
 Sends a set of failure-mode and successful sessions to the agent, waits for traces to propagate to CloudWatch, then calls `start_batch_evaluation` with all three insight types. Polls until the job completes and prints the full failure hierarchy, user intent clusters, and execution summary clusters. The `--online` flag also creates a recurring daily `OnlineEvaluationConfig` so insights continue running automatically over live traffic.
 
-Insights is in public preview. See the [AgentCore Insights documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/insights.html) for the latest API details.
-
-### Three Insight Types
 
 | Insight | What It Produces |
 |---------|-----------------|
 | **FailureAnalysis** | Identifies failures, categorizes them using a signal taxonomy (see below), traces root causes to specific spans, and provides fix recommendations. Results appear as a three-level hierarchy: failure categories, subcategories, and root cause clusters with affected session IDs. |
 | **UserIntent** | Extracts what users were trying to accomplish in each session, then clusters similar intents together. Shows the most common use cases your agent handles and reveals gaps between user requests and agent capabilities. |
 | **ExecutionSummary** | Summarizes the approach the agent took and the outcome for each session, then clusters similar execution patterns. Requires at least 3 sessions. |
-
-### FailureAnalysis Signal Taxonomy
 
 Each failure in the response includes one or more `signals`, the specific evidence found at a span level. Each signal has a `category` (a machine-readable taxonomy label), `evidence` (a quoted description of what went wrong in that span), and `confidence` (0–1 float).
 
@@ -361,16 +356,6 @@ Insights run in two modes:
 
 **Recurring (scheduled):** Create an `OnlineEvaluationConfig` with a `clusteringConfig` frequency (`DAILY`, `WEEKLY`, or `MONTHLY`). The service automatically triggers batch evaluation jobs on that cadence. Per-session analysis runs continuously; clustered results are generated during each scheduled batch job.
 
-### From Triage to Optimization
-
-After insights identifies failure patterns, you can feed those findings into the Recommendations API to generate an improved system prompt:
-
-1. Run insights to identify recurring failure categories and root causes.
-2. Call `start_recommendation` with your current system prompt, pointing it at the same agent traces (or pass the insights batch evaluation ARN directly).
-3. Use A/B testing to compare the original and recommended configurations with live traffic.
-
-The `insights.py --online` flag and the `agentcore run recommendation --from-insights <id>` CLI command both implement this flow.
-
 ### Data Source
 
 Insights pull from the `aws/spans` CloudWatch log group, which receives OTel span documents from AgentCore Runtime via the `opentelemetry-instrument` entry point. Each session's tool calls, model calls, and errors are captured as spans and correlated by session ID.
@@ -379,27 +364,6 @@ The runtime log group (`/aws/bedrock-agentcore/runtimes/...`) must also be inclu
 
 `insights` and `evaluators` are mutually exclusive in the batch evaluation API. Use a separate batch job for each.
 
-### Running insights.py
-
-```bash
-# 1. Install dependencies:
-pip install -r requirements.txt
-
-# 2. Deploy the agent (creates agent_state_{name}.json):
-python deploy.py --name HRInsights849 --region us-west-2
-
-# 3a. Generate failure traces then run all insight types:
-python insights.py --name HRInsights849 --generate-traces
-
-# 3b. Run insights on existing traces from the last N days:
-python insights.py --name HRInsights849 --lookback-days 14
-
-# 3c. Run specific insights only:
-python insights.py --name HRInsights849 --insight Builtin.Insight.FailureAnalysis
-
-# 3d. Run insights and also create a recurring daily config:
-python insights.py --name HRInsights849 --generate-traces --online
-```
 
 The `--generate-traces` flag sends sessions across several failure categories:
 - **Unknown employee IDs** (`EMP-999`, `EMP-003`) -> tool returns "not found" errors
@@ -576,20 +540,17 @@ User --> [gateway] --90%--> [Target HRAgentV1 -> HR runtime v1 (stable)]  --> Cl
 
 **`gatewayFilter.targetPaths`** restricts the A/B routing rule to requests matching the control target's path, so only traffic for this test is affected.
 
-## Files
-
-| File | Description |
-|:-----|:------------|
-| `deploy.py` | Deploys HR Assistant v1 or v2 to AgentCore runtime |
-| `invoke.py` | Invokes the deployed agent with sample HR queries |
-| `insights.py` | Runs FailureAnalysis, UserIntent, ExecutionSummary on agent traces |
-| `optimize.py` | End-to-end optimization workflow (Steps 2-8) |
-| `cleanup.py` | Deletes all AWS resources created by this tutorial |
-| `requirements.txt` | Python dependencies |
-| `utils/hr_assistant_agent.py` | HR Assistant agent with Configuration Bundle hook |
-
-
 ## Key Concepts
+
+### From Triage to Optimization
+
+After insights identifies failure patterns, you can feed those findings into the Recommendations API to generate an improved system prompt:
+
+1. Run insights to identify recurring failure categories and root causes.
+2. Call `start_recommendation` with your current system prompt, pointing it at the same agent traces (or pass the insights batch evaluation ARN directly).
+3. Use A/B testing to compare the original and recommended configurations with live traffic.
+
+The `insights.py --online` flag and the `agentcore run recommendation --from-insights <id>` CLI command both implement this flow.
 
 ### Config-Bundle vs. Target-Based A/B Testing
 
