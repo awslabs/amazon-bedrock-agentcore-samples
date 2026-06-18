@@ -35,7 +35,8 @@ This document explains:
 
 - **Build type:** Container (ARM64/Graviton, Python 3.12)
 - **Framework:** Strands Agents SDK
-- **Auth:** Cognito JWT (`CUSTOM_JWT` authorizer) — callers must present a valid M2M token
+- **Auth (inbound):** AWS_IAM (SigV4) — callers sign requests with AWS credentials
+- **Auth (outbound to Gateway):** Cognito M2M JWT (`client_credentials` flow)
 - **Entrypoint:** `app/claimsagent/main.py`
 - **Agents:** Two `Agent` instances (Claims Processor, Validation Agent), lazily initialized as module-level singletons
 - **Model:** `global.anthropic.claude-sonnet-4-6` (cross-region inference profile)
