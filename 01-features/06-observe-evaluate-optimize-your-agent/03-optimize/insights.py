@@ -47,7 +47,9 @@ import boto3
 
 # ── Parse arguments ───────────────────────────────────────────────────────
 
-parser = argparse.ArgumentParser(description="AgentCore Insights (FailureAnalysis, UserIntent, ExecutionSummary)")
+parser = argparse.ArgumentParser(
+    description="AgentCore Insights (FailureAnalysis, UserIntent, ExecutionSummary)"
+)
 parser.add_argument("--name", required=True, help="Runtime name (matches agent_state_{name}.json)")
 parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
 parser.add_argument(
@@ -88,10 +90,11 @@ LOOKBACK_DAYS = args.lookback_days
 STATE_FILE = Path(f"agent_state_{args.name}.json")
 if not STATE_FILE.exists():
     raise FileNotFoundError(
-        f"{STATE_FILE} not found. Run 'python deploy.py --name {args.name} --region {REGION}' first."
+        f"{STATE_FILE} not found. "
+        f"Run 'python deploy.py --name {args.name} --region {REGION}' first."
     )
 
-state = json.loads(STATE_FILE.read_text())
+state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
 AGENT_ARN = state["runtime_arn"]
 LOG_GROUP = state["log_group"]
 SERVICE_NAME = state["service_name"]
@@ -209,14 +212,17 @@ if args.generate_traces:
             )
             resp["response"].read()
             success_count += 1
-            indicator = "OK "
-        except Exception as e:
+            status_tag = "OK "  # pylint: disable=invalid-name
+        except Exception as e:  # pylint: disable=broad-exception-caught
             error_count += 1
-            indicator = "ERR"
+            status_tag = "ERR"  # pylint: disable=invalid-name
 
-        print(f"  [{i + 1:2d}] {indicator} {session_id[:8]}... [{emp_id}] {prompt[:60]}")
+        print(f"  [{i + 1:2d}] {status_tag} {session_id[:8]}... [{emp_id}] {prompt[:60]}")
 
-    print(f"\nSent {success_count} OK, {error_count} errors (invoke errors; tool errors are expected)")
+    print(
+        f"\nSent {success_count} OK, {error_count} errors "
+        "(invoke errors; tool errors are expected)"
+    )
     print("Waiting 3 minutes for traces to propagate to CloudWatch...")
 
     for remaining in range(180, 0, -30):
@@ -225,7 +231,9 @@ if args.generate_traces:
 
     print("CloudWatch ingestion complete.")
 else:
-    print("\n(Skipping trace generation — use --generate-traces to send failure-mode sessions first)")
+    print(
+        "\n(Skipping trace generation — use --generate-traces to send failure-mode sessions first)"
+    )
 
 # ── Step 2: Run Batch Insights ─────────────────────────────────────────────
 #
@@ -245,7 +253,10 @@ start_time = now - timedelta(days=LOOKBACK_DAYS)
 EVAL_NAME = f"HRInsights{uuid.uuid4().hex[:8]}"
 
 print(f"Batch eval name : {EVAL_NAME}")
-print(f"Time range      : {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+print(
+    f"Time range      : {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} "
+    f"to {now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+)
 print(f"Service name    : {SERVICE_NAME}")
 print(f"Log groups      : {LOG_GROUP_NAMES}")
 
@@ -290,8 +301,10 @@ while True:
     status = result["status"]
     processed = result.get("statistics", {}).get("processedSessionCount", "?")
     failed = result.get("statistics", {}).get("failedSessionCount", "?")
-    print(f"  Poll {poll:3d}  [{time.strftime('%H:%M:%S')}]  status={status}  "
-          f"processed={processed}  failed={failed}")
+    print(
+        f"  Poll {poll:3d}  [{time.strftime('%H:%M:%S')}]"
+        f"  status={status}  processed={processed}  failed={failed}"
+    )
 
     if status in TERMINAL:
         break
@@ -345,7 +358,8 @@ if fa:
                     if rc_sessions:
                         preview = rc_sessions[:3]
                         more = len(rc_sessions) - 3
-                        print(f"      Session IDs  : {preview}" + (f" (+{more} more)" if more > 0 else ""))
+                        suffix = f" (+{more} more)" if more > 0 else ""
+                        print(f"      Session IDs  : {preview}{suffix}")
 else:
     print("\n(No failureAnalysisResult in response)")
 
@@ -396,7 +410,7 @@ else:
 
 error_details = result.get("errorDetails", [])
 if error_details:
-    print(f"\n--- Error details ---")
+    print("\n--- Error details ---")
     if isinstance(error_details, dict):
         for key, val in error_details.items():
             print(f"  {key}: {val}")
@@ -438,20 +452,24 @@ if args.online:
     ONLINE_ID = online_resp["onlineEvaluationConfigId"]
     ONLINE_ARN = online_resp["onlineEvaluationConfigArn"]
 
-    print(f"Online insights config created:")
+    print("Online insights config created:")
     print(f"  ID    : {ONLINE_ID}")
     print(f"  ARN   : {ONLINE_ARN}")
     print(f"  Name  : {ONLINE_NAME}")
     print(f"  Status: {online_resp.get('executionStatus', 'unknown')}")
     print()
     print("The config will run daily. To view results:")
-    print(f"  python -c \"import boto3, json; ctrl=boto3.client('bedrock-agentcore-control', "
-          f"region_name='{REGION}'); r=ctrl.get_online_evaluation_config("
-          f"onlineEvaluationConfigId='{ONLINE_ID}'); print(json.dumps(r, indent=2, default=str))\"")
+    print(
+        f"  python -c \"import boto3, json; ctrl=boto3.client('bedrock-agentcore-control', "
+        f"region_name='{REGION}'); r=ctrl.get_online_evaluation_config("
+        f"onlineEvaluationConfigId='{ONLINE_ID}'); print(json.dumps(r, indent=2, default=str))\""
+    )
     print()
     print("To archive (disable) this config:")
-    print(f"  ctrl.update_online_evaluation_config("
-          f"onlineEvaluationConfigId='{ONLINE_ID}', executionStatus='DISABLED')")
+    print(
+        f"  ctrl.update_online_evaluation_config("
+        f"onlineEvaluationConfigId='{ONLINE_ID}', executionStatus='DISABLED')"
+    )
 
 # ── Summary ────────────────────────────────────────────────────────────────
 
@@ -475,5 +493,5 @@ print(f"UserIntent       : {ui_clusters} intent clusters")
 print(f"ExecutionSummary : {es_clusters} execution clusters")
 
 print("\nFull response saved to insights_result.json")
-with open("insights_result.json", "w") as f:
+with open("insights_result.json", "w", encoding="utf-8") as f:
     json.dump(result, f, indent=2, default=str)
