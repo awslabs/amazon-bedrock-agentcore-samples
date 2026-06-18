@@ -286,9 +286,19 @@ agentcore remove agent --name HRAssistantV2
 agentcore deploy -y
 ```
 
-## Failure Insights
+## How It Works
 
-AgentCore Insights analyzes agent sessions to identify failure patterns, extract user intents, and summarize execution behavior. It extends batch evaluation by providing triage analysis that goes beyond scoring: it tells you why your agent fails and what your users are trying to accomplish. After per-session analysis, the service clusters results across sessions to surface recurring patterns.
+### Step 1: Deploy HR Assistant v1 (`deploy.py`)
+
+Creates an IAM execution role, packages `utils/hr_assistant_agent.py` with ARM64 dependencies, uploads to S3, and creates an AgentCore runtime. The agent code is written to `main.py` inside the deployment zip with entry point `["opentelemetry-instrument", "main.py"]` for OTel tracing.
+
+State is saved to `agent_state_{name}.json` for use by subsequent scripts.
+
+The `--version v2` flag builds an enhanced version that adds an `escalate_to_hr_manager` tool and a more detailed system prompt baked into the code. This is the version used in the target-based A/B test.
+
+### Step 2: Insights (`insights.py`)
+
+Sends a set of failure-mode and successful sessions to the agent, waits for traces to propagate to CloudWatch, then calls `start_batch_evaluation` with all three insight types. Polls until the job completes and prints the full failure hierarchy, user intent clusters, and execution summary clusters. The `--online` flag also creates a recurring daily `OnlineEvaluationConfig` so insights continue running automatically over live traffic.
 
 Insights is in public preview. See the [AgentCore Insights documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/insights.html) for the latest API details.
 
@@ -302,7 +312,7 @@ Insights is in public preview. See the [AgentCore Insights documentation](https:
 
 ### FailureAnalysis Signal Taxonomy
 
-Each failure in the response includes one or more `signals` — the specific evidence the service found at a span level. Each signal has a `category` (a machine-readable taxonomy label), `evidence` (a quoted description of what went wrong in that span), and `confidence` (0–1 float).
+Each failure in the response includes one or more `signals`, the specific evidence found at a span level. Each signal has a `category` (a machine-readable taxonomy label), `evidence` (a quoted description of what went wrong in that span), and `confidence` (0–1 float).
 
 The signal categories returned by the API:
 
@@ -485,17 +495,7 @@ dp.start_recommendation(
 )
 ```
 
-## How It Works
-
-### Step 1: Deploy HR Assistant v1 (`deploy.py`)
-
-Creates an IAM execution role, packages `utils/hr_assistant_agent.py` with ARM64 dependencies, uploads to S3, and creates an AgentCore runtime. The agent code is written to `main.py` inside the deployment zip with entry point `["opentelemetry-instrument", "main.py"]` for OTel tracing.
-
-State is saved to `agent_state_{name}.json` for use by subsequent scripts.
-
-The `--version v2` flag builds an enhanced version that adds an `escalate_to_hr_manager` tool and a more detailed system prompt baked into the code. This is the version used in the target-based A/B test.
-
-### Step 2: Configuration Bundles (`optimize.py`)
+### Step 3: Configuration Bundles (`optimize.py`)
 
 A **Configuration Bundle** is a versioned container for agent configuration keyed by runtime ARN. The agent reads the bundle at invocation time via `BedrockAgentCoreContext.get_config_bundle()`. Changing the system prompt or tool descriptions does not require redeployment.
 
@@ -514,7 +514,7 @@ Each bundle call returns a `bundleId` (stable) and a `versionId` (immutable snap
 - **Control (C)** -- original system prompt + original tool descriptions
 - **Treatment (T1)** -- recommended system prompt + recommended tool descriptions
 
-### Step 3: Batch evaluation
+### Step 4: Batch evaluation
 
 Baseline batch evaluation discovers sessions from CloudWatch, runs them through built-in LLM evaluators, and returns aggregate scores:
 
@@ -524,7 +524,7 @@ Baseline batch evaluation discovers sessions from CloudWatch, runs them through 
 | **Helpfulness** | Was the response useful and actionable? |
 | **Correctness** | Did the agent give accurate information? |
 
-### Step 4: Optimization Recommendations
+### Step 5: Optimization Recommendations
 
 AgentCore analyzes production traces and generates:
 - **System Prompt Recommendation**: rewrites your system prompt to improve a target metric
@@ -532,7 +532,7 @@ AgentCore analyzes production traces and generates:
 
 Recommendations are returned as text and can be applied immediately via configuration bundles. No code changes needed.
 
-### Step 5: Config-Bundle A/B Test
+### Step 6: Config-Bundle A/B Test
 
 Use configuration bundle routing when the change is purely configuration: a different system prompt, model ID, or tool descriptions. Both variants run on the same runtime with different bundle versions.
 
@@ -557,7 +557,7 @@ An **online evaluation config** scores sessions automatically as they close. It 
 
 **Results timeline:** Budget 10-15 minutes from your last request: session timeout (2 min) -> evaluation (2-3 min) -> aggregation (~5 min cycle). Poll until `analysisTimestamp` is populated.
 
-### Step 6: Target-Based A/B Test
+### Step 7: Target-Based A/B Test
 
 When the change involves code (new tools, framework upgrade, different agent implementation), use target-based routing. Traffic splits between two separate runtimes, each registered as a gateway target. Each variant needs its own online evaluation config because they have different log groups.
 
@@ -588,14 +588,6 @@ User --> [gateway] --90%--> [Target HRAgentV1 -> HR runtime v1 (stable)]  --> Cl
 | `requirements.txt` | Python dependencies |
 | `utils/hr_assistant_agent.py` | HR Assistant agent with Configuration Bundle hook |
 
-## HR Assistant Sample Prompts
-
-```bash
-python invoke.py --name HRAssistV1 --prompt "What is the PTO balance for EMP-001?"
-python invoke.py --name HRAssistV1 --prompt "What is the company remote work policy?"
-python invoke.py --name HRAssistV1 --prompt "Show me EMP-042 pay stub for January 2026."
-python invoke.py --name HRAssistV1 --prompt "How many vacation days do I get after 3 years?"
-```
 
 ## Key Concepts
 
@@ -658,22 +650,6 @@ This supports testing both prompt changes and tool description improvements in t
 - **Increase canary exposure**: Use `update_ab_test` to gradually raise treatment weight (10% -> 25% -> 50% -> 100%)
 - **Continuous monitoring**: Leave online eval configs enabled in production
 
-## Workflow Summary
-
-| Step | What you do | Key API |
-|------|-------------|---------|
-| 0 | Run failure insights to understand root causes (optional pre-optimization) | `start_batch_evaluation` (insights), `get_batch_evaluation` |
-| 1 | Deploy HR Assistant to AgentCore runtime | `create_agent_runtime` |
-| 2 | Create baseline Configuration Bundle and send traffic | `create_configuration_bundle`, `invoke_agent_runtime` |
-| 3 | Measure baseline performance with batch evaluation | `start_batch_evaluation` (evaluators), `get_batch_evaluation` |
-| 4a | Generate improved system prompt from production traces | `start_recommendation` (SYSTEM_PROMPT) |
-| 4b | Generate improved tool descriptions from production traces | `start_recommendation` (TOOL_DESCRIPTION) |
-| 5 | Package control and treatment configs into bundles | `create_configuration_bundle` / `update_configuration_bundle` |
-| 6 | A/B test prompt + tool description change via config-bundle routing | `create_ab_test` (configurationBundle variants, 50/50) |
-| 7 | Canary rollout of v2 via target-based routing | `create_ab_test` (target variants, 90/10 split) |
-| 8 | Promote winner or roll back | `update_configuration_bundle` / stop A/B test |
-
----
 
 ## Decision Framework
 
