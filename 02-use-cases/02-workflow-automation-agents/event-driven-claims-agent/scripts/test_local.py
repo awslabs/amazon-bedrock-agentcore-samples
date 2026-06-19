@@ -35,6 +35,11 @@ def load_env():
 def invoke_local(port: int, prompt: str) -> str:
     """Invoke the local dev server and stream the response."""
     url = f"http://localhost:{port}/invocations"
+
+    # B310: Validate URL scheme is http(s) only to prevent file:// or custom scheme abuse
+    if not url.startswith(("http://", "https://")):
+        raise ValueError(f"Unsupported URL scheme: {url}")
+
     payload = json.dumps({"prompt": prompt}).encode()
 
     req = urllib.request.Request(
@@ -48,7 +53,7 @@ def invoke_local(port: int, prompt: str) -> str:
 
     parts = []
     try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
+        with urllib.request.urlopen(req, timeout=180) as resp:  # noqa: S310
             for line in resp:
                 decoded = line.decode("utf-8").strip()
                 if not decoded:
