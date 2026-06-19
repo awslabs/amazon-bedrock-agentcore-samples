@@ -7,9 +7,13 @@ What you learn:
 Caveat: event metadata is NOT encrypted with a customer-managed KMS key.
 Do not put sensitive content in metadata — keep it in the payload.
 
-Two surfaces:
-    python event-metadata-filtering.py boto3
-    python event-metadata-filtering.py sdk
+Two ways to run it:
+    python event-metadata-filtering.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python event-metadata-filtering.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
+
+The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
+`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
+`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -101,14 +105,17 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
+    # MemoryClient owns the control plane (create/delete); MemorySessionManager
+    # is data-plane only. No extraction strategies for short-term memory.
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
 
     client = MemoryClient(region_name=REGION)
     memory = client.create_memory_and_wait(
-        name=f"EventMetadataSdk_{int(time.time())}",
-        description="Event metadata filtering (SDK)",
+        name=f"EventMetadataSession_{int(time.time())}",
+        description="Event metadata filtering (SDK session API)",
         strategies=[],
         event_expiry_days=30,
     )
@@ -122,35 +129,31 @@ def run_with_sdk(cleanup: bool = False) -> None:
         ("ASSISTANT", "Booking flight to Lisbon.", {"topic": "travel"}),
         ("USER", "Just checking in, no specific topic today.", {}),
     ]
+
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
+    # add_turns takes a metadata dict of {key: {"stringValue": value}}; each
+    # call maps to one event so per-event metadata is preserved.
     for role, text, meta in tagged_turns:
-        client.create_event(
-            memory_id=memory_id,
-            actor_id=ACTOR_ID,
-            session_id=SESSION_ID,
-            messages=[(text, role)],
+        session.add_turns(
+            messages=[ConversationalMessage(text, MessageRole[role])],
             metadata={k: {"stringValue": v} for k, v in meta.items()} if meta else None,
         )
 
-    health = client.list_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-        event_metadata=[
+    # list_events takes the metadata filter as the camelCase `eventMetadata`
+    # kwarg, a list of {left, operator, right} expressions matching the boto3 shape.
+    health = session.list_events(
+        eventMetadata=[
             {
                 "left": {"metadataKey": "topic"},
                 "operator": "EQUALS_TO",
                 "right": {"metadataValue": {"stringValue": "health"}},
             }
-        ],
+        ]
     )
     print(f"[sdk] Health-tagged events: {len(health)}")
 
-    priority = client.list_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-        event_metadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}],
-    )
+    priority = session.list_events(eventMetadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}])
     print(f"[sdk] Events with priority set: {len(priority)}")
 
     if cleanup:
@@ -163,13 +166,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

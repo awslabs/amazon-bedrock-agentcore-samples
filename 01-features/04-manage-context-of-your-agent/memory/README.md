@@ -18,6 +18,7 @@ New to AgentCore Memory? → [`00-getting-started/`](./00-getting-started/). You
 | [`03-integrations/`](./03-integrations/) | Runtime, identity, Guardrails, memory-browser |
 | [`04-observability/`](./04-observability/) | CloudWatch metrics, alarms, ingestion logs |
 | [`05-security/`](./05-security/) | IAM scoping, Cognito federation, KMS encryption |
+| [`06-production-patterns/`](./06-production-patterns/) | Error handling & retries, cost optimization, deploy-to-prod checklist |
 
 ## How this tree is organised
 
