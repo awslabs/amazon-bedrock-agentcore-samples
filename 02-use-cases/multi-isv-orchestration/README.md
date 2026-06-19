@@ -65,7 +65,7 @@ This tutorial series demonstrates how to connect multiple ISV SaaS platforms (Sa
 
 This is sample code for demonstration purposes only. Not intended for production use without additional security review. In particular:
 
-- **IAM permissions** in this tutorial use broad `*` resource scope for simplicity. Production deployments should scope resources to specific ARNs.
+- **IAM permissions** — the Gateway execution role scopes most actions to specific ARNs (`bedrock:InvokeModel` to the Claude models, `secretsmanager:GetSecretValue` to the `bedrock-agentcore-*` secret prefix, `iam:PassRole` to the role itself with a `PassedToService` condition). The `bedrock-agentcore:*`/`agent-credential-provider:*` actions remain at service-action level (scoped to the account/region) because the gateway, target, and credential-provider IDs are created later in the flow. Production deployments should tighten these further to the specific resource IDs once known.
 - **Salesforce target** uses the built-in Integration Provider Template, which must be created via the AWS Console (not API). See the [supported integrations](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-integrations.html).
 - **Content-Type parameter** — The Salesforce schema exposes `Content-Type` as a tool parameter. Because the gateway [manages Content-Type as a restricted header](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-headers.html), pass `""` (empty string) for this parameter on create/update operations to prevent header duplication.
 
