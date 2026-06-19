@@ -41,7 +41,7 @@ control.create_harness(
 ```
 
 `awsSkills` selects bundles from the AWS Agent Toolkit. See
-[08-aws-skills](../../01-advanced-examples/08-aws-skills) for every selection
+[13-aws-skills](../../01-advanced-examples/13-aws-skills) for every selection
 mode (all / glob / specific / mixed).
 
 ## What it does, end to end

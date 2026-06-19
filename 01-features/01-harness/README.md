@@ -11,7 +11,7 @@ The new managed agent harness feature in AgentCore replaces all that upfront bui
 | Folder | What's inside |
 |:-------|:--------------|
 | `00-getting-started/` | Core workflow: create harness, invoke, ExecuteCommand |
-| `01-advanced-examples/` | Custom containers, gateway, execution limits, MCP, skills, VPC, OAuth, AWS Skills, S3 filesystem, Step Functions |
+| `01-advanced-examples/` | Custom containers, gateway, execution limits, MCP, skills, VPC, OAuth, AWS Skills, S3 filesystem |
 | `02-use-cases/` | End-to-end applications (travel agent, webapp visual testing, AWS builder agent) |
 | `utils/` | Shared IAM and boto3 client helpers used by all scripts |
 
@@ -25,10 +25,9 @@ self-contained — copy any folder and it runs independently.
 
 - **By feature** → `01-advanced-examples/<feature>/`
 - **By end-to-end scenario** → `02-use-cases/<use-case>/`
-- **By tool type** → MCP: `04-mcp-integration/`, Browser: `01-travel-agent/` (Part 5), Skills: `05-agent-skills/` (custom) and `08-aws-skills/` (native AWS Skills)
+- **By tool type** → MCP: `04-mcp-integration/`, Browser: `01-travel-agent/` (Part 5), Skills: `05-agent-skills/` (custom) and `13-aws-skills/` (native AWS Skills)
 - **Auth patterns** → `07-oauth/` (JWT inbound + OAuth outbound)
-- **Persistent storage** → `09-s3-filesystem/` (mount S3 as the agent filesystem; includes an LLM wiki)
-- **Orchestration** → `10-stepfunctions-orchestration/` (invoke a harness from Step Functions via the native integration)
+- **Persistent storage** → `14-s3-filesystem/` (mount S3 as the agent filesystem; includes an LLM wiki)
 - **Build an agent with AWS Skills** → `02-use-cases/03-aws-builder-agent/` (harness + AWS Skills = an AWS engineering agent)
 
 ## AgentCore CLI
@@ -103,20 +102,17 @@ python 01-advanced-examples/04-mcp-integration/mcp_integration.py
 python 01-advanced-examples/05-agent-skills/agent_skills.py
 
 # AWS Skills (native skill bundles from the AWS Agent Toolkit)
-python 01-advanced-examples/08-aws-skills/aws_skills.py
+python 01-advanced-examples/13-aws-skills/aws_skills.py
 
 # S3 filesystem mount (persistent storage across sessions; requires VPC subnets + SGs)
-python 01-advanced-examples/09-s3-filesystem/s3_filesystem.py \
+python 01-advanced-examples/14-s3-filesystem/s3_filesystem.py \
     --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx \
     --subnet-ids subnet-xxxx --security-group-ids sg-xxxx
 
 # S3-backed LLM wiki (ingest → query → lint)
-python 01-advanced-examples/09-s3-filesystem/s3_llm_wiki.py \
+python 01-advanced-examples/14-s3-filesystem/s3_llm_wiki.py \
     --access-point-arn arn:aws:s3files:REGION:ACCOUNT:file-system/fs-xxxx/access-point/fsap-xxxx \
     --subnet-ids subnet-xxxx --security-group-ids sg-xxxx
-
-# Step Functions native integration (invoke a harness from a state machine)
-python 01-advanced-examples/10-stepfunctions-orchestration/stepfunctions_orchestration.py
 
 # OAuth + JWT auth
 export HARNESS_USER_NAME="testuser"
