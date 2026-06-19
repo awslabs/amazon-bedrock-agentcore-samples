@@ -9,7 +9,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 
 dependencies = [
-    "bedrock-agentcore >= 1.2.1",
+    "bedrock-agentcore>=1.6.1",
     "botocore[crt]",
     "mcp >= 1.19.0",
     "pyjwt>=2.11.0",
