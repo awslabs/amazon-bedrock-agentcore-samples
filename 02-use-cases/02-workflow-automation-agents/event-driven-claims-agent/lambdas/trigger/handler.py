@@ -1,10 +1,9 @@
-"""Trigger Lambda: S3 email → EventBridge → Invoke Agent Runtime with JWT auth.
+"""Trigger Lambda: S3 email → EventBridge → Invoke Agent Runtime with SigV4 auth.
 
-Since the Runtime uses CUSTOM_JWT auth, we can't use boto3 SDK (SigV4).
-Instead, we get a Cognito M2M token and invoke via HTTPS with [REDACTED_TOKEN]
+The Runtime uses IAM (SigV4) authentication. This Lambda's execution role has
+bedrock-agentcore:InvokeAgentRuntime permission granted by CDK.
 """
 
-import base64
 import json
 import os
 import re
@@ -12,61 +11,42 @@ import urllib.parse
 import urllib.request
 
 import boto3
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.session import Session as BotocoreSession
 
 s3 = boto3.client("s3")
 
 # Environment variables (set by CDK)
 RUNTIME_ARN = os.environ.get("AGENTCORE_RUNTIME_ARN", "")
-COGNITO_USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "")
-COGNITO_CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID", "")
-COGNITO_CLIENT_SECRET = os.environ.get("COGNITO_CLIENT_SECRET", "")
-COGNITO_TOKEN_ENDPOINT = os.environ.get("COGNITO_TOKEN_ENDPOINT", "")
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 
 
-def get_cognito_token():
-    """Get M2M JWT from Cognito using client_credentials flow."""
-    token_endpoint = COGNITO_TOKEN_ENDPOINT
-
-    creds = base64.b64encode(f"{COGNITO_CLIENT_ID}:{COGNITO_CLIENT_SECRET}".encode()).decode()
-    data = urllib.parse.urlencode(
-        {
-            "grant_type": "client_credentials",
-            "scope": "agentcore/invoke",
-        }
-    ).encode()
-
-    req = urllib.request.Request(
-        token_endpoint,
-        data=data,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {creds}",
-        },
-    )
-
-    if not token_endpoint.startswith("https://"):
-        raise ValueError(f"Only HTTPS URLs are permitted: {token_endpoint}")
-    with urllib.request.urlopen(req) as resp:  # nosec B310
-        token_data = json.loads(resp.read())
-
-    return token_data["access_token"]
-
-
-def invoke_runtime_with_jwt(token, payload_dict):
-    """Invoke the AgentCore Runtime via HTTPS with JWT bearer token."""
+def invoke_runtime(payload_dict):
+    """Invoke the AgentCore Runtime via HTTPS with SigV4 auth."""
     escaped_arn = urllib.parse.quote(RUNTIME_ARN, safe="")
     url = f"https://bedrock-agentcore.{REGION}.amazonaws.com/runtimes/{escaped_arn}/invocations"
 
     payload = json.dumps(payload_dict).encode()
 
+    # Sign the request with SigV4 using the Lambda's execution role credentials
+    session = BotocoreSession()
+    credentials = session.get_credentials().get_frozen_credentials()
+
+    aws_request = AWSRequest(
+        method="POST",
+        url=url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+        },
+    )
+    SigV4Auth(credentials, "bedrock-agentcore", REGION).add_auth(aws_request)
+
     req = urllib.request.Request(
         url,
         data=payload,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
+        headers=dict(aws_request.headers),
     )
 
     # Buffer streaming SSE response into clean text
@@ -144,9 +124,8 @@ def handler(event, context):
     if claimant_email:
         payload["claimant_email"] = claimant_email
 
-    # Get JWT and invoke runtime via HTTPS
-    token = get_cognito_token()
-    result = invoke_runtime_with_jwt(token, payload)
+    # Invoke runtime with SigV4 (using Lambda execution role credentials)
+    result = invoke_runtime(payload)
 
     print(f"Agent response for {key}: {result[:1000]}")
     return {"statusCode": 200, "body": result}
