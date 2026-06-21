@@ -65,10 +65,10 @@ def create_memory_store():
         )
 
         memory_id = memory["id"]
-        print(f"Memory store created successfully!")
+        print("Memory store created successfully!")
         print(f"  Memory ID: {memory_id}")
         print(f"  Status: {memory['status']}")
-        print(f"  Strategies: CustomerFacts, IssueHistory")
+        print("  Strategies: CustomerFacts, IssueHistory")
 
         # Save config for the agent to use
         config = {

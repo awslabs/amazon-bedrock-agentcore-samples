@@ -65,7 +65,7 @@ def create_memory_execution_role():
         print("Note: Allow 10-15 seconds for IAM propagation before using.")
 
     role_arn = f"arn:aws:iam::{account_id}:role/{ROLE_NAME}"
-    print(f"\nSet this environment variable:")
+    print("\nSet this environment variable:")
     print(f"  export MEMORY_EXECUTION_ROLE_ARN={role_arn}")
     return role_arn
 
