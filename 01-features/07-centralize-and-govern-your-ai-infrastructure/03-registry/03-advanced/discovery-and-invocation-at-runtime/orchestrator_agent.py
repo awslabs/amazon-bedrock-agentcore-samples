@@ -22,9 +22,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 session = boto3.Session()
 
 _sm = session.client("secretsmanager", region_name=REGION)
-CLIENT_SECRET = _sm.get_secret_value(SecretId=os.environ["CLIENT_SECRET_NAME"])[
-    "SecretString"
-]
+CLIENT_SECRET = _sm.get_secret_value(SecretId=os.environ["CLIENT_SECRET_NAME"])["SecretString"]
 
 dp_client = session.client("bedrock-agentcore", region_name=REGION)
 
@@ -39,9 +37,7 @@ def discover_and_execute(request: str) -> str:
     Returns:
         The response from executing the request with dynamically discovered tools.
     """
-    access_token = fetch_oauth_token(
-        COGNITO_DOMAIN, CLIENT_ID, CLIENT_SECRET, SCOPES, REGION
-    )
+    access_token = fetch_oauth_token(COGNITO_DOMAIN, CLIENT_ID, CLIENT_SECRET, SCOPES, REGION)
 
     search_queries = [
         request,

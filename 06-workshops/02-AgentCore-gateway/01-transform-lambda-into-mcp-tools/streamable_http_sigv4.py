@@ -38,9 +38,7 @@ class SigV4HTTPXAuth(httpx.Auth):
         self.region = region
         self.signer = SigV4Auth(credentials, service, region)
 
-    def auth_flow(
-        self, request: httpx.Request
-    ) -> Generator[httpx.Request, httpx.Response, None]:
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
         """Signs the request with SigV4 and adds the signature to the request headers."""
 
         # Create an AWS request

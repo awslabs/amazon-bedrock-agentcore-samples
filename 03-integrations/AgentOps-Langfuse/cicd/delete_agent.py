@@ -53,9 +53,7 @@ def get_agent_info_from_deploy_result():
     region = boto_session.region_name
 
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
         # List all agent runtimes to find our agent
         list_response = agentcore_control_client.list_agent_runtimes()
@@ -69,9 +67,7 @@ def get_agent_info_from_deploy_result():
                 break
 
         if not target_agent:
-            print(
-                f"Warning: Agent '{agent_name}' not found. It may have already been deleted."
-            )
+            print(f"Warning: Agent '{agent_name}' not found. It may have already been deleted.")
             return None
 
         # Get full agent runtime details to extract ECR URI
@@ -80,15 +76,11 @@ def get_agent_info_from_deploy_result():
         print(f"Agent Runtime ID: {agent_runtime_id}")
 
         try:
-            get_response = agentcore_control_client.get_agent_runtime(
-                agentRuntimeId=agent_runtime_id
-            )
+            get_response = agentcore_control_client.get_agent_runtime(agentRuntimeId=agent_runtime_id)
 
             print(f"Get Response: {get_response}")
 
-            ecr_uri = get_response["agentRuntimeArtifact"]["containerConfiguration"][
-                "containerUri"
-            ]
+            ecr_uri = get_response["agentRuntimeArtifact"]["containerConfiguration"]["containerUri"]
 
             print(f"ECR URI: {ecr_uri}")
         except Exception as e:
@@ -129,9 +121,7 @@ def main():
 
         if result["status"] == "success":
             print("Agent deletion successful!")
-            print(
-                f"Runtime deletion response: {result.get('runtime_delete_response', {})}"
-            )
+            print(f"Runtime deletion response: {result.get('runtime_delete_response', {})}")
             print(f"ECR deletion response: {result.get('ecr_delete_response', {})}")
         else:
             print(f"Agent deletion failed: {result.get('error', 'Unknown error')}")

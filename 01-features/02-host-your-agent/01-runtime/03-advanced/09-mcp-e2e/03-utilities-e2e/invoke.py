@@ -24,9 +24,7 @@ def load_config() -> dict:
         sys.exit(1)
 
 
-def send_jsonrpc(
-    client, arn: str, method: str, params: dict = None, msg_id: int = 1
-) -> dict:
+def send_jsonrpc(client, arn: str, method: str, params: dict = None, msg_id: int = 1) -> dict:
     """Send a JSON-RPC message to the MCP server."""
     message = {"jsonrpc": "2.0", "id": msg_id, "method": method}
     if params:

@@ -118,9 +118,7 @@ def get_gateway_urls_from_parameter_store() -> Dict[str, str]:
 
     try:
         ssm_client = boto3.client("ssm", region_name=AWS_REGION)
-        agentcore_client = boto3.client(
-            "bedrock-agentcore-control", region_name=AWS_REGION
-        )
+        agentcore_client = boto3.client("bedrock-agentcore-control", region_name=AWS_REGION)
 
         # Gateway ID parameter paths
         gateway_id_params = {
@@ -133,16 +131,12 @@ def get_gateway_urls_from_parameter_store() -> Dict[str, str]:
         for name, param_path in gateway_id_params.items():
             try:
                 # Fetch gateway ID from Parameter Store
-                response = ssm_client.get_parameter(
-                    Name=param_path, WithDecryption=True
-                )
+                response = ssm_client.get_parameter(Name=param_path, WithDecryption=True)
                 gateway_id = response["Parameter"]["Value"]
                 logger.info(f"✅ Fetched {name} gateway ID from SSM: {gateway_id}")
 
                 # Convert gateway ID to URL using AgentCore API
-                gateway_response = agentcore_client.get_gateway(
-                    gatewayIdentifier=gateway_id
-                )
+                gateway_response = agentcore_client.get_gateway(gatewayIdentifier=gateway_id)
                 gateway_url = gateway_response["gatewayUrl"]
                 urls[name] = gateway_url
                 logger.info(f"✅ Converted to {name} gateway URL: {gateway_url}")
@@ -208,26 +202,18 @@ def create_supervisor_agent(auth_headers: Dict[str, str]) -> Agent:
                 client.__enter__()
                 connect_duration = time.time() - connect_start
                 mcp_clients.append((name, client, prefix))
-                logger.info(
-                    f"   ✅ {name} MCP client created ({connect_duration:.2f}s) (prefix: {prefix}_)"
-                )
+                logger.info(f"   ✅ {name} MCP client created ({connect_duration:.2f}s) (prefix: {prefix}_)")
 
                 # List available tools
                 tools_start = time.time()
                 tools = client.list_tools_sync()
                 tools_duration = time.time() - tools_start
                 all_tools.extend(tools)
-                logger.info(
-                    f"   • {name} Agent: {len(tools)} tools ({tools_duration:.2f}s)"
-                )
+                logger.info(f"   • {name} Agent: {len(tools)} tools ({tools_duration:.2f}s)")
 
             except Exception as e:
-                elapsed = (
-                    time.time() - connect_start if "connect_start" in locals() else 0
-                )
-                logger.error(
-                    f"   ❌ Failed to create {name} MCP client after {elapsed:.2f}s: {e}"
-                )
+                elapsed = time.time() - connect_start if "connect_start" in locals() else 0
+                logger.error(f"   ❌ Failed to create {name} MCP client after {elapsed:.2f}s: {e}")
         else:
             logger.warning(f"   ⚠️  {name} Gateway URL not configured - skipping")
 
@@ -252,9 +238,7 @@ def create_supervisor_agent(auth_headers: Dict[str, str]) -> Agent:
             boto_client_config=bedrock_config,  # Pass botocore config for timeout settings
         )
 
-        agent = Agent(
-            model=model, tools=all_tools, system_prompt=SUPERVISOR_SYSTEM_PROMPT
-        )
+        agent = Agent(model=model, tools=all_tools, system_prompt=SUPERVISOR_SYSTEM_PROMPT)
 
         logger.info("✅ Supervisor agent created successfully")
         logger.info(f"   Model: {MODEL_ID}")
@@ -317,9 +301,7 @@ def agent_function(prompt: str, auth_headers: Dict[str, str]) -> str:
             response_text = str(response)
 
         total_duration = time.time() - start_time
-        logger.info(
-            f"✅ Supervisor orchestration complete (total: {total_duration:.2f}s)"
-        )
+        logger.info(f"✅ Supervisor orchestration complete (total: {total_duration:.2f}s)")
 
         return response_text
 
@@ -347,9 +329,7 @@ async def ping():
     logger.info("🏥 Health check ping")
     return {
         "status": "Healthy",
-        "time_of_last_update": int(
-            time.time() * 1000
-        ),  # Unix timestamp in milliseconds
+        "time_of_last_update": int(time.time() * 1000),  # Unix timestamp in milliseconds
     }
 
 
@@ -371,9 +351,7 @@ async def invoke(request: Request):
 
         # Extract prompt from payload - handle different payload formats
         if isinstance(payload, dict):
-            prompt = payload.get("input", {}).get("prompt", "") or payload.get(
-                "prompt", ""
-            )
+            prompt = payload.get("input", {}).get("prompt", "") or payload.get("prompt", "")
         else:
             prompt = str(payload)
 
@@ -381,18 +359,14 @@ async def invoke(request: Request):
         # This JWT token will be propagated to gateway connections
         auth_header = request.headers.get("Authorization", "")
 
-        logger.info(
-            f"✅ Received request with Authorization header: {auth_header[:50] if auth_header else 'NONE'}..."
-        )
+        logger.info(f"✅ Received request with Authorization header: {auth_header[:50] if auth_header else 'NONE'}...")
 
         # Build auth headers for MCP clients (pass through user JWT token)
         auth_headers = {}
         if auth_header:
             auth_headers["Authorization"] = auth_header
         else:
-            logger.warning(
-                "⚠️  No Authorization header found in request - gateway auth may fail"
-            )
+            logger.warning("⚠️  No Authorization header found in request - gateway auth may fail")
 
         # Call agent function with auth headers
         response_text = agent_function(prompt, auth_headers)

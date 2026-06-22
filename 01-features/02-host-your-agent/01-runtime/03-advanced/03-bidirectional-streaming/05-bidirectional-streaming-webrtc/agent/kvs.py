@@ -22,9 +22,7 @@ def init(channel_name, region):
         resp = client.describe_signaling_channel(ChannelName=channel_name)
         channel_arn = resp["ChannelInfo"]["ChannelARN"]
     except client.exceptions.ResourceNotFoundException:
-        resp = client.create_signaling_channel(
-            ChannelName=channel_name, ChannelType="SINGLE_MASTER"
-        )
+        resp = client.create_signaling_channel(ChannelName=channel_name, ChannelType="SINGLE_MASTER")
         channel_arn = resp["ChannelARN"]
     logger.info(f"Signaling channel: {channel_arn}")
 
@@ -41,9 +39,7 @@ def init(channel_name, region):
 
 def get_ice_servers(region, client_id=None):
     """Fetch raw ICE server config from KVS."""
-    client = boto3.client(
-        "kinesis-video-signaling", region_name=region, endpoint_url=_https_endpoint
-    )
+    client = boto3.client("kinesis-video-signaling", region_name=region, endpoint_url=_https_endpoint)
     params = {"ChannelARN": channel_arn, "Service": "TURN"}
     if client_id:
         params["ClientId"] = client_id
@@ -56,13 +52,7 @@ def get_rtc_ice_servers(region, client_id=None, turn_only=False):
 
     servers = []
     for s in get_ice_servers(region, client_id):
-        urls = (
-            [u for u in s["Uris"] if u.startswith("turn:")] if turn_only else s["Uris"]
-        )
+        urls = [u for u in s["Uris"] if u.startswith("turn:")] if turn_only else s["Uris"]
         if urls:
-            servers.append(
-                RTCIceServer(
-                    urls=urls, username=s.get("Username"), credential=s.get("Password")
-                )
-            )
+            servers.append(RTCIceServer(urls=urls, username=s.get("Username"), credential=s.get("Password")))
     return servers

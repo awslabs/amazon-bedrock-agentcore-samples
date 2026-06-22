@@ -67,8 +67,7 @@ async def main():
     )
     session_id = response["sessionId"]
     ws_url = (
-        f"wss://bedrock-agentcore.{REGION}.amazonaws.com"
-        f"/browser-streams/{browser_id}/sessions/{session_id}/automation"
+        f"wss://bedrock-agentcore.{REGION}.amazonaws.com/browser-streams/{browser_id}/sessions/{session_id}/automation"
     )
     print(f"Session ID: {session_id}")
 
@@ -79,32 +78,22 @@ async def main():
 
         async with async_playwright() as p:
             browser = await p.chromium.connect_over_cdp(ws_url, headers=headers)
-            page = (
-                browser.contexts[0].pages[0]
-                if browser.contexts
-                else await browser.new_context().new_page()
-            )
+            page = browser.contexts[0].pages[0] if browser.contexts else await browser.new_context().new_page()
 
             print("\nChecking browser's public IP via icanhazip.com...")
-            await page.goto(
-                "https://icanhazip.com", timeout=15000, wait_until="domcontentloaded"
-            )
+            await page.goto("https://icanhazip.com", timeout=15000, wait_until="domcontentloaded")
             observed_ip = (await page.inner_text("body")).strip()
 
             print(f"\n{'=' * 50}")
             print(f"Expected IP (Squid public): {squid_public_ip}")
             print(f"Observed IP (browser):      {observed_ip}")
             match = observed_ip == squid_public_ip
-            print(
-                f"Result: {'PASS' if match else 'FAIL'} — traffic {'is' if match else 'is NOT'} routed through proxy"
-            )
+            print(f"Result: {'PASS' if match else 'FAIL'} — traffic {'is' if match else 'is NOT'} routed through proxy")
             print(f"{'=' * 50}")
 
             await browser.close()
     finally:
-        browser_client.stop_browser_session(
-            browserIdentifier=browser_id, sessionId=session_id
-        )
+        browser_client.stop_browser_session(browserIdentifier=browser_id, sessionId=session_id)
         print(f"\nSession {session_id} stopped")
 
 

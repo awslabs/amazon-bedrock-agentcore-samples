@@ -38,13 +38,9 @@ def _find_project_dir() -> str:
     base = os.path.dirname(os.path.abspath(__file__))
     for entry in os.listdir(base):
         candidate = os.path.join(base, entry)
-        if os.path.isdir(candidate) and os.path.isdir(
-            os.path.join(candidate, "agentcore")
-        ):
+        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
             return candidate
-    raise FileNotFoundError(
-        "No agentcore project directory found. Run 'agentcore create' first."
-    )
+    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
 def _find_in_json(obj, key):
@@ -72,9 +68,7 @@ def get_agent_arn() -> str:
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError(
-            "No deployed-state.json found. Run 'agentcore deploy -y' first."
-        )
+        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
     with open(state_file) as f:
         state = json.load(f)
     arn = _find_in_json(state, "runtimeArn")
@@ -86,11 +80,7 @@ def get_agent_arn() -> str:
 def parse_event_stream(response: dict) -> str:
     parts = []
     for event in response.get("response", []):
-        raw = (
-            event
-            if isinstance(event, bytes)
-            else event.get("chunk", {}).get("bytes", b"")
-        )
+        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -121,9 +111,7 @@ def main():
         with open("cognito_config.json") as f:
             config = json.load(f)
     except FileNotFoundError:
-        print(
-            "ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first."
-        )
+        print("ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first.")
         sys.exit(1)
 
     region = config["region"]
@@ -159,18 +147,14 @@ def main():
         def _inject_bearer(request, **kwargs):
             request.headers["Authorization"] = f"Bearer {bearer_token}"
 
-        client.meta.events.register(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
-        )
+        client.meta.events.register("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
         resp = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             runtimeUserId=config["username"],
             qualifier="DEFAULT",
             payload=json.dumps({"prompt": prompt}),
         )
-        client.meta.events.unregister(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
-        )
+        client.meta.events.unregister("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
         result = parse_event_stream(resp)
         print(f"\nAgent response:\n{result}")
     except Exception as exc:

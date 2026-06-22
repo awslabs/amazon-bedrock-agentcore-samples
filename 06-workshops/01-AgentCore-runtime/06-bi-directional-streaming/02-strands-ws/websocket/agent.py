@@ -18,9 +18,7 @@ def get_system_prompt() -> str:
     return DEFAULT_SYSTEM_PROMPT
 
 
-async def handle_websocket_session(
-    websocket: WebSocket, default_gateway_arns: list, send_output=None
-):
+async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: list, send_output=None):
     """
     Handle a WebSocket session: wait for config event, initialize agent, and run.
 
@@ -48,9 +46,7 @@ async def handle_websocket_session(
             api_key=api_key,
             system_prompt=system_prompt,
         )
-        logger.info(
-            "✅ Agent initialized successfully"
-        )  # config details logged in _wait_for_config
+        logger.info("✅ Agent initialized successfully")  # config details logged in _wait_for_config
 
         # Send acknowledgment back to client
         await websocket.send_json(
@@ -68,9 +64,7 @@ async def handle_websocket_session(
 
                 # Handle subsequent config events (not allowed after initialization)
                 if message.get("type") == "config":
-                    logger.info(
-                        "⚠️ Config event received after initialization - ignoring"
-                    )
+                    logger.info("⚠️ Config event received after initialization - ignoring")
                     await websocket.send_json(
                         {
                             "type": "system",
@@ -147,9 +141,7 @@ async def _wait_for_config(
             )
         else:
             logger.warning("⚠️ Expected config event, got unexpected message type")
-            await websocket.send_json(
-                {"type": "system", "message": "Please send config event first"}
-            )
+            await websocket.send_json({"type": "system", "message": "Please send config event first"})
 
 
 def _create_agent(
@@ -160,9 +152,7 @@ def _create_agent(
 ) -> BidiAgent:
     """Create and return a BidiAgent from the given config."""
     # Use gateway ARNs from config if provided, otherwise use environment defaults
-    effective_gateway_arns = (
-        config["gateway_arns"] if config["gateway_arns"] else default_gateway_arns
-    )
+    effective_gateway_arns = config["gateway_arns"] if config["gateway_arns"] else default_gateway_arns
     effective_system_prompt = system_prompt if system_prompt else get_system_prompt()
 
     if config["gateway_arns"]:
@@ -209,16 +199,11 @@ def _create_model(config: dict, effective_gateway_arns: list, api_key: str = Non
                 BidiOpenAIRealtimeModel,
             )
         except ImportError:
-            raise RuntimeError(
-                "OpenAI Realtime support not installed. "
-                "Run: pip install 'strands-agents[bidi-openai]'"
-            )
+            raise RuntimeError("OpenAI Realtime support not installed. Run: pip install 'strands-agents[bidi-openai]'")
 
         openai_key = api_key or os.getenv("OPENAI_API_KEY")
         if not openai_key:
-            raise RuntimeError(
-                "OpenAI API key is required. Provide it via config or OPENAI_API_KEY env var."
-            )
+            raise RuntimeError("OpenAI API key is required. Provide it via config or OPENAI_API_KEY env var.")
 
         return BidiOpenAIRealtimeModel(
             model_id=model_id,
@@ -237,16 +222,11 @@ def _create_model(config: dict, effective_gateway_arns: list, api_key: str = Non
         try:
             from strands.experimental.bidi.models.gemini_live import BidiGeminiLiveModel
         except ImportError:
-            raise RuntimeError(
-                "Gemini Live support not installed. "
-                "Run: pip install 'strands-agents[bidi-gemini]'"
-            )
+            raise RuntimeError("Gemini Live support not installed. Run: pip install 'strands-agents[bidi-gemini]'")
 
         google_key = api_key or os.getenv("GOOGLE_API_KEY")
         if not google_key:
-            raise RuntimeError(
-                "Google API key is required. Provide it via config or GOOGLE_API_KEY env var."
-            )
+            raise RuntimeError("Google API key is required. Provide it via config or GOOGLE_API_KEY env var.")
 
         return BidiGeminiLiveModel(
             model_id=model_id,

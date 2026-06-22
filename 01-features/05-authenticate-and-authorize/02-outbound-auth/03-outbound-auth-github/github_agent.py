@@ -87,9 +87,7 @@ def inspect_github_repos() -> str:
         try:
             with httpx.Client() as client:
                 # Get user information
-                user_response = client.get(
-                    "https://api.github.com/user", headers=headers
-                )
+                user_response = client.get("https://api.github.com/user", headers=headers)
                 user_response.raise_for_status()
                 username = user_response.json().get("login", "Unknown")
                 app.logger.info(f"✅ User: {username}")
@@ -101,9 +99,7 @@ def inspect_github_repos() -> str:
                 )
                 repos_response.raise_for_status()
                 repos_data = repos_response.json()
-                app.logger.info(
-                    f"✅ Found {len(repos_data.get('items', []))} repositories"
-                )
+                app.logger.info(f"✅ Found {len(repos_data.get('items', []))} repositories")
 
                 repos = repos_data.get("items", [])
                 if not repos:

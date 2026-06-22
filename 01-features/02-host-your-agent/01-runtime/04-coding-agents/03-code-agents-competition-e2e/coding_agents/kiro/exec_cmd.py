@@ -65,7 +65,7 @@ def main():
     if "--session" in args:
         idx = args.index("--session")
         session_id = args[idx + 1]
-        args = args[:idx] + args[idx + 2:]
+        args = args[:idx] + args[idx + 2 :]
 
     if not session_id:
         session_id = os.environ.get("SESSION_ID")
@@ -75,7 +75,7 @@ def main():
         sys.exit(1)
 
     if not args:
-        print("Usage: python exec_cmd.py --session <id> \"<command>\"")
+        print('Usage: python exec_cmd.py --session <id> "<command>"')
         sys.exit(1)
 
     command = " ".join(args)

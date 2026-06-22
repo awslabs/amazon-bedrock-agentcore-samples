@@ -96,9 +96,7 @@ def main():
         session_id = os.environ.get("SESSION_ID")
 
     if not session_id:
-        print(
-            "Error: session ID required. Use --session <id> or set SESSION_ID env var."
-        )
+        print("Error: session ID required. Use --session <id> or set SESSION_ID env var.")
         sys.exit(1)
 
     if not args:

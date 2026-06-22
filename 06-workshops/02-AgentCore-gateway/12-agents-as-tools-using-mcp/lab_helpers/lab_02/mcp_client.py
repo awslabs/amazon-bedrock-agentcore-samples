@@ -57,9 +57,7 @@ class MCPClient:
         self.request_id += 1
         return self.request_id
 
-    def _mcp_request(
-        self, method: str, params: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+    def _mcp_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """
         Make MCP JSON-RPC request to Gateway.
 
@@ -207,9 +205,7 @@ class MCPClient:
         print(f"\n🔨 Calling tool: {tool_name}")
         print(f"   Arguments: {json.dumps(arguments, indent=2)}")
 
-        response = self._mcp_request(
-            method="tools/call", params={"name": tool_name, "arguments": arguments}
-        )
+        response = self._mcp_request(method="tools/call", params={"name": tool_name, "arguments": arguments})
 
         if "result" in response:
             result = response["result"]

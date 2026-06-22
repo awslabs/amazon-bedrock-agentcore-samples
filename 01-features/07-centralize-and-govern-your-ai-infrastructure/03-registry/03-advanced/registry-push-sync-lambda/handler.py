@@ -38,12 +38,8 @@ def get_bearer_token(account_id=None):
     Identity, so no client secrets are needed in Lambda env vars.
     """
     acct = account_id or ""
-    provider_name = os.environ.get(f"CREDENTIAL_PROVIDER_{acct}") or os.environ.get(
-        "CREDENTIAL_PROVIDER", ""
-    )
-    scope_str = os.environ.get(f"CREDENTIAL_SCOPE_{acct}") or os.environ.get(
-        "CREDENTIAL_SCOPE", ""
-    )
+    provider_name = os.environ.get(f"CREDENTIAL_PROVIDER_{acct}") or os.environ.get("CREDENTIAL_PROVIDER", "")
+    scope_str = os.environ.get(f"CREDENTIAL_SCOPE_{acct}") or os.environ.get("CREDENTIAL_SCOPE", "")
     scopes = [s.strip() for s in scope_str.split(",") if s.strip()] if scope_str else []
     workload_name = os.environ.get("WORKLOAD_IDENTITY_NAME", "")
 
@@ -60,13 +56,9 @@ def get_bearer_token(account_id=None):
         workloadName=workload_name,
     )
     print(f"Workload access token response keys: {list(wat_response.keys())}")
-    workload_token = wat_response.get("workloadAccessToken") or wat_response.get(
-        "accessToken", ""
-    )
+    workload_token = wat_response.get("workloadAccessToken") or wat_response.get("accessToken", "")
     if not workload_token:
-        raise ValueError(
-            f"No access token in workload response: {list(wat_response.keys())}"
-        )
+        raise ValueError(f"No access token in workload response: {list(wat_response.keys())}")
 
     # Step 2: Use workload token to get OAuth token from the credential provider
     response = client.get_resource_oauth2_token(
@@ -172,10 +164,7 @@ def _extract_mcp_url(event):
 
     region = detail.get("awsRegion", "us-west-2")
     encoded_arn = runtime_arn.replace(":", "%3A").replace("/", "%2F")
-    mcp_url = (
-        f"https://bedrock-agentcore.{region}.amazonaws.com"
-        f"/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
-    )
+    mcp_url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
     return mcp_url, account_id
 
 
@@ -199,9 +188,7 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
         runtime_marker = "/runtimes/"
         idx = decoded_url.find(runtime_marker)
         if idx >= 0:
-            runtime_arn = decoded_url[idx + len(runtime_marker) :].split(
-                "/invocations"
-            )[0]
+            runtime_arn = decoded_url[idx + len(runtime_marker) :].split("/invocations")[0]
         else:
             runtime_arn = None
     except Exception:
@@ -211,21 +198,15 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
     record_list = records.get("registryRecords", [])
     print(f"Found {len(record_list)} registry records")
     for rec in record_list:
-        record_id = (
-            rec.get("registryRecordId") or rec.get("recordId") or rec.get("id", "")
-        )
+        record_id = rec.get("registryRecordId") or rec.get("recordId") or rec.get("id", "")
         record_name = rec.get("name", "?")
         record_status = rec.get("status", "?")
-        print(
-            f"  Record: {record_id} | {record_name} | status={record_status} | keys={list(rec.keys())}"
-        )
+        print(f"  Record: {record_id} | {record_name} | status={record_status} | keys={list(rec.keys())}")
         if not record_id:
             print(f"  Warning: could not get record ID from: {list(rec.keys())}")
             continue
         if record_status == "DRAFT":
-            print(
-                f"  Skipping DRAFT record {record_id} ({record_name}) — must be APPROVED first"
-            )
+            print(f"  Skipping DRAFT record {record_id} ({record_name}) — must be APPROVED first")
             continue
         try:
             full = client.get_registry_record(
@@ -239,28 +220,15 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
 
             # Match on runtime ARN (decoded or encoded) in the server schema
             if runtime_arn and runtime_arn in inline:
-                print(
-                    f"Found matching record (by ARN): {record_id} ({rec.get('name', '?')})"
-                )
+                print(f"Found matching record (by ARN): {record_id} ({rec.get('name', '?')})")
                 return record_id, full
             # Also check URL-encoded ARN
-            encoded_arn = (
-                runtime_arn.replace(":", "%3A").replace("/", "%2F")
-                if runtime_arn
-                else None
-            )
+            encoded_arn = runtime_arn.replace(":", "%3A").replace("/", "%2F") if runtime_arn else None
             if encoded_arn and encoded_arn in inline:
-                print(
-                    f"Found matching record (by encoded ARN): {record_id} ({rec.get('name', '?')})"
-                )
+                print(f"Found matching record (by encoded ARN): {record_id} ({rec.get('name', '?')})")
                 return record_id, full
-            if (
-                mcp_url in inline
-                or urllib.parse.unquote(mcp_url).rstrip("?qualifier=DEFAULT") in inline
-            ):
-                print(
-                    f"Found matching record (by URL): {record_id} ({rec.get('name', '?')})"
-                )
+            if mcp_url in inline or urllib.parse.unquote(mcp_url).rstrip("?qualifier=DEFAULT") in inline:
+                print(f"Found matching record (by URL): {record_id} ({rec.get('name', '?')})")
                 return record_id, full
         except Exception as e:
             print(f"Error checking record {record_id}: {e}")
@@ -339,10 +307,7 @@ def sync_registry_if_changed(mcp_tools, mcp_url):
     registry_normalized = _normalize_tools(registry_tools)
 
     if mcp_normalized == registry_normalized:
-        print(
-            f"No change detected. Registry record {record_id} is up to date "
-            f"({len(registry_tools)} tools)."
-        )
+        print(f"No change detected. Registry record {record_id} is up to date ({len(registry_tools)} tools).")
         return {
             "action": "no_change",
             "record_id": record_id,
@@ -350,10 +315,7 @@ def sync_registry_if_changed(mcp_tools, mcp_url):
         }
 
     # Tools differ — update the registry
-    print(
-        f"Change detected! Registry has {len(registry_tools)} tools, "
-        f"MCP server has {len(mcp_tools)} tools."
-    )
+    print(f"Change detected! Registry has {len(registry_tools)} tools, MCP server has {len(mcp_tools)} tools.")
 
     # Log the diff
     mcp_names = {t["name"] for t in mcp_normalized}
@@ -399,9 +361,7 @@ def handler(event, context):
     """Lambda entry point. Triggered by EventBridge on UpdateAgentRuntime events."""
     mcp_url, account_id = _extract_mcp_url(event)
     if not mcp_url:
-        print(
-            f"Could not extract mcp_url from event: {json.dumps(event, default=str)[:500]}"
-        )
+        print(f"Could not extract mcp_url from event: {json.dumps(event, default=str)[:500]}")
         return {"statusCode": 400, "body": "Could not extract mcp_url"}
 
     print(f"Received event for MCP server: {mcp_url} (account: {account_id})")

@@ -22,19 +22,13 @@ def main():
         config["region"],
     )
     dynamo_table = config.get("dynamo_table", "finance_tracker")
-    account_id = (
-        Session(region_name=region).client("sts").get_caller_identity()["Account"]
-    )
+    account_id = Session(region_name=region).client("sts").get_caller_identity()["Account"]
     control = boto3.client("bedrock-agentcore-control", region_name=region)
 
     print(f"Cleaning up: {agent_name}\n")
     try:
-        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get(
-            "runtimeEndpoints", []
-        ):
-            control.delete_agent_runtime_endpoint(
-                agentRuntimeId=runtime_id, endpointName=ep["name"]
-            )
+        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
+            control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ep["name"])
         time.sleep(30)
     except Exception as e:
         print(f"  Warning: {e}")

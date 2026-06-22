@@ -29,21 +29,15 @@ def mask_pii_with_guardrails(text: str) -> str:
     Returns:
         Text with PII masked/anonymized by Guardrails
     """
-    print(
-        f"[DEBUG] mask_pii_with_guardrails - INPUT text (first 200 chars): {text[:200]}"
-    )
+    print(f"[DEBUG] mask_pii_with_guardrails - INPUT text (first 200 chars): {text[:200]}")
 
     if not GUARDRAIL_ID:
         print("[DEBUG] WARNING: GUARDRAIL_ID not configured, skipping PII masking")
-        print(
-            "[DEBUG] mask_pii_with_guardrails - RETURNING original text (no guardrail)"
-        )
+        print("[DEBUG] mask_pii_with_guardrails - RETURNING original text (no guardrail)")
         return text
 
     try:
-        print(
-            f"[DEBUG] Calling Bedrock Guardrails API with ID: {GUARDRAIL_ID}, Version: {GUARDRAIL_VERSION}"
-        )
+        print(f"[DEBUG] Calling Bedrock Guardrails API with ID: {GUARDRAIL_ID}, Version: {GUARDRAIL_VERSION}")
 
         # Apply guardrail to the text
         response = bedrock_runtime.apply_guardrail(
@@ -54,17 +48,13 @@ def mask_pii_with_guardrails(text: str) -> str:
             content=[{"text": {"text": text}}],
         )
 
-        print(
-            f"[DEBUG] Guardrails API response received: {json.dumps(response, default=str)}"
-        )
+        print(f"[DEBUG] Guardrails API response received: {json.dumps(response, default=str)}")
 
         # Extract the masked text from the response
         outputs = response.get("outputs", [])
         if outputs and len(outputs) > 0:
             masked_text = outputs[0].get("text", text)
-            print(
-                f"[DEBUG] Extracted masked_text (first 200 chars): {masked_text[:200]}"
-            )
+            print(f"[DEBUG] Extracted masked_text (first 200 chars): {masked_text[:200]}")
 
             # Log PII detection details
             usage = response.get("usage", {})
@@ -76,17 +66,11 @@ def mask_pii_with_guardrails(text: str) -> str:
                 # Log what types of PII were detected
                 if assessments:
                     for assessment in assessments:
-                        sensitive_info = assessment.get(
-                            "sensitiveInformationPolicy", {}
-                        )
+                        sensitive_info = assessment.get("sensitiveInformationPolicy", {})
                         pii_entities = sensitive_info.get("piiEntities", [])
                         if pii_entities:
-                            detected_types = [
-                                entity.get("type") for entity in pii_entities
-                            ]
-                            print(
-                                f"[DEBUG]   Detected PII types: {', '.join(detected_types)}"
-                            )
+                            detected_types = [entity.get("type") for entity in pii_entities]
+                            print(f"[DEBUG]   Detected PII types: {', '.join(detected_types)}")
 
             print("[DEBUG] mask_pii_with_guardrails - RETURNING masked_text")
             return masked_text
@@ -103,17 +87,11 @@ def mask_pii_with_guardrails(text: str) -> str:
         # Check if it's a validation error about guardrail not existing
         if "does not exist" in error_message or "ValidationException" in error_message:
             print("[DEBUG]   ⚠ The Guardrail ID or version is invalid or doesn't exist")
-            print(
-                "[DEBUG]   ⚠ Make sure Step 1.3 was run successfully to create the Guardrail"
-            )
-            print(
-                "[DEBUG]   ⚠ Verify the Lambda environment variables are set correctly"
-            )
+            print("[DEBUG]   ⚠ Make sure Step 1.3 was run successfully to create the Guardrail")
+            print("[DEBUG]   ⚠ Verify the Lambda environment variables are set correctly")
 
         # On error, return original text (fail open to avoid blocking)
-        print(
-            "[DEBUG] mask_pii_with_guardrails - RETURNING original text (error occurred)"
-        )
+        print("[DEBUG] mask_pii_with_guardrails - RETURNING original text (error occurred)")
         return text
 
 
@@ -128,9 +106,7 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Response body with masked PII in the text field
     """
-    print(
-        f"[DEBUG] mask_tool_response - INPUT response_body: {json.dumps(response_body, default=str)}"
-    )
+    print(f"[DEBUG] mask_tool_response - INPUT response_body: {json.dumps(response_body, default=str)}")
 
     # Create a deep copy to avoid modifying the original
     masked_response = json.loads(json.dumps(response_body))
@@ -169,36 +145,26 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
             # Try to parse the text as JSON
             parsed_json = json.loads(text_value)
             print("[DEBUG] Successfully parsed text as JSON")
-            print(
-                f"[DEBUG] Parsed JSON structure: {json.dumps(parsed_json, default=str)[:300]}"
-            )
+            print(f"[DEBUG] Parsed JSON structure: {json.dumps(parsed_json, default=str)[:300]}")
 
             # Convert the parsed JSON to a pretty string for Guardrails processing
             json_string = json.dumps(parsed_json, indent=2)
-            print(
-                f"[DEBUG] Converted to JSON string for Guardrails (first 300 chars): {json_string[:300]}"
-            )
+            print(f"[DEBUG] Converted to JSON string for Guardrails (first 300 chars): {json_string[:300]}")
 
             # Apply Bedrock Guardrails to anonymize the JSON content
             print("[DEBUG] Applying Bedrock Guardrails to anonymize JSON content...")
             anonymized_json_string = mask_pii_with_guardrails(json_string)
-            print(
-                f"[DEBUG] Anonymized JSON string (first 300 chars): {anonymized_json_string[:300]}"
-            )
+            print(f"[DEBUG] Anonymized JSON string (first 300 chars): {anonymized_json_string[:300]}")
 
             # Parse the anonymized string back to JSON object
             try:
                 anonymized_json = json.loads(anonymized_json_string)
                 print("[DEBUG] Successfully parsed anonymized string back to JSON")
-                print(
-                    f"[DEBUG] Anonymized JSON object: {json.dumps(anonymized_json, default=str)[:300]}"
-                )
+                print(f"[DEBUG] Anonymized JSON object: {json.dumps(anonymized_json, default=str)[:300]}")
 
                 # Replace with the JSON object directly (not as a string)
                 masked_response["result"]["content"][i]["text"] = anonymized_json
-                print(
-                    f"[DEBUG] Replaced text in content item {i} with JSON object (not string)"
-                )
+                print(f"[DEBUG] Replaced text in content item {i} with JSON object (not string)")
 
             except json.JSONDecodeError as e:
                 print(f"[DEBUG] Failed to parse anonymized string back to JSON: {e}")
@@ -256,9 +222,7 @@ def lambda_handler(event, context):
     Returns transformed response with masked PII for any tool.
     """
     print("[DEBUG] ========== LAMBDA HANDLER START ==========")
-    print(
-        f"[DEBUG] PII Masking Interceptor - Received event: {json.dumps(event, default=str)}"
-    )
+    print(f"[DEBUG] PII Masking Interceptor - Received event: {json.dumps(event, default=str)}")
 
     try:
         # Extract MCP data
@@ -266,14 +230,10 @@ def lambda_handler(event, context):
         print(f"[DEBUG] Extracted mcp_data: {json.dumps(mcp_data, default=str)}")
 
         gateway_response = mcp_data.get("gatewayResponse", {})
-        print(
-            f"[DEBUG] Extracted gateway_response: {json.dumps(gateway_response, default=str)}"
-        )
+        print(f"[DEBUG] Extracted gateway_response: {json.dumps(gateway_response, default=str)}")
 
         gateway_request = mcp_data.get("gatewayRequest", {})
-        print(
-            f"[DEBUG] Extracted gateway_request: {json.dumps(gateway_request, default=str)}"
-        )
+        print(f"[DEBUG] Extracted gateway_request: {json.dumps(gateway_request, default=str)}")
 
         # Get response data
         response_headers = gateway_response.get("headers", {})
@@ -303,9 +263,7 @@ def lambda_handler(event, context):
             # Mask PII in the response for any tool
             masked_body = mask_tool_response(response_body)
 
-            print(
-                f"[DEBUG] Masked response body: {json.dumps(masked_body, default=str)}"
-            )
+            print(f"[DEBUG] Masked response body: {json.dumps(masked_body, default=str)}")
 
             # Build return object
             return_obj = {
@@ -319,9 +277,7 @@ def lambda_handler(event, context):
                 },
             }
 
-            print(
-                f"[DEBUG] lambda_handler - RETURNING (tools/call): {json.dumps(return_obj, default=str)}"
-            )
+            print(f"[DEBUG] lambda_handler - RETURNING (tools/call): {json.dumps(return_obj, default=str)}")
             print("[DEBUG] ========== LAMBDA HANDLER END (tools/call) ==========")
             return return_obj
 
@@ -339,9 +295,7 @@ def lambda_handler(event, context):
             },
         }
 
-        print(
-            f"[DEBUG] lambda_handler - RETURNING (passthrough): {json.dumps(passthrough_obj, default=str)}"
-        )
+        print(f"[DEBUG] lambda_handler - RETURNING (passthrough): {json.dumps(passthrough_obj, default=str)}")
         print("[DEBUG] ========== LAMBDA HANDLER END (passthrough) ==========")
         return passthrough_obj
 
@@ -364,8 +318,6 @@ def lambda_handler(event, context):
             },
         }
 
-        print(
-            f"[DEBUG] lambda_handler - RETURNING (error): {json.dumps(error_obj, default=str)}"
-        )
+        print(f"[DEBUG] lambda_handler - RETURNING (error): {json.dumps(error_obj, default=str)}")
         print("[DEBUG] ========== LAMBDA HANDLER END (error) ==========")
         return error_obj

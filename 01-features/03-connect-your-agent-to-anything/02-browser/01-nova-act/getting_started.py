@@ -62,15 +62,9 @@ def browser_with_nova_act(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Headless browser demo with Nova Act and AgentCore Browser Tool"
-    )
-    parser.add_argument(
-        "--prompt", required=True, help="Natural language browser instruction"
-    )
-    parser.add_argument(
-        "--starting-page", required=True, help="Starting URL for the browser"
-    )
+    parser = argparse.ArgumentParser(description="Headless browser demo with Nova Act and AgentCore Browser Tool")
+    parser.add_argument("--prompt", required=True, help="Natural language browser instruction")
+    parser.add_argument("--starting-page", required=True, help="Starting URL for the browser")
     parser.add_argument(
         "--nova-act-key",
         default=os.getenv("NOVA_ACT_API_KEY"),
@@ -84,9 +78,7 @@ def main():
     args = parse_args()
 
     if not args.nova_act_key:
-        console.print(
-            "[red]ERROR:[/red] --nova-act-key is required (or set NOVA_ACT_API_KEY)."
-        )
+        console.print("[red]ERROR:[/red] --nova-act-key is required (or set NOVA_ACT_API_KEY).")
         raise SystemExit(1)
 
     console.print("=" * 60)

@@ -24,9 +24,7 @@ def get_execution_role_arn_from_runtime():
     """
     try:
         # Try SSM first (stored in lab04 via create_agentcore_runtime_execution_role)
-        role_arn = get_ssm_parameter(
-            "/app/customersupport/agentcore/runtime_execution_role_arn"
-        )
+        role_arn = get_ssm_parameter("/app/customersupport/agentcore/runtime_execution_role_arn")
         if role_arn:
             print(f"✅ Retrieved execution_role_arn from SSM: {role_arn}")
             return role_arn

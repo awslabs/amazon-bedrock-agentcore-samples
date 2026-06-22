@@ -132,9 +132,7 @@ class LangChainClientHandler(BaseHTTPRequestHandler):
                 f"wss://bedrock-agentcore.{self.region}.amazonaws.com"
                 f"/runtimes/{self.runtime_arn}/ws?qualifier={self.qualifier}"
             )
-            new_url = create_presigned_url(
-                base_url, region=self.region, service=self.service, expires=self.expires
-            )
+            new_url = create_presigned_url(base_url, region=self.region, service=self.service, expires=self.expires)
             LangChainClientHandler.websocket_url = new_url
 
             response = {
@@ -186,24 +184,16 @@ Examples:
         default=os.getenv("AWS_REGION", "us-east-1"),
         help="AWS region (default: us-east-1)",
     )
-    parser.add_argument(
-        "--service", default="bedrock-agentcore", help="AWS service name"
-    )
+    parser.add_argument("--service", default="bedrock-agentcore", help="AWS service name")
     parser.add_argument(
         "--expires",
         type=int,
         default=3600,
         help="URL expiration time in seconds (default: 3600)",
     )
-    parser.add_argument(
-        "--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)"
-    )
-    parser.add_argument(
-        "--port", type=int, default=8000, help="Web server port (default: 8000)"
-    )
-    parser.add_argument(
-        "--no-browser", action="store_true", help="Do not automatically open browser"
-    )
+    parser.add_argument("--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)")
+    parser.add_argument("--port", type=int, default=8000, help="Web server port (default: 8000)")
+    parser.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
 
     args = parser.parse_args()
 
@@ -225,9 +215,7 @@ Examples:
     print("=" * 70)
 
     websocket_url = None
-    session_id = "".join(
-        secrets.choice(string.ascii_letters + string.digits) for _ in range(50)
-    )
+    session_id = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     is_presigned = False
 
     try:
@@ -240,9 +228,7 @@ Examples:
             print(f"🔑 Runtime ARN: {args.runtime_arn}")
             print(f"🌍 Region: {args.region}")
             print(f"🆔 Session ID: {session_id}")
-            print(
-                f"⏰ URL expires in: {args.expires} seconds ({args.expires / 60:.1f} minutes)"
-            )
+            print(f"⏰ URL expires in: {args.expires} seconds ({args.expires / 60:.1f} minutes)")
             print()
             print("🔐 Generating pre-signed URL...")
             websocket_url = create_presigned_url(

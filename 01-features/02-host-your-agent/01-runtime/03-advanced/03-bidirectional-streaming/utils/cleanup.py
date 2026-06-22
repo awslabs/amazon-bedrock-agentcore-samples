@@ -41,9 +41,7 @@ class AgentCoreCleanup:
         self.base_dir = Path(__file__).parent.parent
 
         self.config_file = self.base_dir / websocket_folder / "setup_config.json"
-        self.gateway_config_file = (
-            self.base_dir / websocket_folder / "gateway_config.json"
-        )
+        self.gateway_config_file = self.base_dir / websocket_folder / "gateway_config.json"
         self.config = None
         self.gateway_config = None
 
@@ -82,9 +80,7 @@ class AgentCoreCleanup:
             if (self.base_dir / folder).exists():
                 print(f"  - {folder}")
 
-    def _run_command(
-        self, cmd: list, check: bool = False
-    ) -> subprocess.CompletedProcess:
+    def _run_command(self, cmd: list, check: bool = False) -> subprocess.CompletedProcess:
         """Run a shell command and return the result"""
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=check)
@@ -129,9 +125,7 @@ class AgentCoreCleanup:
         print("=" * 70)
 
         if self.config:
-            print(
-                f"\nDeployment Method: {self.config.get('deployment_method', 'traditional')}"
-            )
+            print(f"\nDeployment Method: {self.config.get('deployment_method', 'traditional')}")
             print(f"AWS Region:        {self.config.get('aws_region', 'N/A')}")
             print(f"Account ID:        {self.config.get('account_id', 'N/A')}")
             print(f"Agent ARN:         {self.config.get('agent_arn', 'N/A')}")
@@ -171,9 +165,7 @@ class AgentCoreCleanup:
         try:
             # Check if .bedrock_agentcore.yaml exists
             if not Path(".bedrock_agentcore.yaml").exists():
-                self._info(
-                    "No .bedrock_agentcore.yaml found, skipping agentcore destroy"
-                )
+                self._info("No .bedrock_agentcore.yaml found, skipping agentcore destroy")
                 return False
 
             # Run agentcore destroy
@@ -358,24 +350,18 @@ class AgentCoreCleanup:
                 # The toolkit's delete method should handle cleanup
                 import boto3
 
-                bedrock_client = boto3.client(
-                    "bedrock-agentcore-control", region_name=region
-                )
+                bedrock_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
                 # First, delete all targets
                 try:
-                    targets_response = bedrock_client.list_gateway_targets(
-                        gatewayIdentifier=gateway_id
-                    )
+                    targets_response = bedrock_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                     targets = targets_response.get("items", [])
 
                     for target in targets:
                         target_id = target.get("targetId")
                         self._info(f"Deleting target: {target_id}")
                         try:
-                            bedrock_client.delete_gateway_target(
-                                gatewayIdentifier=gateway_id, targetId=target_id
-                            )
+                            bedrock_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                             self._success(f"Target {target_id} deleted")
                         except Exception as e:
                             self._info(f"Failed to delete target {target_id}: {e}")
@@ -388,14 +374,10 @@ class AgentCoreCleanup:
                         time.sleep(5)
 
                         # Verify targets are deleted
-                        verify_response = bedrock_client.list_gateway_targets(
-                            gatewayIdentifier=gateway_id
-                        )
+                        verify_response = bedrock_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                         remaining_targets = verify_response.get("items", [])
                         if remaining_targets:
-                            self._info(
-                                f"Warning: {len(remaining_targets)} targets still exist, waiting longer..."
-                            )
+                            self._info(f"Warning: {len(remaining_targets)} targets still exist, waiting longer...")
                             time.sleep(5)
                         else:
                             self._success("All targets deleted successfully")
@@ -414,10 +396,7 @@ class AgentCoreCleanup:
                 time.sleep(3)
 
             except Exception as e:
-                if (
-                    "ResourceNotFoundException" in str(e)
-                    or "not found" in str(e).lower()
-                ):
+                if "ResourceNotFoundException" in str(e) or "not found" in str(e).lower():
                     self._info("Gateway already deleted")
                 else:
                     self._error(f"Gateway deletion failed: {e}")
@@ -429,9 +408,7 @@ class AgentCoreCleanup:
             self._cleanup_gateway_iam_role()
 
         except ImportError:
-            self._error(
-                "bedrock_agentcore_starter_toolkit not installed, falling back to boto3"
-            )
+            self._error("bedrock_agentcore_starter_toolkit not installed, falling back to boto3")
             self._delete_gateway_with_boto3(gateway_id, region)
         except Exception as e:
             self._error(f"Gateway cleanup failed: {e}")
@@ -466,25 +443,17 @@ class AgentCoreCleanup:
             try:
                 # Detach policies first
                 try:
-                    policies_response = iam_client.list_attached_role_policies(
-                        RoleName=lambda_role_name
-                    )
+                    policies_response = iam_client.list_attached_role_policies(RoleName=lambda_role_name)
                     for policy in policies_response.get("AttachedPolicies", []):
-                        iam_client.detach_role_policy(
-                            RoleName=lambda_role_name, PolicyArn=policy["PolicyArn"]
-                        )
+                        iam_client.detach_role_policy(RoleName=lambda_role_name, PolicyArn=policy["PolicyArn"])
                 except Exception:
                     pass
 
                 # Delete inline policies
                 try:
-                    inline_policies = iam_client.list_role_policies(
-                        RoleName=lambda_role_name
-                    )
+                    inline_policies = iam_client.list_role_policies(RoleName=lambda_role_name)
                     for policy_name in inline_policies.get("PolicyNames", []):
-                        iam_client.delete_role_policy(
-                            RoleName=lambda_role_name, PolicyName=policy_name
-                        )
+                        iam_client.delete_role_policy(RoleName=lambda_role_name, PolicyName=policy_name)
                 except Exception:
                     pass
 
@@ -512,25 +481,17 @@ class AgentCoreCleanup:
             try:
                 # Detach policies
                 try:
-                    policies_response = iam_client.list_attached_role_policies(
-                        RoleName=gateway_role_name
-                    )
+                    policies_response = iam_client.list_attached_role_policies(RoleName=gateway_role_name)
                     for policy in policies_response.get("AttachedPolicies", []):
-                        iam_client.detach_role_policy(
-                            RoleName=gateway_role_name, PolicyArn=policy["PolicyArn"]
-                        )
+                        iam_client.detach_role_policy(RoleName=gateway_role_name, PolicyArn=policy["PolicyArn"])
                 except Exception:
                     pass
 
                 # Delete inline policies
                 try:
-                    inline_policies = iam_client.list_role_policies(
-                        RoleName=gateway_role_name
-                    )
+                    inline_policies = iam_client.list_role_policies(RoleName=gateway_role_name)
                     for policy_name in inline_policies.get("PolicyNames", []):
-                        iam_client.delete_role_policy(
-                            RoleName=gateway_role_name, PolicyName=policy_name
-                        )
+                        iam_client.delete_role_policy(RoleName=gateway_role_name, PolicyName=policy_name)
                 except Exception:
                     pass
 
@@ -552,18 +513,12 @@ class AgentCoreCleanup:
         try:
             import boto3
 
-            bedrock_client = boto3.client(
-                "bedrock-agentcore-control", region_name=region
-            )
+            bedrock_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
             # Delete targets
-            targets_response = bedrock_client.list_gateway_targets(
-                gatewayIdentifier=gateway_id
-            )
+            targets_response = bedrock_client.list_gateway_targets(gatewayIdentifier=gateway_id)
             for target in targets_response.get("items", []):
-                bedrock_client.delete_gateway_target(
-                    gatewayIdentifier=gateway_id, targetId=target["targetId"]
-                )
+                bedrock_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target["targetId"])
 
             # Delete gateway
             bedrock_client.delete_gateway(gatewayIdentifier=gateway_id)
@@ -575,9 +530,7 @@ class AgentCoreCleanup:
     def delete_config_file(self):
         """Delete configuration files"""
         if self.config_file.exists():
-            self._print(
-                f"\n🗑️  Deleting configuration file: {self.config_file}", Colors.YELLOW
-            )
+            self._print(f"\n🗑️  Deleting configuration file: {self.config_file}", Colors.YELLOW)
             self.config_file.unlink()
             self._success("Configuration file deleted")
 
@@ -611,9 +564,7 @@ class AgentCoreCleanup:
         try:
             import boto3
 
-            control_client = boto3.client(
-                "bedrock-agentcore-control", region_name=region
-            )
+            control_client = boto3.client("bedrock-agentcore-control", region_name=region)
             control_client.delete_memory(memoryId=memory_id)
             self._success(f"Memory {memory_id} deleted")
         except Exception as e:
@@ -641,18 +592,14 @@ class AgentCoreCleanup:
             if "gateway_arn" in gateway:
                 print(f"   - MCP Gateway: {gateway['gateway_arn']}")
         if self.config and "memory" in self.config:
-            print(
-                f"   - AgentCore Memory: {self.config['memory'].get('memory_id', 'N/A')}"
-            )
+            print(f"   - AgentCore Memory: {self.config['memory'].get('memory_id', 'N/A')}")
         print("   - Configuration files")
         print()
 
     def cleanup(self):
         """Main cleanup workflow"""
         try:
-            self._print(
-                f"\n🧹 Cleaning up {self.websocket_folder} resources...", Colors.YELLOW
-            )
+            self._print(f"\n🧹 Cleaning up {self.websocket_folder} resources...", Colors.YELLOW)
             self._print(f"📁 Using folder: {self.websocket_folder}\n", Colors.YELLOW)
 
             # Load configuration
@@ -662,11 +609,7 @@ class AgentCoreCleanup:
             self.print_cleanup_config()
 
             # Determine cleanup method
-            if (
-                has_config
-                and self.config
-                and self.config.get("deployment_method") == "agentcore-starter-toolkit"
-            ):
+            if has_config and self.config and self.config.get("deployment_method") == "agentcore-starter-toolkit":
                 # Try agentcore destroy first
                 if self.cleanup_with_agentcore_toolkit():
                     self._info("AgentCore toolkit cleanup successful")

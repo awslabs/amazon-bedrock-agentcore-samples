@@ -190,9 +190,7 @@ try:
             {
                 "type": "remote_mcp",
                 "name": "invalid",
-                "config": {
-                    "remoteMcp": {"url": "https://invalid-mcp-url.example.com/mcp"}
-                },
+                "config": {"remoteMcp": {"url": "https://invalid-mcp-url.example.com/mcp"}},
             }
         ],
         timeout=60,

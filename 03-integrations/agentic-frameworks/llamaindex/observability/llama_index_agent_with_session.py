@@ -31,12 +31,8 @@ logging.getLogger("llamaindex").setLevel(logging.INFO)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="LlamaIndex Agent with Session Tracking"
-    )
-    parser.add_argument(
-        "--session-id", required=True, help="Session ID for trace correlation"
-    )
+    parser = argparse.ArgumentParser(description="LlamaIndex Agent with Session Tracking")
+    parser.add_argument("--session-id", required=True, help="Session ID for trace correlation")
     return parser.parse_args()
 
 
@@ -59,9 +55,7 @@ def add(a: int, b: int) -> int:
 
 
 def get_model():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
     return BedrockConverse(model=model_id, region_name=region)
 

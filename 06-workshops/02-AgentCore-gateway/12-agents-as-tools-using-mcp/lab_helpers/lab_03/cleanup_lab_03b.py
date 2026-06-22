@@ -33,9 +33,7 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
     print("🧹 Cleaning up Lab 3B resources...\n")
     print("=" * 70)
 
-    agentcore_client = boto3.client(
-        "bedrock-agentcore-control", region_name=region_name
-    )
+    agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region_name)
     lambda_client = boto3.client("lambda", region_name=region_name)
     iam_client = boto3.client("iam")
     ssm_client = boto3.client("ssm", region_name=region_name)  # noqa: F841
@@ -52,14 +50,10 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
                 print(f"  Found gateway: {gateway_name}")
 
                 # Delete targets first
-                targets = agentcore_client.list_gateway_targets(
-                    gatewayIdentifier=gateway_id
-                )
+                targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                 for target in targets.get("items", []):
                     target_id = target["targetId"]
-                    agentcore_client.delete_gateway_target(
-                        gatewayIdentifier=gateway_id, targetId=target_id
-                    )
+                    agentcore_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                     print(f"    ✓ Deleted target: {target_id}")
 
                 # Wait for targets to be deleted
@@ -67,9 +61,7 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
                     print("  ⏳ Waiting for targets to be deleted...")
                     for _ in range(30):
                         time.sleep(2)
-                        check = agentcore_client.list_gateway_targets(
-                            gatewayIdentifier=gateway_id
-                        )
+                        check = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                         if len(check.get("items", [])) == 0:
                             break
 
@@ -102,16 +94,12 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
             # Detach policies
             policies = iam_client.list_attached_role_policies(RoleName=role_name)
             for policy in policies.get("AttachedPolicies", []):
-                iam_client.detach_role_policy(
-                    RoleName=role_name, PolicyArn=policy["PolicyArn"]
-                )
+                iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
 
             # Delete inline policies
             inline = iam_client.list_role_policies(RoleName=role_name)
             for policy_name in inline.get("PolicyNames", []):
-                iam_client.delete_role_policy(
-                    RoleName=role_name, PolicyName=policy_name
-                )
+                iam_client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
 
             # Delete role
             iam_client.delete_role(RoleName=role_name)

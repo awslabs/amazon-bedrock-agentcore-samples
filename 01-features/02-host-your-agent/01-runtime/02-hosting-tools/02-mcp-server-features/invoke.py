@@ -81,9 +81,7 @@ def main():
         "tools/call",
         {
             "name": "analyze_sentiment",
-            "arguments": {
-                "text": "This is a great product and I love using it every day!"
-            },
+            "arguments": {"text": "This is a great product and I love using it every day!"},
         },
         rpc_id,
     )

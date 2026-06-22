@@ -15,9 +15,7 @@ from .ssm_helper import get_stack_resources
 original_configs = {}
 
 
-def initialize_fault_injection(
-    region_name: str, profile_name: str = None
-) -> Dict[str, str]:
+def initialize_fault_injection(region_name: str, profile_name: str = None) -> Dict[str, str]:
     """
     Initialize fault injection by retrieving infrastructure resource IDs
 
@@ -52,9 +50,7 @@ def _update_single_table(dynamodb, table_name: str) -> tuple:
         print(f"Processing table: {table_name}")
         table_info = dynamodb.describe_table(TableName=table_name)
         original_billing_mode = table_info["Table"]["BillingModeSummary"]["BillingMode"]
-        print(
-            f"  Original billing mode: {original_billing_mode}"
-        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(f"  Original billing mode: {original_billing_mode}")  # codeql[py/clear-text-logging-sensitive-data]
 
         # Convert to provisioned capacity with dangerously low limits
         print("  Converting to PROVISIONED mode with minimal capacity...")
@@ -86,9 +82,7 @@ def _update_single_table(dynamodb, table_name: str) -> tuple:
         return (table_name, False, str(table_error))
 
 
-def inject_dynamodb_throttling(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def inject_dynamodb_throttling(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Inject DynamoDB throttling by converting tables to PROVISIONED mode with low capacity.
     This simulates a common production issue where table capacity is insufficient for
@@ -104,11 +98,7 @@ def inject_dynamodb_throttling(
     """
     try:
         # Get list of DynamoDB table names from resources
-        table_keys = [
-            key
-            for key in resources.keys()
-            if key.endswith("_table_name") and "crm" in key
-        ]
+        table_keys = [key for key in resources.keys() if key.endswith("_table_name") and "crm" in key]
 
         if not table_keys:
             print("❌ No DynamoDB table names found in resources")
@@ -141,8 +131,7 @@ def inject_dynamodb_throttling(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all table updates
             future_to_table = {
-                executor.submit(_update_single_table, dynamodb, table_name): table_name
-                for table_name in table_names
+                executor.submit(_update_single_table, dynamodb, table_name): table_name for table_name in table_names
             }
 
             # Collect results as they complete
@@ -158,9 +147,7 @@ def inject_dynamodb_throttling(
 
         # Summary
         print(f"\n{'=' * 60}")
-        print(
-            f"Summary: {success_count}/{len(table_names)} tables updated successfully"
-        )
+        print(f"Summary: {success_count}/{len(table_names)} tables updated successfully")
         if failed_tables:
             print(f"Failed tables: {', '.join(failed_tables)}")
         print(f"{'=' * 60}")
@@ -172,9 +159,7 @@ def inject_dynamodb_throttling(
         return False
 
 
-def inject_iam_permissions(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def inject_iam_permissions(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Inject IAM permission issues by replacing DynamoDB Allow policy with Deny policy
 
@@ -208,9 +193,7 @@ def inject_iam_permissions(
         # Store original policy for potential rollback
         print("Backing up original DynamoDB policy...")
         try:
-            original_policy = iam.get_role_policy(
-                RoleName=ec2_role_name, PolicyName="DynamoDBAccess"
-            )
+            original_policy = iam.get_role_policy(RoleName=ec2_role_name, PolicyName="DynamoDBAccess")
             original_configs["dynamodb_policy"] = original_policy["PolicyDocument"]
             print("  ✅ Original policy backed up (redacted)")
         except ClientError:
@@ -255,9 +238,7 @@ def inject_iam_permissions(
         return False
 
 
-def inject_nginx_crash(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def inject_nginx_crash(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Inject nginx crash by killing the nginx process via AWS Systems Manager
 
@@ -290,15 +271,9 @@ def inject_nginx_crash(
         print("\nSimulating service crash by killing nginx process...")
         print("  Technical details:")
         print("  - Using 'pkill -9 nginx' to forcefully terminate nginx processes")
-        print(
-            "  - This simulates common production crashes (memory leaks, segfaults, etc.)"
-        )
-        print(
-            "  - ALB health checks will get 'connection refused' when trying to reach /health"
-        )
-        print(
-            "  - After 3 consecutive failures (90 seconds), target marked as unhealthy"
-        )
+        print("  - This simulates common production crashes (memory leaks, segfaults, etc.)")
+        print("  - ALB health checks will get 'connection refused' when trying to reach /health")
+        print("  - After 3 consecutive failures (90 seconds), target marked as unhealthy")
 
         # Kill nginx process to simulate crash
         crash_script = """
@@ -334,9 +309,7 @@ ps aux | grep nginx | grep -v grep || echo "No nginx processes running"
         print("  Waiting for crash simulation to complete...")
         time.sleep(10)
 
-        result = ssm.get_command_invocation(
-            CommandId=command_id, InstanceId=nginx_instance_id
-        )
+        result = ssm.get_command_invocation(CommandId=command_id, InstanceId=nginx_instance_id)
 
         if result["Status"] == "Success":
             return True
@@ -351,9 +324,7 @@ ps aux | grep nginx | grep -v grep || echo "No nginx processes running"
         return False
 
 
-def inject_nginx_timeout(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def inject_nginx_timeout(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Inject nginx timeout misconfiguration by setting proxy timeouts too short
 
@@ -427,9 +398,7 @@ echo "Nginx timeout misconfiguration injected successfully"
         print("  Waiting for injection to complete...")
         time.sleep(10)
 
-        result = ssm.get_command_invocation(
-            CommandId=command_id, InstanceId=nginx_instance_id
-        )
+        result = ssm.get_command_invocation(CommandId=command_id, InstanceId=nginx_instance_id)
 
         if result["Status"] == "Success":
             return True

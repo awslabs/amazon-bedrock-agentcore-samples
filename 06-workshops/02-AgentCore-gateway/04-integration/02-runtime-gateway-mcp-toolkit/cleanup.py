@@ -18,17 +18,13 @@ import agentcore_toolkit.utils as utils
 def main():
     parser = argparse.ArgumentParser(description="AgentCore Cleanup Script")
     parser.add_argument("--region", default="us-east-1", help="AWS region")
-    parser.add_argument(
-        "--gateway-name", required=True, help="Gateway name to clean up"
-    )
+    parser.add_argument("--gateway-name", required=True, help="Gateway name to clean up")
     parser.add_argument(
         "--runtime-names",
         required=True,
         help='JSON array of runtime names to clean up: ["runtime1", "runtime2"]',
     )
-    parser.add_argument(
-        "--confirm", action="store_true", help="Confirm deletion without prompting"
-    )
+    parser.add_argument("--confirm", action="store_true", help="Confirm deletion without prompting")
 
     args = parser.parse_args()
 

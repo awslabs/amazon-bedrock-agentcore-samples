@@ -15,9 +15,7 @@ db = FinanceDB()  # Dynamo DB helper
 
 
 @mcp.tool()
-def add_expense(
-    user_alias: str, amount: float, description: str, category: str = "other"
-) -> str:
+def add_expense(user_alias: str, amount: float, description: str, category: str = "other") -> str:
     """Add a new expense transaction
 
     Args:
@@ -26,15 +24,11 @@ def add_expense(
         description: Description of the expense
         category: Expense category (food, transport, entertainment, bills, other)
     """
-    return db.add_transaction(
-        user_alias, "expense", -abs(amount), description, category
-    )
+    return db.add_transaction(user_alias, "expense", -abs(amount), description, category)
 
 
 @mcp.tool()
-def add_income(
-    user_alias: str, amount: float, description: str, source: str = "salary"
-) -> str:
+def add_income(user_alias: str, amount: float, description: str, source: str = "salary") -> str:
     """Add a new income transaction
 
     Args:
@@ -70,9 +64,7 @@ def get_balance(user_alias: str) -> str:
 
 
 @mcp.prompt()
-def budget_analysis(
-    user_alias: str, time_period: str = "current_month"
-) -> PromptMessage:
+def budget_analysis(user_alias: str, time_period: str = "current_month") -> PromptMessage:
     """Analyze spending patterns and budget performance
 
     Args:
@@ -87,18 +79,11 @@ def budget_analysis(
     for transaction in transactions:
         if transaction["type"] == "expense":
             category = transaction["category"]
-            current_spending[category] = current_spending.get(category, 0) + abs(
-                float(transaction["amount"])
-            )
+            current_spending[category] = current_spending.get(category, 0) + abs(float(transaction["amount"]))
 
-    spending_summary = "\n".join(
-        [f"- {cat}: ${amount:.2f}" for cat, amount in current_spending.items()]
-    )
+    spending_summary = "\n".join([f"- {cat}: ${amount:.2f}" for cat, amount in current_spending.items()])
     budget_summary = "\n".join(
-        [
-            f"- {budget['category']}: ${float(budget['monthly_limit']):.2f}/month"
-            for budget in budgets
-        ]
+        [f"- {budget['category']}: ${float(budget['monthly_limit']):.2f}/month" for budget in budgets]
     )
 
     return PromptMessage(
@@ -124,9 +109,7 @@ Please provide:
 
 
 @mcp.prompt()
-def savings_plan(
-    user_alias: str, target_amount: float, target_months: int = 12
-) -> PromptMessage:
+def savings_plan(user_alias: str, target_amount: float, target_months: int = 12) -> PromptMessage:
     """Generate a personalized savings plan
 
     Args:
@@ -177,27 +160,17 @@ def get_monthly_summary(user_alias: str) -> str:
 
     # Get transactions from DynamoDB
     all_transactions = db.get_transactions(user_alias)
-    monthly_transactions = [
-        t
-        for t in all_transactions
-        if datetime.fromisoformat(t["date"]) >= current_month_start
-    ]
+    monthly_transactions = [t for t in all_transactions if datetime.fromisoformat(t["date"]) >= current_month_start]
 
-    monthly_income = sum(
-        float(t["amount"]) for t in monthly_transactions if t["type"] == "income"
-    )
-    monthly_expenses = sum(
-        abs(float(t["amount"])) for t in monthly_transactions if t["type"] == "expense"
-    )
+    monthly_income = sum(float(t["amount"]) for t in monthly_transactions if t["type"] == "income")
+    monthly_expenses = sum(abs(float(t["amount"])) for t in monthly_transactions if t["type"] == "expense")
 
     # Group expenses by category
     expenses_by_category = {}
     for t in monthly_transactions:
         if t["type"] == "expense":
             category = t["category"]
-            expenses_by_category[category] = expenses_by_category.get(
-                category, 0
-            ) + abs(float(t["amount"]))
+            expenses_by_category[category] = expenses_by_category.get(category, 0) + abs(float(t["amount"]))
 
     summary = {
         "user": user_alias,
@@ -228,14 +201,9 @@ def get_budget_status(user_alias: str) -> str:
 
     monthly_spending = {}
     for transaction in all_transactions:
-        if (
-            transaction["type"] == "expense"
-            and datetime.fromisoformat(transaction["date"]) >= current_month_start
-        ):
+        if transaction["type"] == "expense" and datetime.fromisoformat(transaction["date"]) >= current_month_start:
             category = transaction["category"]
-            monthly_spending[category] = monthly_spending.get(category, 0) + abs(
-                float(transaction["amount"])
-            )
+            monthly_spending[category] = monthly_spending.get(category, 0) + abs(float(transaction["amount"]))
 
     # Compare with budgets
     for budget in all_budgets:

@@ -32,9 +32,7 @@ otel_endpoint = f"{LANGFUSE_HOST}/api/public/otel"
 langfuse_project_name = LANGFUSE_PROJECT_NAME
 langfuse_secret_key = LANGFUSE_SECRET_KEY
 langfuse_public_key = LANGFUSE_PUBLIC_KEY
-langfuse_auth_token = base64.b64encode(
-    f"{langfuse_public_key}:{langfuse_secret_key}".encode()
-).decode()
+langfuse_auth_token = base64.b64encode(f"{langfuse_public_key}:{langfuse_secret_key}".encode()).decode()
 otel_auth_header = f"Authorization=Basic {langfuse_auth_token}"
 
 
@@ -54,9 +52,7 @@ def deploy_agent(model, system_prompt, force_redeploy=False, environment="DEV"):
 
     # Check if the agent already exists
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
         # List all agent runtimes to check if this agent already exists
         list_response = agentcore_control_client.list_agent_runtimes()
@@ -79,9 +75,7 @@ def deploy_agent(model, system_prompt, force_redeploy=False, environment="DEV"):
             agent_runtime_arn = existing_agent.get("agentRuntimeArn")
 
             try:
-                get_response = agentcore_control_client.get_agent_runtime(
-                    agentRuntimeId=agent_runtime_id
-                )
+                get_response = agentcore_control_client.get_agent_runtime(agentRuntimeId=agent_runtime_id)
                 ecr_uri = get_response.get("ecrUri", "")
             except Exception as e:
                 print(f"Warning: Could not retrieve ECR URI: {str(e)}")
@@ -173,9 +167,7 @@ def invoke_agent(agent_arn, prompt, session_id=None, environment=None):
             trace_id = get_client().get_current_trace_id()
             obs_id = get_client().get_current_observation_id()
 
-            payload = json.dumps(
-                {"prompt": prompt, "trace_id": trace_id, "parent_obs_id": obs_id}
-            ).encode()
+            payload = json.dumps({"prompt": prompt, "trace_id": trace_id, "parent_obs_id": obs_id}).encode()
         else:
             payload = json.dumps({"prompt": prompt}).encode()
 
@@ -244,9 +236,7 @@ def delete_agent(agent_runtime_id, ecr_uri):
     """
     try:
         # Initialize the Bedrock AgentCore Control client
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
         # Initialize the ECR client
         ecr_client = boto3.client("ecr", region_name=region)
@@ -263,19 +253,13 @@ def delete_agent(agent_runtime_id, ecr_uri):
 
         print(f"Repository name 1: {repository_name_tmp}")
 
-        repository_name = (
-            repository_name_tmp.split(":")[0]
-            if ":" in repository_name_tmp
-            else repository_name_tmp
-        )
+        repository_name = repository_name_tmp.split(":")[0] if ":" in repository_name_tmp else repository_name_tmp
 
         print(f"Repository name 1: {repository_name}")
 
         print(f"Deleting ECR repository: {repository_name}")
 
-        ecr_delete_response = ecr_client.delete_repository(
-            repositoryName=repository_name, force=True
-        )
+        ecr_delete_response = ecr_client.delete_repository(repositoryName=repository_name, force=True)
 
         return {
             "status": "success",

@@ -64,14 +64,10 @@ class AgentCoreDeployer:
         # Set configuration
         self.aws_region = args.region or os.getenv("AWS_REGION", "us-east-1")
         self.account_id = args.account_id or os.getenv("ACCOUNT_ID")
-        self.agent_name = (
-            args.agent_name or f"bidi_{websocket_folder.replace('-', '_')}_agent"
-        )
+        self.agent_name = args.agent_name or f"bidi_{websocket_folder.replace('-', '_')}_agent"
 
         if not self.account_id:
-            self._error(
-                "ACCOUNT_ID is required. Set via --account-id or ACCOUNT_ID environment variable"
-            )
+            self._error("ACCOUNT_ID is required. Set via --account-id or ACCOUNT_ID environment variable")
             sys.exit(1)
 
         self.config_file = self.base_dir / websocket_folder / "setup_config.json"
@@ -96,14 +92,10 @@ class AgentCoreDeployer:
         """Print warning message"""
         self._print(f"⚠️  {message}", Colors.YELLOW)
 
-    def _run_command(
-        self, cmd: list, cwd: Optional[Path] = None, check: bool = True
-    ) -> subprocess.CompletedProcess:
+    def _run_command(self, cmd: list, cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
         """Run a shell command and return the result"""
         try:
-            result = subprocess.run(
-                cmd, cwd=cwd, capture_output=True, text=True, check=check
-            )
+            result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=check)
             return result
         except subprocess.CalledProcessError as e:
             self._error(f"Command failed: {' '.join(cmd)}")
@@ -132,9 +124,7 @@ class AgentCoreDeployer:
                 for mem in existing.get("memories", []):
                     if mem.get("name") == memory_name:
                         memory_id = mem["id"]
-                        self._info(
-                            f"Found existing memory: {memory_name} (ID: {memory_id})"
-                        )
+                        self._info(f"Found existing memory: {memory_name} (ID: {memory_id})")
                         return {"memory_id": memory_id, "memory_name": memory_name}
             except Exception:
                 pass  # list may not be supported or empty, proceed to create
@@ -150,9 +140,7 @@ class AgentCoreDeployer:
             return {"memory_id": memory_id, "memory_name": memory_name}
 
         except ImportError:
-            self._warning(
-                "bedrock-agentcore package not installed, skipping memory creation"
-            )
+            self._warning("bedrock-agentcore package not installed, skipping memory creation")
             self._info("Install with: pip install bedrock-agentcore")
             return None
         except Exception as e:
@@ -172,9 +160,7 @@ class AgentCoreDeployer:
 
         # Initialize Gateway client
         client = GatewayClient(region_name=self.aws_region)
-        bedrock_client = boto3.client(
-            "bedrock-agentcore-control", region_name=self.aws_region
-        )
+        bedrock_client = boto3.client("bedrock-agentcore-control", region_name=self.aws_region)
 
         # Define the four gateways to create
         gateway_configs = [
@@ -223,12 +209,8 @@ class AgentCoreDeployer:
                 response = bedrock_client.list_gateways()
                 for gw in response.get("items", []):
                     if gw.get("name") == gateway_name:
-                        self._info(
-                            f"Found existing gateway: {gateway_name} (ID: {gw['gatewayId']})"
-                        )
-                        gateway_detail = bedrock_client.get_gateway(
-                            gatewayIdentifier=gw["gatewayId"]
-                        )
+                        self._info(f"Found existing gateway: {gateway_name} (ID: {gw['gatewayId']})")
+                        gateway_detail = bedrock_client.get_gateway(gatewayIdentifier=gw["gatewayId"])
                         gateway = gateway_detail
                         break
             except Exception as e:
@@ -241,28 +223,17 @@ class AgentCoreDeployer:
                     gateway = client.create_mcp_gateway(name=gateway_name)
                 except Exception as e:
                     error_msg = str(e)
-                    if (
-                        "already exists" in error_msg.lower()
-                        or "conflict" in error_msg.lower()
-                    ):
-                        self._warning(
-                            f"Gateway {gateway_name} already exists, fetching..."
-                        )
+                    if "already exists" in error_msg.lower() or "conflict" in error_msg.lower():
+                        self._warning(f"Gateway {gateway_name} already exists, fetching...")
                         response = bedrock_client.list_gateways()
                         for gw in response.get("items", []):
                             if gw.get("name") == gateway_name:
-                                gateway_detail = bedrock_client.get_gateway(
-                                    gatewayIdentifier=gw["gatewayId"]
-                                )
+                                gateway_detail = bedrock_client.get_gateway(gatewayIdentifier=gw["gatewayId"])
                                 gateway = gateway_detail
-                                self._success(
-                                    f"Retrieved existing gateway: {gw['gatewayId']}"
-                                )
+                                self._success(f"Retrieved existing gateway: {gw['gatewayId']}")
                                 break
                         if not gateway:
-                            raise Exception(
-                                f"Gateway '{gateway_name}' exists but could not be found"
-                            )
+                            raise Exception(f"Gateway '{gateway_name}' exists but could not be found")
                     else:
                         raise
 
@@ -287,17 +258,9 @@ class AgentCoreDeployer:
                 self._success(f"MCP Server target created: {target['targetId']}")
             except Exception as e:
                 if "already exists" in str(e).lower() or "conflict" in str(e).lower():
-                    self._warning(
-                        f"MCP Server target already exists for {gateway_name}, continuing..."
-                    )
-                    targets_response = bedrock_client.list_gateway_targets(
-                        gatewayIdentifier=gateway_id
-                    )
-                    target = (
-                        targets_response.get("items", [{}])[0]
-                        if targets_response.get("items")
-                        else {}
-                    )
+                    self._warning(f"MCP Server target already exists for {gateway_name}, continuing...")
+                    targets_response = bedrock_client.list_gateway_targets(gatewayIdentifier=gateway_id)
+                    target = targets_response.get("items", [{}])[0] if targets_response.get("items") else {}
                 else:
                     raise
 
@@ -462,9 +425,7 @@ class AgentCoreDeployer:
         self._success("Policy attached")
 
         # Get role ARN
-        result = self._run_command(
-            ["aws", "iam", "get-role", "--role-name", role_name, "--output", "json"]
-        )
+        result = self._run_command(["aws", "iam", "get-role", "--role-name", role_name, "--output", "json"])
         role_data = json.loads(result.stdout)
         role_arn = role_data["Role"]["Arn"]
 
@@ -523,11 +484,7 @@ class AgentCoreDeployer:
             env_vars = {}
 
             # Add MCP Gateway environment variables if available (for strands and langchain)
-            if (
-                self.websocket_folder
-                in ("02-strands-ws", "03-langchain-transcribe-polly-ws")
-                and gateway_info
-            ):
+            if self.websocket_folder in ("02-strands-ws", "03-langchain-transcribe-polly-ws") and gateway_info:
                 gateways = gateway_info.get("gateways", [])
 
                 if gateways:
@@ -538,9 +495,7 @@ class AgentCoreDeployer:
                     env_vars["MCP_GATEWAY_ARNS"] = json.dumps(gateway_arns)
                     env_vars["MCP_GATEWAY_URLS"] = json.dumps(gateway_urls)
 
-                    self._info(
-                        f"Added MCP Gateway environment variables for {len(gateways)} gateways"
-                    )
+                    self._info(f"Added MCP Gateway environment variables for {len(gateways)} gateways")
                     for gw in gateways:
                         self._info(f"   {gw['gateway_name']}: {gw['gateway_url']}")
 
@@ -554,9 +509,7 @@ class AgentCoreDeployer:
             if self.websocket_folder == "04-pipecat-sonic-ws":
                 env_file = self.websocket_path / ".env"
                 if env_file.exists():
-                    self._info(
-                        "Loading Pipecat environment variables from .env file..."
-                    )
+                    self._info("Loading Pipecat environment variables from .env file...")
                     with open(env_file) as f:
                         for line in f:
                             line = line.strip()
@@ -661,9 +614,7 @@ class AgentCoreDeployer:
         # Show gateway info if available (strands deployment)
         if "gateways" in deployment_info:
             gateways = deployment_info["gateways"]
-            print(
-                f"\n{Colors.YELLOW}MCP Gateways ({len(gateways)} deployed):{Colors.NC}"
-            )
+            print(f"\n{Colors.YELLOW}MCP Gateways ({len(gateways)} deployed):{Colors.NC}")
             for gw in gateways:
                 print(f"\n   {gw['gateway_name']}:")
                 print(f"      Gateway ID:     {gw['gateway_id']}")
@@ -699,12 +650,8 @@ class AgentCoreDeployer:
     def deploy(self):
         """Main deployment workflow"""
         try:
-            self._print(
-                f"\n🚀 AgentCore Deployment - {self.websocket_folder}", Colors.BLUE
-            )
-            self._print(
-                f"📁 Using websocket folder: {self.websocket_folder}\n", Colors.BLUE
-            )
+            self._print(f"\n🚀 AgentCore Deployment - {self.websocket_folder}", Colors.BLUE)
+            self._print(f"📁 Using websocket folder: {self.websocket_folder}\n", Colors.BLUE)
 
             # Step 1: Check prerequisites
             self.check_prerequisites()
@@ -774,21 +721,13 @@ Environment Variables:
         help="Websocket folder to deploy",
     )
 
-    parser.add_argument(
-        "--account-id", help="AWS Account ID (or set ACCOUNT_ID env var)"
-    )
+    parser.add_argument("--account-id", help="AWS Account ID (or set ACCOUNT_ID env var)")
 
-    parser.add_argument(
-        "--region", help="AWS Region (default: us-east-1 or AWS_REGION env var)"
-    )
+    parser.add_argument("--region", help="AWS Region (default: us-east-1 or AWS_REGION env var)")
 
-    parser.add_argument(
-        "--agent-name", help="Custom agent name (default: bidi_<folder>_agent)"
-    )
+    parser.add_argument("--agent-name", help="Custom agent name (default: bidi_<folder>_agent)")
 
-    parser.add_argument(
-        "--local", action="store_true", help="Build and run locally (requires Docker)"
-    )
+    parser.add_argument("--local", action="store_true", help="Build and run locally (requires Docker)")
 
     parser.add_argument(
         "--local-build",

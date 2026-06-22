@@ -31,9 +31,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         duration = time.time() - start_time
 
         # Logging: Record response details
-        print(
-            f"[{timestamp}] RESPONSE: Status {response.status_code} | Duration {duration:.4f}s"
-        )
+        print(f"[{timestamp}] RESPONSE: Status {response.status_code} | Duration {duration:.4f}s")
 
         # Add metadata to baggage (this WILL be returned in response)
         ctx = baggage.set_baggage("middleware.process_time", f"{duration:.4f}s")

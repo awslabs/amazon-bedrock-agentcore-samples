@@ -295,9 +295,7 @@ async def invoke(payload, context):
             parts.append(str(event["data"]))
     response = "".join(parts)
     # Strip inline <thinking>...</thinking> blocks so spans contain only the final answer
-    response = re.sub(
-        r"<thinking>.*?</thinking>", "", response, flags=re.DOTALL
-    ).strip()
+    response = re.sub(r"<thinking>.*?</thinking>", "", response, flags=re.DOTALL).strip()
     return response
 
 

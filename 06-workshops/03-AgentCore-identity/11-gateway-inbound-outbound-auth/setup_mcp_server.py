@@ -184,9 +184,7 @@ def main():
         )
         lam.get_waiter("function_active").wait(FunctionName=FUNCTION_NAME)
 
-    fn_arn = lam.get_function(FunctionName=FUNCTION_NAME)["Configuration"][
-        "FunctionArn"
-    ]
+    fn_arn = lam.get_function(FunctionName=FUNCTION_NAME)["Configuration"]["FunctionArn"]
     print(f"  Function ARN: {fn_arn}")
 
     print("\nStep 3: HTTP API Gateway...")

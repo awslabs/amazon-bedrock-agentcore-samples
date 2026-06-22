@@ -51,9 +51,7 @@ def web_search(query: str) -> str:
 
 
 def main():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
     model = BedrockModel(
