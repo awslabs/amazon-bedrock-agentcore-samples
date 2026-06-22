@@ -127,6 +127,9 @@ python 02-use-cases/01-travel-agent/travel_agent.py
 
 # Webapp visual testing
 python 02-use-cases/02-webapp-visual-testing/webapp_visual_testing.py
+
+# Weather agent (gateway + guardrails + evals + observability)
+python 02-use-cases/04-weather-agent/weather_agent.py
 ```
 
 Run all tests:
