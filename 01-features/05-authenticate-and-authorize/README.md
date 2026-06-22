@@ -84,6 +84,8 @@ AgentCore identity integrates seamlessly with other AgentCore components:
 | `02-outbound-auth/` | Give agents secure access to external APIs: OpenAI (API key), Google Calendar (3LO), GitHub (3LO), self-hosted OAuth2 |
 | `03-m2m-3lo/` | Combined M2M + Auth Code flows in one runtime agent using the AgentCore CLI; Cognito inbound, GitHub + Google outbound |
 | `04-entra-obo-mcp-runtime/` | Advanced: Entra ID On-Behalf-Of token exchange across two runtimes (Agent + MCP Server); user identity preserved end-to-end |
+| `okta-auth-three-tier-end-to-end-demo/` | End-to-end Okta OAuth2 three-tier demo: per-tier JWT isolation across User → Runtime → Gateway → MCP Server with RBAC |
+| `auth0-multi-agent-obo/` | Multi-agent RFC 8693 On-Behalf-Of token exchange via Auth0: coordinator mints attenuated tokens per sub-agent rather than forwarding the user JWT |
 
 ## How this section is organized
 
@@ -108,6 +110,7 @@ followed by combined multi-flow examples in `03-m2m-3lo/` and `04-entra-obo-mcp-
 | M2M outbound | 02-outbound-auth/04 | Agent calls self-hosted resource server with client credentials |
 | M2M + 3LO combined | 03-m2m-3lo/ | Single agent with both M2M and Auth Code outbound flows |
 | Entra OBO | 04-entra-obo-mcp-runtime/ | Agent calls MCP server carrying user-delegated Graph token |
+| Auth0 OBO (multi-agent) | auth0-multi-agent-obo/ | Coordinator mints scoped tokens per sub-agent using RFC 8693 via Auth0 |
 
 ## Finding Things
 

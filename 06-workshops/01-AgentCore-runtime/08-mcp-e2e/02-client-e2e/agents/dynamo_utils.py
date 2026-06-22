@@ -5,9 +5,7 @@ from decimal import Decimal
 
 
 class FinanceDB:
-    def __init__(
-        self, table_name: str = "finance_tracker", region_name: str = "us-east-1"
-    ):
+    def __init__(self, table_name: str = "finance_tracker", region_name: str = "us-east-1"):
         self.dynamodb = boto3.resource("dynamodb", region_name=region_name)
         self.table_name = table_name
         self.table = self.dynamodb.Table(table_name)
@@ -70,9 +68,7 @@ class FinanceDB:
         }
 
         self.table.put_item(Item=item)
-        return (
-            f"{transaction_type.title()} of ${abs(amount):.2f} added for {user_alias}"
-        )
+        return f"{transaction_type.title()} of ${abs(amount):.2f} added for {user_alias}"
 
     def set_budget(self, user_alias: str, category: str, monthly_limit: float) -> str:
         """Set budget for a category"""
@@ -110,12 +106,8 @@ class FinanceDB:
         """Calculate balance from transactions"""
         transactions = self.get_transactions(user_alias)
 
-        total = sum(
-            float(t["amount"]) for t in transactions
-        )  # Convert Decimal to float
+        total = sum(float(t["amount"]) for t in transactions)  # Convert Decimal to float
         income = sum(float(t["amount"]) for t in transactions if t["type"] == "income")
-        expenses = sum(
-            abs(float(t["amount"])) for t in transactions if t["type"] == "expense"
-        )
+        expenses = sum(abs(float(t["amount"])) for t in transactions if t["type"] == "expense")
 
         return {"balance": total, "income": income, "expenses": expenses}

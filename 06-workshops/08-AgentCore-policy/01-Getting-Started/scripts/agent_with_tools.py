@@ -22,8 +22,7 @@ def load_config():
 
     if not config_path.exists():
         raise FileNotFoundError(
-            f"Configuration file not found: {config_path}\n"
-            "Please run deploy_lambdas.py and setup_gateway.py first."
+            f"Configuration file not found: {config_path}\nPlease run deploy_lambdas.py and setup_gateway.py first."
         )
 
     with open(config_path, "r", encoding="utf-8") as f:
@@ -31,19 +30,14 @@ def load_config():
 
     # Validate required fields
     if "gateway" not in config:
-        raise ValueError(
-            "Gateway configuration not found in config.json\n"
-            "Please run setup_gateway.py first."
-        )
+        raise ValueError("Gateway configuration not found in config.json\nPlease run setup_gateway.py first.")
 
     return config
 
 
 def create_streamable_http_transport(mcp_url: str, access_token: str):
     """Create streamable HTTP transport for MCP client"""
-    return streamablehttp_client(
-        mcp_url, headers={"Authorization": f"Bearer {access_token}"}
-    )
+    return streamablehttp_client(mcp_url, headers={"Authorization": f"Bearer {access_token}"})
 
 
 def fetch_access_token(client_id, client_secret, token_url):
@@ -64,16 +58,11 @@ def fetch_access_token(client_id, client_secret, token_url):
 def list_available_tools(gateway_url: str, access_token: str):
     """List all available tools from the gateway"""
     try:
-        mcp_client = MCPClient(
-            lambda: create_streamable_http_transport(gateway_url, access_token)
-        )
+        mcp_client = MCPClient(lambda: create_streamable_http_transport(gateway_url, access_token))
         with mcp_client:
             tools_list = mcp_client.list_tools_sync()
             # MCPAgentTool may not have description attribute, use getattr with default
-            return [
-                (tool.tool_name, getattr(tool, "description", ""))
-                for tool in tools_list
-            ]
+            return [(tool.tool_name, getattr(tool, "description", "")) for tool in tools_list]
     except Exception as e:
         print(f"⚠️  Could not list tools: {e}")
         return []
@@ -149,11 +138,7 @@ class AgentSession:
         )
 
         # Create MCP client
-        self.mcp_client = MCPClient(
-            lambda: create_streamable_http_transport(
-                self.gateway_url, self.access_token
-            )
-        )
+        self.mcp_client = MCPClient(lambda: create_streamable_http_transport(self.gateway_url, self.access_token))
 
         # Enter MCP client context
         self.mcp_client.__enter__()

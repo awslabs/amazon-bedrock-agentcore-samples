@@ -33,9 +33,7 @@ def load_hp_config(config_path="cicd/hp_config.json"):
 def main():
     """Main function to deploy the agent."""
     # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description="Deploy agent to specified environment"
-    )
+    parser = argparse.ArgumentParser(description="Deploy agent to specified environment")
     parser.add_argument(
         "--environment",
         choices=["TST", "PRD"],

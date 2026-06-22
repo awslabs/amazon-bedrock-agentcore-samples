@@ -19,9 +19,7 @@ def weather():
 
 
 model = "azure/gpt-4.1-mini"
-litellm_model = LiteLLMModel(
-    model_id=model, params={"max_tokens": 32000, "temperature": 0.7}
-)
+litellm_model = LiteLLMModel(model_id=model, params={"max_tokens": 32000, "temperature": 0.7})
 
 
 agent = Agent(

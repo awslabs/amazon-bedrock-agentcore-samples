@@ -32,9 +32,7 @@ model = BedrockModel(model_id=MODEL_ID)
 
 # Lab2 import : Initialize memory via hooks
 memory_id = get_ssm_parameter("/app/customersupport/agentcore/memory_id")
-memory_hooks = CustomerSupportMemoryHooks(
-    memory_id, memory_client, ACTOR_ID, SESSION_ID
-)
+memory_hooks = CustomerSupportMemoryHooks(memory_id, memory_client, ACTOR_ID, SESSION_ID)
 
 # Initialize the AgentCore Runtime App
 app = BedrockAgentCoreApp()  #### AGENTCORE RUNTIME - LINE 2 ####
@@ -70,9 +68,7 @@ async def invoke(payload, context=None):
     if gateway_url and auth_header:
         try:
             mcp_client = MCPClient(
-                lambda: streamablehttp_client(
-                    url=gateway_url, headers={"Authorization": auth_header}
-                )
+                lambda: streamablehttp_client(url=gateway_url, headers={"Authorization": auth_header})
             )
 
             with mcp_client:

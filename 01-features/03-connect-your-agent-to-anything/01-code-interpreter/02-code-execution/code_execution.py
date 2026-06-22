@@ -67,9 +67,7 @@ def run_query(agent, query: str):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run the Strands code-execution agent demo"
-    )
+    parser = argparse.ArgumentParser(description="Run the Strands code-execution agent demo")
     parser.add_argument(
         "--query",
         default=None,

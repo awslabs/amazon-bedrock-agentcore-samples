@@ -24,17 +24,11 @@ def wait_for_record_draft(cp_client, registry_id, record_id, poll_interval=2):
         status = resp["status"]
         metadata = resp.get("ResponseMetadata", {})
         if status.lower() == "draft":
-            print(
-                "Verified: Registry record is in Draft state. "
-                "Ready to be submitted for Approval"
-            )
+            print("Verified: Registry record is in Draft state. Ready to be submitted for Approval")
             headers = metadata.get("HTTPHeaders", {})
             request_id = headers.get("x-amzn-requestid", "")
             date = headers.get("date", "")
             print(f"RequestId: {request_id}, Timestamp: {date}")
         else:
-            print(
-                f"Registry record is in {status} state. "
-                "Waiting for it to be in Draft state"
-            )
+            print(f"Registry record is in {status} state. Waiting for it to be in Draft state")
         time.sleep(poll_interval)

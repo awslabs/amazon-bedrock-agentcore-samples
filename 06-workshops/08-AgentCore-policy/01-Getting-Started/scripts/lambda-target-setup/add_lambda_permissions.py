@@ -52,9 +52,7 @@ def add_lambda_permissions():
 
                 # Try to update by removing and re-adding
                 try:
-                    lambda_client.remove_permission(
-                        FunctionName=function_name, StatementId="AllowAgentCoreGateway"
-                    )
+                    lambda_client.remove_permission(FunctionName=function_name, StatementId="AllowAgentCoreGateway")
 
                     lambda_client.add_permission(
                         FunctionName=function_name,

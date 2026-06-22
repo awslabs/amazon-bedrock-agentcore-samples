@@ -75,9 +75,7 @@ def wait_for_record(registry_id, record_id, interval=10, max_wait=120):
     while elapsed < max_wait:
         time.sleep(interval)
         elapsed += interval
-        record = rg_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        record = rg_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = record["status"]
         print(f"  Record Status: {status}")
         if status in ("DRAFT", "PENDING_APPROVAL", "APPROVED", "ACTIVE"):
@@ -142,9 +140,7 @@ wait_for_record(REGISTRY_ID, MCP_RECORD_ID)
 
 # ── 4. Synchronize from OAuth-Protected MCP Server on AgentCore Runtime ───────
 print("\n=== 4. Synchronize from OAuth-Protected MCP Server ===")
-print(
-    "Note: This section deploys an MCP server to AgentCore Runtime and creates Cognito resources."
-)
+print("Note: This section deploys an MCP server to AgentCore Runtime and creates Cognito resources.")
 
 IT_OPS_TOOLKIT_CODE = '''"""IT Operations MCP Server - plain JSON, no SSE, no FastMCP."""
 import json
@@ -257,7 +253,9 @@ CLIENT_SECRET = app_resp["UserPoolClient"]["ClientSecret"]
 print(f"✓ Client ID: {CLIENT_ID}")
 
 cognito.create_user_pool_domain(Domain=f"mcp-json-{TIMESTAMP}", UserPoolId=USER_POOL_ID)
-COGNITO_DISCOVERY_URL = f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/openid-configuration"
+COGNITO_DISCOVERY_URL = (
+    f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/openid-configuration"
+)
 print(f"✓ Discovery URL: {COGNITO_DISCOVERY_URL}")
 
 # 4.4 Create AgentCore OAuth2 Credential Provider
@@ -274,9 +272,7 @@ oauth_resp = rg_client.create_oauth2_credential_provider(
     },
 )
 OAUTH_PROVIDER_ARN = oauth_resp["credentialProviderArn"]
-print(
-    f"✓ OAuth Provider ARN: {OAUTH_PROVIDER_ARN}"
-)  # codeql[py/clear-text-logging-sensitive-data]
+print(f"✓ OAuth Provider ARN: {OAUTH_PROVIDER_ARN}")  # codeql[py/clear-text-logging-sensitive-data]
 
 # 4.5 Deploy MCP server to AgentCore Runtime with OAuth
 print("\n4.5 Deploy MCP server to AgentCore Runtime with OAuth...")
@@ -310,7 +306,9 @@ launch_result = runtime.launch(auto_update_on_conflict=True)
 RUNTIME_ARN = launch_result.agent_arn
 RUNTIME_ID = launch_result.agent_id
 ENCODED_ARN = RUNTIME_ARN.replace(":", "%3A").replace("/", "%2F")
-MCP_SERVER_URL = f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{ENCODED_ARN}/invocations?qualifier=DEFAULT"
+MCP_SERVER_URL = (
+    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{ENCODED_ARN}/invocations?qualifier=DEFAULT"
+)
 
 print(f"✓ Runtime ARN: {RUNTIME_ARN}")
 print(f"✓ MCP Server URL: {MCP_SERVER_URL}")
@@ -438,7 +436,9 @@ launch_result2 = runtime2.launch(auto_update_on_conflict=True)
 RUNTIME_ARN2 = launch_result2.agent_arn
 RUNTIME_ID2 = launch_result2.agent_id
 ENCODED_ARN2 = RUNTIME_ARN2.replace(":", "%3A").replace("/", "%2F")
-MCP_IAM_URL = f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{ENCODED_ARN2}/invocations?qualifier=DEFAULT"
+MCP_IAM_URL = (
+    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{ENCODED_ARN2}/invocations?qualifier=DEFAULT"
+)
 
 print(f"✓ Runtime ARN: {RUNTIME_ARN2}")
 print(f"✓ MCP IAM URL: {MCP_IAM_URL}")
@@ -537,9 +537,7 @@ print("\n=== 7. Cleanup ===")
 try:
     records = rg_client.list_registry_records(registryId=REGISTRY_ID)
     for rec in records["registryRecords"]:
-        rg_client.delete_registry_record(
-            registryId=REGISTRY_ID, recordId=rec["recordId"]
-        )
+        rg_client.delete_registry_record(registryId=REGISTRY_ID, recordId=rec["recordId"])
         print(f"✓ Deleted record: {rec['recordId']}")
 except Exception as e:
     print(f"  Records cleanup: {e}")
@@ -568,9 +566,7 @@ except Exception as e:
 
 # Delete Cognito resources
 try:
-    cognito.delete_user_pool_domain(
-        Domain=f"mcp-json-{TIMESTAMP}", UserPoolId=USER_POOL_ID
-    )
+    cognito.delete_user_pool_domain(Domain=f"mcp-json-{TIMESTAMP}", UserPoolId=USER_POOL_ID)
     print("✓ Deleted Cognito domain")
     cognito.delete_user_pool(UserPoolId=USER_POOL_ID)
     print(f"✓ Deleted Cognito pool: {USER_POOL_ID}")
@@ -579,9 +575,7 @@ except Exception as e:
 
 # Delete IAM role
 try:
-    iam_client.delete_role_policy(
-        RoleName=IAM_ROLE_NAME, PolicyName="InvokeAgentCoreRuntime"
-    )
+    iam_client.delete_role_policy(RoleName=IAM_ROLE_NAME, PolicyName="InvokeAgentCoreRuntime")
     iam_client.delete_role(RoleName=IAM_ROLE_NAME)
     print(f"✓ Deleted IAM role: {IAM_ROLE_NAME}")
 except Exception as e:

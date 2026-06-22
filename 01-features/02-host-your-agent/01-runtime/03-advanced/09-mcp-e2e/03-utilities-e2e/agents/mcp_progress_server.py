@@ -5,9 +5,7 @@ from dynamo_utils import FinanceDB
 
 mcp = FastMCP(name="Progress-MCP-Server", host="0.0.0.0", stateless_http=True)  # nosec B104
 
-_region = (
-    os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
-)
+_region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 db = FinanceDB(region_name=_region)
 
 
@@ -36,9 +34,7 @@ async def generate_report(user_alias: str, ctx: Context) -> str:
 
     await ctx.report_progress(progress=3, total=total)
     await asyncio.sleep(0.5)
-    budgets = {
-        b["category"]: float(b["monthly_limit"]) for b in db.get_budgets(user_alias)
-    }
+    budgets = {b["category"]: float(b["monthly_limit"]) for b in db.get_budgets(user_alias)}
 
     await ctx.report_progress(progress=4, total=total)
     await asyncio.sleep(0.5)
@@ -48,9 +44,7 @@ async def generate_report(user_alias: str, ctx: Context) -> str:
         if limit:
             pct = (spent / limit) * 100
             status = "OVER" if spent > limit else "OK"
-            lines.append(
-                f"  {cat:<15} ${spent:>8.2f} / ${limit:.2f}  [{pct:.0f}%] {status}"
-            )
+            lines.append(f"  {cat:<15} ${spent:>8.2f} / ${limit:.2f}  [{pct:.0f}%] {status}")
         else:
             lines.append(f"  {cat:<15} ${spent:>8.2f}  (no budget set)")
 

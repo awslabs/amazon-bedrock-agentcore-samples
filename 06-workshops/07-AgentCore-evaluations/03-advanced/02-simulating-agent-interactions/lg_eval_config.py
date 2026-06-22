@@ -8,16 +8,12 @@ AWS_REGION = "us-east-1"
 # TODO: Replace <YOUR_ACCOUNT_ID> and <UNIQUE-ID> with your actual values
 AGENT_ARN = "arn:aws:bedrock-agentcore:us-east-1:<YOUR_ACCOUNT_ID>:runtime/langgraph_web_search_agent-<UNIQUE-ID>"
 QUALIFIER = "DEFAULT"
-LOG_GROUP_NAME = (
-    "/aws/bedrock-agentcore/runtimes/langgraph_web_search_agent-<UNIQUE-ID>-DEFAULT"
-)
+LOG_GROUP_NAME = "/aws/bedrock-agentcore/runtimes/langgraph_web_search_agent-<UNIQUE-ID>-DEFAULT"
 SERVICE_NAME = "langgraph_web_search_agent.DEFAULT"
 
 # Evaluation Configuration for AgentCore Evaluators using Online APIs
 EVAL_CONFIG_NAME = "web_search_agent_online_eval"
-EVAL_DESCRIPTION = (
-    "Online evaluation for web search agent test cases with builtin metrics"
-)
+EVAL_DESCRIPTION = "Online evaluation for web search agent test cases with builtin metrics"
 # TODO: Replace <YOUR_ACCOUNT_ID> with your actual AWS account ID
 EVALUATION_ROLE_ARN = "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/AgentCoreEvaluationRole"
 SAMPLING_PERCENTAGE = 100.0

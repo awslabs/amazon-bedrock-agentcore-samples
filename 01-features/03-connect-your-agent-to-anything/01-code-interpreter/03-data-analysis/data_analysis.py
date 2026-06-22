@@ -56,8 +56,7 @@ DEFAULT_EDA_QUERY = (
     "Report row count, column stats, top values, and any notable distributions."
 )
 DEFAULT_DETAIL_QUERY = (
-    "Within 'data.csv', how many individuals with the first name 'Kimberly' "
-    "have 'Crocodile' as their favourite animal?"
+    "Within 'data.csv', how many individuals with the first name 'Kimberly' have 'Crocodile' as their favourite animal?"
 )
 
 
@@ -69,9 +68,7 @@ def read_file(path: str) -> str:
         return f.read()
 
 
-def call_tool(
-    client: CodeInterpreter, tool_name: str, arguments: Dict[str, Any]
-) -> str:
+def call_tool(client: CodeInterpreter, tool_name: str, arguments: Dict[str, Any]) -> str:
     response = client.invoke(tool_name, arguments)
     for event in response["stream"]:
         return json.dumps(event["result"])

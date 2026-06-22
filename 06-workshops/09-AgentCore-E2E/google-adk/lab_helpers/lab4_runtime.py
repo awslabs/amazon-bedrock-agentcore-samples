@@ -178,18 +178,12 @@ def get_technical_support(issue_description: str) -> str:
         ssm = boto3.client("ssm")
         acct = boto3.client("sts").get_caller_identity()["Account"]
         region = boto3.Session().region_name
-        kb_id = ssm.get_parameter(Name=f"/{acct}-{region}/kb/knowledge-base-id")[
-            "Parameter"
-        ]["Value"]
-        bedrock_agent_runtime = boto3.client(
-            "bedrock-agent-runtime", region_name=region
-        )
+        kb_id = ssm.get_parameter(Name=f"/{acct}-{region}/kb/knowledge-base-id")["Parameter"]["Value"]
+        bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=region)
         response = bedrock_agent_runtime.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": issue_description},
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {"numberOfResults": 3}
-            },
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 3}},
         )
         results = response.get("retrievalResults", [])
         if not results:
@@ -199,9 +193,7 @@ def get_technical_support(issue_description: str) -> str:
             text = result.get("content", {}).get("text", "")
             score = result.get("score", 0)
             if score >= 0.4:
-                formatted_results.append(
-                    f"--- Result {i} (relevance: {score:.2f}) ---\n{text}"
-                )
+                formatted_results.append(f"--- Result {i} (relevance: {score:.2f}) ---\n{text}")
         if not formatted_results:
             return "No sufficiently relevant technical support documentation found."
         return "\n\n".join(formatted_results)
@@ -214,9 +206,7 @@ def get_technical_support(issue_description: str) -> str:
 # ============================================================
 
 
-async def _call_mcp_tool(
-    tool_name: str, arguments: dict, gateway_url: str, auth_header: str
-) -> str:
+async def _call_mcp_tool(tool_name: str, arguments: dict, gateway_url: str, auth_header: str) -> str:
     """Helper to call an MCP tool on the AgentCore Gateway."""
     async with streamablehttp_client(
         gateway_url,
@@ -226,9 +216,7 @@ async def _call_mcp_tool(
             await session.initialize()
             result = await session.call_tool(tool_name, arguments)
             if result.content:
-                return "\n".join(
-                    part.text for part in result.content if hasattr(part, "text")
-                )
+                return "\n".join(part.text for part in result.content if hasattr(part, "text"))
             return "No result returned."
 
 
@@ -258,9 +246,7 @@ def check_warranty_status(serial_number: str, customer_email: str) -> str:
     if customer_email:
         args["customer_email"] = customer_email
     return _run_async_in_thread(
-        _call_mcp_tool(
-            "LambdaUsingSDK___check_warranty_status", args, _gateway_url, _auth_header
-        )
+        _call_mcp_tool("LambdaUsingSDK___check_warranty_status", args, _gateway_url, _auth_header)
     )
 
 
@@ -276,9 +262,7 @@ def web_search(keywords: str, region: str, max_results: int) -> str:
         Search results from the web.
     """
     args = {"keywords": keywords, "region": region, "max_results": max_results}
-    return _run_async_in_thread(
-        _call_mcp_tool("LambdaUsingSDK___web_search", args, _gateway_url, _auth_header)
-    )
+    return _run_async_in_thread(_call_mcp_tool("LambdaUsingSDK___web_search", args, _gateway_url, _auth_header))
 
 
 # Initialize the AgentCore Runtime App
@@ -359,9 +343,7 @@ async def invoke(payload, context=None):
             # --- 3. Create and run the ADK agent ---
             agent = LlmAgent(
                 name="customer_support_agent",
-                model=LiteLlm(
-                    model="bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
-                ),
+                model=LiteLlm(model="bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"),
                 instruction=SYSTEM_PROMPT,
                 tools=all_tools,
             )
@@ -378,14 +360,10 @@ async def invoke(payload, context=None):
                 app_name="customer_support_app",
                 session_service=session_service,
             )
-            content = types.Content(
-                role="user", parts=[types.Part(text=enriched_query)]
-            )
+            content = types.Content(role="user", parts=[types.Part(text=enriched_query)])
 
             final_response = ""
-            async for event in runner.run_async(
-                user_id="user_001", session_id=adk_session_id, new_message=content
-            ):
+            async for event in runner.run_async(user_id="user_001", session_id=adk_session_id, new_message=content):
                 if event.is_final_response():
                     final_response = event.content.parts[0].text
 

@@ -35,12 +35,8 @@ from bedrock_agentcore.services.identity import IdentityClient, UserTokenIdentif
 # Configuration constants for the OAuth2 callback server
 OAUTH2_CALLBACK_SERVER_PORT = 9090  # Port where the callback server listens
 PING_ENDPOINT = "/ping"  # Health check endpoint
-OAUTH2_CALLBACK_ENDPOINT = (
-    "/oauth2/callback"  # OAuth2 callback endpoint for provider redirects
-)
-USER_IDENTIFIER_ENDPOINT = (
-    "/userIdentifier/token"  # Endpoint to store user token identifiers
-)
+OAUTH2_CALLBACK_ENDPOINT = "/oauth2/callback"  # OAuth2 callback endpoint for provider redirects
+USER_IDENTIFIER_ENDPOINT = "/userIdentifier/token"  # Endpoint to store user token identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -96,16 +92,12 @@ def get_oauth2_callback_base_url() -> str:
             space_name = data["SpaceName"]
 
         sagemaker_client = boto3.client("sagemaker")
-        response = sagemaker_client.describe_space(
-            DomainId=domain_id, SpaceName=space_name
-        )
+        response = sagemaker_client.describe_space(DomainId=domain_id, SpaceName=space_name)
         base_url = response["Url"] + f"/proxy/{OAUTH2_CALLBACK_SERVER_PORT}"
         logger.info(f"External OAuth callback base URL (SageMaker): {base_url}")
         return base_url
     except Exception as e:
-        logger.warning(
-            f"Error getting SageMaker proxy URL: {e}. Falling back to localhost"
-        )
+        logger.warning(f"Error getting SageMaker proxy URL: {e}. Falling back to localhost")
         return f"http://localhost:{OAUTH2_CALLBACK_SERVER_PORT}"
 
 
@@ -414,9 +406,7 @@ def wait_for_oauth2_server_to_be_ready(
         if elapsed % 10 == 0 and elapsed > 0:
             logger.info(f"Still waiting... ({elapsed}/{timeout_in_seconds}s)")
 
-    logger.error(
-        f"Timeout: OAuth2 callback server not ready after {timeout_in_seconds} seconds"
-    )
+    logger.error(f"Timeout: OAuth2 callback server not ready after {timeout_in_seconds} seconds")
     return False
 
 
@@ -438,9 +428,7 @@ def main():
     for any AgentCore agents in the specified region.
     """
     parser = argparse.ArgumentParser(description="OAuth2 Callback Server")
-    parser.add_argument(
-        "-r", "--region", type=str, required=True, help="AWS Region (e.g. us-east-1)"
-    )
+    parser.add_argument("-r", "--region", type=str, required=True, help="AWS Region (e.g. us-east-1)")
 
     args = parser.parse_args()
     oauth2_callback_server = OAuth2CallbackServer(region=args.region)

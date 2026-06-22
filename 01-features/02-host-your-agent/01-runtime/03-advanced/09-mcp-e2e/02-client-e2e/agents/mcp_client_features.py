@@ -4,9 +4,7 @@ from dynamo_utils import FinanceDB
 
 mcp = FastMCP(name="ElicitationMCP", host="0.0.0.0", stateless_http=True)  # nosec B104
 
-_region = (
-    os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
-)
+_region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 db = FinanceDB(region_name=_region)
 
 
@@ -51,25 +49,16 @@ async def add_expense_interactive(user_alias: str, ctx: Context) -> str:
         return "Expense entry cancelled."
     category = result.data.category
 
-    confirm_msg = (
-        f"Confirm: add ${amount:.2f} for {description} ({category})? Reply Yes or No"
-    )
+    confirm_msg = f"Confirm: add ${amount:.2f} for {description} ({category})? Reply Yes or No"
     result = await ctx.elicit(confirm_msg, ConfirmInput)
-    if (
-        not (hasattr(result, "action") and result.action == "accept")
-        or result.data.confirm != "Yes"
-    ):
+    if not (hasattr(result, "action") and result.action == "accept") or result.data.confirm != "Yes":
         return "Expense entry cancelled."
 
-    return db.add_transaction(
-        user_alias, "expense", -abs(amount), description, category
-    )
+    return db.add_transaction(user_alias, "expense", -abs(amount), description, category)
 
 
 @mcp.tool()
-def add_expense(
-    user_alias: str, amount: float, description: str, category: str = "other"
-) -> str:
+def add_expense(user_alias: str, amount: float, description: str, category: str = "other") -> str:
     """Add a new expense transaction.
     Args:
         user_alias: User identifier
@@ -77,9 +66,7 @@ def add_expense(
         description: Description of the expense
         category: Expense category (food, transport, bills, entertainment, other)
     """
-    return db.add_transaction(
-        user_alias, "expense", -abs(amount), description, category
-    )
+    return db.add_transaction(user_alias, "expense", -abs(amount), description, category)
 
 
 @mcp.tool()
@@ -92,10 +79,7 @@ async def analyze_spending(user_alias: str, ctx: Context) -> str:
     if not transactions:
         return f"No transactions found for {user_alias}."
 
-    lines = "\n".join(
-        f"- {t['description']} (${abs(float(t['amount'])):.2f}, {t['category']})"
-        for t in transactions
-    )
+    lines = "\n".join(f"- {t['description']} (${abs(float(t['amount'])):.2f}, {t['category']})" for t in transactions)
     prompt = (
         f"Here are the recent expenses for a user:\n{lines}\n\n"
         f"Please analyse the spending patterns and give 3 concise, "

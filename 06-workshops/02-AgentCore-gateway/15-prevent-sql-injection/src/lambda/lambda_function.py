@@ -71,8 +71,7 @@ SQL_INJECTION_PATTERNS = [
 ]
 
 COMPILED_PATTERNS = [
-    (re.compile(pattern, re.IGNORECASE | re.MULTILINE), rule_id)
-    for pattern, rule_id in SQL_INJECTION_PATTERNS
+    (re.compile(pattern, re.IGNORECASE | re.MULTILINE), rule_id) for pattern, rule_id in SQL_INJECTION_PATTERNS
 ]
 
 
@@ -131,9 +130,7 @@ def analyze_arguments_for_sql_injection(
 
         if is_malicious:
             value_hash = compute_query_hash(value)
-            print(
-                f"[SECURITY] SQL injection detected | field={field_path} | rule={rule_id} | hash={value_hash}"
-            )
+            print(f"[SECURITY] SQL injection detected | field={field_path} | rule={rule_id} | hash={value_hash}")
             return False, rule_id, category
 
     return True, "", ""
@@ -182,9 +179,7 @@ def lambda_handler(event, context):
         print(f"[INFO] Interceptor invoked | request_id={request_id} | method={method}")
 
         if method != "tools/call":
-            print(
-                f"[INFO] Method not tools/call, passing through | request_id={request_id}"
-            )
+            print(f"[INFO] Method not tools/call, passing through | request_id={request_id}")
             return {
                 "interceptorOutputVersion": "1.0",
                 "mcp": {
@@ -199,23 +194,17 @@ def lambda_handler(event, context):
         tool_name = params.get("name", "")
         arguments = params.get("arguments", {})
 
-        print(
-            f"[INFO] Analyzing tool call | request_id={request_id} | tool={tool_name}"
-        )
+        print(f"[INFO] Analyzing tool call | request_id={request_id} | tool={tool_name}")
 
         if STRICT_MODE:
             if "query" in arguments or "sql" in arguments:
-                print(
-                    f"[SECURITY] STRICT MODE: Raw SQL field rejected | request_id={request_id} | tool={tool_name}"
-                )
+                print(f"[SECURITY] STRICT MODE: Raw SQL field rejected | request_id={request_id} | tool={tool_name}")
                 return create_blocked_response("RAW_SQL_NOT_ALLOWED", request_id)
 
         is_safe, rule_id, category = analyze_arguments_for_sql_injection(arguments)
 
         if is_safe:
-            print(
-                f"[INFO] Request allowed | request_id={request_id} | tool={tool_name}"
-            )
+            print(f"[INFO] Request allowed | request_id={request_id} | tool={tool_name}")
 
             return {
                 "interceptorOutputVersion": "1.0",
@@ -227,15 +216,9 @@ def lambda_handler(event, context):
                 },
             }
         else:
-            print(
-                f"[SECURITY] Request blocked | request_id={request_id} | tool={tool_name} | rule={rule_id}"
-            )
+            print(f"[SECURITY] Request blocked | request_id={request_id} | tool={tool_name} | rule={rule_id}")
             return create_blocked_response(category, request_id)
 
     except Exception as e:
-        print(
-            f"[ERROR] Interceptor error | request_id={request_body.get('id', 'unknown')} | error={str(e)[:100]}"
-        )
-        return create_blocked_response(
-            "INTERCEPTOR_ERROR", request_body.get("id", "unknown")
-        )
+        print(f"[ERROR] Interceptor error | request_id={request_body.get('id', 'unknown')} | error={str(e)[:100]}")
+        return create_blocked_response("INTERCEPTOR_ERROR", request_body.get("id", "unknown"))

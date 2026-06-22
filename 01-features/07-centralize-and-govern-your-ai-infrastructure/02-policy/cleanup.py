@@ -28,9 +28,7 @@ CONFIG_FILE = "policy_config.json"
 def load_config() -> dict:
     path = Path(CONFIG_FILE)
     if not path.exists():
-        raise FileNotFoundError(
-            f"{CONFIG_FILE} not found. Nothing to clean up (or already cleaned)."
-        )
+        raise FileNotFoundError(f"{CONFIG_FILE} not found. Nothing to clean up (or already cleaned).")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -102,19 +100,13 @@ def delete_policy_engine(ctrl, engine_id: str) -> None:
 def delete_gateway_targets(ctrl, gateway_id: str) -> None:
     """Delete all targets on the gateway."""
     try:
-        targets = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get(
-            "items", []
-        )
+        targets = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
         print(f"  Deleting {len(targets)} gateway target(s)...")
         for t in targets:
-            ctrl.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=t["targetId"]
-            )
+            ctrl.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=t["targetId"])
             print(f"    Deleted target: {t.get('name', t['targetId'])}")
         for _ in range(30):
-            remaining = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get(
-                "items", []
-            )
+            remaining = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
             if not remaining:
                 break
             time.sleep(3)

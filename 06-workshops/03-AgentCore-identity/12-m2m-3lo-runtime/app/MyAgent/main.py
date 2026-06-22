@@ -143,9 +143,7 @@ def get_github_repos() -> str:
     On first call, returns an authorization URL if consent is needed.
     After the user grants access, call this tool again to retrieve repos.
     """
-    callback_url = os.environ.get(
-        "CALLBACK_URL", "http://localhost:9090/oauth2/callback"
-    )
+    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
 
     @requires_access_token(
         provider_name="GitHub3LOProvider",
@@ -216,9 +214,7 @@ def get_calendar_events() -> str:
     On first call, returns an authorization URL if consent is needed.
     After the user grants access, call this tool again to retrieve events.
     """
-    callback_url = os.environ.get(
-        "CALLBACK_URL", "http://localhost:9090/oauth2/callback"
-    )
+    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
     today = datetime.now(timezone.utc).date().isoformat()
 
     @requires_access_token(
@@ -259,9 +255,7 @@ def get_calendar_events() -> str:
 
         lines = [f"Google Calendar events for {today}:"]
         for event in events:
-            start = event.get("start", {}).get(
-                "dateTime", event.get("start", {}).get("date", "")
-            )
+            start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
             lines.append(f"  - {start}: {event.get('summary', '(no title)')}")
         return "\n".join(lines)
 

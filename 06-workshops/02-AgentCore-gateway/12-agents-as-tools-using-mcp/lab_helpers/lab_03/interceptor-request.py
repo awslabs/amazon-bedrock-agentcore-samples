@@ -59,14 +59,8 @@ def lambda_handler(event, context):
             return _deny_request(None, message="Invalid JSON in request body")
 
         # Extract Authorization header
-        auth_header = headers.get("authorization", "") or headers.get(
-            "Authorization", ""
-        )
-        print(
-            f"Authorization header received: {auth_header[:50]}..."
-            if auth_header
-            else "No Authorization header"
-        )
+        auth_header = headers.get("authorization", "") or headers.get("Authorization", "")
+        print(f"Authorization header received: {auth_header[:50]}..." if auth_header else "No Authorization header")
 
         # Extract user groups from JWT
         user_groups = get_user_groups(auth_header)
@@ -153,9 +147,7 @@ def lambda_handler(event, context):
                 }
             except Exception as e:
                 print(f"Error processing tools/call: {e}")
-                return _deny_request(
-                    rpc_id, message=f"Error processing tool call: {str(e)}"
-                )
+                return _deny_request(rpc_id, message=f"Error processing tool call: {str(e)}")
 
         # For other methods, pass through
         return {

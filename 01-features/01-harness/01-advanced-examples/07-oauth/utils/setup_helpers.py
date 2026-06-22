@@ -29,9 +29,7 @@ def _find_pool_by_name(cog, pool_name):
 
 def _find_client_by_name(cog, pool_id, client_name):
     """Return (client_id, client_secret|None) if an app client exists."""
-    for c in cog.list_user_pool_clients(UserPoolId=pool_id, MaxResults=60)[
-        "UserPoolClients"
-    ]:
+    for c in cog.list_user_pool_clients(UserPoolId=pool_id, MaxResults=60)["UserPoolClients"]:
         if c["ClientName"] == client_name:
             full = cog.describe_user_pool_client(
                 UserPoolId=pool_id,
@@ -67,9 +65,7 @@ def _ensure_policy(iam_c, account_id, policy_name, policy_doc):
 # ─────────────────────────────────────────────────────────────────────
 
 
-def create_user_auth_pool(
-    region: str, prefix: str, username: str, password: str
-) -> dict:
+def create_user_auth_pool(region: str, prefix: str, username: str, password: str) -> dict:
     """Create (or reuse) a Cognito user pool for end-user authentication.
 
     Returns dict with keys: pool_id, client_id, discovery_url
@@ -91,9 +87,7 @@ def create_user_auth_pool(
 
     client_id, _ = _find_client_by_name(cog, pool_id, client_name)
     if client_id:
-        print(
-            f"  Pool #1 client already exists: {client_id}"
-        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(f"  Pool #1 client already exists: {client_id}")  # codeql[py/clear-text-logging-sensitive-data]
     else:
         client_id = cog.create_user_pool_client(
             UserPoolId=pool_id,
@@ -104,20 +98,13 @@ def create_user_auth_pool(
         print(f"  Pool #1 client created: {client_id}")
 
     try:
-        cog.admin_create_user(
-            UserPoolId=pool_id, Username=username, MessageAction="SUPPRESS"
-        )
+        cog.admin_create_user(UserPoolId=pool_id, Username=username, MessageAction="SUPPRESS")
         print(f'  Test user "{username}" created')
     except cog.exceptions.UsernameExistsException:
         print(f'  Test user "{username}" already exists')
-    cog.admin_set_user_password(
-        UserPoolId=pool_id, Username=username, Password=password, Permanent=True
-    )
+    cog.admin_set_user_password(UserPoolId=pool_id, Username=username, Password=password, Permanent=True)
 
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
-        f"/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
     return dict(pool_id=pool_id, client_id=client_id, discovery_url=discovery_url)
 
 
@@ -153,9 +140,7 @@ def create_m2m_pool(region: str, prefix: str) -> dict:
             UserPoolId=pool_id,
             Identifier=rs_id,
             Name="Gateway Resource Server",
-            Scopes=[
-                {"ScopeName": "invoke", "ScopeDescription": "Invoke gateway tools"}
-            ],
+            Scopes=[{"ScopeName": "invoke", "ScopeDescription": "Invoke gateway tools"}],
         )
         print(f"  Resource server created, scope: {scope}")
     except Exception as e:
@@ -172,15 +157,11 @@ def create_m2m_pool(region: str, prefix: str) -> dict:
         domain_prefix = f"{prefix}-{uuid.uuid4().hex[:8]}"
         cog.create_user_pool_domain(Domain=domain_prefix, UserPoolId=pool_id)
         print(f"  Domain created: {domain_prefix}")
-    token_endpoint = (
-        f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
-    )
+    token_endpoint = f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
 
     client_id, client_secret = _find_client_by_name(cog, pool_id, client_name)
     if client_id and client_secret:
-        print(
-            f"  Pool #2 client already exists: {client_id}"
-        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(f"  Pool #2 client already exists: {client_id}")  # codeql[py/clear-text-logging-sensitive-data]
     else:
         resp = cog.create_user_pool_client(
             UserPoolId=pool_id,
@@ -195,10 +176,7 @@ def create_m2m_pool(region: str, prefix: str) -> dict:
         client_secret = resp["UserPoolClient"]["ClientSecret"]
         print(f"  Pool #2 client created: {client_id}")
 
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
-        f"/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
     return dict(
         pool_id=pool_id,
         client_id=client_id,
@@ -262,9 +240,7 @@ def deploy_lambda(region: str, prefix: str) -> dict:
     # Resolve path to lambda_function_code.py relative to this file
     import os
 
-    lambda_code_path = os.path.join(
-        os.path.dirname(__file__), "lambda_function_code.py"
-    )
+    lambda_code_path = os.path.join(os.path.dirname(__file__), "lambda_function_code.py")
 
     iam_c = boto3.client("iam")
     lam = boto3.client("lambda", region_name=region)
@@ -424,9 +400,7 @@ def create_gateway_with_lambda_target(
             "description": "Look up an order by ID. Returns item, status, amount.",
             "inputSchema": {
                 "type": "object",
-                "properties": {
-                    "orderId": {"type": "string", "description": "e.g. ORD-001"}
-                },
+                "properties": {"orderId": {"type": "string", "description": "e.g. ORD-001"}},
                 "required": ["orderId"],
             },
         },
@@ -456,9 +430,7 @@ def create_gateway_with_lambda_target(
                     }
                 }
             },
-            credentialProviderConfigurations=[
-                {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-            ],
+            credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         )
         tgt_id = tgt["targetId"]
         print(f"  Target created: {tgt_id}")
@@ -473,9 +445,7 @@ def create_gateway_with_lambda_target(
 
     print("  Waiting for target READY...")
     for _ in range(30):
-        status = ac.get_gateway_target(gatewayIdentifier=gw_id, targetId=tgt_id)[
-            "status"
-        ]
+        status = ac.get_gateway_target(gatewayIdentifier=gw_id, targetId=tgt_id)["status"]
         if status == "READY":
             break
         time.sleep(10)
@@ -605,9 +575,7 @@ def create_harness_execution_role(region: str, prefix: str, account_id: str) -> 
                     "Effect": "Allow",
                     "Action": "cloudwatch:PutMetricData",
                     "Resource": "*",
-                    "Condition": {
-                        "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                    },
+                    "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
                 },
             ],
         }
@@ -631,9 +599,7 @@ def cleanup_all(region: str, prefix: str):
     Discovers resources by name so it works even after a fresh Python session.
     Skips gracefully if a resource was never created.
     """
-    account_id = boto3.client("sts", region_name=region).get_caller_identity()[
-        "Account"
-    ]
+    account_id = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
     cog = boto3.client("cognito-idp", region_name=region)
     lam = boto3.client("lambda", region_name=region)
     iam_c = boto3.client("iam")
@@ -672,11 +638,7 @@ def cleanup_all(region: str, prefix: str):
     # 1. Harness
     print("\n[1/7] Harness")
     try:
-        matches = [
-            h
-            for h in ac.list_harnesses().get("harnesses", [])
-            if h.get("harnessName") == harness_name
-        ]
+        matches = [h for h in ac.list_harnesses().get("harnesses", []) if h.get("harnessName") == harness_name]
         if matches:
             hid = matches[0]["harnessId"]
             ac.delete_harness(harnessId=hid)
@@ -691,11 +653,7 @@ def cleanup_all(region: str, prefix: str):
     # 2. Gateway + targets
     print("\n[2/7] Gateway + targets")
     try:
-        gws = [
-            g
-            for g in ac.list_gateways().get("items", [])
-            if g.get("name") == gateway_name
-        ]
+        gws = [g for g in ac.list_gateways().get("items", []) if g.get("name") == gateway_name]
         if gws:
             gid = gws[0]["gatewayId"]
             for t in ac.list_gateway_targets(gatewayIdentifier=gid).get("items", []):
@@ -718,9 +676,7 @@ def cleanup_all(region: str, prefix: str):
         ac.delete_oauth2_credential_provider(name=cred_name)
         ok(f"{cred_name} deleted")
     except Exception as e:
-        skip(
-            "Credential provider not found" if "not found" in str(e).lower() else str(e)
-        )
+        skip("Credential provider not found" if "not found" in str(e).lower() else str(e))
 
     # 4. Lambda
     print("\n[4/7] Lambda")
@@ -743,9 +699,7 @@ def cleanup_all(region: str, prefix: str):
             skip(f"Role {rname} not found")
             return
         try:
-            for p in iam_c.list_attached_role_policies(RoleName=rname)[
-                "AttachedPolicies"
-            ]:
+            for p in iam_c.list_attached_role_policies(RoleName=rname)["AttachedPolicies"]:
                 iam_c.detach_role_policy(RoleName=rname, PolicyArn=p["PolicyArn"])
         except Exception:
             pass
@@ -768,11 +722,7 @@ def cleanup_all(region: str, prefix: str):
     # 6. Cognito Pool #2
     print("\n[6/7] Cognito Pool #2")
     try:
-        m = [
-            p
-            for p in cog.list_user_pools(MaxResults=60)["UserPools"]
-            if p["Name"] == pool2_name
-        ]
+        m = [p for p in cog.list_user_pools(MaxResults=60)["UserPools"] if p["Name"] == pool2_name]
         if m:
             pid = m[0]["Id"]
             try:
@@ -792,11 +742,7 @@ def cleanup_all(region: str, prefix: str):
     # 7. Cognito Pool #1
     print("\n[7/7] Cognito Pool #1")
     try:
-        m = [
-            p
-            for p in cog.list_user_pools(MaxResults=60)["UserPools"]
-            if p["Name"] == pool1_name
-        ]
+        m = [p for p in cog.list_user_pools(MaxResults=60)["UserPools"] if p["Name"] == pool1_name]
         if m:
             pid = m[0]["Id"]
             cog.delete_user_pool(UserPoolId=pid)

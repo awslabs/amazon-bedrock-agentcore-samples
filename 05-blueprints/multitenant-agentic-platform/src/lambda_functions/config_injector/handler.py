@@ -46,9 +46,7 @@ def lambda_handler(event, context):
             # Retrieve the actual API key value
             # WARNING: This key will be publicly visible in the browser
             apigateway = boto3.client("apigateway")
-            api_key_response = apigateway.get_api_key(
-                apiKey=api_key_id, includeValue=True
-            )
+            api_key_response = apigateway.get_api_key(apiKey=api_key_id, includeValue=True)
             api_key_value = api_key_response["value"]
 
             # Generate config.js content
@@ -85,9 +83,7 @@ window.APP_CONFIG = {{
                             "CallerReference": str(time.time()),
                         },
                     )
-                    print(
-                        f"CloudFront invalidation created: {invalidation['Invalidation']['Id']}"
-                    )
+                    print(f"CloudFront invalidation created: {invalidation['Invalidation']['Id']}")
                 except Exception as e:
                     print(f"Warning: Failed to invalidate CloudFront cache: {str(e)}")
 

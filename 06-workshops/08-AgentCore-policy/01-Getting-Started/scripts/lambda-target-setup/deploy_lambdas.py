@@ -104,9 +104,7 @@ def deploy_lambda(lambda_client, function_name, js_file, role_arn):
         # Function already exists, update it
         print("   ℹ️  Function exists, updating code...")
 
-        response = lambda_client.update_function_code(
-            FunctionName=function_name, ZipFile=zip_content
-        )
+        response = lambda_client.update_function_code(FunctionName=function_name, ZipFile=zip_content)
 
         print("   ✅ Code updated")
         print(f"   ARN: {response['FunctionArn']}")
@@ -140,15 +138,9 @@ def main():
     print("=" * 70)
 
     # Parse arguments
-    parser = argparse.ArgumentParser(
-        description="Deploy Lambda functions for AgentCore Policy demo"
-    )
-    parser.add_argument(
-        "--region", type=str, default=None, help="AWS region to deploy into"
-    )
-    parser.add_argument(
-        "--role-arn", type=str, default=None, help="IAM role ARN for Lambda execution"
-    )
+    parser = argparse.ArgumentParser(description="Deploy Lambda functions for AgentCore Policy demo")
+    parser.add_argument("--region", type=str, default=None, help="AWS region to deploy into")
+    parser.add_argument("--role-arn", type=str, default=None, help="IAM role ARN for Lambda execution")
     args = parser.parse_args()
 
     # Resolve region

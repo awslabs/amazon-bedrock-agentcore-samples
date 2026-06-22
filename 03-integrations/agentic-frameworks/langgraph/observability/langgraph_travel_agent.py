@@ -56,12 +56,8 @@ def web_search(query: str) -> str:
 
 
 def build_graph():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
-    llm = init_chat_model(
-        model_id, model_provider="bedrock_converse", temperature=0.0, max_tokens=512
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
+    llm = init_chat_model(model_id, model_provider="bedrock_converse", temperature=0.0, max_tokens=512)
     tools = [web_search]
     llm_with_tools = llm.bind_tools(tools)
 

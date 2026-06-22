@@ -67,9 +67,7 @@ try:
     console.print(f"[dim]Using AWS Account ID: {ACCOUNT_ID}[/dim]")
 except Exception as e:
     console.print(f"[yellow]Warning: Could not determine AWS Account ID: {e}[/yellow]")
-    console.print(
-        "[yellow]Please set BEDROCK_AGENTCORE_ROLE_ARN environment variable manually.[/yellow]"
-    )
+    console.print("[yellow]Please set BEDROCK_AGENTCORE_ROLE_ARN environment variable manually.[/yellow]")
     ACCOUNT_ID = "YOUR_ACCOUNT_ID"  # This will be used only if BEDROCK_AGENTCORE_ROLE_ARN is not set
 
 # Set up role ARN and bucket name
@@ -89,9 +87,7 @@ def create_browser_with_recording():
     control_plane_url = get_control_plane_endpoint(REGION)
     console.print(f"Using Control Plane URL: [dim]{control_plane_url}[/dim]")
 
-    control_client = boto3.client(
-        "bedrock-agentcore-control", region_name=REGION, endpoint_url=control_plane_url
-    )
+    control_client = boto3.client("bedrock-agentcore-control", region_name=REGION, endpoint_url=control_plane_url)
 
     # Generate a unique browser name and client token
     browser_name = f"Browser_{uuid.uuid4().hex[:8]}"
@@ -136,9 +132,7 @@ def create_browser_with_recording():
         data_plane_url = f"https://bedrock-agentcore.{REGION}.amazonaws.com"
         console.print(f"Using Data Plane URL: [dim]{data_plane_url}[/dim]")
 
-        data_client = boto3.client(
-            "bedrock-agentcore", region_name=REGION, endpoint_url=data_plane_url
-        )
+        data_client = boto3.client("bedrock-agentcore", region_name=REGION, endpoint_url=data_plane_url)
 
         # Start browser session using the browser_id
         session_response = data_client.start_browser_session(
@@ -273,9 +267,7 @@ def view_recordings(s3_location):
 
     try:
         # First, get a flat list of all objects to find session directories
-        response = s3.list_objects_v2(
-            Bucket=s3_location["bucket"], Prefix=s3_location["prefix"]
-        )
+        response = s3.list_objects_v2(Bucket=s3_location["bucket"], Prefix=s3_location["prefix"])
 
         if "Contents" not in response:
             print("No objects found in S3 location")
@@ -315,9 +307,7 @@ def view_recordings(s3_location):
                 self.prefix = prefix
                 self.session_id = session_id
                 self.session_prefix = f"{prefix}/{session_id}"
-                self.temp_dir = Path(
-                    tempfile.mkdtemp(prefix="bedrock_agentcore_replay_")
-                )
+                self.temp_dir = Path(tempfile.mkdtemp(prefix="bedrock_agentcore_replay_"))
 
             def cleanup(self):
                 """Clean up temp files"""
@@ -333,9 +323,7 @@ def view_recordings(s3_location):
                 try:
                     metadata_key = f"{self.session_prefix}/metadata.json"
                     print(f"Fetching metadata from: {metadata_key}")
-                    response = self.s3_client.get_object(
-                        Bucket=self.bucket, Key=metadata_key
-                    )
+                    response = self.s3_client.get_object(Bucket=self.bucket, Key=metadata_key)
                     metadata = json.loads(response["Body"].read().decode("utf-8"))
                     print(f"✅ Found metadata: {metadata}")
                 except Exception as e:
@@ -343,9 +331,7 @@ def view_recordings(s3_location):
 
                 # List batch files to count events
                 batch_files = []
-                response = self.s3_client.list_objects_v2(
-                    Bucket=self.bucket, Prefix=f"{self.session_prefix}/batch-"
-                )
+                response = self.s3_client.list_objects_v2(Bucket=self.bucket, Prefix=f"{self.session_prefix}/batch-")
 
                 if "Contents" in response:
                     batch_files = [obj["Key"] for obj in response["Contents"]]
@@ -361,9 +347,7 @@ def view_recordings(s3_location):
                     try:
                         # Handle ISO format
                         if isinstance(metadata["startTime"], str):
-                            dt = datetime.fromisoformat(
-                                metadata["startTime"].replace("Z", "+00:00")
-                            )
+                            dt = datetime.fromisoformat(metadata["startTime"].replace("Z", "+00:00"))
                             timestamp = int(dt.timestamp() * 1000)
                         else:
                             timestamp = metadata["startTime"]
@@ -383,9 +367,7 @@ def view_recordings(s3_location):
                     event_count = metadata["totalEvents"]
 
                 # Use correct datetime formatting
-                date_string = datetime.fromtimestamp(timestamp / 1000).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                date_string = datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S")
 
                 recordings.append(
                     {
@@ -412,9 +394,7 @@ def view_recordings(s3_location):
                     metadata = {}
                     try:
                         metadata_key = f"{self.session_prefix}/metadata.json"
-                        response = self.s3_client.get_object(
-                            Bucket=self.bucket, Key=metadata_key
-                        )
+                        response = self.s3_client.get_object(Bucket=self.bucket, Key=metadata_key)
                         metadata = json.loads(response["Body"].read().decode("utf-8"))
                         print(f"✅ Downloaded metadata: {metadata}")
                     except Exception as e:
@@ -425,9 +405,7 @@ def view_recordings(s3_location):
                     if "batches" in metadata and isinstance(metadata["batches"], list):
                         for batch in metadata["batches"]:
                             if "file" in batch:
-                                batch_files.append(
-                                    f"{self.session_prefix}/{batch['file']}"
-                                )
+                                batch_files.append(f"{self.session_prefix}/{batch['file']}")
 
                     # If no batch files found in metadata, look for them directly
                     if not batch_files:
@@ -444,14 +422,10 @@ def view_recordings(s3_location):
                     for key in batch_files:
                         try:
                             print(f"Downloading batch file: {key}")
-                            response = self.s3_client.get_object(
-                                Bucket=self.bucket, Key=key
-                            )
+                            response = self.s3_client.get_object(Bucket=self.bucket, Key=key)
 
                             # Try to read as gzipped JSON lines
-                            with gzip.GzipFile(
-                                fileobj=io.BytesIO(response["Body"].read())
-                            ) as gz:
+                            with gzip.GzipFile(fileobj=io.BytesIO(response["Body"].read())) as gz:
                                 content = gz.read().decode("utf-8")
                                 print(f"Read {len(content)} bytes of content")
 
@@ -464,13 +438,9 @@ def view_recordings(s3_location):
                                             if "type" in event and "timestamp" in event:
                                                 all_events.append(event)
                                             else:
-                                                print(
-                                                    "⚠️ Skipping invalid event (missing required fields)"
-                                                )
+                                                print("⚠️ Skipping invalid event (missing required fields)")
                                         except json.JSONDecodeError:
-                                            print(
-                                                f"⚠️ Invalid JSON in line: {line[:50]}..."
-                                            )
+                                            print(f"⚠️ Invalid JSON in line: {line[:50]}...")
 
                                 print(f"  Added {len(all_events)} events")
 
@@ -484,9 +454,7 @@ def view_recordings(s3_location):
 
                     # If no events were loaded, create sample events
                     if len(all_events) < 2:
-                        print(
-                            "⚠️ Insufficient events, creating sample events for testing"
-                        )
+                        print("⚠️ Insufficient events, creating sample events for testing")
                         all_events = [
                             {
                                 "type": 2,
@@ -565,9 +533,7 @@ def view_recordings(s3_location):
                     self.send_header("Content-Length", str(len(response)))
                     # Add CORS headers to prevent issues
                     self.send_header("Access-Control-Allow-Origin", "*")
-                    self.send_header(
-                        "Access-Control-Allow-Methods", "GET, POST, OPTIONS"
-                    )
+                    self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                     self.send_header("Access-Control-Allow-Headers", "*")
                     self.end_headers()
 
@@ -604,9 +570,7 @@ def view_recordings(s3_location):
                         self.end_headers()
                         self.wfile.write(response.encode("utf-8"))
                     else:
-                        error_response = json.dumps(
-                            {"success": False, "error": "Recording not found"}
-                        )
+                        error_response = json.dumps({"success": False, "error": "Recording not found"})
                         self.send_response(404)
                         self.send_header("Content-Type", "application/json")
                         self.send_header("Content-Length", str(len(error_response)))
@@ -648,9 +612,7 @@ def view_recordings(s3_location):
 
                 # Create request handler
                 def handler_factory(*args, **kwargs):
-                    return CustomSessionReplayHandler(
-                        self.data_source, self.viewer_path, *args, **kwargs
-                    )
+                    return CustomSessionReplayHandler(self.data_source, self.viewer_path, *args, **kwargs)
 
                 # Start server
                 self.server = HTTPServer(("", port), handler_factory)

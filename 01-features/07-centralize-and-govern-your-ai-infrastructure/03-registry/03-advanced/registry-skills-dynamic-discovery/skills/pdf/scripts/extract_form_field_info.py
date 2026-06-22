@@ -24,9 +24,7 @@ def make_field_dict(field, field_id):
         states = field.get("/_States_", [])
         if len(states) == 2:
             if "/Off" in states:
-                field_dict["checked_value"] = (
-                    states[0] if states[0] != "/Off" else states[1]
-                )
+                field_dict["checked_value"] = states[0] if states[0] != "/Off" else states[1]
                 field_dict["unchecked_value"] = "/Off"
             else:
                 print(
@@ -97,9 +95,7 @@ def get_field_info(reader: PdfReader):
         if "page" in field_info:
             fields_with_location.append(field_info)
         else:
-            print(
-                f"Unable to determine location for field id: {field_info.get('field_id')}, ignoring"
-            )
+            print(f"Unable to determine location for field id: {field_info.get('field_id')}, ignoring")
 
     def sort_key(f):
         if "radio_options" in f:

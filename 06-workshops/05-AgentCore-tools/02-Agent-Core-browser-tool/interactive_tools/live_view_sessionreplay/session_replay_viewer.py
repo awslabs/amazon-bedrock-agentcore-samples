@@ -506,9 +506,7 @@ class SessionReplayHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(response.encode("utf-8"))
             else:
-                error_response = json.dumps(
-                    {"success": False, "error": "Recording not found"}
-                )
+                error_response = json.dumps({"success": False, "error": "Recording not found"})
                 self.send_response(404)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(error_response)))
@@ -554,9 +552,7 @@ class LocalDataSource(DataSource):
 
     def __init__(self, recordings_dir):
         self.recordings_dir = Path(recordings_dir)
-        console.print(
-            f"[cyan]Using local recordings from:[/cyan] {self.recordings_dir}"
-        )
+        console.print(f"[cyan]Using local recordings from:[/cyan] {self.recordings_dir}")
 
     def list_recordings(self):
         """List local recordings"""
@@ -588,9 +584,7 @@ class LocalDataSource(DataSource):
                             "id": recording_id,
                             "sessionId": session_id,
                             "timestamp": timestamp,
-                            "date": datetime.fromtimestamp(
-                                int(timestamp) / 1000
-                            ).strftime("%Y-%m-%d %H:%M:%S"),
+                            "date": datetime.fromtimestamp(int(timestamp) / 1000).strftime("%Y-%m-%d %H:%M:%S"),
                             "events": metadata.get("totalEvents", 0),
                             "duration": metadata.get("duration", 0),
                         }
@@ -653,13 +647,9 @@ class S3DataSource(DataSource):
             paginator = self.s3_client.get_paginator("list_objects_v2")
 
             # Look for any directories (not just rrweb-*)
-            for page in paginator.paginate(
-                Bucket=self.bucket, Prefix=self.prefix, Delimiter="/"
-            ):
+            for page in paginator.paginate(Bucket=self.bucket, Prefix=self.prefix, Delimiter="/"):
                 if "CommonPrefixes" in page:
-                    console.print(
-                        f"Found {len(page['CommonPrefixes'])} directories in prefix {self.prefix}"
-                    )
+                    console.print(f"Found {len(page['CommonPrefixes'])} directories in prefix {self.prefix}")
 
                     for prefix_info in page["CommonPrefixes"]:
                         prefix = prefix_info["Prefix"]
@@ -669,30 +659,22 @@ class S3DataSource(DataSource):
                         metadata = self._get_metadata(recording_id)
                         if metadata:
                             # This is a valid recording directory
-                            session_id = (
-                                recording_id  # Use the folder name as the session ID
-                            )
-                            timestamp = int(
-                                metadata.get("startTime", time.time() * 1000)
-                            )
+                            session_id = recording_id  # Use the folder name as the session ID
+                            timestamp = int(metadata.get("startTime", time.time() * 1000))
 
                             recordings.append(
                                 {
                                     "id": recording_id,
                                     "sessionId": session_id,
                                     "timestamp": timestamp,
-                                    "date": datetime.fromtimestamp(
-                                        timestamp / 1000
-                                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                                    "date": datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S"),
                                     "events": metadata.get("eventCount", 0),
                                     "duration": metadata.get("duration", 0),
                                 }
                             )
                             console.print(f"✅ Found recording: {recording_id}")
                         else:
-                            console.print(
-                                f"⚠️ Directory without metadata: {recording_id}"
-                            )
+                            console.print(f"⚠️ Directory without metadata: {recording_id}")
 
                 recordings.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
                 console.print(f"[green]Found {len(recordings)} recordings[/green]")
@@ -712,11 +694,7 @@ class S3DataSource(DataSource):
                 for obj in all_objects:
                     key = obj["Key"]
                     if "/" in key[len(self.prefix) :]:
-                        dir_name = (
-                            key.split("/", 1)[0]
-                            if not self.prefix
-                            else key[len(self.prefix) :].split("/", 1)[0]
-                        )
+                        dir_name = key.split("/", 1)[0] if not self.prefix else key[len(self.prefix) :].split("/", 1)[0]
                         dirs.add(dir_name)
 
                 console.print(f"Found directories: {dirs}")
@@ -733,18 +711,14 @@ class S3DataSource(DataSource):
                                 "id": dir_name,
                                 "sessionId": session_id,
                                 "timestamp": timestamp,
-                                "date": datetime.fromtimestamp(
-                                    timestamp / 1000
-                                ).strftime("%Y-%m-%d %H:%M:%S"),
+                                "date": datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S"),
                                 "events": metadata.get("eventCount", 0),
                                 "duration": metadata.get("duration", 0),
                             }
                         )
 
                 recordings.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
-                console.print(
-                    f"[green]Found {len(recordings)} recordings with alternative method[/green]"
-                )
+                console.print(f"[green]Found {len(recordings)} recordings with alternative method[/green]")
 
         except Exception as e:
             console.print(f"[red]Error listing recordings: {e}[/red]")
@@ -794,11 +768,7 @@ class S3DataSource(DataSource):
                 console=console,
             ) as progress:
                 # List files for this recording
-                prefix = (
-                    f"{self.prefix}/{recording_id}/"
-                    if self.prefix
-                    else f"{recording_id}/"
-                )
+                prefix = f"{self.prefix}/{recording_id}/" if self.prefix else f"{recording_id}/"
                 console.print(f"Looking for files with prefix: {prefix}")
 
                 paginator = self.s3_client.get_paginator("list_objects_v2")
@@ -831,8 +801,7 @@ class S3DataSource(DataSource):
                         with open(local_path, "r") as f:
                             metadata = json.load(f)
                     elif filename.startswith("batch-") and (
-                        filename.endswith(".ndjson.gz")
-                        or filename.endswith(".jsonl.gz")
+                        filename.endswith(".ndjson.gz") or filename.endswith(".jsonl.gz")
                     ):
                         try:
                             with gzip.open(local_path, "rt") as f:
@@ -841,10 +810,7 @@ class S3DataSource(DataSource):
                                         try:
                                             event_data = json.loads(line)
                                             # Validate event structure for rrweb
-                                            if (
-                                                "type" in event_data
-                                                and "timestamp" in event_data
-                                            ):
+                                            if "type" in event_data and "timestamp" in event_data:
                                                 all_events.append(event_data)
                                             else:
                                                 console.print(
@@ -855,22 +821,16 @@ class S3DataSource(DataSource):
                                                 f"[yellow]Warning: Invalid JSON in line: {line[:50]}...[/yellow]"
                                             )
                         except Exception as e:
-                            console.print(
-                                f"[yellow]Warning: Error processing batch file {filename}: {e}[/yellow]"
-                            )
+                            console.print(f"[yellow]Warning: Error processing batch file {filename}: {e}[/yellow]")
 
             console.print(f"[green]✓ Downloaded {len(all_events)} events[/green]")
 
             # If no events were parsed, check the files
             if len(all_events) == 0:
-                console.print(
-                    "[yellow]Warning: No events were parsed from the batch files[/yellow]"
-                )
+                console.print("[yellow]Warning: No events were parsed from the batch files[/yellow]")
 
                 # Create sample events to prevent viewer from breaking
-                console.print(
-                    "[yellow]Creating sample events to allow viewer to function[/yellow]"
-                )
+                console.print("[yellow]Creating sample events to allow viewer to function[/yellow]")
                 timestamp = int(time.time() * 1000)
 
                 # Create a minimal set of events for rrweb
@@ -960,9 +920,7 @@ class SessionReplayViewer:
 
         # Create request handler
         def handler_factory(*args, **kwargs):
-            return SessionReplayHandler(
-                self.data_source, self.viewer_path, *args, **kwargs
-            )
+            return SessionReplayHandler(self.data_source, self.viewer_path, *args, **kwargs)
 
         # Start server
         self.server = HTTPServer(("", port), handler_factory)
@@ -1012,17 +970,13 @@ def main():
     """Main entry point"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Session Replay Viewer - View browser session recordings"
-    )
+    parser = argparse.ArgumentParser(description="Session Replay Viewer - View browser session recordings")
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--local", help="Path to local recordings directory")
     group.add_argument("--s3", help="S3 path to recordings (e.g., s3://bucket/prefix/)")
 
-    parser.add_argument(
-        "--port", type=int, default=8080, help="Port to run server on (default: 8080)"
-    )
+    parser.add_argument("--port", type=int, default=8080, help="Port to run server on (default: 8080)")
 
     args = parser.parse_args()
 

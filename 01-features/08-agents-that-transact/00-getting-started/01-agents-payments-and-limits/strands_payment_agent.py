@@ -40,9 +40,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env, print_summary
 
 # ── Load config from Tutorial 00 .env ────────────────────────────────────────
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Verify AWS credentials ────────────────────────────────────────────────────
@@ -70,9 +68,7 @@ NETWORK = os.environ.get("NETWORK", "ETHEREUM")
 
 # CAIP-2 chain identifiers for network preference
 NETWORK_PREFS = (
-    ["eip155:84532", "base-sepolia"]
-    if NETWORK == "ETHEREUM"
-    else ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"]
+    ["eip155:84532", "base-sepolia"] if NETWORK == "ETHEREUM" else ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"]
 )
 
 print_summary(
@@ -174,8 +170,7 @@ budget_agent = Agent(
 )
 
 result = budget_agent(
-    "Access this paid weather API and summarize the data: "
-    "https://x402-test.genesisblock.ai/api/weather"
+    "Access this paid weather API and summarize the data: https://x402-test.genesisblock.ai/api/weather"
 )
 print(result.message)
 
@@ -221,9 +216,7 @@ tiny_agent = Agent(
 )
 
 try:
-    result = tiny_agent(
-        "Access this paid weather API: https://x402-test.genesisblock.ai/api/weather"
-    )
+    result = tiny_agent("Access this paid weather API: https://x402-test.genesisblock.ai/api/weather")
     print(result.message)
 except Exception as e:
     print("Budget exceeded — payment rejected by the service:")
@@ -254,15 +247,9 @@ print("Use with caution — only for trusted internal agents")
 
 # ── Step 6: Observability ─────────────────────────────────────────────────────
 print("\n── Step 6: Observability ──")
-PAYMENT_MANAGER_ID = os.environ.get(
-    "PAYMENT_MANAGER_ID", PAYMENT_MANAGER_ARN.split("/")[-1]
-)
+PAYMENT_MANAGER_ID = os.environ.get("PAYMENT_MANAGER_ID", PAYMENT_MANAGER_ARN.split("/")[-1])
 print(f"CloudWatch Logs: /aws/vendedlogs/bedrock-agentcore/{PAYMENT_MANAGER_ID}")
-print(
-    f"Console: https://{REGION}.console.aws.amazon.com/cloudwatch/home?region={REGION}#logsV2:log-groups"
-)
-print(
-    f"X-Ray:   https://{REGION}.console.aws.amazon.com/cloudwatch/home?region={REGION}#xray:traces"
-)
+print(f"Console: https://{REGION}.console.aws.amazon.com/cloudwatch/home?region={REGION}#logsV2:log-groups")
+print(f"X-Ray:   https://{REGION}.console.aws.amazon.com/cloudwatch/home?region={REGION}#xray:traces")
 
 print("\nDone. Next: python ../02-deploy-to-agentcore-runtime/deploy_payment_agent.py")
