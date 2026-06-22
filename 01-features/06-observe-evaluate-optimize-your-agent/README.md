@@ -6,19 +6,7 @@ automated evaluation, and AI-driven optimization with A/B testing.
 
 ## Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                  Agent Lifecycle on AgentCore                   │
-│                                                                 │
-│  [Infrastructure Setup]    [Observe]    [Evaluate]  [Optimize]  │
-│         (one-time)          │               │           │       │
-│             │               ▼               ▼           ▼       │
-│  Enable Transaction ──► Advanced      ──► Batch    ──► Config   │
-│  Search + ADOT           OTel Techniques  Eval         Bundles  │
-│                         Custom Spans    Online Eval  A/B Tests  │
-│                         Data Protection GT Datasets  AI Recs    │
-└─────────────────────────────────────────────────────────────────┘
-```
+![Agent development to production loops](AGENT-LOOPS.png)
 
 ## Before You Start — Enable observability Infrastructure
 

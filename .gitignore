@@ -288,6 +288,10 @@ plan/
 **/agent_state_*.json
 **/optimize_state_*.json
 **/runtime_config.json
+**/aws-targets.json
+!01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/**/aws-targets.json
+!06-workshops/02-AgentCore-gateway/**/aws-targets.json
+**/.cli/deployed-state.json
 
 # Evaluation and session results
 **/batch_eval_*_result.json
