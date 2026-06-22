@@ -30,7 +30,7 @@
 
 Welcome to the Amazon Bedrock AgentCore Samples repository!
 
-Amazon Bedrock AgentCore provides the infrastructure to deploy and operate AI agents at scale. It works with any agent framework ([Strands Agents](https://strandsagents.com/latest/), [CrewAI](https://www.crewai.com/), [LangGraph](https://www.langchain.com/langgraph), [LlamaIndex](https://www.llamaindex.ai/), and others) and any model, so you can bring existing code and deploy it without rewriting.
+Amazon Bedrock AgentCore is both framework-agnostic and model-agnostic, giving you the flexibility to deploy and operate advanced AI agents securely and at scale. Whether you’re building with [Strands Agents](https://strandsagents.com/latest/), [CrewAI](https://www.crewai.com/), [LangGraph](https://www.langchain.com/langgraph), [LlamaIndex](https://www.llamaindex.ai/), or any other framework—and running them on any Large Language Model (LLM)—Amazon Bedrock AgentCore provides the infrastructure to support them. By eliminating the undifferentiated heavy lifting of building and managing specialized agent infrastructure, Amazon Bedrock AgentCore lets you bring your preferred framework and model, and deploy without rewriting code.
 
 This collection provides examples and tutorials to help you understand, implement, and integrate Amazon Bedrock AgentCore capabilities into your applications.
 
@@ -46,66 +46,66 @@ Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’l
 
 ## 📁 Repository Structure
 
-### 🚀 [`00-getting-started/`](./00-getting-started/)
+### 🚀 [`getting-started/`](./getting-started/)
 
 **Your First Agent in Minutes**
 
-Use the [AgentCore CLI](https://github.com/aws/agentcore-cli) to create, develop, and deploy agents on Amazon Bedrock AgentCore.
+Get up and running with the [AgentCore CLI](https://github.com/aws/agentcore-cli) — the fastest way to create, develop, and deploy agents on Amazon Bedrock AgentCore.
 
-### 🧩 [`01-features/`](./01-features/)
+- **[`python/`](./getting-started/python/)** — Python agent samples (Code Interpreter, Gateway, Memory, Identity, and more)
+- **[`typescript/`](./getting-started/typescript/)** — TypeScript agent samples
+
+### 🧩 [`features/`](./features/)
 
 **AgentCore Capabilities Deep Dives**
 
 Focused examples for individual AgentCore capabilities:
 
-- **[`02-host-your-agent/`](./01-features/02-host-your-agent/)**: [Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html), serverless hosting for agents and tools
-- **[`03-connect-your-agent-to-anything/`](./01-features/03-connect-your-agent-to-anything/)**: [Code Interpreter](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) and [Browser Tool](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html)
-- **[`04-manage-context-of-your-agent/`](./01-features/04-manage-context-of-your-agent/)**: [Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html), short and long-term memory for agents
-- **[`05-authenticate-and-authorize/`](./01-features/05-authenticate-and-authorize/)**: [Identity](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html), inbound and outbound auth, M2M, 3LO, OBO token exchange
-- **[`06-observe-evaluate-optimize-your-agent/`](./01-features/06-observe-evaluate-optimize-your-agent/)**: [Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html), [Evaluation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html), [Optimization](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/insights.html), trace and improve agents
-- **[`07-centralize-and-govern-your-ai-infrastructure/`](./01-features/07-centralize-and-govern-your-ai-infrastructure/)**: [Gateway](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html), [Policy](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html), [Registry](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry.html)
+- **[Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)** — Secure, serverless runtime for deploying agents and tools at scale
+- **[Gateway](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html)** — Convert APIs, Lambda functions, and services into MCP-compatible tools
+- **[Identity](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html)** — Agent identity and access management across AWS and third-party apps
+- **[Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)** — Managed memory infrastructure for personalized agent experiences
+- **[Tools](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html)** — Built-in Code Interpreter and Browser Tool
+- **[Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html)** — Trace, debug, and monitor agent performance with OpenTelemetry
+- **[Evaluation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html)** — Built-in and custom evaluators for on-demand and online evaluation
+- **[Policy](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)** — Fine-grained access control with Cedar policies
 
-### 💡 [`02-use-cases/`](./02-use-cases/)
+### 💡 [`end-to-end/`](./end-to-end/)
 
 **Complete Applications**
 
-Production-ready use cases that combine multiple AgentCore capabilities:
+Production-ready use cases that combine multiple AgentCore capabilities to solve real business problems. Each includes deployment instructions, architecture diagrams, and testing guides.
 
-- **[`01-conversational-agents/`](./02-use-cases/01-conversational-agents/)**: conversational agent patterns
-- **[`02-workflow-automation-agents/`](./02-use-cases/02-workflow-automation-agents/)**: multi-step workflow automation
-- **[`03-coding-assistants/`](./02-use-cases/03-coding-assistants/)**: code generation and review agents
-
-### 🔌 [`03-integrations/`](./03-integrations/)
+### 🔌 [`integrations/`](./integrations/)
 
 **Connect AgentCore to Your Stack**
 
-- **[`agentic-frameworks/`](./03-integrations/agentic-frameworks/)**: LangGraph, CrewAI, Google ADK, and other frameworks
-- **[`agents-hosted-outside-runtime/`](./03-integrations/agents-hosted-outside-runtime/)**: agents on Lambda, ECS, and other compute
-- **[`data-platforms/`](./03-integrations/data-platforms/)**: data lake, warehouse, and analytics integrations
-- **[`ux-examples/`](./03-integrations/ux-examples/)**: Streamlit, AG-UI, and other frontend patterns
-- **[`3p-observability/`](./03-integrations/3p-observability/)**: Grafana, Datadog, Dynatrace, and other monitoring tools
+- **[`identity-providers/`](./integrations/identity-providers/)** — Okta, Entra, Cognito, and other IdP integrations
+- **[`observability/`](./integrations/observability/)** — Grafana, Datadog, Dynatrace, and other monitoring platforms
+- **[`data-platforms/`](./integrations/data-platforms/)** — Data lake, warehouse, and analytics integrations
+- **[`ux-examples/`](./integrations/ux-examples/)** — Streamlit, AG-UI, and other frontend patterns
 
-### 🏗️ [`04-infrastructure-as-code/`](./04-infrastructure-as-code/)
+### 🏗️ [`infrastructure-as-code/`](./infrastructure-as-code/)
 
 **Deployment Automation**
 
 Production-ready templates for provisioning AgentCore resources with CloudFormation, AWS CDK, or Terraform.
 
-### 🚀 [`05-blueprints/`](./05-blueprints/)
+### 🚀 [`blueprints/`](./blueprints/)
 
 **Full-Stack Reference Applications**
 
 Complete, deployment-ready agentic applications with integrated services, authentication, and business logic you can customize for your use case.
 
-### 🎓 [`06-workshops/`](./06-workshops/)
+### 📦 [`legacy/`](./legacy/)
 
-**Hands-On Workshop Labs**
+**Starter Toolkit Samples (Pending Migration)**
 
-Structured workshop content covering every AgentCore capability, from runtime hosting to evaluation and optimization. Each folder maps to a workshop module with step-by-step labs.
+Samples that still depend on the [Bedrock AgentCore Starter Toolkit](https://github.com/aws/bedrock-agentcore-starter-toolkit) CLI. These will be migrated to the AgentCore CLI as SDK support rolls out. See [`MIGRATION.md`](./MIGRATION.md) for status.
 
 ## Quick Start with the AgentCore CLI
 
-The [AgentCore CLI](https://github.com/aws/agentcore-cli) is the recommended way to create, develop, and deploy agents on Amazon Bedrock AgentCore. It replaces the previous Starter Toolkit.
+The [AgentCore CLI](https://github.com/aws/agentcore-cli) is the recommended way to create, develop, and deploy agents on Amazon Bedrock AgentCore. It replaces the previous Starter Toolkit with a streamlined project-based workflow.
 
 ### Step 1: Prerequisites
 
