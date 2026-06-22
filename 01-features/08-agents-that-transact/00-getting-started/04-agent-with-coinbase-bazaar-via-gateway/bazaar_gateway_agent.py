@@ -45,17 +45,18 @@ import boto3
 from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_tutorial_env, print_summary
+from utils import load_tutorial_env, print_summary, resolve_region
 
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Verify AWS credentials ────────────────────────────────────────────────────
+REGION = resolve_region()
 session = boto3.Session()
 identity = session.client("sts").get_caller_identity()
 print(f"Authenticated as: {identity['Arn']}")
 print(f"Account: {identity['Account']}")
-print(f"Region: {session.region_name}")
+print(f"Region: {REGION}")
 
 # ── Step 1: Gateway Setup (manual) ───────────────────────────────────────────
 print("""

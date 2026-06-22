@@ -197,8 +197,10 @@ def main() -> None:
     try:
         # Wait for memory to become ACTIVE. CreateMemory returns immediately
         # with status=CREATING; downstream record ops require ACTIVE.
+        # Cap polling at 5 minutes to avoid hanging indefinitely.
+        MAX_WAIT_SECONDS = 300
         print(
-            "\n   Waiting for memory to become ACTIVE (usually 30-90s)...",
+            f"\n   Waiting for memory to become ACTIVE (usually 30-90s, ceiling {MAX_WAIT_SECONDS}s)...",
             flush=True,
         )
         elapsed = 0
@@ -210,6 +212,11 @@ def main() -> None:
             if status == "FAILED":
                 reason = memory_ctl.get_memory(memoryId=memory_id)["memory"].get("failureReason", "unknown")
                 raise RuntimeError(f"Memory creation failed: {reason}")
+            if elapsed >= MAX_WAIT_SECONDS:
+                raise TimeoutError(
+                    f"Memory {memory_id} still {status} after {elapsed}s. "
+                    f"Run: aws bedrock-agentcore-control get-memory --memory-id {memory_id}"
+                )
             print(
                 f"   status={status}, elapsed={elapsed}s, polling again in 10s...",
                 flush=True,

@@ -167,6 +167,10 @@ Before the agent can produce x402 payments, two things must happen:
 
 A Manager with the same name already exists. Either use `idempotent_create()` (already done in the script) or delete the existing Manager first. The script appends a UUID suffix to ensure uniqueness on fresh runs.
 
+### CreatePaymentInstrument returns AccessDeniedException
+
+The error message is `The payment connector credentials are not authorized for this operation`. The CDP API key is missing the `Non-custodial: Manage` scope, which sits under Advanced settings when you create the key at [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com/api-keys/secret). Create a new key with that scope enabled, update `.env`, and re-run `setup_agentcore_payments.py`.
+
 ### Instrument status stays CREATING
 
 `EMBEDDED_CRYPTO_WALLET` provisioning is asynchronous. The script uses `wait_for_status()` which polls every 5 seconds for up to 5 minutes. If it times out, check the Coinbase CDP or Privy dashboard for errors. Make sure `LINKED_EMAIL` is a real email address.

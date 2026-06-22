@@ -167,6 +167,8 @@ print("    4. Choose 'Connect agent' → 'Give access'")
 print()
 print("  Without delegation: ProcessPayment fails with a signing error.")
 
+input("\nPress Enter when the new wallet is funded and signing is granted... ")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PART 2 — Backend Operations
 # ─────────────────────────────────────────────────────────────────────────────

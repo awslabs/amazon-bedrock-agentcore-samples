@@ -49,15 +49,15 @@ App Backend                          AgentCore runtime
 - Tutorial 01 completed (understand the local agent + plugin flow)
 - Wallet funded with testnet USDC from [faucet.circle.com](https://faucet.circle.com/)
 - Python 3.10+
-- Node.js 20+ and the AgentCore CLI: `npm install -g @aws/agentcore`
+- Node.js 20+ and the AgentCore CLI 0.19+: `npm install -g @aws/agentcore@^0.19.0`
 - AWS CDK: `npm install -g aws-cdk`
 - AWS CLI configured
 
 ## CLI Commands
 
 ```bash
-# Install AgentCore CLI
-npm install -g @aws/agentcore
+# Install AgentCore CLI (0.19+)
+npm install -g @aws/agentcore@^0.19.0
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -122,11 +122,11 @@ python payment_agent.py
 
 ## Key Concepts
 
-**Stateless agent** — `payment_agent.py` reads all payment context from the invocation payload, not from environment variables. This means the same agent binary can serve different users with different budgets — the app backend controls what each user can spend by creating a session with the appropriate budget before invoking.
+**Stateless agent** — `payment_agent.py` reads all payment context from the invocation payload, not from environment variables. The same binary serves multiple users with different budgets.
 
-**ProcessPaymentRole** — The execution role the agent runs under. It has `ProcessPayment` permission and explicit denies on `CreatePaymentSession`, `CreatePaymentInstrument`, and all control-plane operations. The agent cannot create sessions, override budgets, or provision wallets.
+**Runtime execution role** — The agentcore CLI auto-creates an execution role during scaffolding. `deploy_payment_agent.py` attaches an inline policy (`PaymentDataPlaneAccess`) scoped to `ProcessPayment` and read-only payment APIs only. See the [IAM roles guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-iam-roles.html) for the full trust/permission model.
 
-**Payload-driven sessions** — The app backend creates a fresh session with a budget before every invocation, then passes the `payment_session_id` in the payload. The agent cannot reuse sessions from previous invocations or extend their expiry.
+**Payload-driven sessions** — The app backend creates a session with a budget before each invocation and passes `payment_session_id` in the payload. Sessions are single-use and cannot be extended.
 
 ## Troubleshooting
 
@@ -134,8 +134,20 @@ python payment_agent.py
 
 Install Node.js 20+ and the AgentCore CLI:
 ```bash
-npm install -g @aws/agentcore
+npm install -g @aws/agentcore@^0.19.0
 agentcore --version
+```
+
+### agentcore deploy fails with `Target "default" not found in aws-targets.json`
+
+CLI versions before 0.19 scaffold an empty `aws-targets.json`, causing the deploy to exit before CDK synth. Upgrade:
+```bash
+npm install -g @aws/agentcore@^0.19.0
+agentcore --version
+```
+If using `deploy_payment_agent.py`, the script auto-populates this file. Otherwise, create it manually:
+```bash
+echo '[{"name":"default","account":"<account-id>","region":"<region>"}]' > PaymentAgent/agentcore/aws-targets.json
 ```
 
 ### Deploy fails with CDK bootstrap error
