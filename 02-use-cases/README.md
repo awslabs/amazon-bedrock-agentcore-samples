@@ -13,6 +13,7 @@ Agents that interact with users in real time. Users authenticate through an iden
 | [A2A-multi-agent-incident-response](./01-conversational-agents/A2A-multi-agent-incident-response/) | IT / DevOps | Runtime, Gateway, Memory, A2A (3 frameworks) |
 | [AWS-operations-agent](./01-conversational-agents/AWS-operations-agent/) | Cloud Operations | Runtime, Gateway, Memory, Policy, Observability |
 | [customer-support-assistant-vpc](./01-conversational-agents/customer-support-assistant-vpc/) | Retail / E-commerce | Runtime, Gateway (VPC) |
+| [deep-research-agent](./01-conversational-agents/deep-research-agent/) | Research / Q&A | Gateway (Web Search), Runtime |
 | [device-management-agent](./01-conversational-agents/device-management-agent/) | IoT / Smart Home | Runtime, Gateway, Policy, Identity (Cognito) |
 | [finance-personal-assistant](./01-conversational-agents/finance-personal-assistant/) | Personal Finance | Gateway, Policy |
 | [healthcare-appointment-agent](./01-conversational-agents/healthcare-appointment-agent/) | Healthcare | Runtime, Gateway, Policy, Observability (FHIR R4) |
