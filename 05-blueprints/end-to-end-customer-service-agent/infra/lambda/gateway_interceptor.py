@@ -10,11 +10,13 @@ REQUEST path capabilities:
   4. Logging / auditing     - structured CloudWatch log per tool call
   5. Rate limiting          - per-user call quota enforced via DynamoDB
   6. Input transformation   - normalise parameter names before hitting targets
+  7. Guardrail checks       - content filters + prompt attack detection on user input
 
 RESPONSE path capabilities:
-  7. PII masking            - redact emails, phone numbers, SSNs from tool responses
-  8. Response logging       - record what each tool returned
-  9. Error normalisation    - standardise error shapes returned to the agent
+  8. PII masking            - redact emails, phone numbers, SSNs from tool responses
+  9. Response logging       - record what each tool returned
+  10. Error normalisation   - standardise error shapes returned to the agent
+  11. Guardrail checks      - content filters + PII detection on tool output
 """
 
 import json
@@ -36,6 +38,11 @@ RATE_LIMIT_MAX     = int(os.environ.get("RATE_LIMIT_MAX", "100"))   # calls per 
 RATE_LIMIT_WINDOW  = int(os.environ.get("RATE_LIMIT_WINDOW", "3600"))  # seconds (1 hour)
 DOWNSTREAM_API_KEY = os.environ.get("DOWNSTREAM_API_KEY", "")       # injected header value
 ENABLE_RATE_LIMIT  = os.environ.get("ENABLE_RATE_LIMIT", "true").lower() == "true"
+
+# Guardrail checks configuration
+ENABLE_GUARDRAIL_CHECKS = os.environ.get("ENABLE_GUARDRAIL_CHECKS", "true").lower() == "true"
+GUARDRAIL_BLOCK_THRESHOLD = float(os.environ.get("GUARDRAIL_BLOCK_THRESHOLD", "0.8"))
+GUARDRAIL_ESCALATE_THRESHOLD = float(os.environ.get("GUARDRAIL_ESCALATE_THRESHOLD", "0.4"))
 
 # Tools that are allowed through the gateway — block anything not in this list
 ALLOWED_TOOLS = {
@@ -71,6 +78,18 @@ def get_dynamodb():
     if _dynamodb is None:
         _dynamodb = boto3.resource("dynamodb")
     return _dynamodb
+
+
+# ---------------------------------------------------------------------------
+# Bedrock Runtime client for guardrail checks (lazy init)
+# ---------------------------------------------------------------------------
+_bedrock_runtime = None
+
+def get_bedrock_runtime():
+    global _bedrock_runtime
+    if _bedrock_runtime is None:
+        _bedrock_runtime = boto3.client("bedrock-runtime")
+    return _bedrock_runtime
 
 
 # ===========================================================================
@@ -146,6 +165,19 @@ def _handle_request(gateway_request: dict) -> dict:
             return _error_response(msg_id, code=-32003, message=rate_error)
 
     # ------------------------------------------------------------------
+    # 5. GUARDRAIL CHECKS — content filters + prompt attack detection
+    # ------------------------------------------------------------------
+    if ENABLE_GUARDRAIL_CHECKS and method == "tools/call":
+        user_text = _extract_user_text(params)
+        if user_text:
+            guardrail_result = _check_input_guardrails(user_text)
+            if guardrail_result:
+                logger.warning(f"GUARDRAIL BLOCKED: caller={caller_id} | {guardrail_result}")
+                return _error_response(
+                    msg_id, code=-32004, message=f"Content blocked by safety guardrail: {guardrail_result}"
+                )
+
+    # ------------------------------------------------------------------
     # 5. INPUT TRANSFORMATION — normalise parameter names
     # ------------------------------------------------------------------
     body = _transform_request_body(body, tool_name)
@@ -183,6 +215,17 @@ def _handle_response(gateway_request: dict, gateway_response: dict) -> dict:
     # 7. PII MASKING — scrub sensitive data before it reaches the agent
     # ------------------------------------------------------------------
     body = _mask_pii(body)
+
+    # ------------------------------------------------------------------
+    # 8. GUARDRAIL CHECKS — content filters + PII detection on tool output
+    # ------------------------------------------------------------------
+    if ENABLE_GUARDRAIL_CHECKS:
+        response_text = _extract_response_text(body)
+        if response_text:
+            guardrail_findings = _check_output_guardrails(response_text)
+            if guardrail_findings:
+                logger.warning(f"GUARDRAIL OUTPUT FINDING: {guardrail_findings}")
+                # Log findings but don't block — tool output is informational
 
     # ------------------------------------------------------------------
     # 8. RESPONSE LOGGING
@@ -409,3 +452,166 @@ def _error_response(msg_id, code: int, message: str) -> dict:
             }
         },
     }
+
+
+# ===========================================================================
+# GUARDRAIL CHECK FUNCTIONS (InvokeGuardrailChecks API)
+# ===========================================================================
+
+def _check_input_guardrails(text: str):
+    """
+    Run guardrail checks on user input using the InvokeGuardrailChecks API.
+    Checks for prompt attacks (jailbreak, injection) and harmful content.
+    Returns an error string if blocked, None if allowed.
+    """
+    try:
+        client = get_bedrock_runtime()
+        response = client.invoke_guardrail_checks(
+            messages=[{"role": "user", "content": [{"text": text}]}],
+            checks={
+                "contentFilter": {
+                    "categories": [
+                        {"category": "VIOLENCE"},
+                        {"category": "MISCONDUCT"},
+                        {"category": "HATE"},
+                        {"category": "SEXUAL"},
+                        {"category": "INSULTS"},
+                    ]
+                },
+                "promptAttack": {
+                    "categories": [
+                        {"category": "JAILBREAK"},
+                        {"category": "PROMPT_INJECTION"},
+                        {"category": "PROMPT_LEAKAGE"},
+                    ]
+                },
+            },
+        )
+
+        blocked_categories = []
+
+        # Check content filter results
+        if "contentFilter" in response.get("results", {}):
+            for finding in response["results"]["contentFilter"]["results"]:
+                if finding["severityScore"] >= GUARDRAIL_BLOCK_THRESHOLD:
+                    blocked_categories.append(
+                        f"{finding['category']}(severity={finding['severityScore']})"
+                    )
+
+        # Check prompt attack results
+        if "promptAttack" in response.get("results", {}):
+            for finding in response["results"]["promptAttack"]["results"]:
+                if finding["severityScore"] >= GUARDRAIL_BLOCK_THRESHOLD:
+                    blocked_categories.append(
+                        f"{finding['category']}(severity={finding['severityScore']})"
+                    )
+
+        if blocked_categories:
+            return ", ".join(blocked_categories)
+        return None
+
+    except AttributeError:
+        # API not available in current SDK version — skip gracefully
+        logger.info("InvokeGuardrailChecks API not available — skipping input guardrail checks")
+        return None
+    except Exception as e:
+        # Fail open — don't block requests if guardrail service is unavailable
+        logger.error(f"Guardrail input check failed: {e} — allowing request through")
+        return None
+
+
+def _check_output_guardrails(text: str) -> list:
+    """
+    Run guardrail checks on tool output using the InvokeGuardrailChecks API.
+    Checks for harmful content and sensitive information in responses.
+    Returns a list of findings for logging, empty list if clean.
+    """
+    try:
+        client = get_bedrock_runtime()
+        response = client.invoke_guardrail_checks(
+            messages=[{"role": "assistant", "content": [{"text": text}]}],
+            checks={
+                "contentFilter": {
+                    "categories": [
+                        {"category": "VIOLENCE"},
+                        {"category": "HATE"},
+                        {"category": "MISCONDUCT"},
+                    ]
+                },
+                "sensitiveInformation": {
+                    "entities": [
+                        {"type": "EMAIL"},
+                        {"type": "PHONE"},
+                        {"type": "US_SOCIAL_SECURITY_NUMBER"},
+                        {"type": "CREDIT_DEBIT_CARD_NUMBER"},
+                    ]
+                },
+            },
+        )
+
+        findings = []
+
+        # Content filter findings
+        if "contentFilter" in response.get("results", {}):
+            for finding in response["results"]["contentFilter"]["results"]:
+                if finding["severityScore"] >= GUARDRAIL_ESCALATE_THRESHOLD:
+                    findings.append({
+                        "type": "content",
+                        "category": finding["category"],
+                        "score": finding["severityScore"],
+                    })
+
+        # Sensitive information findings
+        if "sensitiveInformation" in response.get("results", {}):
+            for finding in response["results"]["sensitiveInformation"]["results"]:
+                if finding["confidenceScore"] >= GUARDRAIL_ESCALATE_THRESHOLD:
+                    findings.append({
+                        "type": "pii",
+                        "entity": finding["type"],
+                        "score": finding["confidenceScore"],
+                        "offset": f"[{finding['beginOffset']}:{finding['endOffset']}]",
+                    })
+
+        return findings
+
+    except AttributeError:
+        # API not available in current SDK version — skip gracefully
+        logger.info("InvokeGuardrailChecks API not available — skipping output guardrail checks")
+        return []
+    except Exception as e:
+        # Fail open — don't break the response pipeline
+        logger.error(f"Guardrail output check failed: {e} — skipping")
+        return []
+
+
+def _extract_user_text(params: dict) -> str:
+    """Extract the user's input text from MCP tool call parameters."""
+    if not isinstance(params, dict):
+        return ""
+    arguments = params.get("arguments", {})
+    if not isinstance(arguments, dict):
+        return ""
+    # Try common parameter names that contain user text
+    for key in ("query", "prompt", "text", "message", "input", "description", "subject"):
+        if key in arguments and isinstance(arguments[key], str):
+            return arguments[key]
+    # Fallback: concatenate all string values
+    texts = [v for v in arguments.values() if isinstance(v, str)]
+    return " ".join(texts) if texts else ""
+
+
+def _extract_response_text(body: dict) -> str:
+    """Extract text content from a tool response body."""
+    if not isinstance(body, dict):
+        return ""
+    result = body.get("result", {})
+    if not isinstance(result, dict):
+        return ""
+    content = result.get("content", [])
+    if isinstance(content, list):
+        texts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                texts.append(item.get("text", ""))
+        return " ".join(texts)
+    return ""
