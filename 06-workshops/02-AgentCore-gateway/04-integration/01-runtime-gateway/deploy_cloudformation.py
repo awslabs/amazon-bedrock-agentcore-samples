@@ -37,9 +37,7 @@ def deploy_stack(stack_name, template_file, region, cf_client):
 
         # Check if stack is in a failed state
         if stack_status in ["CREATE_FAILED", "ROLLBACK_COMPLETE", "ROLLBACK_FAILED"]:
-            print(
-                f"⚠️  Stack is in {stack_status} state. You may need to delete it first."
-            )
+            print(f"⚠️  Stack is in {stack_status} state. You may need to delete it first.")
 
     except ClientError as e:
         if "does not exist" in str(e):
@@ -131,9 +129,7 @@ def deploy_stack(stack_name, template_file, region, cf_client):
         outputs = response["Stacks"][0].get("Outputs", [])
 
         if not outputs:
-            raise Exception(
-                "❌ No outputs found in stack. Stack may have failed to create properly."
-            )
+            raise Exception("❌ No outputs found in stack. Stack may have failed to create properly.")
 
         # Extract specific outputs based on your template
         lambda_arn = None
@@ -164,9 +160,7 @@ def deploy_stack(stack_name, template_file, region, cf_client):
             missing_outputs.append("AgentCoreRuntimeExecutionRoleArn")
 
         if missing_outputs:
-            raise Exception(
-                f"❌ Missing required outputs: {', '.join(missing_outputs)}"
-            )
+            raise Exception(f"❌ Missing required outputs: {', '.join(missing_outputs)}")
 
         print("\n🎉 Stack deployment completed successfully!")
         print(f"   Stack Name: {stack_name}")
@@ -215,9 +209,7 @@ def delete_stack(stack_name, region, cf_client, wait=True):
 
         # Check if stack is in a failed state
         if stack_status == "DELETE_FAILED":
-            print(
-                "⚠️  Stack is in DELETE_FAILED state. Will attempt to retry deletion..."
-            )
+            print("⚠️  Stack is in DELETE_FAILED state. Will attempt to retry deletion...")
 
     except ClientError as e:
         if "does not exist" in str(e):
@@ -240,18 +232,14 @@ def delete_stack(stack_name, region, cf_client, wait=True):
 
             if resource_type not in resource_summary:
                 resource_summary[resource_type] = []
-            resource_summary[resource_type].append(
-                {"logical": logical_id, "physical": physical_id}
-            )
+            resource_summary[resource_type].append({"logical": logical_id, "physical": physical_id})
 
         for resource_type, items in sorted(resource_summary.items()):
             print(f"\n   {resource_type}:")
             for item in items:
                 print(f"      - {item['logical']}")
                 if resource_type == "AWS::DynamoDB::Table":
-                    print(
-                        f"        ⚠️  Table: {item['physical']} (all data will be deleted)"
-                    )
+                    print(f"        ⚠️  Table: {item['physical']} (all data will be deleted)")
                 elif resource_type == "AWS::Lambda::Function":
                     print(f"        🔧 Function: {item['physical']}")
                 elif resource_type == "AWS::IAM::Role":
@@ -260,16 +248,12 @@ def delete_stack(stack_name, region, cf_client, wait=True):
         # Check for DynamoDB tables with data
         dynamodb_tables = resource_summary.get("AWS::DynamoDB::Table", [])
         if dynamodb_tables:
-            print(
-                f"\n⚠️  WARNING: This will delete {len(dynamodb_tables)} DynamoDB table(s) and ALL their data!"
-            )
+            print(f"\n⚠️  WARNING: This will delete {len(dynamodb_tables)} DynamoDB table(s) and ALL their data!")
             dynamodb = boto3.client("dynamodb", region_name=region)
             for table in dynamodb_tables:
                 try:
                     table_name = table["physical"]
-                    response = dynamodb.scan(
-                        TableName=table_name, Select="COUNT", Limit=1
-                    )
+                    response = dynamodb.scan(TableName=table_name, Select="COUNT", Limit=1)
                     if response["Count"] > 0:
                         print(f"      ⚠️  {table_name} contains data!")
                 except Exception:
@@ -335,9 +319,7 @@ def _wait_for_deletion(stack_name, cf_client, max_wait_minutes=30):
             elapsed = time.time() - start_time
 
             if elapsed > max_wait_seconds:
-                print(
-                    f"\n⚠️  Timeout: Stack deletion took longer than {max_wait_minutes} minutes"
-                )
+                print(f"\n⚠️  Timeout: Stack deletion took longer than {max_wait_minutes} minutes")
                 print("   Check AWS Console for current status")
                 return False
 
@@ -399,11 +381,7 @@ def _print_deletion_errors(stack_name, cf_client):
         print("\n📋 Deletion failure details:")
         events = cf_client.describe_stack_events(StackName=stack_name)
 
-        failed_events = [
-            event
-            for event in events["StackEvents"]
-            if "FAILED" in event.get("ResourceStatus", "")
-        ]
+        failed_events = [event for event in events["StackEvents"] if "FAILED" in event.get("ResourceStatus", "")]
 
         if failed_events:
             for event in failed_events[:10]:  # Show last 10 failed events

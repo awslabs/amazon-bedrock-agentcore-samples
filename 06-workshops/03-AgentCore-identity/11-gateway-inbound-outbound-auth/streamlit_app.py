@@ -54,13 +54,9 @@ def _find_project_dir() -> str:
     """Find the agentcore project subdirectory."""
     for entry in os.listdir(SAMPLE_DIR):
         candidate = os.path.join(SAMPLE_DIR, entry)
-        if os.path.isdir(candidate) and os.path.isdir(
-            os.path.join(candidate, "agentcore")
-        ):
+        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
             return candidate
-    raise FileNotFoundError(
-        "No agentcore project directory found. Run 'agentcore create' first."
-    )
+    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
 @st.cache_data(ttl=300)
@@ -80,9 +76,7 @@ def resolve_agent_arn() -> str:
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError(
-            "No deployed-state.json found. Run 'agentcore deploy -y' first."
-        )
+        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
     with open(state_file) as f:
         state = json.load(f)
     arn = _find_in_json(state, "runtimeArn")
@@ -99,9 +93,7 @@ def resolve_gateway_url() -> str:
     """
     try:
         project_dir = _find_project_dir()
-        state_file = os.path.join(
-            project_dir, "agentcore", ".cli", "deployed-state.json"
-        )
+        state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
         if not os.path.exists(state_file):
             return "N/A"
         with open(state_file) as f:
@@ -137,11 +129,7 @@ def parse_event_stream(response: dict) -> str:
     """Parse the streaming event response into plain text."""
     parts: list[str] = []
     for event in response.get("response", []):
-        raw = (
-            event
-            if isinstance(event, bytes)
-            else event.get("chunk", {}).get("bytes", b"")
-        )
+        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -165,9 +153,7 @@ def parse_event_stream(response: dict) -> str:
     return "\n".join(parts) if parts else "(no response)"
 
 
-def invoke_agent(
-    agent_arn: str, region: str, prompt: str, bearer_token: str | None = None
-) -> dict:
+def invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | None = None) -> dict:
     """
     Invoke the AgentCore Runtime agent.
 
@@ -184,9 +170,7 @@ def invoke_agent(
             request.headers["Authorization"] = f"Bearer {bearer_token}"
 
         handler = _inject_bearer
-        client.meta.events.register(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", handler
-        )
+        client.meta.events.register("before-send.bedrock-agentcore.InvokeAgentRuntime", handler)
 
     start = time.time()
     try:
@@ -210,18 +194,14 @@ def invoke_agent(
         elapsed = time.time() - start
         return {
             "text": None,
-            "status_code": getattr(exc, "response", {})
-            .get("ResponseMetadata", {})
-            .get("HTTPStatusCode", None),
+            "status_code": getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode", None),
             "elapsed": elapsed,
             "auth_header": auth_header,
             "error": f"{type(exc).__name__}: {exc}",
         }
     finally:
         if handler:
-            client.meta.events.unregister(
-                "before-send.bedrock-agentcore.InvokeAgentRuntime", handler
-            )
+            client.meta.events.unregister("before-send.bedrock-agentcore.InvokeAgentRuntime", handler)
 
 
 def _truncate_arn(arn: str, max_len: int = 50) -> str:
@@ -306,9 +286,7 @@ if not st.session_state.logged_in:
                 value=config.get("password", "AgentCoreTest1!"),
                 type="password",
             )
-            sign_in = st.form_submit_button(
-                "Sign In", use_container_width=True, type="primary"
-            )
+            sign_in = st.form_submit_button("Sign In", use_container_width=True, type="primary")
 
         if sign_in:
             login_config = {**config, "username": username, "password": password}
@@ -376,11 +354,7 @@ with st.sidebar:
             "chat_history",
             "last_request_info",
         ]:
-            st.session_state[key] = (
-                type(st.session_state[key])()
-                if st.session_state[key] is not None
-                else None
-            )
+            st.session_state[key] = type(st.session_state[key])() if st.session_state[key] is not None else None
         st.session_state.logged_in = False
         st.rerun()
 

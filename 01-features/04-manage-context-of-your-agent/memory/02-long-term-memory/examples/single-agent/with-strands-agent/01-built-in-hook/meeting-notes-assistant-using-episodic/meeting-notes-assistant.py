@@ -4,7 +4,6 @@ import logging
 import json
 from typing import Dict
 from datetime import datetime
-from botocore.exceptions import ClientError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("meeting-notes-assistant")
@@ -28,6 +27,11 @@ from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
 client = MemoryClient(region_name=REGION)
 memory_name = "MeetingNotesEpisodicMemory"
 
+# NOTE: although this tutorial is framed around "episodes" and "reflections", it is
+# configured with a SEMANTIC strategy. True episodic memory requires an
+# `episodicMemoryStrategy` with a `reflectionConfiguration` (and conversations that
+# conclude so the service detects episode completion). See the reference at
+# 02-long-term-memory/01-built-in-strategies/episodic.py.
 # Define semantic memory strategy to capture key facts from meeting discussions
 strategies = [
     {
@@ -39,26 +43,17 @@ strategies = [
     }
 ]
 
-# Create memory resource
-try:
-    memory = client.create_memory_and_wait(
-        name=memory_name,
-        strategies=strategies,
-        description="Episodic memory for meeting notes assistant",
-        event_expiry_days=180,  # TTL for short-term memory events (STM), not for long-term episodic strategy
-    )
-    memory_id = memory["id"]
-    logger.info(f"✅ Created memory: {memory_id}")
-except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-        memories = client.list_memories()
-        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
-        logger.info(f"Memory already exists. Using: {memory_id}")
-    else:
-        raise
-except Exception as e:
-    logger.error(f"❌ ERROR: {e}")
-    raise
+# Create (or reuse) the memory resource. create_or_get_memory is idempotent: it
+# creates the memory (waiting for ACTIVE) or returns the existing one on a re-run,
+# replacing the manual create/except/list-and-match.
+memory = client.create_or_get_memory(
+    name=memory_name,
+    strategies=strategies,
+    description="Memory for meeting notes assistant",
+    event_expiry_days=180,  # TTL for short-term memory events (STM), not for long-term records
+)
+memory_id = memory["id"]
+logger.info(f"✅ Memory ready: {memory_id}")
 
 # Verify episodic strategy is configured
 strategies = client.get_memory_strategies(memory_id)

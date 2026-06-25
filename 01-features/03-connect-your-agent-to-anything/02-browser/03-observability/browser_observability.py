@@ -50,9 +50,7 @@ console = Console()
 # ── IAM helpers ───────────────────────────────────────────────────────────────
 
 
-def create_browser_execution_role(
-    role_name: str, bucket_name: str, region: str, account_id: str
-) -> str:
+def create_browser_execution_role(role_name: str, bucket_name: str, region: str, account_id: str) -> str:
     """Create an IAM role that lets AgentCore Browser write recordings to S3."""
     iam = boto3.client("iam")
 
@@ -65,9 +63,7 @@ def create_browser_execution_role(
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -185,16 +181,12 @@ def main():
     args = parse_args()
 
     if not args.nova_act_key:
-        console.print(
-            "[red]ERROR:[/red] --nova-act-key is required (or set NOVA_ACT_API_KEY)."
-        )
+        console.print("[red]ERROR:[/red] --nova-act-key is required (or set NOVA_ACT_API_KEY).")
         raise SystemExit(1)
 
     boto_session = Session()
     region = args.region or boto_session.region_name or "us-west-2"
-    account_id = boto3.client("sts", region_name=region).get_caller_identity()[
-        "Account"
-    ]
+    account_id = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
 
     console.print("=" * 60)
     console.print("AgentCore Browser Tool — Observability Demo")
@@ -294,9 +286,7 @@ def main():
             except Exception as exc:
                 console.print(f"  Warning during S3 cleanup: {exc}")
         else:
-            console.print(
-                "\n[yellow]Skipping cleanup (--skip-cleanup). Resources remain for review.[/yellow]"
-            )
+            console.print("\n[yellow]Skipping cleanup (--skip-cleanup). Resources remain for review.[/yellow]")
 
     console.print("\n" + "=" * 60)
     console.print("Demo complete!")

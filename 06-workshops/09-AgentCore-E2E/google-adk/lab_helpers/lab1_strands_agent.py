@@ -169,9 +169,7 @@ def get_technical_support(issue_description: str) -> str:
         account_id = boto3.client("sts").get_caller_identity()["Account"]
         region = boto3.Session().region_name
 
-        kb_id = ssm.get_parameter(Name=f"/{account_id}-{region}/kb/knowledge-base-id")[
-            "Parameter"
-        ]["Value"]
+        kb_id = ssm.get_parameter(Name=f"/{account_id}-{region}/kb/knowledge-base-id")["Parameter"]["Value"]
         print(f"Successfully retrieved KB ID: {kb_id}")
 
         # Use strands retrieve tool

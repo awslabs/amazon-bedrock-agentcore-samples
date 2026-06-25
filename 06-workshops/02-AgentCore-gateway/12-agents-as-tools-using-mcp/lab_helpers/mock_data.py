@@ -10,11 +10,7 @@ import random
 EC2_APPLICATION_LOGS = [
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=5)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:55:00.123Z [INFO] Application started successfully",
         "logStreamName": "ec2-app-stream",
@@ -22,11 +18,7 @@ EC2_APPLICATION_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=4)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=4)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:56:00.456Z [INFO] Database connection pool initialized. Size: 10",
         "logStreamName": "ec2-app-stream",
@@ -34,11 +26,7 @@ EC2_APPLICATION_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=3)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:57:00.789Z [ERROR] Failed to connect to DynamoDB. Connection timeout after 30s",
         "logStreamName": "ec2-app-stream",
@@ -46,11 +34,7 @@ EC2_APPLICATION_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=2)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=2)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:58:00.234Z [WARN] Retrying DynamoDB connection. Attempt 2/5",
         "logStreamName": "ec2-app-stream",
@@ -58,20 +42,14 @@ EC2_APPLICATION_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=1)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:59:00.567Z [ERROR] Connection attempt 3 failed. Response time: 45000ms (threshold: 30000ms)",
         "logStreamName": "ec2-app-stream",
         "eventId": "5",
     },
     {
-        "timestamp": int(
-            datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
-        ),
+        "timestamp": int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000),
         "message": "2024-11-03T15:00:00.890Z [CRITICAL] Multiple connection failures detected. Circuit breaker activated.",
         "logStreamName": "ec2-app-stream",
         "eventId": "6",
@@ -82,11 +60,7 @@ EC2_APPLICATION_LOGS = [
 NGINX_LOGS = [
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=5)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).timestamp() * 1000
         ),
         "message": '192.168.1.100 - - [03/Nov/2024:14:55:00 +0000] "GET /api/customers HTTP/1.1" 200 1245 "-" "Mozilla/5.0"',
         "logStreamName": "nginx-access",
@@ -94,11 +68,7 @@ NGINX_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=4)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=4)).timestamp() * 1000
         ),
         "message": '192.168.1.101 - - [03/Nov/2024:14:56:00 +0000] "POST /api/orders HTTP/1.1" 201 534 "-" "REST-Client"',
         "logStreamName": "nginx-access",
@@ -106,11 +76,7 @@ NGINX_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=3)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3)).timestamp() * 1000
         ),
         "message": '192.168.1.102 - - [03/Nov/2024:14:57:00 +0000] "GET /api/customers HTTP/1.1" 502 162 "-" "Mozilla/5.0"',
         "logStreamName": "nginx-error",
@@ -118,11 +84,7 @@ NGINX_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=2)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=2)).timestamp() * 1000
         ),
         "message": "2024/11/03 14:58:00 [error] 1234#0: *567 upstream timed out (110: Connection timed out) while connecting to upstream",
         "logStreamName": "nginx-error",
@@ -130,20 +92,14 @@ NGINX_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=1)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1)).timestamp() * 1000
         ),
         "message": '192.168.1.103 - - [03/Nov/2024:14:59:00 +0000] "GET /health HTTP/1.1" 503 0 "-" "HealthChecker"',
         "logStreamName": "nginx-access",
         "eventId": "5",
     },
     {
-        "timestamp": int(
-            datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
-        ),
+        "timestamp": int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000),
         "message": "2024/11/03 15:00:00 [alert] 1234#0: worker process 5678 exited on signal 11 (core dumped)",
         "logStreamName": "nginx-error",
         "eventId": "6",
@@ -154,11 +110,7 @@ NGINX_LOGS = [
 DYNAMODB_LOGS = [
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=5)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:55:00.100Z [INFO] PutItem: table=Orders, latency=45ms, consumed_capacity=1",
         "logStreamName": "dynamodb-ops",
@@ -166,11 +118,7 @@ DYNAMODB_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=4)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=4)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:56:00.200Z [INFO] Query: table=Customers, latency=32ms, items_returned=15",
         "logStreamName": "dynamodb-ops",
@@ -178,11 +126,7 @@ DYNAMODB_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=3)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:57:00.300Z [WARN] ProvisionedThroughputExceededException: Orders table. Write capacity exceeded. Requested: 150, Available: 100",
         "logStreamName": "dynamodb-ops",
@@ -190,11 +134,7 @@ DYNAMODB_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=2)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=2)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:58:00.400Z [WARN] Batch write request throttled. Retry attempt 1/3 with exponential backoff",
         "logStreamName": "dynamodb-ops",
@@ -202,20 +142,14 @@ DYNAMODB_LOGS = [
     },
     {
         "timestamp": int(
-            (
-                datetime.datetime.now(datetime.timezone.utc)
-                - datetime.timedelta(minutes=1)
-            ).timestamp()
-            * 1000
+            (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1)).timestamp() * 1000
         ),
         "message": "2024-11-03T14:59:00.500Z [ERROR] Max retries exceeded for Orders table. Total backoff time: 5234ms",
         "logStreamName": "dynamodb-ops",
         "eventId": "5",
     },
     {
-        "timestamp": int(
-            datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
-        ),
+        "timestamp": int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000),
         "message": "2024-11-03T15:00:00.600Z [CRITICAL] Orders table unavailable. All operations failing with ServiceUnavailableException",
         "logStreamName": "dynamodb-ops",
         "eventId": "6",

@@ -80,9 +80,7 @@ parser.add_argument("--raw-events", action="store_true")
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def poll_gateway_status(
-    control, gateway_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT
-):
+def poll_gateway_status(control, gateway_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT):
     deadline = time.monotonic() + timeout
     while True:
         resp = control.get_gateway(gatewayIdentifier=gateway_id)
@@ -97,14 +95,10 @@ def poll_gateway_status(
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_target_status(
-    control, gateway_id, target_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT
-):
+def poll_target_status(control, gateway_id, target_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT):
     deadline = time.monotonic() + timeout
     while True:
-        resp = control.get_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        )
+        resp = control.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
         status = resp["status"]
         print(f"  Target status: {status}")
         if status == target_status:
@@ -116,9 +110,7 @@ def poll_target_status(
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_harness_status(
-    control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT
-):
+def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
     deadline = time.monotonic() + timeout
     while True:
         resp = control.get_harness(harnessId=harness_id)
@@ -133,9 +125,7 @@ def poll_harness_status(
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def stream_response(
-    client, harness_arn, session_id, message, model_id, gateway_arn, raw=False
-):
+def stream_response(client, harness_arn, session_id, message, model_id, gateway_arn, raw=False):
     response = client.invoke_harness(
         harnessArn=harness_arn,
         runtimeSessionId=session_id,
@@ -158,9 +148,7 @@ def stream_response(
             if "contentBlockStart" in event:
                 start = event["contentBlockStart"].get("start", {})
                 if "toolUse" in start:
-                    print(
-                        f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True
-                    )
+                    print(f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True)
             elif "contentBlockDelta" in event:
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
@@ -185,9 +173,7 @@ def _cleanup(gw_control, harness_control, gateway_id, target_id, harness_id):
             print(f"  Warning: {e}")
     if gateway_id and target_id:
         try:
-            gw_control.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id
-            )
+            gw_control.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
             print(f"  Deleted target: {target_id}")
             time.sleep(10)
         except Exception as e:
@@ -260,9 +246,7 @@ def main(args=None):
         print("Step 3: Create Harness")
         print("=" * 60)
         harness_name = f"GatewayHarness_{uuid.uuid4().hex[:8]}"
-        resp = harness_control.create_harness(
-            harnessName=harness_name, executionRoleArn=role_arn
-        )
+        resp = harness_control.create_harness(harnessName=harness_name, executionRoleArn=role_arn)
         harness_id = resp["harness"]["harnessId"]
         harness_arn = resp["harness"]["arn"]
         print(f"  Harness ID:  {harness_id}")
@@ -276,9 +260,7 @@ def main(args=None):
         session_id = str(uuid.uuid4()).upper()
         print(f"  Session ID: {session_id}")
         print(f"  Model:      {args.model}")
-        print(
-            f"  Message:    {args.message[:80]}{'...' if len(args.message) > 80 else ''}\n"
-        )
+        print(f"  Message:    {args.message[:80]}{'...' if len(args.message) > 80 else ''}\n")
 
         stream_response(
             client,

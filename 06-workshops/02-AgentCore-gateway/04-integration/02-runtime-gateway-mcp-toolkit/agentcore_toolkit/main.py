@@ -23,9 +23,7 @@ class AgentCoreToolkit:
         self.config = config
 
         try:
-            self.region = os.environ.get(
-                "AWS_DEFAULT_REGION", self.config["aws"]["region"]
-            )
+            self.region = os.environ.get("AWS_DEFAULT_REGION", self.config["aws"]["region"])
         except (KeyError, TypeError) as e:
             raise ValueError(f"Invalid configuration: missing 'aws.region' field: {e}")
 
@@ -108,9 +106,7 @@ class AgentCoreToolkit:
 
         try:
             # Create user pool
-            gw_user_pool_id = utils.get_or_create_user_pool(
-                cognito, derived_names["user_pool_name"]
-            )
+            gw_user_pool_id = utils.get_or_create_user_pool(cognito, derived_names["user_pool_name"])
             print(f"Gateway User Pool ID: {gw_user_pool_id}")
 
             # Create resource server
@@ -130,10 +126,7 @@ class AgentCoreToolkit:
             )
 
             # Create client
-            scope_names = [
-                f"{derived_names['resource_server_id']}/{scope['name']}"
-                for scope in self.config["scopes"]
-            ]
+            scope_names = [f"{derived_names['resource_server_id']}/{scope['name']}" for scope in self.config["scopes"]]
             gw_client_id, gw_client_secret = utils.get_or_create_m2m_client(
                 cognito,
                 gw_user_pool_id,
@@ -147,7 +140,9 @@ class AgentCoreToolkit:
         except Exception as e:
             raise RuntimeError(f"Failed to setup gateway Cognito resources: {e}")
 
-        gw_discovery_url = f"https://cognito-idp.{self.region}.amazonaws.com/{gw_user_pool_id}/.well-known/openid-configuration"
+        gw_discovery_url = (
+            f"https://cognito-idp.{self.region}.amazonaws.com/{gw_user_pool_id}/.well-known/openid-configuration"
+        )
 
         return {
             "user_pool_id": gw_user_pool_id,
@@ -177,9 +172,7 @@ class AgentCoreToolkit:
 
         try:
             # Create user pool
-            rt_user_pool_id = utils.get_or_create_user_pool(
-                cognito, derived_names["user_pool_name"]
-            )
+            rt_user_pool_id = utils.get_or_create_user_pool(cognito, derived_names["user_pool_name"])
             print(f"Runtime User Pool ID: {rt_user_pool_id}")
 
             # Create resource server
@@ -199,10 +192,7 @@ class AgentCoreToolkit:
             )
 
             # Create client
-            scope_names = [
-                f"{derived_names['resource_server_id']}/{scope['name']}"
-                for scope in self.config["scopes"]
-            ]
+            scope_names = [f"{derived_names['resource_server_id']}/{scope['name']}" for scope in self.config["scopes"]]
             rt_client_id, rt_client_secret = utils.get_or_create_m2m_client(
                 cognito,
                 rt_user_pool_id,
@@ -216,7 +206,9 @@ class AgentCoreToolkit:
         except Exception as e:
             raise RuntimeError(f"Failed to setup runtime Cognito resources: {e}")
 
-        rt_discovery_url = f"https://cognito-idp.{self.region}.amazonaws.com/{rt_user_pool_id}/.well-known/openid-configuration"
+        rt_discovery_url = (
+            f"https://cognito-idp.{self.region}.amazonaws.com/{rt_user_pool_id}/.well-known/openid-configuration"
+        )
 
         return {
             "user_pool_id": rt_user_pool_id,
@@ -238,9 +230,7 @@ class AgentCoreToolkit:
 
         try:
             # Create IAM role
-            iam_role = utils.create_agentcore_gateway_role(
-                derived_names["iam_role_name"], region=self.region
-            )
+            iam_role = utils.create_agentcore_gateway_role(derived_names["iam_role_name"], region=self.region)
             print(f"Gateway IAM Role ARN: {iam_role['Role']['Arn']}")
 
             auth_config = {
@@ -250,9 +240,7 @@ class AgentCoreToolkit:
                 }
             }
 
-            gw_info = utils.get_or_create_agentcore_gateway(
-                self.region, iam_role, auth_config, gw_config
-            )
+            gw_info = utils.get_or_create_agentcore_gateway(self.region, iam_role, auth_config, gw_config)
             return gw_info
         except Exception as e:
             raise RuntimeError(f"Failed to create gateway: {e}")
@@ -278,9 +266,7 @@ class AgentCoreToolkit:
 
             agentcore_runtime.configure(
                 entrypoint=runtime_config["entrypoint"],
-                auto_create_execution_role=runtime_config.get(
-                    "auto_create_execution_role", True
-                ),
+                auto_create_execution_role=runtime_config.get("auto_create_execution_role", True),
                 auto_create_ecr=runtime_config.get("auto_create_ecr", True),
                 requirements_file=runtime_config["requirements_file"],
                 region=self.region,
@@ -315,16 +301,12 @@ class AgentCoreToolkit:
         auth_config = self._create_auth_config(runtime_cognito)
 
         # Configure runtime
-        agentcore_runtime = self._configure_runtime(
-            runtime_config, auth_config, derived_names["agent_name"]
-        )
+        agentcore_runtime = self._configure_runtime(runtime_config, auth_config, derived_names["agent_name"])
 
         # Launch runtime and return connection info
         return self._launch_runtime(agentcore_runtime, runtime_config["name"])
 
-    def _create_target_params(
-        self, gateway_info, runtime_info, runtime_cognito, target_config, provider_arn
-    ):
+    def _create_target_params(self, gateway_info, runtime_info, runtime_cognito, target_config, provider_arn):
         """Create target creation parameters"""
         return {
             "gateway_id": gateway_info["gateway_id"],
@@ -334,9 +316,7 @@ class AgentCoreToolkit:
             "cognito_provider_arn": provider_arn,
         }
 
-    def create_gateway_target(
-        self, gateway_info, runtime_info, runtime_cognito, target_config
-    ):
+    def create_gateway_target(self, gateway_info, runtime_info, runtime_cognito, target_config):
         """Create gateway target and configure authentication"""
         print("Creating Oauth Credential Provider")
         cognito_provider_arn = utils.get_or_create_oauth2_credential_provider(
@@ -376,14 +356,10 @@ class AgentCoreToolkit:
 
             # Derive target configuration from runtime name
             target_config = self._derive_target_names(runtime_config["name"])
-            self.create_gateway_target(
-                gateway_info, runtime_info, runtime_cognito, target_config
-            )
+            self.create_gateway_target(gateway_info, runtime_info, runtime_cognito, target_config)
 
         # Display gateway connection information
-        gateway_info_result = self.display_gateway_info(
-            gateway_info["gateway_id"], gateway_cognito
-        )
+        gateway_info_result = self.display_gateway_info(gateway_info["gateway_id"], gateway_cognito)
         print("\n✅ Setup completed successfully!")
         return gateway_info_result
 
@@ -444,8 +420,7 @@ class AgentCoreToolkit:
         try:
             # Get scope configuration
             scope_names = [
-                f"{gateway_cognito['resource_server_id']}/{scope['name']}"
-                for scope in self.config["scopes"]
+                f"{gateway_cognito['resource_server_id']}/{scope['name']}" for scope in self.config["scopes"]
             ]
             scope_string = " ".join(scope_names)
 
@@ -462,9 +437,7 @@ class AgentCoreToolkit:
                 print(f"Warning: Token request failed: {token_response['error']}")
                 return None
 
-            return token_response.get(
-                "access_token"
-            )  # codeql[py/clear-text-logging-sensitive-data]
+            return token_response.get("access_token")  # codeql[py/clear-text-logging-sensitive-data]
 
         except KeyError as e:
             print(f"Warning: Missing required field in token response: {e}")
@@ -478,9 +451,7 @@ def main():
     import argparse
     import json
 
-    parser = argparse.ArgumentParser(
-        description="AgentCore Gateway and Runtime Setup Toolkit"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Gateway and Runtime Setup Toolkit")
     parser.add_argument("--region", default="us-east-1", help="AWS region")
     parser.add_argument("--gateway-name", required=True, help="Gateway name")
     parser.add_argument("--gateway-description", help="Gateway description")

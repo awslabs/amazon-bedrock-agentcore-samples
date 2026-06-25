@@ -90,9 +90,7 @@ def create_execution_role() -> str:
         "Statement": [
             {
                 "Effect": "Allow",
-                "Principal": {
-                    "Service": "bedrock-agentcore.amazonaws.com"
-                },
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                 "Action": "sts:AssumeRole",
             },
             {
@@ -101,9 +99,7 @@ def create_execution_role() -> str:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": ACCOUNT_ID},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:s3files:{REGION}:{ACCOUNT_ID}:file-system/*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:s3files:{REGION}:{ACCOUNT_ID}:file-system/*"},
                 },
             },
         ],
@@ -124,9 +120,7 @@ def create_execution_role() -> str:
                     "logs:DescribeLogGroups",
                     "logs:DescribeLogStreams",
                 ],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/*"],
             },
             {
                 "Sid": "XRay",
@@ -388,7 +382,9 @@ def main():
     print(f"  Runtime ARN: {runtime['runtime_arn']}")
     print(f"  S3 Files:    {S3FILES_MOUNT_PATH}")
     print("  Config:      kiro/runtime_config.json")
-    print("\n  Test: python kiro/invoke.py \"Read issue #1 and fix it from repo my-task-manager with user <your-git-user>\"")
+    print(
+        '\n  Test: python kiro/invoke.py "Read issue #1 and fix it from repo my-task-manager with user <your-git-user>"'
+    )
     print("=" * 60)
 
 

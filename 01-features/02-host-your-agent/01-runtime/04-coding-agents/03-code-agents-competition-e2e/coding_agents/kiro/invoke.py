@@ -73,10 +73,10 @@ def main():
     if "--session" in args:
         idx = args.index("--session")
         session_id = args[idx + 1]
-        args = args[:idx] + args[idx + 2:]
+        args = args[:idx] + args[idx + 2 :]
 
     if not args:
-        print("Usage: python invoke.py [--session <id>] \"<prompt>\"")
+        print('Usage: python invoke.py [--session <id>] "<prompt>"')
         sys.exit(1)
 
     prompt = " ".join(args)
@@ -91,7 +91,7 @@ def main():
 
     sid = result.get("_session_id")
     if sid:
-        print(f"\nTo continue: python invoke.py --session {sid} \"<next prompt>\"")
+        print(f'\nTo continue: python invoke.py --session {sid} "<next prompt>"')
 
 
 if __name__ == "__main__":

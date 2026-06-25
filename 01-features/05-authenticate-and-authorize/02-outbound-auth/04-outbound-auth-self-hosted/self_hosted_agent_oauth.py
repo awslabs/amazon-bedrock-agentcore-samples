@@ -278,9 +278,7 @@ def cleanup():
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Self-hosted agent with AgentCore Identity OAuth"
-    )
+    parser = argparse.ArgumentParser(description="Self-hosted agent with AgentCore Identity OAuth")
     parser.add_argument(
         "--create-cognito",
         action="store_true",
@@ -335,9 +333,7 @@ def main():
     print(f"  Callback URL: {CALLBACK_URL}")
     print("")
     print("  To run the agent:")
-    print(
-        f"  CREDENTIAL_PROVIDER_NAME={CREDENTIAL_PROVIDER_NAME} WORKLOAD_NAME={WORKLOAD_NAME} python3 agent.py"
-    )
+    print(f"  CREDENTIAL_PROVIDER_NAME={CREDENTIAL_PROVIDER_NAME} WORKLOAD_NAME={WORKLOAD_NAME} python3 agent.py")
     print("")
     print("  To clean up:")
     print("  python self_hosted_agent_oauth.py --cleanup")

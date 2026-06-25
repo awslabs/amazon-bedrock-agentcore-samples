@@ -38,11 +38,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                        )
-                    },
+                    "ArnLike": {"aws:SourceArn": (f"arn:aws:bedrock-agentcore:{region}:{account_id}:*")},
                 },
             }
         ],
@@ -61,10 +57,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:"
-                    "/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -75,8 +68,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Effect": "Allow",
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
                 "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:"
-                    "/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
                 ],
             },
             {
@@ -99,9 +91,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Effect": "Allow",
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "GetAgentAccessToken",
@@ -112,8 +102,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
                 ],
                 "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
-                    f"workload-identity-directory/default",
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default",
                     f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
                     "workload-identity-directory/default/workload-identity/*",
                 ],
@@ -149,9 +138,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
         role_response = iam.create_role(
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description=(
-                "IAM role for Amazon Bedrock AgentCore with required permissions"
-            ),
+            Description=("IAM role for Amazon Bedrock AgentCore with required permissions"),
         )
 
         print(f"✅ Created IAM role: {role_name}")
@@ -246,7 +233,4 @@ def local_file_cleanup() -> None:
     if deleted_files:
         print(f"\n📁 Successfully deleted {len(deleted_files)} files")
     if missing_files:
-        print(
-            f"ℹ️  {len(missing_files)} files were already missing: "
-            f"{', '.join(missing_files)}"
-        )
+        print(f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}")

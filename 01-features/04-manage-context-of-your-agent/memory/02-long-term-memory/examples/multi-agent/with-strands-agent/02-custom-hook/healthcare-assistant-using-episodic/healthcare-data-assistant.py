@@ -92,7 +92,6 @@
 
 import logging
 from datetime import datetime
-from botocore.exceptions import ClientError
 from strands import Agent, tool
 from strands.hooks import HookProvider, HookRegistry
 from bedrock_agentcore.memory import MemoryClient
@@ -220,6 +219,10 @@ print(f"{'=' * 70}")
 
 client = MemoryClient(region_name=region)
 
+# NOTE: although this tutorial is framed around "episodes", it is configured with a
+# SEMANTIC strategy. True episodic memory requires an `episodicMemoryStrategy` with a
+# `reflectionConfiguration` (and conversations that conclude so the service detects
+# episode completion). See 02-long-term-memory/01-built-in-strategies/episodic.py.
 strategies = [
     {
         "semanticMemoryStrategy": {
@@ -230,23 +233,20 @@ strategies = [
     }
 ]
 
+# Initialize before the try so the error handler can reference it safely even if
+# creation fails before assignment (otherwise `if memory_id` raises NameError).
+memory_id = None
 try:
-    memory = client.create_memory_and_wait(
+    # create_or_get_memory is idempotent: creates the memory (waiting for ACTIVE) or
+    # returns the existing one on a re-run, replacing the manual list-and-match fallback.
+    memory = client.create_or_get_memory(
         name=MEMORY_NAME,
         strategies=strategies,
         description="Healthcare system with episodic memory",
         event_expiry_days=7,  # Short-term conversation expires after 7 days
-        max_wait=300,
-        poll_interval=10,
     )
     memory_id = memory["id"]
-    logger.info(f"Memory created successfully with ID: {memory_id}")
-except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-        # If memory already exists, retrieve its ID
-        memories = client.list_memories()
-        memory_id = next((m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None)
-        logger.info(f"Memory already exists. Using existing memory: {memory_id}")
+    logger.info(f"Memory ready with ID: {memory_id}")
 except Exception as e:
     # Handle any errors during memory creation
     print(f"❌ ERROR: {e}")

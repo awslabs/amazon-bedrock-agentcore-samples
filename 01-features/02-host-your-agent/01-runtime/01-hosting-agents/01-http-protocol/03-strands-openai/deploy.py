@@ -82,9 +82,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -112,9 +110,7 @@ def create_execution_role() -> str:
                 "Effect": "Allow",
                 "Action": "cloudwatch:PutMetricData",
                 "Resource": "*",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
         ],
     }
@@ -268,9 +264,7 @@ def create_endpoint(runtime_id: str) -> dict:
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
     print("\n  Creating endpoint 'default'...")
-    response = control.create_agent_runtime_endpoint(
-        agentRuntimeId=runtime_id, name="default"
-    )
+    response = control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     print(f"  ✓ Endpoint created: {response['agentRuntimeEndpointArn']}")
 
     print("  Waiting for endpoint to be ready...")

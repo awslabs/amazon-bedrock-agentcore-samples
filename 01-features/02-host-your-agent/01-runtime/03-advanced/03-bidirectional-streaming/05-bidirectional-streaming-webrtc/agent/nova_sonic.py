@@ -28,9 +28,7 @@ from audio import convert_to_16khz, INPUT_SAMPLE_RATE, OUTPUT_SAMPLE_RATE
 
 MODEL_ID = "amazon.nova-2-sonic-v1:0"
 VOICE_ID = "matthew"
-SYSTEM_PROMPT = (
-    "You are a helpful AI assistant. Keep responses brief and conversational."
-)
+SYSTEM_PROMPT = "You are a helpful AI assistant. Keep responses brief and conversational."
 
 # Shared audio format used in both input and output config
 _AUDIO_FORMAT = {
@@ -46,9 +44,7 @@ async def _send(stream, event_dict):
     """Send a single event to the Nova Sonic stream."""
     await stream.input_stream.send(
         InvokeModelWithBidirectionalStreamInputChunk(
-            value=BidirectionalInputPayloadPart(
-                bytes_=json.dumps(event_dict).encode("utf-8")
-            )
+            value=BidirectionalInputPayloadPart(bytes_=json.dumps(event_dict).encode("utf-8"))
         )
     )
 
@@ -207,9 +203,7 @@ async def run_session(audio_in, audio_out, region, pc_id):
                     if cid := cs.get("contentId"):
                         content_roles[cid] = cs.get("role", "ASSISTANT")
                 elif "audioOutput" in event:
-                    audio_out.add_audio(
-                        base64.b64decode(event["audioOutput"]["content"])
-                    )
+                    audio_out.add_audio(base64.b64decode(event["audioOutput"]["content"]))
                 elif "textOutput" in event:
                     to = event["textOutput"]
                     content = to["content"]

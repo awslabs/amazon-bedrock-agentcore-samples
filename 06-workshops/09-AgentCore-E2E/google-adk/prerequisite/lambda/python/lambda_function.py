@@ -29,9 +29,7 @@ def lambda_handler(event, context):
             }
 
         try:
-            warranty_status = check_warranty_status(
-                serial_number=serial_number, customer_email=customer_email
-            )
+            warranty_status = check_warranty_status(serial_number=serial_number, customer_email=customer_email)
         except Exception as e:
             print(e)
             return {
@@ -56,9 +54,7 @@ def lambda_handler(event, context):
             }
 
         try:
-            search_results = web_search(
-                keywords=keywords, region=region, max_results=int(max_results)
-            )
+            search_results = web_search(keywords=keywords, region=region, max_results=int(max_results))
         except Exception as e:
             print(e)
             return {

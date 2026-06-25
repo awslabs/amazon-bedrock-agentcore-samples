@@ -62,9 +62,7 @@ dataset_name = "strands-ai-mcp-agent-evaluation"
 dataset = langfuse_client.get_dataset(dataset_name)
 
 # Print first 3 items of the original dataset
-print(
-    f"\n{'=' * 80}\nFirst 3 ORIGINAL items from dataset '{dataset_name}':\n{'=' * 80}"
-)
+print(f"\n{'=' * 80}\nFirst 3 ORIGINAL items from dataset '{dataset_name}':\n{'=' * 80}")
 for i, item in enumerate(dataset.items[:3]):
     print(f"\nItem {i + 1}:")
     print(f"  ID: {item.id}")
@@ -87,9 +85,7 @@ for item in dataset.items:
         expanded_items.append(expanded_item)
 
 # Print first 3 items of the transformed dataset
-print(
-    f"\n{'=' * 80}\nFirst 3 EXPANDED items from dataset '{dataset_name}':\n{'=' * 80}"
-)
+print(f"\n{'=' * 80}\nFirst 3 EXPANDED items from dataset '{dataset_name}':\n{'=' * 80}")
 for i, item in enumerate(expanded_items[:3]):
     print(f"\nItem {i + 1}:")
     print(f"  Input: {item['input']}")
@@ -129,9 +125,7 @@ def agent_task(*, item, **kwargs):
 
 
 # Define autoevals evaluator
-evaluator = create_evaluator_from_autoevals(
-    Factuality(client=OpenAI(), model="qwen.qwen3-235b-a22b-2507-v1:0")
-)
+evaluator = create_evaluator_from_autoevals(Factuality(client=OpenAI(), model="qwen.qwen3-235b-a22b-2507-v1:0"))
 
 result = langfuse_client.run_experiment(
     name="Autoevals Integration Test",
@@ -158,11 +152,7 @@ for item_result in result.item_results:
             print(evaluation_dict)
 
 # Calculate average
-avg_score = (
-    sum(s["value"] for s in factuality_scores) / len(factuality_scores)
-    if factuality_scores
-    else 0
-)
+avg_score = sum(s["value"] for s in factuality_scores) / len(factuality_scores) if factuality_scores else 0
 
 # Save results
 results = {

@@ -148,9 +148,7 @@ def lambda_handler(event, context):
 
     response = {
         "statusCode": 200,
-        "body": json.dumps(
-            {"tool": "database_query_tool", "result": query_result, "success": True}
-        ),
+        "body": json.dumps({"tool": "database_query_tool", "result": query_result, "success": True}),
     }
 
     print(f"Database query tool response: {len(data)} results")

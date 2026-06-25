@@ -26,9 +26,7 @@ SOURCE_LOG_GROUP = "your-source-log-group"
 EVAL_RESULTS_LOG_GROUP = "your-evaluation-log-group"
 
 # Full path to evaluation results log group (auto-constructed from above)
-EVAL_RESULTS_LOG_GROUP_FULL = (
-    f"/aws/bedrock-agentcore/evaluations/results/{EVAL_RESULTS_LOG_GROUP}"
-)
+EVAL_RESULTS_LOG_GROUP_FULL = f"/aws/bedrock-agentcore/evaluations/results/{EVAL_RESULTS_LOG_GROUP}"
 
 
 # =============================================================================

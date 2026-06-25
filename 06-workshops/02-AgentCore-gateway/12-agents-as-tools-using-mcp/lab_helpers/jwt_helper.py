@@ -12,9 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_jwt_claims(
-    access_token: str, region: str, user_pool_id: str, skip_verification: bool = True
-) -> Dict[str, str]:
+def get_jwt_claims(access_token: str, region: str, user_pool_id: str, skip_verification: bool = True) -> Dict[str, str]:
     """
     Extract claims from Cognito JWT token.
 

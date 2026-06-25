@@ -58,9 +58,7 @@ def create_execution_role() -> str:
     }
 
     try:
-        resp = iam.create_role(
-            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust)
-        )
+        resp = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust))
         role_arn = resp["Role"]["Arn"]
     except iam.exceptions.EntityAlreadyExistsException:
         role_arn = f"arn:aws:iam::{ACCOUNT_ID}:role/{role_name}"
@@ -171,10 +169,7 @@ def deploy_runtime(role_arn: str) -> dict:
     control.create_agent_runtime_endpoint(agentRuntimeId=rid, name="default")
     while True:
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=rid)
-        if (
-            eps.get("runtimeEndpoints")
-            and eps["runtimeEndpoints"][0]["status"] == "READY"
-        ):
+        if eps.get("runtimeEndpoints") and eps["runtimeEndpoints"][0]["status"] == "READY":
             break
         time.sleep(15)
 

@@ -7,9 +7,7 @@ from typing import Dict
 from botocore.exceptions import ClientError
 
 
-def verify_ec2_instances(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def verify_ec2_instances(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Verify EC2 instances are running
 
@@ -37,9 +35,7 @@ def verify_ec2_instances(
             print("  ❌ Instance IDs not found")
             return False
 
-        response = ec2.describe_instance_status(
-            InstanceIds=[nginx_id, app_id], IncludeAllInstances=True
-        )
+        response = ec2.describe_instance_status(InstanceIds=[nginx_id, app_id], IncludeAllInstances=True)
 
         all_running = True
         for instance in response["InstanceStatuses"]:
@@ -60,9 +56,7 @@ def verify_ec2_instances(
         return False
 
 
-def verify_dynamodb_tables(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def verify_dynamodb_tables(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Verify DynamoDB tables exist and are accessible
 
@@ -118,9 +112,7 @@ def verify_dynamodb_tables(
         return False
 
 
-def verify_alb_health(
-    resources: Dict[str, str], region_name: str, profile_name: str = None
-) -> bool:
+def verify_alb_health(resources: Dict[str, str], region_name: str, profile_name: str = None) -> bool:
     """
     Verify ALB target health
 
@@ -144,11 +136,7 @@ def verify_alb_health(
         # Get all load balancers
         albs = elbv2.describe_load_balancers()
 
-        sre_albs = [
-            alb
-            for alb in albs["LoadBalancers"]
-            if "sre-workshop" in alb["LoadBalancerName"]
-        ]
+        sre_albs = [alb for alb in albs["LoadBalancers"] if "sre-workshop" in alb["LoadBalancerName"]]
 
         if not sre_albs:
             print("  ❌ No SRE workshop ALBs found")
@@ -159,9 +147,7 @@ def verify_alb_health(
             alb_name = alb["LoadBalancerName"]  # noqa: F841
 
             # Get target groups for this ALB
-            target_groups = elbv2.describe_target_groups(
-                LoadBalancerArn=alb["LoadBalancerArn"]
-            )
+            target_groups = elbv2.describe_target_groups(LoadBalancerArn=alb["LoadBalancerArn"])
 
             for tg in target_groups["TargetGroups"]:
                 tg_name = tg["TargetGroupName"]
@@ -219,9 +205,7 @@ def verify_cloudwatch_logs(region_name: str, profile_name: str = None) -> bool:
         all_exist = True
         for log_group_name in required_log_groups:
             try:
-                response = logs.describe_log_groups(
-                    logGroupNamePrefix=log_group_name, limit=1
-                )
+                response = logs.describe_log_groups(logGroupNamePrefix=log_group_name, limit=1)
 
                 if response["logGroups"]:
                     print(f"  ✅ Log group exists: {log_group_name}")
@@ -249,9 +233,7 @@ def get_app_url():
 
     for resource in response["StackResourceSummaries"]:
         if resource["LogicalResourceId"] == "PublicALB":
-            response = elbv2.describe_load_balancers(
-                LoadBalancerArns=[resource["PhysicalResourceId"]]
-            )
+            response = elbv2.describe_load_balancers(LoadBalancerArns=[resource["PhysicalResourceId"]])
             dns_name = response["LoadBalancers"][0]["DNSName"]
             url = f"http://{dns_name}:8080"
     return url

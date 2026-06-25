@@ -43,9 +43,7 @@ def validate_prompt_with_guardrails(prompt: str, region: str = "us-east-2") -> b
         bedrock_runtime = boto3.client("bedrock-runtime", region_name=region)
 
         # Apply Bedrock Guardrails with Standard Tier for code domain protection
-        guardrail_id = os.environ.get(
-            "BEDROCK_GUARDRAIL_ID", "async-data-analysis-code-safety"
-        )
+        guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID", "async-data-analysis-code-safety")
 
         response = bedrock_runtime.apply_guardrail(
             guardrailIdentifier=guardrail_id,
@@ -62,9 +60,7 @@ def validate_prompt_with_guardrails(prompt: str, region: str = "us-east-2") -> b
                 if "type" in output:
                     blocked_categories.append(output["type"])
 
-            logging.warning(
-                f"Prompt blocked by Bedrock Guardrails: {blocked_categories}"
-            )
+            logging.warning(f"Prompt blocked by Bedrock Guardrails: {blocked_categories}")
             return False
 
         logging.info("Prompt passed Bedrock Guardrails validation")
@@ -76,9 +72,7 @@ def validate_prompt_with_guardrails(prompt: str, region: str = "us-east-2") -> b
         return True
 
 
-def validate_generated_code_with_guardrails(
-    code: str, region: str = "us-east-2"
-) -> bool:
+def validate_generated_code_with_guardrails(code: str, region: str = "us-east-2") -> bool:
     """
     Validate generated code using Amazon Bedrock Guardrails Standard Tier.
     Specifically designed for code domain protection.
@@ -96,9 +90,7 @@ def validate_generated_code_with_guardrails(
         bedrock_runtime = boto3.client("bedrock-runtime", region_name=region)
 
         # Apply Bedrock Guardrails to generated code
-        guardrail_id = os.environ.get(
-            "BEDROCK_GUARDRAIL_ID", "async-data-analysis-code-safety"
-        )
+        guardrail_id = os.environ.get("BEDROCK_GUARDRAIL_ID", "async-data-analysis-code-safety")
 
         response = bedrock_runtime.apply_guardrail(
             guardrailIdentifier=guardrail_id,
@@ -115,9 +107,7 @@ def validate_generated_code_with_guardrails(
                 if "type" in output:
                     blocked_reasons.append(output["type"])
 
-            logging.warning(
-                f"Generated code blocked by Bedrock Guardrails: {blocked_reasons}"
-            )
+            logging.warning(f"Generated code blocked by Bedrock Guardrails: {blocked_reasons}")
             return False
 
         logging.info("Generated code passed Bedrock Guardrails validation")
@@ -155,9 +145,7 @@ def validate_s3_bucket_access(bucket_name: str) -> bool:
 
         return True
     except Exception as e:
-        raise ValueError(
-            f"S3 bucket access denied or bucket doesn't exist: {bucket_name}. Error: {e}"
-        )
+        raise ValueError(f"S3 bucket access denied or bucket doesn't exist: {bucket_name}. Error: {e}")
 
 
 os.environ["BYPASS_TOOL_CONSENT"] = "true"
@@ -459,9 +447,7 @@ def build_s3_output_uri(s3_input_uri: str, task_id: str) -> str:
     if len(path_parts) > 1:
         output_prefix = path_parts[0]
         safe_output_prefix = html.escape(str(output_prefix))
-        return (
-            f"s3://{safe_bucket}/{safe_output_prefix}/task_{safe_task_id}_result.json"
-        )
+        return f"s3://{safe_bucket}/{safe_output_prefix}/task_{safe_task_id}_result.json"
     else:
         return f"s3://{safe_bucket}/task_{safe_task_id}_result.json"
 
@@ -561,14 +547,10 @@ def async_analysis_task(request: str):
 
     # Submit to thread pool instead of creating raw threads
     try:
-        executor.submit(
-            _run_async_analysis_task, request, task_id, s3_input_uri, s3_output_uri
-        )
+        executor.submit(_run_async_analysis_task, request, task_id, s3_input_uri, s3_output_uri)
         logging.info(f"[ASYNC_TASK] Task {task_id} submitted to thread pool")
     except Exception as e:
-        logging.error(
-            f"[ASYNC_TASK] Failed to submit task {task_id} to thread pool: {e}"
-        )
+        logging.error(f"[ASYNC_TASK] Failed to submit task {task_id} to thread pool: {e}")
         raise
 
     response = f"Code writing started in the background. Task ID: {task_id}. Results will be available in the future."
@@ -645,9 +627,7 @@ def _save_task_result(task_id: str, data: dict, s3_output_uri: str = None) -> st
         json.dump(data, f, indent=2)
 
     if s3_output_uri:
-        logging.info(
-            f"[BACKGROUND] Task {task_id} - Uploading result to S3: {s3_output_uri}"
-        )
+        logging.info(f"[BACKGROUND] Task {task_id} - Uploading result to S3: {s3_output_uri}")
         if upload_to_s3(local_file, s3_output_uri, task_id):
             data["s3_uri"] = s3_output_uri
 
@@ -656,9 +636,7 @@ def _save_task_result(task_id: str, data: dict, s3_output_uri: str = None) -> st
 
 def _download_s3_data(task_id: str, s3_input_uri: str, code_client) -> None:
     """Download data from S3 and write to Code Interpreter session."""
-    logging.info(
-        f"[BACKGROUND] Task {task_id} - Downloading data from S3: {s3_input_uri}"
-    )
+    logging.info(f"[BACKGROUND] Task {task_id} - Downloading data from S3: {s3_input_uri}")
     bucket, key = parse_s3_uri(s3_input_uri)
 
     if not bucket or not key:
@@ -671,9 +649,7 @@ def _download_s3_data(task_id: str, s3_input_uri: str, code_client) -> None:
     response = s3_client.get_object(Bucket=bucket, Key=key)
     csv_content = response["Body"].read().decode("utf-8")
 
-    logging.info(
-        f"[BACKGROUND] Task {task_id} - Writing data to Code Interpreter session"
-    )
+    logging.info(f"[BACKGROUND] Task {task_id} - Writing data to Code Interpreter session")
 
     # Write the CSV data using code execution
     write_code = f'''
@@ -687,18 +663,14 @@ print("Data file written successfully")
     logging.info(f"[BACKGROUND] Task {task_id} - Data write result: {result}")
 
 
-def _execute_with_retry(
-    task_id: str, request: str, coding_agent, code_client, max_retries: int = 3
-):
+def _execute_with_retry(task_id: str, request: str, coding_agent, code_client, max_retries: int = 3):
     """Execute code generation and execution with retry logic."""
     error_context = ""
     region = os.environ.get("AWS_REGION", "us-east-2")
 
     # First validate the user request with Bedrock Guardrails
     if not validate_prompt_with_guardrails(request, region):
-        raise Exception(
-            "Request blocked by security guardrails - potential code injection detected"
-        )
+        raise Exception("Request blocked by security guardrails - potential code injection detected")
 
     for attempt in range(max_retries):
         # Build prompt based on attempt number
@@ -707,58 +679,38 @@ def _execute_with_retry(
         else:
             prompt = _build_retry_prompt(request, error_context)
             safe_prompt = html.escape(str(prompt)[:300])
-            logging.info(
-                f"[BACKGROUND] Task {task_id} - Retry prompt preview: {safe_prompt}..."
-            )
+            logging.info(f"[BACKGROUND] Task {task_id} - Retry prompt preview: {safe_prompt}...")
 
         # Generate code
-        logging.info(
-            f"[BACKGROUND] Task {task_id} - Attempt {attempt + 1}/{max_retries}: Calling coding agent"
-        )
+        logging.info(f"[BACKGROUND] Task {task_id} - Attempt {attempt + 1}/{max_retries}: Calling coding agent")
         coding_agent_response = coding_agent(prompt)
         python_code = coding_agent_response.message["content"][0]["text"]
-        logging.info(
-            f"[BACKGROUND] Task {task_id} - Code generated, length: {len(python_code)} chars"
-        )
+        logging.info(f"[BACKGROUND] Task {task_id} - Code generated, length: {len(python_code)} chars")
 
         # Validate generated code with Bedrock Guardrails
         if not validate_generated_code_with_guardrails(python_code, region):
-            error_context = (
-                "Generated code blocked by Bedrock Guardrails for security violations"
-            )
-            logging.warning(
-                f"[BACKGROUND] Task {task_id} - Code blocked by Bedrock Guardrails"
-            )
+            error_context = "Generated code blocked by Bedrock Guardrails for security violations"
+            logging.warning(f"[BACKGROUND] Task {task_id} - Code blocked by Bedrock Guardrails")
 
             if attempt < max_retries - 1:
-                logging.info(
-                    f"[BACKGROUND] Task {task_id} - Retrying with security feedback..."
-                )
+                logging.info(f"[BACKGROUND] Task {task_id} - Retrying with security feedback...")
                 continue
             else:
-                raise Exception(
-                    "Unable to generate safe code after maximum retries - blocked by Bedrock Guardrails"
-                )
+                raise Exception("Unable to generate safe code after maximum retries - blocked by Bedrock Guardrails")
 
         # Execute code if validation passes
         try:
-            logging.info(
-                f"[BACKGROUND] Task {task_id} - Executing code in secure environment"
-            )
+            logging.info(f"[BACKGROUND] Task {task_id} - Executing code in secure environment")
 
             # Use the new CodeInterpreter client
             result = code_client.execute_code(python_code)
 
-            logging.info(
-                f"[BACKGROUND] Task {task_id} - Execution completed successfully"
-            )
+            logging.info(f"[BACKGROUND] Task {task_id} - Execution completed successfully")
 
             # Check for execution errors
             if _has_execution_error(result):
                 error_context = f"Execution error: {result}"
-                logging.warning(
-                    f"[BACKGROUND] Task {task_id} - Execution failed: {result}"
-                )
+                logging.warning(f"[BACKGROUND] Task {task_id} - Execution failed: {result}")
 
                 if attempt < max_retries - 1:
                     continue
@@ -768,9 +720,7 @@ def _execute_with_retry(
                         f"Code execution failed after {max_retries} attempts: {result}",
                     )
             else:
-                logging.info(
-                    f"[BACKGROUND] Task {task_id} - Code executed successfully"
-                )
+                logging.info(f"[BACKGROUND] Task {task_id} - Code executed successfully")
                 return python_code, result
 
         except Exception as e:
@@ -807,18 +757,12 @@ def _mark_task_failed(task_id: str, s3_output_uri: str, error: Exception) -> Non
     try:
         app.fail_async_task(task_id)
     except AttributeError:
-        logging.warning(
-            f"[BACKGROUND] Task {task_id} - fail_async_task method not available"
-        )
+        logging.warning(f"[BACKGROUND] Task {task_id} - fail_async_task method not available")
     except Exception as fail_error:
-        logging.error(
-            f"[BACKGROUND] Task {task_id} - Error marking as failed: {fail_error}"
-        )
+        logging.error(f"[BACKGROUND] Task {task_id} - Error marking as failed: {fail_error}")
 
 
-def _run_async_analysis_task(
-    request: str, task_id: str, s3_input_uri: str = None, s3_output_uri: str = None
-):
+def _run_async_analysis_task(request: str, task_id: str, s3_input_uri: str = None, s3_output_uri: str = None):
     """Execute async analysis task with code generation and execution."""
     logging.info(f"[BACKGROUND] Task {task_id} - Starting execution")
     code_client = None
@@ -826,14 +770,10 @@ def _run_async_analysis_task(
     try:
         # Initialize coding agent
         logging.info(f"[BACKGROUND] Task {task_id} - Creating coding agent")
-        coding_agent = Agent(
-            name="coding_agent", system_prompt=CODING_AGENT_SYSTEM_PROMPT, model=haiku
-        )
+        coding_agent = Agent(name="coding_agent", system_prompt=CODING_AGENT_SYSTEM_PROMPT, model=haiku)
 
         # Initialize Secure Code Interpreter with network isolation
-        logging.info(
-            f"[BACKGROUND] Task {task_id} - Initializing Secure Code Interpreter"
-        )
+        logging.info(f"[BACKGROUND] Task {task_id} - Initializing Secure Code Interpreter")
         region = os.environ.get("AWS_REGION", "us-west-2")
 
         # Extract allowed S3 buckets from input URI
@@ -846,14 +786,10 @@ def _run_async_analysis_task(
         # Use direct boto3 CodeInterpreter client
         try:
             code_client = CodeInterpreterClient(region=region)
-            logging.info(
-                f"[BACKGROUND] Task {task_id} - CodeInterpreter session started: {code_client.session_id}"
-            )
+            logging.info(f"[BACKGROUND] Task {task_id} - CodeInterpreter session started: {code_client.session_id}")
 
         except Exception as e:
-            logging.error(
-                f"[BACKGROUND] Task {task_id} - CodeInterpreter initialization failed: {e}"
-            )
+            logging.error(f"[BACKGROUND] Task {task_id} - CodeInterpreter initialization failed: {e}")
             raise Exception(
                 f"CodeInterpreter service unavailable. This service may be in preview and require AWS support to enable. Error: {e}"
             )
@@ -863,9 +799,7 @@ def _run_async_analysis_task(
             _download_s3_data(task_id, s3_input_uri, code_client)
 
         # Execute with retry logic
-        python_code, result = _execute_with_retry(
-            task_id, request, coding_agent, code_client
-        )
+        python_code, result = _execute_with_retry(task_id, request, coding_agent, code_client)
 
         # Store result
         result_data = {
@@ -879,9 +813,7 @@ def _run_async_analysis_task(
         _save_task_result(task_id, result_data, s3_output_uri)
 
         # Mark task as complete in AgentCore
-        logging.info(
-            f"[BACKGROUND] Task {task_id} - Marking task as complete in AgentCore"
-        )
+        logging.info(f"[BACKGROUND] Task {task_id} - Marking task as complete in AgentCore")
         app.complete_async_task(task_id)
         logging.info(f"[BACKGROUND] Task {task_id} - Successfully completed")
 
@@ -893,13 +825,9 @@ def _run_async_analysis_task(
         if code_client:
             try:
                 code_client.stop()
-                logging.info(
-                    f"[BACKGROUND] Task {task_id} - Code Interpreter session stopped"
-                )
+                logging.info(f"[BACKGROUND] Task {task_id} - Code Interpreter session stopped")
             except Exception as e:
-                logging.error(
-                    f"[BACKGROUND] Task {task_id} - Error stopping Code Interpreter: {e}"
-                )
+                logging.error(f"[BACKGROUND] Task {task_id} - Error stopping Code Interpreter: {e}")
 
 
 @tool(

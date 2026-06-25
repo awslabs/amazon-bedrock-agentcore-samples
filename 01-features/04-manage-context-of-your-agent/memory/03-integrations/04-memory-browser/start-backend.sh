@@ -38,11 +38,17 @@ except ImportError:
     print('   To install: pip install bedrock-agentcore')
 "
 
-# Start the backend server
+# Start the backend server.
+# Bind to localhost by default — this backend is an unauthenticated proxy to your
+# AWS-credentialed memory store, so it must NOT be exposed on the network. Honor
+# $BACKEND_HOST (the README/.env-documented knob) only if you deliberately set it.
+BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
+BACKEND_PORT="${BACKEND_PORT:-8000}"
+
 echo "🚀 Starting FastAPI backend server..."
-echo "📍 Backend will be available at: http://localhost:8000"
-echo "📖 API documentation at: http://localhost:8000/docs"
+echo "📍 Backend will be available at: http://${BACKEND_HOST}:${BACKEND_PORT}"
+echo "📖 API documentation at: http://${BACKEND_HOST}:${BACKEND_PORT}/docs"
 echo ""
 echo "Press Ctrl+C to stop the server"
 
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app:app --host "${BACKEND_HOST}" --port "${BACKEND_PORT}" --reload

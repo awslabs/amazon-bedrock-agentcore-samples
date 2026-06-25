@@ -14,9 +14,7 @@ lambda_client = boto3.client("lambda", region_name=AWS_REGION)
 sts_client = boto3.client("sts", region_name=AWS_REGION)
 
 
-def fetch_crm_app_logs(
-    log_group_name="/aws/sre-workshop/crm-application", hours=2, use_mock=False
-):
+def fetch_crm_app_logs(log_group_name="/aws/sre-workshop/crm-application", hours=2, use_mock=False):
     """Fetch CRM application logs from CloudWatch"""
     if use_mock:
         return mock_data.get_ec2_logs()  # noqa: F821
@@ -38,9 +36,7 @@ def fetch_crm_app_logs(
         return [{"message": f"Error fetching EC2 logs: {str(e)}"}]
 
 
-def fetch_ec2_logs(
-    log_group_name="/aws/sre-workshop/application", hours=2, use_mock=False
-):
+def fetch_ec2_logs(log_group_name="/aws/sre-workshop/application", hours=2, use_mock=False):
     """Fetch EC2 application logs from CloudWatch or mock data"""
     if use_mock:
         return mock_data.get_ec2_logs()  # noqa: F821
@@ -62,9 +58,7 @@ def fetch_ec2_logs(
         return [{"message": f"Error fetching EC2 logs: {str(e)}"}]
 
 
-def fetch_nginx_error_logs(
-    log_group_name="/aws/sre-workshop/nginx/error", hours=2, use_mock=False
-):
+def fetch_nginx_error_logs(log_group_name="/aws/sre-workshop/nginx/error", hours=2, use_mock=False):
     """Fetch NGINX error logs from CloudWatch or mock data"""
     if use_mock:
         return mock_data.get_nginx_logs()  # noqa: F821
@@ -86,9 +80,7 @@ def fetch_nginx_error_logs(
         return [{"message": f"Error fetching NGINX error logs: {str(e)}"}]
 
 
-def fetch_nginx_access_logs(
-    log_group_name="/aws/sre-workshop/nginx/access", hours=24, use_mock=False
-):
+def fetch_nginx_access_logs(log_group_name="/aws/sre-workshop/nginx/access", hours=24, use_mock=False):
     """Fetch NGINX access/eor logs from CloudWatch or mock data"""
     if use_mock:
         return mock_data.get_nginx_logs()  # noqa: F821

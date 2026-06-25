@@ -8,9 +8,7 @@ import json
 from boto3.session import Session
 
 
-def update_orchestrator_permissions(
-    sub_agent_arns: list, orchestrator_agent_id: str, region=None
-):
+def update_orchestrator_permissions(sub_agent_arns: list, orchestrator_agent_id: str, region=None):
     """
     Add permissions to orchestrator role to invoke sub-agents directly.
 
@@ -22,23 +20,15 @@ def update_orchestrator_permissions(
     if region is None:
         region = Session().region_name
 
-    account_id = boto3.client("sts", region_name=region).get_caller_identity()[
-        "Account"
-    ]
+    account_id = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
     iam_client = boto3.client("iam", region_name=region)
     agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
     # Get the execution role ARN from the runtime configuration
-    runtime_info = agentcore_client.get_agent_runtime(
-        agentRuntimeId=orchestrator_agent_id
-    )
-    role_arn = runtime_info.get("roleArn") or runtime_info.get("agentRuntime", {}).get(
-        "roleArn"
-    )
+    runtime_info = agentcore_client.get_agent_runtime(agentRuntimeId=orchestrator_agent_id)
+    role_arn = runtime_info.get("roleArn") or runtime_info.get("agentRuntime", {}).get("roleArn")
     if not role_arn:
-        raise ValueError(
-            f"Could not find execution role for runtime {orchestrator_agent_id}"
-        )
+        raise ValueError(f"Could not find execution role for runtime {orchestrator_agent_id}")
 
     # Extract role name from ARN (arn:aws:iam::account:role/role-name)
     orchestrator_role_name = role_arn.split("/")[-1]
@@ -53,10 +43,7 @@ def update_orchestrator_permissions(
                     "bedrock-agentcore:InvokeAgentRuntime",
                     "bedrock-agentcore:InvokeAgentRuntimeForUser",
                 ],
-                "Resource": [
-                    f"{arn}/runtime-endpoint/DEFAULT" for arn in sub_agent_arns
-                ]
-                + sub_agent_arns,
+                "Resource": [f"{arn}/runtime-endpoint/DEFAULT" for arn in sub_agent_arns] + sub_agent_arns,
             },
             {
                 "Sid": "SSMParameterAccess",

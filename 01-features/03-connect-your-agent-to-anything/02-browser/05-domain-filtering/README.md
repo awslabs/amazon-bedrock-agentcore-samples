@@ -4,32 +4,6 @@
 
 By default, an AgentCore Browser session can navigate to any URL on the internet. For production agents — especially those handling sensitive data or operating in regulated environments — you need to restrict which domains the browser can reach. This demo shows how to deploy a network firewall allow/deny list and verify it works.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Custom Browser Resource (VPC network mode)                         │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  Browser Session → navigate("https://github.com")           │   │
-│  │       │                                                     │   │
-│  │       ▼                                                     │   │
-│  │  ┌────────────────────────────────────────────┐            │   │
-│  │  │  Private VPC Subnet                        │            │   │
-│  │  │       ↓                                    │            │   │
-│  │  │  ┌─────────────────────────────────────┐  │            │   │
-│  │  │  │  AWS Network Firewall               │  │            │   │
-│  │  │  │  AllowList: example.com, github.com │  │            │   │
-│  │  │  │  DenyList:  facebook.com, twitter…  │  │            │   │
-│  │  │  │  Default:   DENY                    │  │            │   │
-│  │  │  └────────────────┬────────────────────┘  │            │   │
-│  │  │                   │ (allowed → internet)   │            │   │
-│  │  └───────────────────┼────────────────────────┘            │   │
-│  └─────────────────────-┼──────────────────────────────────── ┘   │
-│                          ▼                                         │
-│               ✓ github.com reachable                               │
-│               ✗ facebook.com blocked                               │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
 ## How It Works
 
 ### Network Modes
@@ -108,8 +82,9 @@ The script tests five URLs and reports pass/fail for each:
 | `wikipedia.org` | Allow list | Reachable |
 | `facebook.com` | Deny list | Blocked |
 | `twitter.com` | Deny list | Blocked |
+| `randomsite12345.com` | Unlisted (default deny) | Blocked |
 
-A navigation timeout on blocked domains is the expected success condition — it means the firewall is correctly dropping traffic.
+A navigation timeout on blocked domains is the expected success condition — it means the firewall is correctly dropping traffic. The **unlisted** case confirms the firewall's default-deny posture: any domain not explicitly allowed is also blocked.
 
 ## Prerequisites
 

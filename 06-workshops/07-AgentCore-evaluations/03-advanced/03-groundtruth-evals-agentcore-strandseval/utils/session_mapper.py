@@ -288,9 +288,7 @@ class CloudWatchSessionMapper(SessionMapper):
             tool_call_id=tr_data.get("toolUseId"),
         )
 
-    def _extract_agent_invocation_span(
-        self, spans: list[Span], session_id: str
-    ) -> AgentInvocationSpan | None:
+    def _extract_agent_invocation_span(self, spans: list[Span], session_id: str) -> AgentInvocationSpan | None:
         """Extract the AgentInvocationSpan from a list of spans.
 
         Finds the user prompt from the first span and the final response

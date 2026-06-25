@@ -48,9 +48,7 @@ def download_demo_data_from_s3():
                     continue
 
                 # Calculate local path
-                relative_path = s3_key[
-                    len(DEMO_DATA_PREFIX) + 1 :
-                ]  # Remove 'demo_data/' prefix
+                relative_path = s3_key[len(DEMO_DATA_PREFIX) + 1 :]  # Remove 'demo_data/' prefix
                 local_path = os.path.join(local_base, relative_path)
 
                 # Create directory if needed
@@ -86,11 +84,7 @@ def read_project_status() -> str:
     try:
         # Find the latest week file dynamically
         project_dir = "/tmp/demo_data/project_status"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(project_dir)
-            if f.startswith("projects_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(project_dir) if f.startswith("projects_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No project status files found"
         latest_file = sorted(files)[-1]  # Get the latest week
@@ -103,9 +97,7 @@ def read_project_status() -> str:
 
         summary = f"Found {len(projects)} projects:\n"
         for p in projects:
-            summary += (
-                f"- {p['project_name']}: {p['status']} ({p['progress']}% complete)\n"
-            )
+            summary += f"- {p['project_name']}: {p['status']} ({p['progress']}% complete)\n"
             if p["blockers"] != "None":
                 summary += f"  ⚠️ Blocker: {p['blockers']}\n"
 
@@ -127,13 +119,7 @@ def read_team_updates() -> str:
             with open(os.path.join(updates_dir, filename), "r") as f:
                 content = f.read()
                 # Extract key sections
-                name = (
-                    filename.replace(".md", "")
-                    .replace("_week_", " ")
-                    .rsplit(" ", 1)[0]
-                    .replace("_", " ")
-                    .title()
-                )
+                name = filename.replace(".md", "").replace("_week_", " ").rsplit(" ", 1)[0].replace("_", " ").title()
                 summary += f"## {name}\n"
 
                 # Extract completed items
@@ -173,11 +159,7 @@ def read_metrics() -> str:
     try:
         # Find the latest week file dynamically
         metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(metrics_dir)
-            if f.startswith("kpis_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(metrics_dir) if f.startswith("kpis_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No metrics files found"
         latest_file = sorted(files)[-1]  # Get the latest week
@@ -206,11 +188,7 @@ def read_bug_tracker() -> str:
     try:
         # Find the latest week file dynamically
         issues_dir = "/tmp/demo_data/issues"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(issues_dir)
-            if f.startswith("bug_tracker_week_") and f.endswith(".json")
-        ]
+        files = [f for f in os.listdir(issues_dir) if f.startswith("bug_tracker_week_") and f.endswith(".json")]
         if not files:
             return "Error: No bug tracker files found"
         latest_file = sorted(files)[-1]  # Get the latest week
@@ -225,7 +203,9 @@ def read_bug_tracker() -> str:
         summary += f"  - Medium: {data['summary']['medium']}\n"
         summary += f"  - Low: {data['summary']['low']}\n\n"
 
-        summary += f"This Week: {data['summary']['opened_this_week']} opened, {data['summary']['closed_this_week']} closed\n"
+        summary += (
+            f"This Week: {data['summary']['opened_this_week']} opened, {data['summary']['closed_this_week']} closed\n"
+        )
         summary += f"Average Age: {data['summary']['average_age_days']} days\n\n"
 
         if data["critical_issues"]:
@@ -259,11 +239,7 @@ def read_meeting_notes() -> str:
                 # Extract key decisions or action items
                 if "Decision" in content or "Action Item" in content:
                     for line in lines:
-                        if (
-                            "Decision" in line
-                            or "Action" in line
-                            or line.strip().startswith("- [")
-                        ):
+                        if "Decision" in line or "Action" in line or line.strip().startswith("- ["):
                             summary += f"  {line.strip()}\n"
 
                 summary += "\n"
@@ -284,11 +260,7 @@ def generate_bug_severity_chart() -> str:
 
         # Find the latest week file dynamically
         issues_dir = "/tmp/demo_data/issues"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(issues_dir)
-            if f.startswith("bug_tracker_week_") and f.endswith(".json")
-        ]
+        files = [f for f in os.listdir(issues_dir) if f.startswith("bug_tracker_week_") and f.endswith(".json")]
         if not files:
             return "Error: No bug tracker files found"
         latest_file = sorted(files)[-1]
@@ -341,11 +313,7 @@ def generate_metrics_trend_chart() -> str:
 
         # Find the latest week file dynamically
         metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(metrics_dir)
-            if f.startswith("kpis_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(metrics_dir) if f.startswith("kpis_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No metrics files found"
         latest_file = sorted(files)[-1]
@@ -364,9 +332,7 @@ def generate_metrics_trend_chart() -> str:
             "New User Signups",
         ]
 
-        selected_metrics = [
-            m for m in metrics if m["metric_name"] in metric_names_to_show
-        ]
+        selected_metrics = [m for m in metrics if m["metric_name"] in metric_names_to_show]
 
         # Extract numeric values
         def extract_number(value_str):
@@ -515,11 +481,7 @@ def extract_structured_data():
     try:
         # Find the latest week file dynamically
         project_dir = "/tmp/demo_data/project_status"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(project_dir)
-            if f.startswith("projects_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(project_dir) if f.startswith("projects_week_") and f.endswith(".csv")]
         if files:
             latest_file = sorted(files)[-1]
             with open(os.path.join(project_dir, latest_file), "r") as f:
@@ -532,11 +494,7 @@ def extract_structured_data():
     try:
         # Find the latest week file dynamically
         metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(metrics_dir)
-            if f.startswith("kpis_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(metrics_dir) if f.startswith("kpis_week_") and f.endswith(".csv")]
         if files:
             latest_file = sorted(files)[-1]
             with open(os.path.join(metrics_dir, latest_file), "r") as f:
@@ -549,11 +507,7 @@ def extract_structured_data():
     try:
         # Find the latest week file dynamically
         issues_dir = "/tmp/demo_data/issues"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(issues_dir)
-            if f.startswith("bug_tracker_week_") and f.endswith(".json")
-        ]
+        files = [f for f in os.listdir(issues_dir) if f.startswith("bug_tracker_week_") and f.endswith(".json")]
         if files:
             latest_file = sorted(files)[-1]
             with open(os.path.join(issues_dir, latest_file), "r") as f:
@@ -588,17 +542,9 @@ def extract_structured_data():
                             current_section = "completed"
                         elif "in progress" in line_lower or "working on" in line_lower:
                             current_section = "in_progress"
-                        elif (
-                            "blocker" in line_lower
-                            or "challenge" in line_lower
-                            or "concern" in line_lower
-                        ):
+                        elif "blocker" in line_lower or "challenge" in line_lower or "concern" in line_lower:
                             current_section = "blockers"
-                        elif (
-                            "next week" in line_lower
-                            or "coming up" in line_lower
-                            or "priorities" in line_lower
-                        ):
+                        elif "next week" in line_lower or "coming up" in line_lower or "priorities" in line_lower:
                             current_section = "next_week"
                         elif line.startswith("#"):
                             current_section = None
@@ -626,9 +572,7 @@ def extract_structured_data():
                     for line in lines:
                         if "decision" in line.lower() and not line.startswith("#"):
                             meeting["decisions"].append(line.strip())
-                        elif line.strip().startswith("- [") or (
-                            "action" in line.lower() and ":" in line
-                        ):
+                        elif line.strip().startswith("- [") or ("action" in line.lower() and ":" in line):
                             meeting["action_items"].append(line.strip())
 
                     data["meetings"].append(meeting)
@@ -647,11 +591,7 @@ def analyze_data_quality() -> str:
 
         # Find the latest week file dynamically
         project_dir = "/tmp/demo_data/project_status"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(project_dir)
-            if f.startswith("projects_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(project_dir) if f.startswith("projects_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No project status files found"
         latest_file = sorted(files)[-1]
@@ -669,9 +609,7 @@ def analyze_data_quality() -> str:
         if update_count < 3:
             warnings.append("Not all team members submitted updates")
 
-        print(
-            f"✓ Data quality check complete: {len(issues)} issues, {len(warnings)} warnings"
-        )
+        print(f"✓ Data quality check complete: {len(issues)} issues, {len(warnings)} warnings")
         return f"Data quality validated: {len(projects)} projects, {update_count} team updates"
     except Exception as e:
         return f"Error in data quality check: {e}"
@@ -683,11 +621,7 @@ def cross_reference_data() -> str:
     try:
         # Find the latest week file dynamically
         issues_dir = "/tmp/demo_data/issues"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(issues_dir)
-            if f.startswith("bug_tracker_week_") and f.endswith(".json")
-        ]
+        files = [f for f in os.listdir(issues_dir) if f.startswith("bug_tracker_week_") and f.endswith(".json")]
         if not files:
             return "Error: No bug tracker files found"
         latest_file = sorted(files)[-1]
@@ -748,25 +682,13 @@ def analyze_sentiment() -> str:
             if filename.endswith(".md"):
                 with open(os.path.join(updates_dir, filename), "r") as f:
                     content = f.read().lower()
-                    positive_count = sum(
-                        content.count(word) for word in positive_indicators
-                    )
-                    concern_count = sum(
-                        content.count(word) for word in concern_indicators
-                    )
+                    positive_count = sum(content.count(word) for word in positive_indicators)
+                    concern_count = sum(content.count(word) for word in concern_indicators)
                     score = positive_count - concern_count
                     sentiment_scores.append(score)
 
-        avg_sentiment = (
-            sum(sentiment_scores) / len(sentiment_scores) if sentiment_scores else 0
-        )
-        mood = (
-            "positive"
-            if avg_sentiment > 2
-            else "neutral"
-            if avg_sentiment > -2
-            else "concerned"
-        )
+        avg_sentiment = sum(sentiment_scores) / len(sentiment_scores) if sentiment_scores else 0
+        mood = "positive" if avg_sentiment > 2 else "neutral" if avg_sentiment > -2 else "concerned"
 
         print(f"✓ Sentiment analysis complete: Team mood is {mood}")
         return f"Team sentiment analyzed: Overall mood is {mood}"
@@ -780,11 +702,7 @@ def calculate_risk_scores() -> str:
     try:
         # Find the latest week file dynamically
         project_dir = "/tmp/demo_data/project_status"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(project_dir)
-            if f.startswith("projects_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(project_dir) if f.startswith("projects_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No project status files found"
         latest_file = sorted(files)[-1]
@@ -813,9 +731,7 @@ def calculate_risk_scores() -> str:
             if project["blockers"] != "None":
                 risk_score += 1
 
-            risk_level = (
-                "High" if risk_score >= 4 else "Medium" if risk_score >= 2 else "Low"
-            )
+            risk_level = "High" if risk_score >= 4 else "Medium" if risk_score >= 2 else "Low"
             risk_assessments.append(f"{project['project_name']}: {risk_level}")
 
         print(f"✓ Risk scoring complete for {len(projects)} projects")
@@ -835,11 +751,7 @@ def generate_project_timeline_chart() -> str:
 
         # Find the latest week file dynamically
         project_dir = "/tmp/demo_data/project_status"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(project_dir)
-            if f.startswith("projects_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(project_dir) if f.startswith("projects_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No project status files found"
         latest_file = sorted(files)[-1]
@@ -904,11 +816,7 @@ def build_metrics_forecast_model() -> str:
 
         # Find the latest week file dynamically
         metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
-        files = [
-            f
-            for f in os.listdir(metrics_dir)
-            if f.startswith("kpis_week_") and f.endswith(".csv")
-        ]
+        files = [f for f in os.listdir(metrics_dir) if f.startswith("kpis_week_") and f.endswith(".csv")]
         if not files:
             return "Error: No metrics files found"
         latest_file = sorted(files)[-1]
@@ -952,9 +860,7 @@ def build_metrics_forecast_model() -> str:
                     .replace(" days", "")
                     .split()[0]
                 )
-                change_percent = float(
-                    change_percent_str.replace("%", "").replace("+", "")
-                )
+                change_percent = float(change_percent_str.replace("%", "").replace("+", ""))
 
                 historical_data[metric_name]["current"] = current_value
                 historical_data[metric_name]["change_percent"] = change_percent
@@ -971,9 +877,7 @@ def build_metrics_forecast_model() -> str:
             model.fit(X, y)
 
             # Predict next 4 weeks after the current week
-            future_weeks = np.array(
-                [max_week + 1, max_week + 2, max_week + 3, max_week + 4]
-            ).reshape(-1, 1)
+            future_weeks = np.array([max_week + 1, max_week + 2, max_week + 3, max_week + 4]).reshape(-1, 1)
             predictions = model.predict(future_weeks)
 
             # Calculate R² score
@@ -1130,9 +1034,7 @@ def generate_metrics_forecast_chart() -> str:
             )
 
             # Add vertical line between current and forecast
-            ax.axvline(
-                x=current_week + 0.5, color="red", linestyle="-", alpha=0.3, linewidth=2
-            )
+            ax.axvline(x=current_week + 0.5, color="red", linestyle="-", alpha=0.3, linewidth=2)
 
             # Set x-axis limits
             ax.set_xlim(weeks[0] - 0.5, future_weeks[-1] + 0.5)
@@ -1168,9 +1070,7 @@ def generate_metrics_forecast_chart() -> str:
             fontweight="bold",
             y=0.98,
         )
-        plt.subplots_adjust(
-            left=0.08, right=0.95, top=0.88, bottom=0.08, hspace=0.4, wspace=0.25
-        )
+        plt.subplots_adjust(left=0.08, right=0.95, top=0.88, bottom=0.08, hspace=0.4, wspace=0.25)
 
         output_path = "/tmp/weekly_report_output/metrics_forecast_chart.png"  # nosec B108
         plt.savefig(output_path, dpi=150)
@@ -1207,10 +1107,7 @@ def generate_team_velocity_chart() -> str:
                     lines = content.split("\n")
                     in_completed = False
                     for line in lines:
-                        if (
-                            "completed" in line.lower()
-                            or "accomplishment" in line.lower()
-                        ):
+                        if "completed" in line.lower() or "accomplishment" in line.lower():
                             in_completed = True
                         elif line.startswith("#"):
                             in_completed = False
@@ -1229,9 +1126,7 @@ def generate_team_velocity_chart() -> str:
         bars = ax.bar(names, counts, color="#33b5e5")
 
         ax.set_ylabel("Completed Items", fontsize=12)
-        ax.set_title(
-            "Team Velocity - Completed Items This Week", fontsize=14, fontweight="bold"
-        )
+        ax.set_title("Team Velocity - Completed Items This Week", fontsize=14, fontweight="bold")
         ax.set_ylim(0, max(counts) + 2)
 
         # Add value labels on bars
@@ -1339,17 +1234,13 @@ def upload_report_to_s3() -> str:
 
             if os.path.exists(filepath):
                 # Determine content type
-                content_type = (
-                    "text/markdown" if filename.endswith(".md") else "image/png"
-                )
+                content_type = "text/markdown" if filename.endswith(".md") else "image/png"
 
                 # S3 key
                 s3_key = f"{s3_prefix}/{week_folder}/{filename}"
 
                 # Upload file
-                s3_client.upload_file(
-                    filepath, bucket, s3_key, ExtraArgs={"ContentType": content_type}
-                )
+                s3_client.upload_file(filepath, bucket, s3_key, ExtraArgs={"ContentType": content_type})
 
                 uploaded_files.append(s3_key)
                 print(f"   ✓ Uploaded {filename}")

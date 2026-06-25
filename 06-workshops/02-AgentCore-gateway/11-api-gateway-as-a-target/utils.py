@@ -20,9 +20,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
             if domain:
                 region = user_pool_id.split("_")[0] if "_" in user_pool_id else REGION  # noqa: F821
                 domain_url = f"https://{domain}.auth.{region}.amazoncognito.com"
-                print(
-                    f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})"
-                )
+                print(f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})")
             else:
                 print(f"No domains found for user pool {user_pool_id}")
             return pool["Id"]
@@ -30,16 +28,12 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
     created = cognito.create_user_pool(PoolName=USER_POOL_NAME)
     user_pool_id = created["UserPool"]["Id"]
     user_pool_id_without_underscore_lc = user_pool_id.replace("_", "").lower()
-    cognito.create_user_pool_domain(
-        Domain=user_pool_id_without_underscore_lc, UserPoolId=user_pool_id
-    )
+    cognito.create_user_pool_domain(Domain=user_pool_id_without_underscore_lc, UserPoolId=user_pool_id)
     print("Domain created as well")
     return created["UserPool"]["Id"]
 
 
-def get_or_create_resource_server(
-    cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES
-):
+def get_or_create_resource_server(cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES):
     try:
         existing = cognito.describe_resource_server(  # noqa: F841
             UserPoolId=user_pool_id, Identifier=RESOURCE_SERVER_ID
@@ -56,15 +50,11 @@ def get_or_create_resource_server(
         return RESOURCE_SERVER_ID
 
 
-def get_or_create_m2m_client(
-    cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID, SCOPES=None
-):
+def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID, SCOPES=None):
     response = cognito.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
     for client in response["UserPoolClients"]:
         if client["ClientName"] == CLIENT_NAME:
-            describe = cognito.describe_user_pool_client(
-                UserPoolId=user_pool_id, ClientId=client["ClientId"]
-            )
+            describe = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client["ClientId"])
             return client["ClientId"], describe["UserPoolClient"]["ClientSecret"]
     print("creating new m2m client")
 
@@ -85,9 +75,7 @@ def get_or_create_m2m_client(
         SupportedIdentityProviders=["COGNITO"],
         ExplicitAuthFlows=["ALLOW_REFRESH_TOKEN_AUTH"],
     )
-    return created["UserPoolClient"]["ClientId"], created["UserPoolClient"][
-        "ClientSecret"
-    ]
+    return created["UserPoolClient"]["ClientId"], created["UserPoolClient"]["ClientSecret"]
 
 
 def get_token(
@@ -152,9 +140,7 @@ def create_agentcore_gateway_role(gateway_name):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": f"{account_id}"},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -174,14 +160,10 @@ def create_agentcore_gateway_role(gateway_name):
         time.sleep(10)
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
-        policies = iam_client.list_role_policies(
-            RoleName=agentcore_gateway_role_name, MaxItems=100
-        )
+        policies = iam_client.list_role_policies(RoleName=agentcore_gateway_role_name, MaxItems=100)
         print("policies:", policies)
         for policy_name in policies["PolicyNames"]:
-            iam_client.delete_role_policy(
-                RoleName=agentcore_gateway_role_name, PolicyName=policy_name
-            )
+            iam_client.delete_role_policy(RoleName=agentcore_gateway_role_name, PolicyName=policy_name)
         print(f"deleting {agentcore_gateway_role_name}")
         iam_client.delete_role(RoleName=agentcore_gateway_role_name)
         print(f"recreating {agentcore_gateway_role_name}")
@@ -258,9 +240,7 @@ def create_and_deploy_api_from_openapi_with_extensions(
 
         # Deploy the API
         print(f"\nDeploying API to stage '{stage_name}'...")
-        deployment_response = client.create_deployment(
-            restApiId=api_id, stageName=stage_name, description=description
-        )
+        deployment_response = client.create_deployment(restApiId=api_id, stageName=stage_name, description=description)
 
         deployment_id = deployment_response["id"]
         print(f"✓ Deployment created: {deployment_id}")
@@ -290,9 +270,7 @@ def create_and_deploy_api_from_openapi_with_extensions(
 
         # Associate API Key with Usage Plan
         print("\nAssociating API Key with Usage Plan...")
-        client.create_usage_plan_key(
-            usagePlanId=usage_plan_id, keyId=api_key_id, keyType="API_KEY"
-        )
+        client.create_usage_plan_key(usagePlanId=usage_plan_id, keyId=api_key_id, keyType="API_KEY")
         print("✓ API Key associated with Usage Plan")
 
         # Construct the invoke URL
@@ -322,9 +300,7 @@ def create_and_deploy_api_from_openapi_with_extensions(
         }
 
     except client.exceptions.ConflictException:
-        print(
-            "An API with the specified name already exists. Consider updating or deleting existing API."
-        )
+        print("An API with the specified name already exists. Consider updating or deleting existing API.")
         raise
     except Exception as e:
         print(f"Error creating or deploying API Gateway REST API: {e}")
@@ -403,9 +379,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
         request = AWSRequest(method="POST", url=url, data="{}")
         SigV4Auth(credentials, "execute-api", region).add_auth(request)
 
-        response = requests.post(
-            url, headers=dict(request.headers), json={}, timeout=30
-        )
+        response = requests.post(url, headers=dict(request.headers), json={}, timeout=30)
 
         if response.status_code == 200:
             print(f"   ✓ SUCCESS (Status: {response.status_code})")
@@ -490,9 +464,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
     print(f"\n{'=' * 70}")
     print("Test Summary")
     print(f"{'=' * 70}")
-    success_count = sum(
-        1 for r in results.values() if r["status"] in ["success", "expected_failure"]
-    )
+    success_count = sum(1 for r in results.values() if r["status"] in ["success", "expected_failure"])
     total_count = len(results)
     print(f"Passed: {success_count}/{total_count}")
     print(f"{'=' * 70}\n")
@@ -591,9 +563,7 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
     # Delete API Key
     if api_key_id:
         try:
-            print(
-                f"\n3. Deleting API Key: {api_key_id}..."
-            )  # codeql[py/clear-text-logging-sensitive-data]
+            print(f"\n3. Deleting API Key: {api_key_id}...")  # codeql[py/clear-text-logging-sensitive-data]
             client.delete_api_key(apiKey=api_key_id)
             print("   ✓ API Key deleted")
             results["api_key_deleted"] = True
@@ -671,9 +641,7 @@ def delete_agentcore_gateway_and_targets(gateway_id, region="us-west-2"):
     # List and delete all targets first
     try:
         print(f"1. Listing all targets for gateway: {gateway_id}...")
-        list_response = gateway_client.list_gateway_targets(
-            gatewayIdentifier=gateway_id, maxResults=100
-        )
+        list_response = gateway_client.list_gateway_targets(gatewayIdentifier=gateway_id, maxResults=100)
 
         targets = list_response.get("items", [])
 
@@ -686,9 +654,7 @@ def delete_agentcore_gateway_and_targets(gateway_id, region="us-west-2"):
 
                 try:
                     print(f"\n   Deleting target: {target_name} ({target_id})...")
-                    gateway_client.delete_gateway_target(
-                        gatewayIdentifier=gateway_id, targetId=target_id
-                    )
+                    gateway_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                     print(f"   ✓ Target deletion initiated: {target_id}")
                     results["targets_deleted"].append(target_id)
 
@@ -701,16 +667,11 @@ def delete_agentcore_gateway_and_targets(gateway_id, region="us-west-2"):
                     while elapsed < max_wait:
                         try:
                             # Try to get the target - if it doesn't exist, deletion is complete
-                            gateway_client.get_gateway_target(
-                                gatewayIdentifier=gateway_id, targetId=target_id
-                            )
+                            gateway_client.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                             time.sleep(wait_interval)
                             elapsed += wait_interval
                         except ClientError as e:
-                            if (
-                                e.response["Error"]["Code"]
-                                == "ResourceNotFoundException"
-                            ):
+                            if e.response["Error"]["Code"] == "ResourceNotFoundException":
                                 print(f"   ✓ Target fully deleted: {target_id}")
                                 break
                             else:
@@ -841,9 +802,7 @@ def delete_agentcore_credential_provider(credential_provider_arn, region="us-wes
     print(f"\n{'=' * 70}")
     print("Credential Provider Cleanup Summary")
     print(f"{'=' * 70}")
-    print(
-        f"Credential Provider Deleted: {'✓' if results['credential_provider_deleted'] else '✗'}"
-    )
+    print(f"Credential Provider Deleted: {'✓' if results['credential_provider_deleted'] else '✗'}")
 
     if results["errors"]:
         print(f"\nErrors encountered: {len(results['errors'])}")
@@ -893,9 +852,7 @@ def delete_cognito_user_pool(user_pool_name, region="us-west-2"):
                 break
 
         if not user_pool_id:
-            print(
-                f"   ⚠ User Pool '{user_pool_name}' not found (may already be deleted)"
-            )
+            print(f"   ⚠ User Pool '{user_pool_name}' not found (may already be deleted)")
             results["user_pool_deleted"] = True
             return results
 
@@ -933,9 +890,7 @@ def delete_cognito_user_pool(user_pool_name, region="us-west-2"):
     # Delete all clients
     try:
         print("\n3. Deleting User Pool Clients...")
-        clients_response = cognito.list_user_pool_clients(
-            UserPoolId=user_pool_id, MaxResults=60
-        )
+        clients_response = cognito.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
 
         clients = clients_response.get("UserPoolClients", [])
         if clients:
@@ -944,9 +899,7 @@ def delete_cognito_user_pool(user_pool_name, region="us-west-2"):
                 client_name = client["ClientName"]
                 try:
                     print(f"   Deleting client: {client_name} ({client_id})...")
-                    cognito.delete_user_pool_client(
-                        UserPoolId=user_pool_id, ClientId=client_id
-                    )
+                    cognito.delete_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
                     print("   ✓ Client deleted")
                     results["clients_deleted"].append(client_id)
                 except Exception as e:
@@ -1020,9 +973,7 @@ def delete_iam_role(role_name):
     # Delete inline policies first
     try:
         print(f"1. Listing inline policies for role: {role_name}...")
-        policies_response = iam_client.list_role_policies(
-            RoleName=role_name, MaxItems=100
-        )
+        policies_response = iam_client.list_role_policies(RoleName=role_name, MaxItems=100)
 
         policy_names = policies_response.get("PolicyNames", [])
 
@@ -1031,9 +982,7 @@ def delete_iam_role(role_name):
             for policy_name in policy_names:
                 try:
                     print(f"   Deleting policy: {policy_name}...")
-                    iam_client.delete_role_policy(
-                        RoleName=role_name, PolicyName=policy_name
-                    )
+                    iam_client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
                     print("   ✓ Policy deleted")
                     results["policies_deleted"].append(policy_name)
                 except Exception as e:

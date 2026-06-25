@@ -121,10 +121,7 @@ def create_api_key_credential_provider() -> str:
     """Create (or reuse) an API Key credential provider in AgentCore Identity."""
     api_key = os.environ.get("AZURE_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError(
-            "Set AZURE_OPENAI_API_KEY or OPENAI_API_KEY environment variable "
-            "before running this script."
-        )
+        raise ValueError("Set AZURE_OPENAI_API_KEY or OPENAI_API_KEY environment variable before running this script.")
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
@@ -226,19 +223,13 @@ def main():
 
     print("\n=== Summary ===")
     print(f"  Credential provider: {PROVIDER_NAME}")
-    print(
-        f"  Provider ARN: {provider_arn}"
-    )  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  Provider ARN: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
     print(f"  Region: {REGION}")
     print("\n  The credential provider is now ready for use in AgentCore agents.")
-    print(
-        "  Use @requires_api_key(provider_name='openai-apikey-provider') in your agent."
-    )
+    print("  Use @requires_api_key(provider_name='openai-apikey-provider') in your agent.")
 
     print("\nTo clean up the credential provider:")
-    print(
-        f"  aws bedrock-agentcore delete-api-key-credential-provider --name {PROVIDER_NAME}"
-    )
+    print(f"  aws bedrock-agentcore delete-api-key-credential-provider --name {PROVIDER_NAME}")
 
 
 if __name__ == "__main__":

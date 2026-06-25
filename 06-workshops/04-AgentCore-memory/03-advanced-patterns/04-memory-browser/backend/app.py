@@ -29,9 +29,7 @@ def clean_aws_error_message(error_message: str) -> str:
     import re
 
     # Remove ARN patterns (arn:aws:...)
-    error_message = re.sub(
-        r"arn:aws:[^:\s]+:[^:\s]*:[^:\s]*:[^\s]+", "[AWS Resource]", error_message
-    )
+    error_message = re.sub(r"arn:aws:[^:\s]+:[^:\s]*:[^:\s]*:[^\s]+", "[AWS Resource]", error_message)
 
     # Remove account IDs (12-digit numbers)
     error_message = re.sub(r"\b\d{12}\b", "[Account]", error_message)
@@ -45,13 +43,8 @@ def clean_aws_error_message(error_message: str) -> str:
         else:
             return "Access denied: Insufficient permissions. Please check your AWS credentials and IAM permissions."
 
-    if (
-        "ResourceNotFoundException" in error_message
-        or "not found" in error_message.lower()
-    ):
-        return (
-            "Resource not found. Please verify the Memory ID exists and is accessible."
-        )
+    if "ResourceNotFoundException" in error_message or "not found" in error_message.lower():
+        return "Resource not found. Please verify the Memory ID exists and is accessible."
 
     if "ValidationException" in error_message:
         return "Invalid request parameters. Please check your Memory ID format."
@@ -71,9 +64,7 @@ app = FastAPI(
 )
 
 # Configure CORS for React frontend
-ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-).split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -203,45 +194,31 @@ class LongTermMemoryQuery(BaseModel):
         return v.strip()
 
 
-def apply_short_term_filters(
-    memories: List[Dict[str, Any]], query: ShortTermMemoryQuery
-) -> List[Dict[str, Any]]:
+def apply_short_term_filters(memories: List[Dict[str, Any]], query: ShortTermMemoryQuery) -> List[Dict[str, Any]]:
     """Apply client-side filters to short-term memory results"""
     filtered_memories = memories.copy()
 
     # Content search filtering
     if query.content_search and query.content_search.strip():
         search_term = query.content_search.strip().lower()
-        filtered_memories = [
-            m for m in filtered_memories if search_term in m.get("content", "").lower()
-        ]
+        filtered_memories = [m for m in filtered_memories if search_term in m.get("content", "").lower()]
 
     # Role filtering (existing)
     if query.role_filter != "all":
-        filtered_memories = [
-            m
-            for m in filtered_memories
-            if m.get("role", "").upper() == query.role_filter.upper()
-        ]
+        filtered_memories = [m for m in filtered_memories if m.get("role", "").upper() == query.role_filter.upper()]
 
     # Event type filtering (existing)
     if query.event_type != "all":
-        filtered_memories = [
-            m for m in filtered_memories if m.get("type", "") == query.event_type
-        ]
+        filtered_memories = [m for m in filtered_memories if m.get("type", "") == query.event_type]
 
     # Simple sorting with consistent string conversion
     reverse_order = query.sort_order == "desc"
 
     if query.sort_by == "timestamp":
         # Convert all timestamps to strings for consistent sorting
-        filtered_memories.sort(
-            key=lambda x: str(x.get("timestamp", "")), reverse=reverse_order
-        )
+        filtered_memories.sort(key=lambda x: str(x.get("timestamp", "")), reverse=reverse_order)
     elif query.sort_by == "size":
-        filtered_memories.sort(
-            key=lambda x: int(x.get("size", 0)), reverse=reverse_order
-        )
+        filtered_memories.sort(key=lambda x: int(x.get("size", 0)), reverse=reverse_order)
 
     return filtered_memories
 
@@ -251,9 +228,7 @@ async def get_short_term_memory(query: ShortTermMemoryQuery):
     """Get short-term memory (events and conversation turns) from AgentCore Memory"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         # Use provided memory_id or fall back to environment default
         memory_id = query.memory_id or MEMORY_ID
@@ -266,9 +241,7 @@ async def get_short_term_memory(query: ShortTermMemoryQuery):
 
         short_term_memories = []
 
-        logger.info(
-            f"Fetching short-term memory for actor_id='{query.actor_id}', session_id='{query.session_id}'"
-        )
+        logger.info(f"Fetching short-term memory for actor_id='{query.actor_id}', session_id='{query.session_id}'")
         logger.info(f"📋 Memory ID: {memory_id}")
         logger.info(f"📋 Max results: {query.max_results}")
 
@@ -339,20 +312,14 @@ async def get_short_term_memory(query: ShortTermMemoryQuery):
                         "session_id": query.session_id,
                         "event_id": event.get("eventId", f"event-{event_idx}"),
                         "event_type": event.get("eventType", "unknown"),
-                        "timestamp": str(
-                            event.get(
-                                "eventTimestamp", datetime.now().isoformat() + "Z"
-                            )
-                        ),
+                        "timestamp": str(event.get("eventTimestamp", datetime.now().isoformat() + "Z")),
                         "size": len(content_text),
                     }
                     short_term_memories.append(memory_entry)
 
         except Exception as e:
             error_msg = str(e).lower()
-            logger.warning(
-                f"ListEvents failed for {query.actor_id}/{query.session_id}: {e}"
-            )
+            logger.warning(f"ListEvents failed for {query.actor_id}/{query.session_id}: {e}")
             logger.warning(f"ListEvents error type: {type(e).__name__}")
 
             # Clean the error message to remove ARNs and sensitive info
@@ -424,9 +391,7 @@ async def get_short_term_memory(query: ShortTermMemoryQuery):
 
         except Exception as e:
             error_msg = str(e).lower()
-            logger.warning(
-                f"get_last_k_turns failed for {query.actor_id}/{query.session_id}: {e}"
-            )
+            logger.warning(f"get_last_k_turns failed for {query.actor_id}/{query.session_id}: {e}")
             logger.warning(f"get_last_k_turns error type: {type(e).__name__}")
 
             # Clean the error message to remove ARNs and sensitive info
@@ -484,9 +449,7 @@ async def get_short_term_memory(query: ShortTermMemoryQuery):
     except Exception as e:
         logger.error(f"Error getting short-term memory: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get short-term memory: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get short-term memory: {clean_error}")
 
 
 class EventQuery(BaseModel):
@@ -510,9 +473,7 @@ async def search_event_by_id(query: EventSearchQuery):
     """Search for an event by ID across multiple sessions"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         memory_id = query.memory_id or MEMORY_ID
 
@@ -528,9 +489,7 @@ async def search_event_by_id(query: EventSearchQuery):
         for actor_id in actor_ids_to_try:
             for session_id in session_ids_to_try:
                 try:
-                    logger.info(
-                        f"🔍 Searching in actor_id={actor_id}, session_id={session_id}"
-                    )
+                    logger.info(f"🔍 Searching in actor_id={actor_id}, session_id={session_id}")
 
                     events = memory_client.list_events(
                         memory_id=memory_id,
@@ -542,9 +501,7 @@ async def search_event_by_id(query: EventSearchQuery):
                     # Look for the specific event ID
                     for event in events:
                         if event.get("eventId") == query.event_id:
-                            logger.info(
-                                f"✅ Found event {query.event_id} in {actor_id}/{session_id}"
-                            )
+                            logger.info(f"✅ Found event {query.event_id} in {actor_id}/{session_id}")
 
                             # Process the event (same logic as before)
                             payload = event.get("payload", {})
@@ -592,9 +549,7 @@ async def search_event_by_id(query: EventSearchQuery):
     except Exception as e:
         logger.error(f"Error searching for event: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to search for event: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to search for event: {clean_error}")
 
 
 @app.post("/api/agentcore/getEventById")
@@ -602,9 +557,7 @@ async def get_event_by_id(query: EventQuery):
     """Get a specific event by event ID"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         memory_id = query.memory_id or MEMORY_ID
 
@@ -615,9 +568,7 @@ async def get_event_by_id(query: EventQuery):
         try:
             # Note: This assumes there's a get_event method in the memory client
             # You may need to check the actual AgentCore Memory client API
-            event = memory_client.get_event(
-                memory_id=memory_id, event_id=query.event_id
-            )
+            event = memory_client.get_event(memory_id=memory_id, event_id=query.event_id)
 
             if event:
                 payload = event.get("payload", {})
@@ -669,9 +620,7 @@ async def get_event_by_id(query: EventQuery):
                     "event_type": event.get("eventType", "unknown"),
                     "actor_id": event.get("actorId", "unknown"),
                     "session_id": event.get("sessionId", "unknown"),
-                    "timestamp": str(
-                        event.get("eventTimestamp", datetime.now().isoformat() + "Z")
-                    ),
+                    "timestamp": str(event.get("eventTimestamp", datetime.now().isoformat() + "Z")),
                     "size": len(content_text),
                     "raw_event": event,  # Include full event data for debugging
                 }
@@ -692,9 +641,7 @@ async def get_event_by_id(query: EventQuery):
 
         except AttributeError:
             # If get_event method doesn't exist, try alternative approach
-            logger.warning(
-                "get_event method not available, trying alternative approach"
-            )
+            logger.warning("get_event method not available, trying alternative approach")
 
             # Alternative: Search through all events to find the specific one
             # This is less efficient but works if direct event retrieval isn't available
@@ -710,16 +657,12 @@ async def get_event_by_id(query: EventQuery):
             except Exception as e:
                 logger.error(f"Alternative event search failed: {e}")
                 clean_error = clean_aws_error_message(str(e))
-                raise HTTPException(
-                    status_code=500, detail=f"Failed to retrieve event: {clean_error}"
-                )
+                raise HTTPException(status_code=500, detail=f"Failed to retrieve event: {clean_error}")
 
     except Exception as e:
         logger.error(f"Error getting event by ID: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get event: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get event: {clean_error}")
 
 
 @app.post("/api/agentcore/listNamespacesOld")
@@ -727,9 +670,7 @@ async def list_namespaces_old(query: MemoryQuery):
     """List available namespaces from AgentCore Memory strategies (deprecated)"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         # Use provided memory_id or fall back to environment default
         memory_id = query.memory_id or MEMORY_ID
@@ -813,9 +754,7 @@ async def list_namespaces_old(query: MemoryQuery):
     except Exception as e:
         logger.error(f"Error listing namespaces: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list namespaces: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list namespaces: {clean_error}")
 
 
 @app.post("/api/agentcore/getLongTermMemory")
@@ -823,9 +762,7 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
     """Get long-term memory (facts, preferences, summaries) from AgentCore Memory"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         # Use provided memory_id or fall back to environment default
         memory_id = query.memory_id or MEMORY_ID
@@ -838,9 +775,7 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
 
         long_term_memories = []
 
-        logger.info(
-            f"Fetching long-term memory with namespace='{query.namespace}', max_results={query.max_results}"
-        )
+        logger.info(f"Fetching long-term memory with namespace='{query.namespace}', max_results={query.max_results}")
         logger.info(f"📋 Memory ID: {memory_id}")
         logger.info(
             f"📋 Filters: content_type={query.content_type}, sort_by={query.sort_by}, sort_order={query.sort_order}"
@@ -858,15 +793,10 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
                 top_k=query.max_results,
             )
 
-            if (
-                isinstance(memory_results, dict)
-                and "memoryRecordSummaries" in memory_results
-            ):
+            if isinstance(memory_results, dict) and "memoryRecordSummaries" in memory_results:
                 memory_records = memory_results["memoryRecordSummaries"]
             else:
-                memory_records = (
-                    memory_results if isinstance(memory_results, list) else []
-                )
+                memory_records = memory_results if isinstance(memory_results, list) else []
 
             if memory_records:
                 logger.info(f"✅ Found {len(memory_records)} memory records")
@@ -883,30 +813,18 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
 
                     # Apply content type filter
                     memory_namespaces = memory.get("namespaces", [])
-                    namespace_str = (
-                        memory_namespaces[0] if memory_namespaces else query.namespace
-                    )
+                    namespace_str = memory_namespaces[0] if memory_namespaces else query.namespace
 
                     if query.content_type != "all":
-                        if (
-                            query.content_type == "facts"
-                            and "facts" not in namespace_str
-                        ):
+                        if query.content_type == "facts" and "facts" not in namespace_str:
                             continue
-                        elif (
-                            query.content_type == "preferences"
-                            and "preferences" not in namespace_str
-                        ):
+                        elif query.content_type == "preferences" and "preferences" not in namespace_str:
                             continue
                         elif query.content_type == "summaries" and not any(
-                            word in content_text.lower()
-                            for word in ["summary", "topic", "conversation"]
+                            word in content_text.lower() for word in ["summary", "topic", "conversation"]
                         ):
                             continue
-                        elif (
-                            query.content_type == "context"
-                            and "context" not in namespace_str
-                        ):
+                        elif query.content_type == "context" and "context" not in namespace_str:
                             continue
 
                     memory_entry = {
@@ -917,9 +835,7 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
                         "namespace": namespace_str,
                         "strategyId": memory.get("memoryStrategyId", ""),
                         "score": memory.get("score", 0),
-                        "timestamp": str(
-                            memory.get("createdAt", datetime.now().isoformat() + "Z")
-                        ),
+                        "timestamp": str(memory.get("createdAt", datetime.now().isoformat() + "Z")),
                         "size": len(content_text),
                     }
                     long_term_memories.append(memory_entry)
@@ -960,12 +876,8 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
             ):
                 logger.error(f"❌ Access denied for Memory ID '{memory_id}'")
                 raise HTTPException(status_code=403, detail=clean_error)
-            elif "namespace" in error_msg and (
-                "not found" in error_msg or "invalid" in error_msg
-            ):
-                logger.error(
-                    f"❌ Namespace '{query.namespace}' not found in Memory ID '{memory_id}'"
-                )
+            elif "namespace" in error_msg and ("not found" in error_msg or "invalid" in error_msg):
+                logger.error(f"❌ Namespace '{query.namespace}' not found in Memory ID '{memory_id}'")
                 raise HTTPException(
                     status_code=404,
                     detail=f"Namespace '{query.namespace}' not found in Memory ID '{memory_id}'. Please verify the namespace exists.",
@@ -978,17 +890,11 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
 
         # Apply sorting
         if query.sort_by == "timestamp":
-            long_term_memories.sort(
-                key=lambda x: x["timestamp"], reverse=(query.sort_order == "desc")
-            )
+            long_term_memories.sort(key=lambda x: x["timestamp"], reverse=(query.sort_order == "desc"))
         elif query.sort_by == "namespace":
-            long_term_memories.sort(
-                key=lambda x: x["namespace"], reverse=(query.sort_order == "desc")
-            )
+            long_term_memories.sort(key=lambda x: x["namespace"], reverse=(query.sort_order == "desc"))
         elif query.sort_by == "size":
-            long_term_memories.sort(
-                key=lambda x: x["size"], reverse=(query.sort_order == "desc")
-            )
+            long_term_memories.sort(key=lambda x: x["size"], reverse=(query.sort_order == "desc"))
 
         logger.info(f"✅ Total long-term memories found: {len(long_term_memories)}")
 
@@ -1003,9 +909,7 @@ async def get_long_term_memory(query: LongTermMemoryQuery):
     except Exception as e:
         logger.error(f"Error getting long-term memory: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get long-term memory: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get long-term memory: {clean_error}")
 
 
 @app.post("/api/agentcore/getMemoryEntries")
@@ -1013,9 +917,7 @@ async def get_memory_entries(query: MemoryQuery):
     """List all memory records from AgentCore Memory"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         # Use provided memory_id or fall back to environment default
         memory_id = query.memory_id or MEMORY_ID
@@ -1035,9 +937,7 @@ async def get_memory_entries(query: MemoryQuery):
         # AgentCore Memory typically requires a namespace for efficient queries
         # If no namespace provided, return helpful message
         if not query.namespace:
-            logger.info(
-                "📋 No namespace provided - AgentCore Memory requires namespace for queries"
-            )
+            logger.info("📋 No namespace provided - AgentCore Memory requires namespace for queries")
             return {
                 "memories": [],
                 "total_count": 0,
@@ -1059,9 +959,7 @@ async def get_memory_entries(query: MemoryQuery):
             # Handle the actual response structure
             if isinstance(memories, dict) and "memoryRecordSummaries" in memories:
                 memory_records = memories["memoryRecordSummaries"]
-                logger.info(
-                    f"📋 Processing {len(memory_records)} actual memory records"
-                )
+                logger.info(f"📋 Processing {len(memory_records)} actual memory records")
             else:
                 memory_records = memories if isinstance(memories, list) else [memories]
 
@@ -1083,9 +981,7 @@ async def get_memory_entries(query: MemoryQuery):
                         "memory_type": "LONG_TERM_MEMORY",
                         "namespace": query.namespace,
                         "score": memory.get("score", 0),
-                        "timestamp": memory.get(
-                            "createdAt", datetime.now().isoformat() + "Z"
-                        ),
+                        "timestamp": memory.get("createdAt", datetime.now().isoformat() + "Z"),
                         "size": len(content_text),
                     }
                 else:
@@ -1104,9 +1000,7 @@ async def get_memory_entries(query: MemoryQuery):
                 all_memories.append(memory_entry)
 
         except Exception as e:
-            logger.warning(
-                f"Could not list memory records from namespace '{query.namespace}': {e}"
-            )
+            logger.warning(f"Could not list memory records from namespace '{query.namespace}': {e}")
             # Clean error message to avoid exposing internal details
             clean_error = clean_aws_error_message(str(e))
             return {
@@ -1128,9 +1022,7 @@ async def get_memory_entries(query: MemoryQuery):
     except Exception as e:
         logger.error(f"Error listing memory records: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list memory records: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list memory records: {clean_error}")
 
 
 class MemoryIdValidationQuery(BaseModel):
@@ -1147,9 +1039,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
     """List available namespaces for a given memory ID (v2)"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         memory_id = query.memory_id or MEMORY_ID
         if not memory_id:
@@ -1172,9 +1062,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
                 strategy_type = strategy.get("type", "unknown")
                 namespaces = strategy.get("namespaces", [])
 
-                logger.info(
-                    f"📋 Strategy '{strategy_type}' has namespaces: {namespaces}"
-                )
+                logger.info(f"📋 Strategy '{strategy_type}' has namespaces: {namespaces}")
 
                 for namespace in namespaces:
                     # Try to get a sample of records from this namespace to count them
@@ -1192,9 +1080,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
                             first_memory = sample_memories[0]
                             content = first_memory.get("content", {})
                             if isinstance(content, dict):
-                                sample_content = (
-                                    content.get("text", str(content))[:100] + "..."
-                                )
+                                sample_content = content.get("text", str(content))[:100] + "..."
                             else:
                                 sample_content = str(content)[:100] + "..."
 
@@ -1277,9 +1163,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
                             if memories[0].get("content"):
                                 content = memories[0]["content"]
                                 if isinstance(content, dict):
-                                    sample_content = (
-                                        content.get("text", str(content))[:100] + "..."
-                                    )
+                                    sample_content = content.get("text", str(content))[:100] + "..."
                                 else:
                                     sample_content = str(content)[:100] + "..."
 
@@ -1291,9 +1175,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
                                     "sample_content": sample_content,
                                 }
                             )
-                            logger.info(
-                                f"✅ Found namespace: {pattern} (fallback method)"
-                            )
+                            logger.info(f"✅ Found namespace: {pattern} (fallback method)")
 
                     except Exception as e2:
                         logger.debug(f"❌ Namespace {pattern} not accessible: {e2}")
@@ -1318,9 +1200,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
     except Exception as e:
         logger.error(f"Error listing namespaces: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list namespaces: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list namespaces: {clean_error}")
 
 
 @app.post("/api/agentcore/validateMemoryId")
@@ -1328,9 +1208,7 @@ async def validate_memory_id(query: MemoryIdValidationQuery):
     """Validate if a memory ID is accessible"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         logger.info(f"🔍 Validating memory ID: {query.memory_id}")
 
@@ -1360,9 +1238,7 @@ async def validate_memory_id(query: MemoryIdValidationQuery):
     except Exception as e:
         logger.error(f"Error validating memory ID: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to validate memory ID: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to validate memory ID: {clean_error}")
 
 
 class AddMemoryEntryQuery(BaseModel):
@@ -1415,9 +1291,7 @@ async def search_memory_entries(query: SearchMemoryEntriesQuery):
     except Exception as e:
         logger.error(f"Error searching memory entries: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to search memory entries: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to search memory entries: {clean_error}")
 
 
 @app.post("/api/agentcore/listNamespaces")
@@ -1425,9 +1299,7 @@ async def list_namespaces(request: dict):
     """List available namespaces for long-term memory"""
     try:
         if not memory_client:
-            raise HTTPException(
-                status_code=503, detail="AgentCore Memory client not available"
-            )
+            raise HTTPException(status_code=503, detail="AgentCore Memory client not available")
 
         memory_id = request.get("memory_id") or MEMORY_ID
         _ = request.get("max_results", 100)  # Reserved for future use
@@ -1458,17 +1330,10 @@ async def list_namespaces(request: dict):
                             memory_id=memory_id, namespace=namespace, query="*", top_k=5
                         )
 
-                        if (
-                            isinstance(sample_memories, dict)
-                            and "memoryRecordSummaries" in sample_memories
-                        ):
+                        if isinstance(sample_memories, dict) and "memoryRecordSummaries" in sample_memories:
                             memory_records = sample_memories["memoryRecordSummaries"]
                         else:
-                            memory_records = (
-                                sample_memories
-                                if isinstance(sample_memories, list)
-                                else []
-                            )
+                            memory_records = sample_memories if isinstance(sample_memories, list) else []
 
                         count = len(memory_records)
                         sample_content = ""
@@ -1481,9 +1346,7 @@ async def list_namespaces(request: dict):
                                 sample_content = str(content)
 
                     except Exception as e:
-                        logger.warning(
-                            f"Failed to get count for namespace {namespace}: {e}"
-                        )
+                        logger.warning(f"Failed to get count for namespace {namespace}: {e}")
                         count = 0
                         sample_content = ""
 
@@ -1491,9 +1354,7 @@ async def list_namespaces(request: dict):
                         "namespace": namespace,
                         "type": strategy_type,
                         "count": count,
-                        "sample_content": sample_content[:200]
-                        if sample_content
-                        else "",
+                        "sample_content": sample_content[:200] if sample_content else "",
                     }
                     namespaces.append(namespace_info)
 
@@ -1509,16 +1370,12 @@ async def list_namespaces(request: dict):
         except Exception as e:
             logger.error(f"Failed to get memory strategies: {e}")
             clean_error = clean_aws_error_message(str(e))
-            raise HTTPException(
-                status_code=500, detail=f"Failed to get namespaces: {clean_error}"
-            )
+            raise HTTPException(status_code=500, detail=f"Failed to get namespaces: {clean_error}")
 
     except Exception as e:
         logger.error(f"Error listing namespaces: {e}")
         clean_error = clean_aws_error_message(str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list namespaces: {clean_error}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list namespaces: {clean_error}")
 
 
 @app.get("/api/agentcore/listSessions")
@@ -1555,9 +1412,7 @@ if __name__ == "__main__":
     port = int(os.getenv("BACKEND_PORT", "8000"))
 
     if host == "0.0.0.0":  # nosec B104 - This is a security check, not a vulnerability
-        logger.warning(
-            "⚠️  WARNING: Binding to 0.0.0.0 exposes the service to all network interfaces!"
-        )
+        logger.warning("⚠️  WARNING: Binding to 0.0.0.0 exposes the service to all network interfaces!")
         logger.warning("⚠️  For production, use a reverse proxy and bind to 127.0.0.1")
 
     uvicorn.run(app, host=host, port=port)

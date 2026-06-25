@@ -34,9 +34,7 @@ def split_large_event(event_dict, max_size=MAX_WS_MESSAGE_SIZE):
 
     # Only split events that have an 'audio' field
     if "audio" not in event_dict or not isinstance(event_dict["audio"], str):
-        logger.warning(
-            f"Event {event_type} is large ({event_size} bytes) but has no audio field to split"
-        )
+        logger.warning(f"Event {event_type} is large ({event_size} bytes) but has no audio field to split")
         return [event_dict]
 
     audio_content = event_dict["audio"]
@@ -70,9 +68,7 @@ def split_large_event(event_dict, max_size=MAX_WS_MESSAGE_SIZE):
         chunk_event["audio"] = chunk_audio
         chunks.append(chunk_event)
 
-    logger.info(
-        f"Split {event_type} event ({event_size} bytes) into {len(chunks)} chunks"
-    )
+    logger.info(f"Split {event_type} event ({event_size} bytes) into {len(chunks)} chunks")
     return chunks
 
 
@@ -136,9 +132,7 @@ def get_credentials_from_imds():
         )
 
         if role_response.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve IAM role: HTTP {role_response.status_code}"
-            )
+            result["error"] = f"Failed to retrieve IAM role: HTTP {role_response.status_code}"
             return result
 
         role_name = role_response.text.strip()
@@ -151,9 +145,7 @@ def get_credentials_from_imds():
         )
 
         if creds_response.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve credentials: HTTP {creds_response.status_code}"
-            )
+            result["error"] = f"Failed to retrieve credentials: HTTP {creds_response.status_code}"
             return result
 
         credentials = creds_response.json()
@@ -189,9 +181,7 @@ async def refresh_credentials_from_imds():
                 logger.info(f"✅ Credentials refreshed ({imds_result['method_used']})")
 
                 try:
-                    expiration = datetime.fromisoformat(
-                        creds["Expiration"].replace("Z", "+00:00")
-                    )
+                    expiration = datetime.fromisoformat(creds["Expiration"].replace("Z", "+00:00"))
                     now = datetime.now(expiration.tzinfo)
                     time_until_expiration = (expiration - now).total_seconds()
                     refresh_interval = min(max(time_until_expiration - 300, 60), 3600)
@@ -253,9 +243,7 @@ async def startup_event():
 
             logger.info(f"✅ Credentials loaded ({imds_result['method_used']})")
 
-            _credential_refresh_task = asyncio.create_task(
-                refresh_credentials_from_imds()
-            )
+            _credential_refresh_task = asyncio.create_task(refresh_credentials_from_imds())
             logger.info("🔄 Credential refresh task started")
         else:
             logger.error(f"❌ Failed to fetch credentials: {imds_result['error']}")
@@ -321,13 +309,9 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_json(chunk)
             if len(chunks) > 1:
                 chunk_size = len(json.dumps(chunk).encode("utf-8"))
-                logger.info(
-                    f"Forwarded chunk {idx + 1}/{len(chunks)} to client ({chunk_size} bytes)"
-                )
+                logger.info(f"Forwarded chunk {idx + 1}/{len(chunks)} to client ({chunk_size} bytes)")
 
-    await handle_websocket_session(
-        websocket, default_gateway_arns=gateway_arns, send_output=chunked_send_json
-    )
+    await handle_websocket_session(websocket, default_gateway_arns=gateway_arns, send_output=chunked_send_json)
 
 
 if __name__ == "__main__":

@@ -66,22 +66,14 @@ def format_agent_response(event):
     # Handle tuple response (event might be (response, metadata))
     response = event[0] if isinstance(event, tuple) else event
 
-    if (
-        hasattr(response, "artifacts")
-        and response.artifacts
-        and len(response.artifacts) > 0
-    ):
+    if hasattr(response, "artifacts") and response.artifacts and len(response.artifacts) > 0:
         artifact = response.artifacts[0]
         if artifact.parts and len(artifact.parts) > 0:
             return artifact.parts[0].root.text
 
     # Fallback: concatenate all agent messages from history
     if hasattr(response, "history"):
-        agent_messages = [
-            msg.parts[0].root.text
-            for msg in response.history
-            if msg.role.value == "agent" and msg.parts
-        ]
+        agent_messages = [msg.parts[0].root.text for msg in response.history if msg.role.value == "agent" and msg.parts]
         return "".join(agent_messages)
 
     # Last resort: return string representation
@@ -116,9 +108,7 @@ async def test_agent(agent_arn: str, message: str):
     }
 
     try:
-        async with httpx.AsyncClient(
-            timeout=DEFAULT_TIMEOUT, auth=auth, headers=headers
-        ) as httpx_client:
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, auth=auth, headers=headers) as httpx_client:
             # Get agent card
             logger.info("Fetching agent card...")
             resolver = A2ACardResolver(httpx_client=httpx_client, base_url=runtime_url)
@@ -164,9 +154,7 @@ async def main():
         if len(sys.argv) > 1:
             agent_arn = sys.argv[1]
         else:
-            logger.error(
-                "Please provide AGENT_ARN environment variable or as command line argument"
-            )
+            logger.error("Please provide AGENT_ARN environment variable or as command line argument")
             sys.exit(1)
 
     # Test messages

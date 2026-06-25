@@ -54,9 +54,7 @@ def patch_browser_use() -> bool:
         or "additional_headers=self.browser_profile.headers" in content
     )
     if native_support:
-        print(
-            "This browser_use version already forwards BrowserProfile headers to CDPClient."
-        )
+        print("This browser_use version already forwards BrowserProfile headers to CDPClient.")
         print("No patch needed — BrowserProfile(headers=...) works out of the box.")
         return True
 

@@ -15,9 +15,7 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
     return response["Parameter"]["Value"]
 
 
-def put_ssm_parameter(
-    name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
-) -> None:
+def put_ssm_parameter(name: str, value: str, parameter_type: str = "String", with_encryption: bool = False) -> None:
     ssm = boto3.client("ssm")
 
     put_params = {
@@ -110,8 +108,7 @@ def read_config(file_path: str) -> Dict[str, Any]:
                         return yaml.safe_load(content)
                     except yaml.YAMLError:
                         raise ValueError(
-                            f"Unsupported configuration file format: {ext}. "
-                            f"Supported formats: .json, .yaml, .yml"
+                            f"Unsupported configuration file format: {ext}. Supported formats: .json, .yaml, .yml"
                         )
 
     except json.JSONDecodeError as e:

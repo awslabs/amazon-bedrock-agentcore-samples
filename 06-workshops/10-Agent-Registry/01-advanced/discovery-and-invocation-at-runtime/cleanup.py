@@ -156,9 +156,7 @@ for role_name in [_lambda_role_name, _gateway_role_name]:
     if not role_name:
         continue
     try:
-        for p in iam_client.list_attached_role_policies(RoleName=role_name)[
-            "AttachedPolicies"
-        ]:
+        for p in iam_client.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
             iam_client.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
         for p in iam_client.list_role_policies(RoleName=role_name)["PolicyNames"]:
             iam_client.delete_role_policy(RoleName=role_name, PolicyName=p)
@@ -182,9 +180,7 @@ else:
 print("\n9. Deleting Cognito...")
 if _domain_name and _user_pool_id:
     try:
-        cognito_client.delete_user_pool_domain(
-            Domain=_domain_name, UserPoolId=_user_pool_id
-        )
+        cognito_client.delete_user_pool_domain(Domain=_domain_name, UserPoolId=_user_pool_id)
         cognito_client.delete_user_pool(UserPoolId=_user_pool_id)
         print(f"  Deleted pool: {_user_pool_id}")
     except Exception as e:

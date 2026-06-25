@@ -1,6 +1,8 @@
 """Minimal HTTP server for AgentCore Runtime /ping health check."""
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, time
+import json
+import time
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -9,12 +11,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({
-                "status": "Healthy",
-                "agent": "open-code",
-                "storage": "s3files",
-                "time_of_last_update": int(time.time()),
-            }).encode())
+            self.wfile.write(
+                json.dumps(
+                    {
+                        "status": "Healthy",
+                        "agent": "open-code",
+                        "storage": "s3files",
+                        "time_of_last_update": int(time.time()),
+                    }
+                ).encode()
+            )
         else:
             self.send_response(404)
             self.end_headers()
@@ -24,9 +30,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({
-                "message": "Use WebSocket PTY or InvokeAgentRuntimeCommand to interact with OpenCode"
-            }).encode())
+            self.wfile.write(
+                json.dumps(
+                    {"message": "Use WebSocket PTY or InvokeAgentRuntimeCommand to interact with OpenCode"}
+                ).encode()
+            )
         else:
             self.send_response(404)
             self.end_headers()

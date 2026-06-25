@@ -147,9 +147,7 @@ parser.add_argument(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def poll_gateway_status(
-    control, gateway_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT
-):
+def poll_gateway_status(control, gateway_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT):
     """Poll until the Gateway reaches the target status or times out."""
     deadline = time.monotonic() + timeout
     while True:
@@ -162,21 +160,15 @@ def poll_gateway_status(
             reasons = resp.get("statusReasons", [])
             raise RuntimeError(f"Gateway entered FAILED state: {reasons}")
         if time.monotonic() > deadline:
-            raise TimeoutError(
-                f"Gateway not {target_status} after {timeout}s (current: {status})"
-            )
+            raise TimeoutError(f"Gateway not {target_status} after {timeout}s (current: {status})")
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_target_status(
-    control, gateway_id, target_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT
-):
+def poll_target_status(control, gateway_id, target_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT):
     """Poll until a Gateway target reaches the target status or times out."""
     deadline = time.monotonic() + timeout
     while True:
-        resp = control.get_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        )
+        resp = control.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
         status = resp["status"]
         print(f"  Target status: {status}")
         if status == target_status:
@@ -185,15 +177,11 @@ def poll_target_status(
             reasons = resp.get("statusReasons", [])
             raise RuntimeError(f"Target entered {status}: {reasons}")
         if time.monotonic() > deadline:
-            raise TimeoutError(
-                f"Target not {target_status} after {timeout}s (current: {status})"
-            )
+            raise TimeoutError(f"Target not {target_status} after {timeout}s (current: {status})")
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_harness_status(
-    control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT
-):
+def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
     """Poll until a Harness reaches the target status or times out."""
     deadline = time.monotonic() + timeout
     while True:
@@ -205,15 +193,11 @@ def poll_harness_status(
         if status in ("FAILED", "DELETE_FAILED"):
             raise RuntimeError(f"Harness entered {status}")
         if time.monotonic() > deadline:
-            raise TimeoutError(
-                f"Harness not {target_status} after {timeout}s (current: {status})"
-            )
+            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
         time.sleep(HARNESS_POLL_INTERVAL)
 
 
-def stream_response(
-    client, harness_arn, session_id, message, model_id, gateway_arn, raw=False
-):
+def stream_response(client, harness_arn, session_id, message, model_id, gateway_arn, raw=False):
     """Invoke a Harness with a Gateway tool and stream the response."""
     response = client.invoke_harness(
         harnessArn=harness_arn,
@@ -239,9 +223,7 @@ def stream_response(
             if "contentBlockStart" in event:
                 start = event["contentBlockStart"].get("start", {})
                 if "toolUse" in start:
-                    print(
-                        f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True
-                    )
+                    print(f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True)
             elif "contentBlockDelta" in event:
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
@@ -351,9 +333,7 @@ def main(args=None):
         print(f"  Session ID: {session_id}")
         print(f"  Model:      {args.model}")
         print(f"  Gateway:    {gateway_arn}")
-        print(
-            f"  Message:    {args.message[:80]}{'...' if len(args.message) > 80 else ''}\n"
-        )
+        print(f"  Message:    {args.message[:80]}{'...' if len(args.message) > 80 else ''}\n")
 
         stream_response(
             client,
@@ -390,9 +370,7 @@ def _cleanup(gw_control, harness_control, gateway_id, target_id, harness_id):
     # Delete Gateway target first — must be removed before the gateway
     if gateway_id and target_id:
         try:
-            gw_control.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id
-            )
+            gw_control.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
             print(f"  Deleted target: {target_id}")
             # Wait for async target deletion to propagate
             time.sleep(10)

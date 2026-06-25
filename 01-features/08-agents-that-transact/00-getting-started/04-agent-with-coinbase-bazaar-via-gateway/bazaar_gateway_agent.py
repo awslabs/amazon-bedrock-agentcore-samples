@@ -47,9 +47,7 @@ from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env, print_summary
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Verify AWS credentials ────────────────────────────────────────────────────
@@ -109,13 +107,9 @@ if not GATEWAY_URL:
 from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
-instr = manager.get_payment_instrument(
-    user_id=USER_ID, payment_instrument_id=INSTRUMENT_ID
-)
+instr = manager.get_payment_instrument(user_id=USER_ID, payment_instrument_id=INSTRUMENT_ID)
 instr_status = instr.get("status", "UNKNOWN")
-assert instr_status == "ACTIVE", (
-    f"Instrument is {instr_status} — fund and delegate in Tutorial 00/03 first"
-)
+assert instr_status == "ACTIVE", f"Instrument is {instr_status} — fund and delegate in Tutorial 00/03 first"
 
 print_summary(
     "Payment Config",
@@ -262,9 +256,7 @@ session_info = manager.get_payment_session(
 available = session_info.get("availableLimits", {}).get("availableSpendAmount", {})
 budget = session_info.get("limits", {}).get("maxSpendAmount", {})
 try:
-    spent = float(budget.get("value", 0)) - float(
-        available.get("value", budget.get("value", 0))
-    )
+    spent = float(budget.get("value", 0)) - float(available.get("value", budget.get("value", 0)))
     spent_str = f"${spent:.4f} USD"
 except (ValueError, TypeError):
     spent_str = "N/A"
@@ -282,6 +274,4 @@ print(
     f"region={REGION}#gen-ai-observability/agent-core"
 )
 print("\nDone. Sessions expire automatically.")
-print(
-    "Next: python ../05-agent-with-browser-tool-pay-for-content/browser_paywall_payments.py"
-)
+print("Next: python ../05-agent-with-browser-tool-pay-for-content/browser_paywall_payments.py")

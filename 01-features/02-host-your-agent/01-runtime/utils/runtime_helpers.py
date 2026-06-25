@@ -274,9 +274,7 @@ def wait_for_endpoint_ready(
     elapsed = 0
 
     while elapsed < timeout:
-        endpoints = control.list_agent_runtime_endpoints(
-            agentRuntimeId=agent_runtime_id
-        )
+        endpoints = control.list_agent_runtime_endpoints(agentRuntimeId=agent_runtime_id)
         if endpoints.get("runtimeEndpoints"):
             ep = endpoints["runtimeEndpoints"][0]
             status = ep["status"]
@@ -321,9 +319,7 @@ def invoke_agent(
     return {
         "session_id": response.get("runtimeSessionId"),
         "status_code": response.get("statusCode"),
-        "body": json.loads(body)
-        if body.startswith("{") or body.startswith("[")
-        else body,
+        "body": json.loads(body) if body.startswith("{") or body.startswith("[") else body,
     }
 
 
@@ -362,9 +358,7 @@ def delete_agent_runtime(agent_runtime_id: str, region: str) -> None:
 
     # Delete endpoints first
     try:
-        endpoints = control.list_agent_runtime_endpoints(
-            agentRuntimeId=agent_runtime_id
-        )
+        endpoints = control.list_agent_runtime_endpoints(agentRuntimeId=agent_runtime_id)
         for ep in endpoints.get("runtimeEndpoints", []):
             ep_name = ep["name"]
             print(f"Deleting endpoint: {ep_name}")

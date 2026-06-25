@@ -39,12 +39,8 @@ from bedrock_agentcore.services.identity import IdentityClient, UserIdIdentifier
 # Configuration constants for the OAuth2 callback server
 OAUTH2_CALLBACK_SERVER_PORT = 9090  # Port where the callback server listens
 PING_ENDPOINT = "/ping"  # Health check endpoint
-OAUTH2_CALLBACK_ENDPOINT = (
-    "/oauth2/callback"  # OAuth2 callback endpoint for provider redirects
-)
-USER_IDENTIFIER_ENDPOINT = (
-    "/userIdentifier/userId"  # Endpoint to store userId identifiers
-)
+OAUTH2_CALLBACK_ENDPOINT = "/oauth2/callback"  # OAuth2 callback endpoint for provider redirects
+USER_IDENTIFIER_ENDPOINT = "/userIdentifier/userId"  # Endpoint to store userId identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +106,7 @@ class OAuth2CallbackServer:
                 )
 
             self.user_id_identifier = user_id_identifier_value
-            response = JSONResponse(
-                status_code=status.HTTP_200_OK, content={"status": "success"}
-            )
+            response = JSONResponse(status_code=status.HTTP_200_OK, content={"status": "success"})
             response.set_cookie(
                 key="user_id_identifier",
                 value=user_id_identifier_value.user_id,
@@ -131,9 +125,7 @@ class OAuth2CallbackServer:
             Returns:
                 dict: Simple status response indicating server is operational
             """
-            return JSONResponse(
-                status_code=status.HTTP_200_OK, content={"status": "success"}
-            )
+            return JSONResponse(status_code=status.HTTP_200_OK, content={"status": "success"})
 
         def _try_parse_identity_sdk_config() -> Optional[str]:
             try:
@@ -141,9 +133,7 @@ class OAuth2CallbackServer:
                     config = json.load(agent_config)
                     return config.get("user_id")
             except Exception as e:
-                logger.debug(
-                    f"Failed to parse identity SDK config from '.agentcore.json': {repr(e)}"
-                )
+                logger.debug(f"Failed to parse identity SDK config from '.agentcore.json': {repr(e)}")
                 return None
 
         def _get_user_identifier(
@@ -222,9 +212,7 @@ class OAuth2CallbackServer:
 
             # Complete the OAuth flow by calling AgentCore Identity service
             # This associates the OAuth session with the user and retrieves access tokens
-            self.identity_client.complete_resource_token_auth(
-                session_uri=session_id, user_identifier=user_identifier
-            )
+            self.identity_client.complete_resource_token_auth(session_uri=session_id, user_identifier=user_identifier)
 
             html_content = """
             <!DOCTYPE html>
@@ -365,9 +353,7 @@ def wait_for_oauth2_server_to_be_ready(
         if elapsed % 10 == 0 and elapsed > 0:
             logger.info(f"Still waiting... ({elapsed}/{timeout_in_seconds}s)")
 
-    logger.error(
-        f"Timeout: OAuth2 callback server not ready after {timeout_in_seconds} seconds"
-    )
+    logger.error(f"Timeout: OAuth2 callback server not ready after {timeout_in_seconds} seconds")
     return False
 
 
@@ -386,9 +372,7 @@ def main():
     for any AgentCore agents in the specified region.
     """
     parser = argparse.ArgumentParser(description="OAuth2 Callback Server")
-    parser.add_argument(
-        "-r", "--region", type=str, required=True, help="AWS Region (e.g. us-east-1)"
-    )
+    parser.add_argument("-r", "--region", type=str, required=True, help="AWS Region (e.g. us-east-1)")
 
     args = parser.parse_args()
     oauth2_callback_server = OAuth2CallbackServer(region=args.region)

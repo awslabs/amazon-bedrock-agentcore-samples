@@ -57,9 +57,7 @@ class MCPClient:
         self.request_id += 1
         return self.request_id
 
-    def _mcp_request(
-        self, method: str, params: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+    def _mcp_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """
         Make MCP JSON-RPC request to Gateway.
 
@@ -103,9 +101,7 @@ class MCPClient:
 
         return result
 
-    def initialize(
-        self, client_name: str = "aiml301-mcp-client", client_version: str = "1.0.0"
-    ) -> Dict[str, Any]:
+    def initialize(self, client_name: str = "aiml301-mcp-client", client_version: str = "1.0.0") -> Dict[str, Any]:
         """
         Initialize MCP session with Gateway.
 
@@ -208,9 +204,7 @@ class MCPClient:
         print(f"\n🔨 Calling tool: {tool_name}")
         print(f"   Arguments: {json.dumps(arguments, indent=2)}")
 
-        response = self._mcp_request(
-            method="tools/call", params={"name": tool_name, "arguments": arguments}
-        )
+        response = self._mcp_request(method="tools/call", params={"name": tool_name, "arguments": arguments})
 
         if "result" in response:
             result = response["result"]

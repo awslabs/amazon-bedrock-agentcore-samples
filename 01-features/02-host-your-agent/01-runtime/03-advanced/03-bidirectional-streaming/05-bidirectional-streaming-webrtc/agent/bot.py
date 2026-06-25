@@ -107,9 +107,7 @@ def _handle_ice_config():
 
 async def _handle_offer(data, background_tasks):
     """Accept a WebRTC offer, create a peer connection, return an answer."""
-    ice_servers = kvs.get_rtc_ice_servers(
-        AWS_REGION, client_id="server", turn_only=data.get("turnOnly", False)
-    )
+    ice_servers = kvs.get_rtc_ice_servers(AWS_REGION, client_id="server", turn_only=data.get("turnOnly", False))
 
     # Create peer connection with output audio track
     pc = RTCPeerConnection(RTCConfiguration(iceServers=ice_servers))
@@ -130,9 +128,7 @@ async def _handle_offer(data, background_tasks):
         logger.info(f"ICE state: {pc.iceConnectionState}")
 
     # SDP offer/answer exchange
-    await pc.setRemoteDescription(
-        RTCSessionDescription(sdp=data["sdp"], type=data["type"])
-    )
+    await pc.setRemoteDescription(RTCSessionDescription(sdp=data["sdp"], type=data["type"]))
     answer = await pc.createAnswer()
     await pc.setLocalDescription(answer)
 

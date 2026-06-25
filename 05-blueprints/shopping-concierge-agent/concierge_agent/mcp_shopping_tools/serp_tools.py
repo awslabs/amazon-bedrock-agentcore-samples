@@ -39,9 +39,7 @@ def get_serpapi_key() -> str:
     return get_ssm_parameter("/concierge-agent/shopping/serp-api-key", region)
 
 
-def search_google_shopping_products(
-    query: str, max_results: int = 10
-) -> Dict[str, Any]:
+def search_google_shopping_products(query: str, max_results: int = 10) -> Dict[str, Any]:
     """
     Search for products on Google Shopping using SerpAPI.
 
@@ -78,13 +76,9 @@ def search_google_shopping_products(
                 price_value = product["extracted_price"]
 
             product_info = {
-                "asin": product.get(
-                    "product_id", ""
-                ),  # Store product_id in asin field for compatibility
+                "asin": product.get("product_id", ""),  # Store product_id in asin field for compatibility
                 "title": product.get("title", ""),
-                "link": product.get(
-                    "product_link", ""
-                ),  # Google Shopping product comparison page
+                "link": product.get("product_link", ""),  # Google Shopping product comparison page
                 "price": price_value,
                 "rating": product.get("rating", 0),
                 "reviews": product.get("reviews", 0),
@@ -140,11 +134,7 @@ def search_products(user_id: str, question: str) -> Dict[str, Any]:
         # Build response
         answer = f"Found {len(products)} products matching '{question}':\n\n"
         for i, product in enumerate(products, 1):
-            price_str = (
-                f"${product['price']}"
-                if isinstance(product["price"], (int, float))
-                else product["price"]
-            )
+            price_str = f"${product['price']}" if isinstance(product["price"], (int, float)) else product["price"]
             answer += f"{i}. {product['title']}\n"
             answer += f"   Price: {price_str}\n"
             if product.get("rating"):

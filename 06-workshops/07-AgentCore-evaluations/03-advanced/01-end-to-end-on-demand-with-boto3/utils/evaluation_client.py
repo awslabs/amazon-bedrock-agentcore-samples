@@ -42,9 +42,7 @@ class EvaluationClient:
         if boto_client:
             self.client = boto_client
         else:
-            self.client = boto3.client(
-                "agentcore-evaluation-dataplane", region_name=self.region
-            )
+            self.client = boto3.client("agentcore-evaluation-dataplane", region_name=self.region)
 
     def _validate_scope_compatibility(self, evaluator_id: str, scope: str) -> None:
         """Validate that the evaluator is compatible with the requested scope.
@@ -65,24 +63,16 @@ class EvaluationClient:
 
         elif scope == "trace":
             if evaluator_id in SESSION_SCOPED_EVALUATORS:
-                raise ValueError(
-                    f"{evaluator_id} requires session scope (cannot use trace scope)"
-                )
+                raise ValueError(f"{evaluator_id} requires session scope (cannot use trace scope)")
             if evaluator_id in SPAN_SCOPED_EVALUATORS:
-                raise ValueError(
-                    f"{evaluator_id} requires span scope (cannot use trace scope)"
-                )
+                raise ValueError(f"{evaluator_id} requires span scope (cannot use trace scope)")
 
         elif scope == "session":
             if evaluator_id in SPAN_SCOPED_EVALUATORS:
-                raise ValueError(
-                    f"{evaluator_id} requires span scope (cannot use session scope)"
-                )
+                raise ValueError(f"{evaluator_id} requires span scope (cannot use session scope)")
 
         else:
-            raise ValueError(
-                f"Invalid scope: {scope}. Must be 'session', 'trace', or 'span'"
-            )
+            raise ValueError(f"Invalid scope: {scope}. Must be 'session', 'trace', or 'span'")
 
     def _build_evaluation_target(
         self,
@@ -117,9 +107,7 @@ class EvaluationClient:
             return {"spanIds": span_ids}
 
         else:
-            raise ValueError(
-                f"Invalid scope: {scope}. Must be 'session', 'trace', or 'span'"
-            )
+            raise ValueError(f"Invalid scope: {scope}. Must be 'session', 'trace', or 'span'")
 
     def _extract_raw_spans(self, trace_data: TraceData) -> List[Dict[str, Any]]:
         """Extract raw span documents from TraceData.
@@ -142,9 +130,7 @@ class EvaluationClient:
 
         return raw_spans
 
-    def _filter_relevant_spans(
-        self, raw_spans: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _filter_relevant_spans(self, raw_spans: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter to only high-signal spans for evaluation.
 
         Keeps only:
@@ -190,17 +176,13 @@ class EvaluationClient:
         relevant_spans = self._filter_relevant_spans(raw_spans)
 
         def get_timestamp(span_doc):
-            return (
-                span_doc.get("startTimeUnixNano") or span_doc.get("timeUnixNano") or 0
-            )
+            return span_doc.get("startTimeUnixNano") or span_doc.get("timeUnixNano") or 0
 
         relevant_spans.sort(key=get_timestamp, reverse=True)
 
         return relevant_spans[:max_items]
 
-    def _fetch_session_data(
-        self, session_id: str, agent_id: str, region: str
-    ) -> TraceData:
+    def _fetch_session_data(self, session_id: str, agent_id: str, region: str) -> TraceData:
         """Fetch session data from CloudWatch.
 
         Args:
@@ -214,9 +196,7 @@ class EvaluationClient:
         Raises:
             RuntimeError: If session data cannot be fetched
         """
-        obs_client = ObservabilityClient(
-            region_name=region, agent_id=agent_id, runtime_suffix=DEFAULT_RUNTIME_SUFFIX
-        )
+        obs_client = ObservabilityClient(region_name=region, agent_id=agent_id, runtime_suffix=DEFAULT_RUNTIME_SUFFIX)
 
         end_time = datetime.now()
         start_time = end_time - timedelta(days=7)
@@ -247,17 +227,12 @@ class EvaluationClient:
         Returns:
             Tuple of (spans_count, logs_count, genai_spans_count)
         """
-        spans_count = sum(
-            1 for item in raw_spans if "spanId" in item and "startTimeUnixNano" in item
-        )
-        logs_count = sum(
-            1 for item in raw_spans if "body" in item and "timeUnixNano" in item
-        )
+        spans_count = sum(1 for item in raw_spans if "spanId" in item and "startTimeUnixNano" in item)
+        logs_count = sum(1 for item in raw_spans if "body" in item and "timeUnixNano" in item)
         genai_spans = sum(
             1
             for span in raw_spans
-            if "spanId" in span
-            and any(k.startswith("gen_ai") for k in span.get("attributes", {}).keys())
+            if "spanId" in span and any(k.startswith("gen_ai") for k in span.get("attributes", {}).keys())
         )
         return spans_count, logs_count, genai_spans
 
@@ -304,11 +279,7 @@ class EvaluationClient:
         os.makedirs(EVALUATION_OUTPUT_DIR, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        session_short = (
-            results.session_id[:16]
-            if len(results.session_id) > 16
-            else results.session_id
-        )
+        session_short = results.session_id[:16] if len(results.session_id) > 16 else results.session_id
         filename = f"{EVALUATION_OUTPUT_DIR}/output_{session_short}_{timestamp}.json"
 
         with open(filename, "w", encoding=DEFAULT_FILE_ENCODING) as f:
@@ -329,9 +300,7 @@ class EvaluationClient:
         output_dir = Path.cwd() / EVALUATION_OUTPUT_DIR
 
         if not output_dir.exists():
-            raise FileNotFoundError(
-                f"Directory '{EVALUATION_OUTPUT_DIR}' does not exist"
-            )
+            raise FileNotFoundError(f"Directory '{EVALUATION_OUTPUT_DIR}' does not exist")
 
         if not output_dir.is_dir():
             raise NotADirectoryError(f"'{EVALUATION_OUTPUT_DIR}' is not a directory")
@@ -359,9 +328,7 @@ class EvaluationClient:
 
         return list(input_dir.glob("input_*.json"))
 
-    def _extract_trace_data_from_input(
-        self, input_file: Path
-    ) -> Optional[Dict[str, Any]]:
+    def _extract_trace_data_from_input(self, input_file: Path) -> Optional[Dict[str, Any]]:
         """Parse input file and extract trace-level information.
 
         Args:
@@ -420,17 +387,10 @@ class EvaluationClient:
                             if "toolUse" in message_str:
                                 try:
                                     # Content might be double-encoded JSON
-                                    parsed = (
-                                        json.loads(message_str)
-                                        if message_str.startswith("[")
-                                        else None
-                                    )
+                                    parsed = json.loads(message_str) if message_str.startswith("[") else None
                                     if isinstance(parsed, list):
                                         for item in parsed:
-                                            if (
-                                                isinstance(item, dict)
-                                                and "toolUse" in item
-                                            ):
+                                            if isinstance(item, dict) and "toolUse" in item:
                                                 tool_name = item["toolUse"].get("name")
                                                 if tool_name:
                                                     tools_used.append(tool_name)
@@ -443,9 +403,7 @@ class EvaluationClient:
                 tools_with_counts[tool] = tools_with_counts.get(tool, 0) + 1
 
             # Get timestamps for this trace
-            timestamps = [
-                span.get("timeUnixNano") for span in spans if span.get("timeUnixNano")
-            ]
+            timestamps = [span.get("timeUnixNano") for span in spans if span.get("timeUnixNano")]
             min_timestamp = min(timestamps) if timestamps else None
             max_timestamp = max(timestamps) if timestamps else None
 
@@ -461,9 +419,7 @@ class EvaluationClient:
             # Calculate latency in milliseconds if timestamps available
             latency_ms = None
             if min_timestamp and max_timestamp:
-                latency_ms = (
-                    max_timestamp - min_timestamp
-                ) / 1_000_000  # Convert nanoseconds to milliseconds
+                latency_ms = (max_timestamp - min_timestamp) / 1_000_000  # Convert nanoseconds to milliseconds
 
             return {
                 "session_id": session_id,
@@ -510,9 +466,7 @@ class EvaluationClient:
 
         return trace_data_map
 
-    def _aggregate_evaluation_data(
-        self, json_files: List[Path]
-    ) -> List[Dict[str, Any]]:
+    def _aggregate_evaluation_data(self, json_files: List[Path]) -> List[Dict[str, Any]]:
         """Aggregate evaluation data from JSON files by session_id with trace-level detail.
 
         Args:
@@ -579,29 +533,19 @@ class EvaluationClient:
                                         "span_count": trace_data.get("span_count", 0),
                                         "timestamp": trace_data.get("timestamp"),
                                         "latency_ms": trace_data.get("latency_ms"),
-                                        "input_tokens": trace_data.get(
-                                            "input_tokens", 0
-                                        ),
-                                        "output_tokens": trace_data.get(
-                                            "output_tokens", 0
-                                        ),
-                                        "total_tokens": trace_data.get(
-                                            "total_tokens", 0
-                                        ),
+                                        "input_tokens": trace_data.get("input_tokens", 0),
+                                        "output_tokens": trace_data.get("output_tokens", 0),
+                                        "total_tokens": trace_data.get("total_tokens", 0),
                                     }
 
                                 # Add result to this trace
-                                sessions_map[session_id]["traces"][trace_id][
-                                    "results"
-                                ].append(result)
+                                sessions_map[session_id]["traces"][trace_id]["results"].append(result)
 
                     sessions_map[session_id]["source_files"].append(json_file.name)
 
                     # Merge metadata (later files override earlier ones)
                     if data.get("metadata"):
-                        sessions_map[session_id]["metadata"].update(
-                            data.get("metadata", {})
-                        )
+                        sessions_map[session_id]["metadata"].update(data.get("metadata", {}))
 
             except json.JSONDecodeError as e:
                 skipped_files.append((json_file.name, f"JSON decode error: {e}"))
@@ -652,9 +596,7 @@ if (typeof window !== 'undefined') {{
             with open(dashboard_data_path, "w", encoding=DEFAULT_FILE_ENCODING) as f:
                 f.write(js_content)
         except PermissionError as e:
-            raise IOError(
-                f"Permission denied writing to {DASHBOARD_DATA_FILE}: {e}"
-            ) from e
+            raise IOError(f"Permission denied writing to {DASHBOARD_DATA_FILE}: {e}") from e
         except Exception as e:
             raise IOError(f"Failed to write {DASHBOARD_DATA_FILE}: {e}") from e
 
@@ -725,13 +667,8 @@ if (typeof window !== 'undefined') {{
             # Step 3: Write dashboard data file
             dashboard_data_path = self._write_dashboard_data(evaluation_data)  # noqa: F841
 
-            total_evaluations = sum(
-                len(session.get("results", [])) for session in evaluation_data
-            )
-            print(
-                f"Dashboard data generated: {len(evaluation_data)} session(s), "
-                f"{total_evaluations} evaluation(s)"
-            )
+            total_evaluations = sum(len(session.get("results", [])) for session in evaluation_data)
+            print(f"Dashboard data generated: {len(evaluation_data)} session(s), {total_evaluations} evaluation(s)")
 
             # Step 4: Open dashboard in browser
             dashboard_html_path = Path.cwd() / DASHBOARD_HTML_FILE
@@ -773,16 +710,12 @@ if (typeof window !== 'undefined') {{
         evaluator_id_param, request_body = request.to_api_request()
 
         try:
-            response = self.client.evaluate(
-                evaluatorId=evaluator_id_param, **request_body
-            )
+            response = self.client.evaluate(evaluatorId=evaluator_id_param, **request_body)
             return response
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_msg = e.response.get("Error", {}).get("Message", str(e))
-            raise RuntimeError(
-                f"Evaluation API error ({error_code}): {error_msg}"
-            ) from e
+            raise RuntimeError(f"Evaluation API error ({error_code}): {error_msg}") from e
 
     def evaluate_session(
         self,
@@ -840,26 +773,16 @@ if (typeof window !== 'undefined') {{
         span_ids = None
         if scope == "span":
             tool_name_filter = (span_filter or {}).get("tool_name")
-            span_ids = trace_data.get_tool_execution_spans(
-                tool_name_filter=tool_name_filter
-            )
+            span_ids = trace_data.get_tool_execution_spans(tool_name_filter=tool_name_filter)
 
             if not span_ids:
-                filter_msg = (
-                    f" (filter: tool_name={tool_name_filter})"
-                    if tool_name_filter
-                    else ""
-                )
-                raise ValueError(
-                    f"No tool execution spans found in session{filter_msg}"
-                )
+                filter_msg = f" (filter: tool_name={tool_name_filter})" if tool_name_filter else ""
+                raise ValueError(f"No tool execution spans found in session{filter_msg}")
 
             print(f"Found {len(span_ids)} tool execution spans for evaluation")
 
         # Build evaluation target based on scope
-        evaluation_target = self._build_evaluation_target(
-            scope=scope, trace_id=trace_id, span_ids=span_ids
-        )
+        evaluation_target = self._build_evaluation_target(scope=scope, trace_id=trace_id, span_ids=span_ids)
 
         if evaluation_target:
             target_type = "traceIds" if "traceIds" in evaluation_target else "spanIds"
@@ -867,9 +790,7 @@ if (typeof window !== 'undefined') {{
             print(f"Evaluation target: {target_type} = {target_ids}")
 
         print(f"Collecting most recent {DEFAULT_MAX_EVALUATION_ITEMS} relevant items")
-        otel_spans = self._get_most_recent_session_spans(
-            trace_data, max_items=DEFAULT_MAX_EVALUATION_ITEMS
-        )
+        otel_spans = self._get_most_recent_session_spans(trace_data, max_items=DEFAULT_MAX_EVALUATION_ITEMS)
 
         if not otel_spans:
             print("Warning: No relevant items found after filtering")
@@ -927,8 +848,6 @@ if (typeof window !== 'undefined') {{
                 self._create_dashboard()
             else:
                 print("Warning: auto_create_dashboard requires auto_save_output=True")
-                print(
-                    "Dashboard not created. Set auto_save_output=True to enable dashboard generation."
-                )
+                print("Dashboard not created. Set auto_save_output=True to enable dashboard generation.")
 
         return results
