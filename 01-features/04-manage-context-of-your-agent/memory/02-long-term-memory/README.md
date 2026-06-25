@@ -23,7 +23,7 @@ It creates a memory with a semantic strategy, sends a few `CreateEvent` calls, w
 | [`05-retrieval/`](./05-retrieval/) | `RetrieveMemoryRecords`, `ListMemoryRecords`, `GetMemoryRecord` |
 | [`06-record-metadata/`](./06-record-metadata/) | `indexedKeys`, structured metadata, `metadataFilters` |
 | [`07-batch-apis/`](./07-batch-apis/) | Direct CRUD with `BatchCreate/Update/DeleteMemoryRecords` |
-| [`08-redrive/`](./08-redrive/) | List failed extraction jobs and restart them with `StartMemoryExtractionJob` |
+| [`08-manage-extraction/`](./08-manage-extraction/) | Skip extraction (`extractionMode=SKIP`) and redrive failed jobs |
 | [`09-record-streaming/`](./09-record-streaming/) | Push lifecycle events to Kinesis for event-driven pipelines |
 
 ## The four built-in strategies
