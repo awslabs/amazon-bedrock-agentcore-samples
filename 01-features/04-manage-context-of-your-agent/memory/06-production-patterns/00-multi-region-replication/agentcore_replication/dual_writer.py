@@ -149,9 +149,7 @@ class DualRegionEventWriter:
             return client.create_event(**kwargs)
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
-            if code in ("ConflictException", "ValidationException") and (
-                "exist" in str(exc).lower()
-            ):
+            if code in ("ConflictException", "ValidationException") and ("exist" in str(exc).lower()):
                 logger.info("event already exists (idempotent), token=%s", client_token)
                 return None
             raise

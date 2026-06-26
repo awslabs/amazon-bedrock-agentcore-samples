@@ -95,10 +95,7 @@ def wait_active(ctl, mem_id, label, timeout=600):
 
 
 def create_memory(ctl, region, name, execution_role_arn=None):
-    strategies = [
-        {"semanticMemoryStrategy": {"name": "semantic",
-                                    "namespaces": [NAMESPACE_TEMPLATE]}}
-    ]
+    strategies = [{"semanticMemoryStrategy": {"name": "semantic", "namespaces": [NAMESPACE_TEMPLATE]}}]
     kwargs = dict(
         name=name,
         description="STM+LTM cross-region replication demo",
@@ -125,8 +122,7 @@ def create_stream(kinesis, name):
         pass
     waiter = kinesis.get_waiter("stream_exists")
     waiter.wait(StreamName=name)
-    arn = kinesis.describe_stream_summary(
-        StreamName=name)["StreamDescriptionSummary"]["StreamARN"]
+    arn = kinesis.describe_stream_summary(StreamName=name)["StreamDescriptionSummary"]["StreamARN"]
     log(f"Kinesis stream ready: {arn}")
     return arn
 
@@ -135,11 +131,13 @@ def ensure_memory_stream_role(iam, stream_arn, role_name):
     """Create (or reuse) an execution role AgentCore uses to write to Kinesis."""
     assume = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-        }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
     }
     try:
         arn = iam.create_role(
@@ -152,15 +150,23 @@ def ensure_memory_stream_role(iam, stream_arn, role_name):
     iam.put_role_policy(
         RoleName=role_name,
         PolicyName="kinesis-put",
-        PolicyDocument=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Action": ["kinesis:PutRecord", "kinesis:PutRecords",
-                           "kinesis:DescribeStream", "kinesis:DescribeStreamSummary"],
-                "Resource": stream_arn,
-            }],
-        }),
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "kinesis:PutRecord",
+                            "kinesis:PutRecords",
+                            "kinesis:DescribeStream",
+                            "kinesis:DescribeStreamSummary",
+                        ],
+                        "Resource": stream_arn,
+                    }
+                ],
+            }
+        ),
     )
     log(f"Memory streaming role ready: {arn}")
     # IAM propagation is eventually consistent; give it a moment.
@@ -176,16 +182,13 @@ def enable_streaming(ctl, memory_id, stream_arn):
     log(f"Record streaming enabled on {memory_id} -> {stream_arn}")
 
 
-def consume_stream(kinesis, stream_name, target_client, target_memory_id,
-                   expected, timeout):
+def consume_stream(kinesis, stream_name, target_client, target_memory_id, expected, timeout):
     """Poll the Kinesis stream and replicate LTM records until `expected` land."""
-    log(f"\nConsuming Kinesis stream (up to {timeout}s, expecting ~{expected} "
-        "records)...")
-    shard_id = kinesis.describe_stream(
-        StreamName=stream_name)["StreamDescription"]["Shards"][0]["ShardId"]
-    shard_iter = kinesis.get_shard_iterator(
-        StreamName=stream_name, ShardId=shard_id,
-        ShardIteratorType="TRIM_HORIZON")["ShardIterator"]
+    log(f"\nConsuming Kinesis stream (up to {timeout}s, expecting ~{expected} records)...")
+    shard_id = kinesis.describe_stream(StreamName=stream_name)["StreamDescription"]["Shards"][0]["ShardId"]
+    shard_iter = kinesis.get_shard_iterator(StreamName=stream_name, ShardId=shard_id, ShardIteratorType="TRIM_HORIZON")[
+        "ShardIterator"
+    ]
 
     stats = StreamStats()
     deadline = time.time() + timeout
@@ -194,10 +197,11 @@ def consume_stream(kinesis, stream_name, target_client, target_memory_id,
         shard_iter = resp["NextShardIterator"]
         records = resp.get("Records", [])
         if records:
-            process_kinesis_records(
-                records, target_client, target_memory_id, stats=stats)
-            log(f"  stream: received={stats.received} replicated={stats.replicated} "
-                f"skipped={stats.skipped} failed={stats.failed}")
+            process_kinesis_records(records, target_client, target_memory_id, stats=stats)
+            log(
+                f"  stream: received={stats.received} replicated={stats.replicated} "
+                f"skipped={stats.skipped} failed={stats.failed}"
+            )
         if stats.replicated >= expected and expected > 0:
             break
         time.sleep(5)
@@ -212,8 +216,7 @@ def consume_stream(kinesis, stream_name, target_client, target_memory_id,
 def count_events(data, mem_id):
     total, token = 0, None
     while True:
-        kw = {"memoryId": mem_id, "actorId": ACTOR_ID, "sessionId": SESSION_ID,
-              "maxResults": 100}
+        kw = {"memoryId": mem_id, "actorId": ACTOR_ID, "sessionId": SESSION_ID, "maxResults": 100}
         if token:
             kw["nextToken"] = token
         resp = data.list_events(**kw)
@@ -266,10 +269,10 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source-region", default="us-east-1")
     p.add_argument("--target-region", default="us-west-2")
-    p.add_argument("--extraction-timeout", type=int, default=420,
-                   help="seconds to wait for async source LTM extraction")
-    p.add_argument("--stream-poll-timeout", type=int, default=420,
-                   help="seconds to consume the Kinesis stream")
+    p.add_argument(
+        "--extraction-timeout", type=int, default=420, help="seconds to wait for async source LTM extraction"
+    )
+    p.add_argument("--stream-poll-timeout", type=int, default=420, help="seconds to consume the Kinesis stream")
     p.add_argument("--keep", action="store_true", help="don't delete resources")
     args = p.parse_args()
 
@@ -302,30 +305,31 @@ def main():
         enable_streaming(src_ctl, src_id, stream_arn)
 
         banner("STEP 3 — Dual-write the conversation (STM replicates NOW)")
-        log('SOURCE: CreateEvent (normal) -> STM + triggers LTM extraction\n'
-            'TARGET: CreateEvent(extractionMode="SKIP") -> STM history only\n')
-        writer = DualRegionEventWriter(
-            src_id, tgt_id, args.source_region, args.target_region)
+        log(
+            "SOURCE: CreateEvent (normal) -> STM + triggers LTM extraction\n"
+            'TARGET: CreateEvent(extractionMode="SKIP") -> STM history only\n'
+        )
+        writer = DualRegionEventWriter(src_id, tgt_id, args.source_region, args.target_region)
         for i, (role, text) in enumerate(CONVERSATION):
-            writer.record_turn(ACTOR_ID, SESSION_ID, role, text,
-                               event_timestamp=time.time() + i * 0.001)
+            writer.record_turn(ACTOR_ID, SESSION_ID, role, text, event_timestamp=time.time() + i * 0.001)
             log(f"  + [{role}] {text}")
 
         src_data = boto3.client("bedrock-agentcore", region_name=args.source_region)
         tgt_data = boto3.client("bedrock-agentcore", region_name=args.target_region)
         src_events = count_events(src_data, src_id)
-        log(f"\nSource STM: {src_events} events. "
-            f"Target STM (via SKIP dual-write): {count_events(tgt_data, tgt_id)} events.")
+        log(
+            f"\nSource STM: {src_events} events. "
+            f"Target STM (via SKIP dual-write): {count_events(tgt_data, tgt_id)} events."
+        )
 
         banner("STEP 4 — Wait for SOURCE extraction, then replicate LTM via STREAM")
-        src_recs = wait_for_extraction(
-            src_data, src_id, args.source_region, args.extraction_timeout)
+        src_recs = wait_for_extraction(src_data, src_id, args.source_region, args.extraction_timeout)
         show_records(src_recs, "SOURCE")
 
         target_client = make_target_client(boto3.Session(), args.target_region)
         stream_stats = consume_stream(
-            kinesis, stream_name, target_client, tgt_id,
-            expected=len(src_recs), timeout=args.stream_poll_timeout)
+            kinesis, stream_name, target_client, tgt_id, expected=len(src_recs), timeout=args.stream_poll_timeout
+        )
         log(f"\nStream replication stats: {stream_stats.as_dict()}")
 
         banner("STEP 5 — Verify TARGET (both layers) + prove extractionMode=SKIP")
@@ -338,8 +342,7 @@ def main():
         # stream replicated become visible, so we measure a real baseline rather
         # than a transient 0.
         expected_ltm = stream_stats.replicated
-        log(f"\nWaiting for the {expected_ltm} stream-replicated record(s) to be "
-            "queryable in the target...")
+        log(f"\nWaiting for the {expected_ltm} stream-replicated record(s) to be queryable in the target...")
         tgt_recs = []
         deadline = time.time() + 120
         while time.time() < deadline:
@@ -353,8 +356,7 @@ def main():
         ok = True
 
         if src_events and tgt_events >= src_events:
-            log(f"✅ STM: {tgt_events} events dual-written to target with "
-                'extractionMode="SKIP".')
+            log(f'✅ STM: {tgt_events} events dual-written to target with extractionMode="SKIP".')
         else:
             ok = False
             log(f"❌ STM: expected >= {src_events}, found {tgt_events}.")
@@ -365,10 +367,11 @@ def main():
             tgt_text_set = set(tgt_texts)
 
             if src_texts.issubset(tgt_text_set):
-                log(f"✅ LTM: all {len(src_texts)} source records replicated via "
-                    "the Kinesis record stream.")
-                log("   (Replays are idempotent: the source memoryRecordId is used "
-                    "as the target requestIdentifier, so re-delivery is a no-op.)")
+                log(f"✅ LTM: all {len(src_texts)} source records replicated via the Kinesis record stream.")
+                log(
+                    "   (Replays are idempotent: the source memoryRecordId is used "
+                    "as the target requestIdentifier, so re-delivery is a no-op.)"
+                )
             else:
                 ok = False
                 log(f"❌ LTM: missing in target: {src_texts - tgt_text_set}")
@@ -381,30 +384,38 @@ def main():
             # target count does not exceed what the stream replicated.
             duplicates = len(tgt_texts) != len(tgt_text_set)
             if not duplicates and len(tgt_recs) <= expected_ltm:
-                log(f'✅ SKIP: target holds exactly the {len(tgt_recs)} '
+                log(
+                    f"✅ SKIP: target holds exactly the {len(tgt_recs)} "
                     "stream-replicated record(s), no duplicates — the dual-written "
                     "events were NOT re-extracted. LTM came only from the stream, "
-                    'exactly as extractionMode="SKIP" guarantees.')
+                    'exactly as extractionMode="SKIP" guarantees.'
+                )
             else:
                 ok = False
-                log(f"❌ SKIP: target has {len(tgt_recs)} records "
+                log(
+                    f"❌ SKIP: target has {len(tgt_recs)} records "
                     f"(expected {expected_ltm}), duplicates={duplicates} — the "
-                    "SKIP'd events appear to have been re-extracted.")
+                    "SKIP'd events appear to have been re-extracted."
+                )
         else:
-            log("ℹ️  LTM: source produced no records in time; STM path still "
-                "verified. Re-run with a larger --extraction-timeout.")
+            log(
+                "ℹ️  LTM: source produced no records in time; STM path still "
+                "verified. Re-run with a larger --extraction-timeout."
+            )
 
         log()
-        log("🎉 DEMO PASSED: STM (dual-write) + LTM (record streaming) replicated."
-            if ok else "DEMO FAILED — see ❌ lines above.")
+        log(
+            "🎉 DEMO PASSED: STM (dual-write) + LTM (record streaming) replicated."
+            if ok
+            else "DEMO FAILED — see ❌ lines above."
+        )
         if not ok:
             sys.exit(1)
 
     finally:
         if not args.keep:
             log("\nCleaning up...")
-            for ctl, mid, rg in [(src_ctl, src_id, args.source_region),
-                                 (tgt_ctl, tgt_id, args.target_region)]:
+            for ctl, mid, rg in [(src_ctl, src_id, args.source_region), (tgt_ctl, tgt_id, args.target_region)]:
                 if mid:
                     try:
                         ctl.delete_memory(memoryId=mid)
@@ -413,8 +424,7 @@ def main():
                         log(f"  warn {mid}: {e}")
             if created_stream:
                 try:
-                    kinesis.delete_stream(StreamName=stream_name,
-                                          EnforceConsumerDeletion=True)
+                    kinesis.delete_stream(StreamName=stream_name, EnforceConsumerDeletion=True)
                     log(f"  deleted stream {stream_name}")
                 except ClientError as e:
                     log(f"  warn stream: {e}")

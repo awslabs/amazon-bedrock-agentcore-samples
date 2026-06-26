@@ -63,10 +63,12 @@ def main():
     except ClientError as exc:
         raise SystemExit(f"update_memory failed: {exc}")
 
-    print(json.dumps(
-        {"streamDeliveryResources": resp["memory"].get("streamDeliveryResources", {})},
-        indent=2,
-    ))
+    print(
+        json.dumps(
+            {"streamDeliveryResources": resp["memory"].get("streamDeliveryResources", {})},
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

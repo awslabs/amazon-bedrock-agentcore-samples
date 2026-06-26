@@ -77,12 +77,8 @@ def main():
         }
     ]
 
-    source_id = create_memory(
-        args.source_region, f"{args.name}-source", strategies
-    )
-    target_id = create_memory(
-        args.target_region, f"{args.name}-target", strategies
-    )
+    source_id = create_memory(args.source_region, f"{args.name}-source", strategies)
+    target_id = create_memory(args.target_region, f"{args.name}-target", strategies)
 
     out = {
         "source_memory_id": source_id,

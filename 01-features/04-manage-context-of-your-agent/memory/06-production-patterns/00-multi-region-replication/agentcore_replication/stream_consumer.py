@@ -66,9 +66,7 @@ def stream_delivery_resources(stream_arn: str) -> dict:
             {
                 "kinesis": {
                     "dataStreamArn": stream_arn,
-                    "contentConfigurations": [
-                        {"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"}
-                    ],
+                    "contentConfigurations": [{"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"}],
                 }
             }
         ]
@@ -207,9 +205,7 @@ def process_kinesis_records(
             continue
 
         try:
-            outcome = replicate_stream_event(
-                stream_event, target_client, target_memory_id
-            )
+            outcome = replicate_stream_event(stream_event, target_client, target_memory_id)
             if outcome == "replicated":
                 stats.replicated += 1
             else:
