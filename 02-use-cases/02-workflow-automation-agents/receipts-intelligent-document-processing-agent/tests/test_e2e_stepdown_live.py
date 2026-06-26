@@ -27,7 +27,10 @@ STACK = os.environ.get("RECEIPTS_STACK", "AgentCore-ReceiptsAgent-dev")
 # returned `model` field still read L0's model) worth investigating when revisited.
 # Decision (with the user): keep the unit-verified logic, defer this live e2e until
 # we either find a real fault-injection path or accept unit coverage as sufficient.
-pytestmark = [pytest.mark.e2e, pytest.mark.skip(reason="deferred: can't faithfully simulate a live Bedrock 503; logic is unit-tested")]
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skip(reason="deferred: can't faithfully simulate a live Bedrock 503; logic is unit-tested"),
+]
 
 
 def _runtime_arn():

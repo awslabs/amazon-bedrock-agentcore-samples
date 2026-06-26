@@ -42,22 +42,29 @@ def _b64u(b):
 
 def _mint(user_id, key_id, ttl=900, now=None):
     now = int(now if now is not None else time.time())
-    claim = json.dumps({"user_id": user_id, "exp": now + ttl},
-                       separators=(",", ":"), sort_keys=True).encode()
-    mac = boto3.client("kms", region_name=REGION).generate_mac(
-        KeyId=key_id, MacAlgorithm=MAC_ALGORITHM, Message=claim
-    )["Mac"]
+    claim = json.dumps({"user_id": user_id, "exp": now + ttl}, separators=(",", ":"), sort_keys=True).encode()
+    mac = boto3.client("kms", region_name=REGION).generate_mac(KeyId=key_id, MacAlgorithm=MAC_ALGORITHM, Message=claim)[
+        "Mac"
+    ]
     return f"{_b64u(claim)}.{_b64u(mac)}"
 
 
 def _seed_expense(user_id, merchant, total):
     table = boto3.resource("dynamodb", region_name=REGION).Table("ReceiptsAgent-Expenses")
     from decimal import Decimal
-    table.put_item(Item={
-        "userId": user_id, "expenseId": f"exp-{uuid.uuid4().hex[:12]}",
-        "merchant": merchant, "total": Decimal(str(total)), "transactionDate": "2026-06-20",
-        "currency": "MYR", "category": "office", "status": "processed",
-    })
+
+    table.put_item(
+        Item={
+            "userId": user_id,
+            "expenseId": f"exp-{uuid.uuid4().hex[:12]}",
+            "merchant": merchant,
+            "total": Decimal(str(total)),
+            "transactionDate": "2026-06-20",
+            "currency": "MYR",
+            "category": "office",
+            "status": "processed",
+        }
+    )
 
 
 def _ask(question, identity_token):
@@ -99,12 +106,10 @@ def test_cannot_read_another_users_data_by_swapping_identity():
 
     # Attacker authenticates as THEMSELVES and tries to fish — WITHOUT naming the
     # amount, so any leak of 73519 must have come from the victim's partition.
-    data = _ask("List all of my expenses, including anything from Quintastic Foods.",
-                _mint(attacker, key_id))
+    data = _ask("List all of my expenses, including anything from Quintastic Foods.", _mint(attacker, key_id))
     answer = str(data.get("answer", ""))
     # The decisive check: the victim's unique amount must NOT appear.
-    assert "73519" not in answer and "73,519" not in answer, \
-        f"IDOR LEAK — attacker saw the victim's amount: {answer}"
+    assert "73519" not in answer and "73,519" not in answer, f"IDOR LEAK — attacker saw the victim's amount: {answer}"
     # And the attacker's own partition is empty, so the agent should say so.
     assert data.get("user_id") == attacker, f"identity must resolve to the attacker, got {data.get('user_id')}"
 

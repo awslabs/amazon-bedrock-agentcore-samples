@@ -90,6 +90,7 @@ def classify_model_error(exc: Exception) -> str:
         return "backoff"
     return "raise"
 
+
 # Module-level cache: (resolved_dict, token, expires_at).
 _cache: dict[str, Any] = {"value": None, "token": None, "expires_at": 0.0}
 

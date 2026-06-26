@@ -97,21 +97,70 @@ def _set_rung_l0(ac, app_id, env_id, prof_id, strat_id):
     config = {
         "activeRung": "L0",
         "rungs": {
-            "L0": {"model": "global.anthropic.claude-opus-4-8", "features": {"validator": True, "memoryRead": True, "memoryWrite": True, "merchantLookup": True, "categoryInference": True, "dedup": True, "forceReview": False}},
-            "L1": {"model": "global.anthropic.claude-opus-4-7", "features": {"validator": True, "memoryRead": True, "memoryWrite": False, "merchantLookup": False, "categoryInference": True, "dedup": True, "forceReview": False}},
-            "L2": {"model": "global.anthropic.claude-opus-4-6-v1", "features": {"validator": False, "memoryRead": False, "memoryWrite": False, "merchantLookup": False, "categoryInference": False, "dedup": True, "forceReview": True}},
-            "L3": {"model": "global.anthropic.claude-sonnet-4-6", "features": {"validator": False, "memoryRead": False, "memoryWrite": False, "merchantLookup": False, "categoryInference": False, "dedup": True, "forceReview": True}},
+            "L0": {
+                "model": "global.anthropic.claude-opus-4-8",
+                "features": {
+                    "validator": True,
+                    "memoryRead": True,
+                    "memoryWrite": True,
+                    "merchantLookup": True,
+                    "categoryInference": True,
+                    "dedup": True,
+                    "forceReview": False,
+                },
+            },
+            "L1": {
+                "model": "global.anthropic.claude-opus-4-7",
+                "features": {
+                    "validator": True,
+                    "memoryRead": True,
+                    "memoryWrite": False,
+                    "merchantLookup": False,
+                    "categoryInference": True,
+                    "dedup": True,
+                    "forceReview": False,
+                },
+            },
+            "L2": {
+                "model": "global.anthropic.claude-opus-4-6-v1",
+                "features": {
+                    "validator": False,
+                    "memoryRead": False,
+                    "memoryWrite": False,
+                    "merchantLookup": False,
+                    "categoryInference": False,
+                    "dedup": True,
+                    "forceReview": True,
+                },
+            },
+            "L3": {
+                "model": "global.anthropic.claude-sonnet-4-6",
+                "features": {
+                    "validator": False,
+                    "memoryRead": False,
+                    "memoryWrite": False,
+                    "merchantLookup": False,
+                    "categoryInference": False,
+                    "dedup": True,
+                    "forceReview": True,
+                },
+            },
             "L4": {"features": {"forceReview": True}},
         },
     }
     ver = ac.create_hosted_configuration_version(
-        ApplicationId=app_id, ConfigurationProfileId=prof_id,
-        Content=json.dumps(config).encode(), ContentType="application/json",
+        ApplicationId=app_id,
+        ConfigurationProfileId=prof_id,
+        Content=json.dumps(config).encode(),
+        ContentType="application/json",
         Description="test cleanup: restore L0",
     )
     ac.start_deployment(
-        ApplicationId=app_id, EnvironmentId=env_id, ConfigurationProfileId=prof_id,
-        ConfigurationVersion=str(ver["VersionNumber"]), DeploymentStrategyId=strat_id,
+        ApplicationId=app_id,
+        EnvironmentId=env_id,
+        ConfigurationProfileId=prof_id,
+        ConfigurationVersion=str(ver["VersionNumber"]),
+        DeploymentStrategyId=strat_id,
     )
     _wait_complete(ac, app_id, env_id)
 

@@ -54,6 +54,7 @@ def test_next_rung_walks_down():
 def test_rung_order_shape():
     assert RUNG_ORDER == ["L0", "L1", "L2", "L3", "L4"]
 
+
 CFG = {
     "activeRung": "L0",
     "rungs": {

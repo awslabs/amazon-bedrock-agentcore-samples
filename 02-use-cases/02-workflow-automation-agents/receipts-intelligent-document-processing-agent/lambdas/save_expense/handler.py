@@ -47,9 +47,7 @@ def handler(event, context):
         return json.dumps({"error": "user_id, merchant, and total are required"})
 
     transaction_date = event.get("transaction_date", "")
-    expense_id = event.get("expense_id") or _expense_id(
-        user_id, merchant, transaction_date, total
-    )
+    expense_id = event.get("expense_id") or _expense_id(user_id, merchant, transaction_date, total)
 
     item = {
         "userId": user_id,

@@ -69,5 +69,10 @@ def handler(event, context):
     # A failed invoke raises -> the Lambda retries (CDK retryAttempts) -> DLQ. We do
     # not swallow it: a dropped receipt must be visible, never silently lost.
     print(f"front door: {payload['s3_uri']} -> status={result.get('status')} rung={result.get('rung')}")
-    return {"statusCode": 200, "s3_uri": payload["s3_uri"], "user_id": payload["user_id"],
-            "status": result.get("status"), "rung": result.get("rung")}
+    return {
+        "statusCode": 200,
+        "s3_uri": payload["s3_uri"],
+        "user_id": payload["user_id"],
+        "status": result.get("status"),
+        "rung": result.get("rung"),
+    }

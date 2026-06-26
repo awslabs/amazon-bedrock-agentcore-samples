@@ -27,9 +27,7 @@ def get_gateway_token() -> str | None:
     if not GATEWAY_TOKEN_ENDPOINT.startswith("https://"):
         raise ValueError(f"token endpoint must be https: {GATEWAY_TOKEN_ENDPOINT}")
 
-    creds = base64.b64encode(
-        f"{GATEWAY_CLIENT_ID}:{GATEWAY_CLIENT_SECRET}".encode()
-    ).decode()
+    creds = base64.b64encode(f"{GATEWAY_CLIENT_ID}:{GATEWAY_CLIENT_SECRET}".encode()).decode()
     data = urllib.parse.urlencode(
         {
             "grant_type": "client_credentials",

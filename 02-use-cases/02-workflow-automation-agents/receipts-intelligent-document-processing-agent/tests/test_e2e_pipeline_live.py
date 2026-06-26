@@ -68,8 +68,9 @@ def test_receipt_flows_through_agent_to_dynamodb():
 
     # Phase 4: the independent validator agent ran and owns the routing decision.
     validator = data.get("validator", {})
-    assert validator.get("routing") in ("AUTO_PERSIST", "NEEDS_REVIEW"), \
+    assert validator.get("routing") in ("AUTO_PERSIST", "NEEDS_REVIEW"), (
         f"validator should have produced a routing decision, got: {validator}"
+    )
     # Phase 5: status is "processed" ONLY when the validator approved AND Cedar did
     # not block at the gateway. A Cedar block (cedar_blocked) overrides an
     # AUTO_PERSIST into needs_review — the deterministic guardrail (spec §5.5).
@@ -89,9 +90,7 @@ def test_receipt_flows_through_agent_to_dynamodb():
     table = boto3.resource("dynamodb", region_name=REGION).Table(EXPENSES_TABLE)
     found = False
     for _ in range(5):
-        rows = table.query(
-            KeyConditionExpression=Key("userId").eq("user-001"), ConsistentRead=True
-        ).get("Items", [])
+        rows = table.query(KeyConditionExpression=Key("userId").eq("user-001"), ConsistentRead=True).get("Items", [])
         if any(s3_uri == r.get("sourceReceiptS3") for r in rows):
             found = True
             break

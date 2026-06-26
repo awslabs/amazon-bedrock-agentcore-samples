@@ -11,9 +11,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 # The controller lives under lambdas/ (not on the package path), so load it directly.
-_HANDLER = os.path.join(
-    os.path.dirname(__file__), "..", "lambdas", "controller", "handler.py"
-)
+_HANDLER = os.path.join(os.path.dirname(__file__), "..", "lambdas", "controller", "handler.py")
 _spec = importlib.util.spec_from_file_location("controller_handler", _HANDLER)
 controller = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(controller)

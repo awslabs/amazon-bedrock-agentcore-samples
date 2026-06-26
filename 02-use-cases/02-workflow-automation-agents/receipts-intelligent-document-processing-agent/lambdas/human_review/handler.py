@@ -42,9 +42,7 @@ def handler(event, context):
     merchant = event.get("merchant", "")
     total = event.get("total", "")
     transaction_date = event.get("transaction_date", "")
-    expense_id = event.get("expense_id") or _expense_id(
-        user_id, merchant, transaction_date, total
-    )
+    expense_id = event.get("expense_id") or _expense_id(user_id, merchant, transaction_date, total)
 
     item = {
         "userId": user_id,

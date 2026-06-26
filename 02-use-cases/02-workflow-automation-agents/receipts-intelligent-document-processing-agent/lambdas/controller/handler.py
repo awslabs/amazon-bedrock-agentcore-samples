@@ -82,9 +82,7 @@ def _latest_config(ac) -> tuple[dict, int]:
 def _in_cooldown(ac) -> bool:
     """True if the most recent deployment started within COOLDOWN_SECONDS (anti-flap).
     Stateless: the deployment history IS the cooldown clock."""
-    deps = ac.list_deployments(
-        ApplicationId=APP_ID, EnvironmentId=ENV_ID, MaxResults=1
-    )["Items"]
+    deps = ac.list_deployments(ApplicationId=APP_ID, EnvironmentId=ENV_ID, MaxResults=1)["Items"]
     if not deps:
         return False
     started = deps[0].get("StartedAt")

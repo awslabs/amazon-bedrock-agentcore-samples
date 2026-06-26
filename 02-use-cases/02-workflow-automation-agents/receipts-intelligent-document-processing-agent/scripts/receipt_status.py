@@ -42,8 +42,10 @@ def main() -> None:
         rid = receipt_id(args.s3_uri)
         item = table.get_item(Key={"receiptId": rid}).get("Item")
         if not item:
-            print(f"no ledger row for {args.s3_uri} (receiptId={rid}). "
-                  "Not processed yet, or processed before the ledger existed.")
+            print(
+                f"no ledger row for {args.s3_uri} (receiptId={rid}). "
+                "Not processed yet, or processed before the ledger existed."
+            )
             return
         print(json.dumps(item, indent=2, default=str))
         return
@@ -58,9 +60,11 @@ def main() -> None:
         items = resp.get("Items", [])
         print(f"{len(items)} run(s) with status={args.status}:\n")
         for it in items:
-            print(f"  {it.get('processedAt','?')}  {it.get('s3Uri','?')}  "
-                  f"rung={it.get('rung','?')}  merchant={it.get('merchant','')}  "
-                  f"{('ERROR: ' + it['error']) if it.get('error') else it.get('validatorConcerns','')}")
+            print(
+                f"  {it.get('processedAt', '?')}  {it.get('s3Uri', '?')}  "
+                f"rung={it.get('rung', '?')}  merchant={it.get('merchant', '')}  "
+                f"{('ERROR: ' + it['error']) if it.get('error') else it.get('validatorConcerns', '')}"
+            )
         return
 
     ap.error("pass --s3-uri or --status")

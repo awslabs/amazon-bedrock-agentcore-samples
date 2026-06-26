@@ -63,15 +63,10 @@ def test_deferred_receipt_drains_from_sqs_and_completes():
     table = boto3.resource("dynamodb", region_name=REGION).Table(EXPENSES_TABLE)
     found = False
     for _ in range(30):  # up to ~5 min
-        rows = table.query(
-            KeyConditionExpression=Key("userId").eq(user_id), ConsistentRead=True
-        ).get("Items", [])
+        rows = table.query(KeyConditionExpression=Key("userId").eq(user_id), ConsistentRead=True).get("Items", [])
         if any(s3_uri == r.get("sourceReceiptS3") for r in rows):
             found = True
             break
         time.sleep(10)
 
-    assert found, (
-        f"deferred receipt should have drained from SQS and produced an expense row "
-        f"for {user_id} ({s3_uri})"
-    )
+    assert found, f"deferred receipt should have drained from SQS and produced an expense row for {user_id} ({s3_uri})"

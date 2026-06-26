@@ -38,8 +38,7 @@ def _b64u_decode(s: str) -> bytes:
 
 def encode_claim(user_id: str, expires_at: int) -> bytes:
     """Pure: the exact bytes that get MAC'd. Shared by sign + verify so they agree."""
-    return json.dumps({"user_id": user_id, "exp": int(expires_at)},
-                      separators=(",", ":"), sort_keys=True).encode()
+    return json.dumps({"user_id": user_id, "exp": int(expires_at)}, separators=(",", ":"), sort_keys=True).encode()
 
 
 def assemble_token(claim_bytes: bytes, mac_bytes: bytes) -> str:
@@ -64,16 +63,17 @@ def claim_is_valid(claim_bytes: bytes, now: int) -> dict[str, Any]:
     return claim
 
 
-def sign_identity(user_id: str, key_id: str, region: str, ttl: int = DEFAULT_TTL_SECONDS,
-                  now: int | None = None) -> str:
+def sign_identity(
+    user_id: str, key_id: str, region: str, ttl: int = DEFAULT_TTL_SECONDS, now: int | None = None
+) -> str:
     """Mint a signed identity token (the trusted invoker / chat client side)."""
     import boto3
 
     now = int(now if now is not None else time.time())
     claim = encode_claim(user_id, now + ttl)
-    mac = boto3.client("kms", region_name=region).generate_mac(
-        KeyId=key_id, MacAlgorithm=MAC_ALGORITHM, Message=claim
-    )["Mac"]
+    mac = boto3.client("kms", region_name=region).generate_mac(KeyId=key_id, MacAlgorithm=MAC_ALGORITHM, Message=claim)[
+        "Mac"
+    ]
     return assemble_token(claim, mac)
 
 

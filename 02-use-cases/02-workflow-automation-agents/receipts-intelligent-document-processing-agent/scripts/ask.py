@@ -26,11 +26,12 @@ def _b64u(b: bytes) -> str:
 
 def mint_identity(user_id: str, key_id: str, region: str, ttl: int = 900) -> str:
     """Sign {user_id, exp} with the KMS HMAC key — must match app/.../identity.py."""
-    claim = json.dumps({"user_id": user_id, "exp": int(time.time()) + ttl},
-                       separators=(",", ":"), sort_keys=True).encode()
-    mac = boto3.client("kms", region_name=region).generate_mac(
-        KeyId=key_id, MacAlgorithm=MAC_ALGORITHM, Message=claim
-    )["Mac"]
+    claim = json.dumps(
+        {"user_id": user_id, "exp": int(time.time()) + ttl}, separators=(",", ":"), sort_keys=True
+    ).encode()
+    mac = boto3.client("kms", region_name=region).generate_mac(KeyId=key_id, MacAlgorithm=MAC_ALGORITHM, Message=claim)[
+        "Mac"
+    ]
     return f"{_b64u(claim)}.{_b64u(mac)}"
 
 

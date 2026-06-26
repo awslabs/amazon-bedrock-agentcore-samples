@@ -35,6 +35,4 @@ def handler(event, context):
         return json.dumps({"matched": True, "merchant": item}, default=str)
 
     # No catalog hit: return a normalized passthrough the agent can still use.
-    return json.dumps(
-        {"matched": False, "merchant": {"merchantKey": key, "displayName": name.strip()}}
-    )
+    return json.dumps({"matched": False, "merchant": {"merchantKey": key, "displayName": name.strip()}})

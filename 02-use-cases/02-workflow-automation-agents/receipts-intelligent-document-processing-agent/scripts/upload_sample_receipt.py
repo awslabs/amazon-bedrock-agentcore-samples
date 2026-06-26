@@ -21,9 +21,7 @@ def main() -> None:
     bucket = f"receipts-inbox-{account}-{args.region}"
     fixture = os.path.join(os.path.dirname(__file__), "..", "tests", "fixtures", "sample-receipt.png")
 
-    boto3.client("s3", region_name=args.region).upload_file(
-        os.path.abspath(fixture), bucket, args.key
-    )
+    boto3.client("s3", region_name=args.region).upload_file(os.path.abspath(fixture), bucket, args.key)
     print(f"s3://{bucket}/{args.key}")
 
 

@@ -55,6 +55,7 @@ def test_claim_rejected_when_expired():
 
 def test_claim_rejected_when_missing_fields():
     import json
+
     with pytest.raises(ValueError):
         claim_is_valid(json.dumps({"user_id": "x"}).encode(), int(time.time()))
     with pytest.raises(ValueError):

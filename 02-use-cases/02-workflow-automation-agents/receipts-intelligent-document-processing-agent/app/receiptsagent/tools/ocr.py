@@ -49,9 +49,7 @@ def analyze_receipt(s3_uri: str) -> dict[str, Any]:
             label = (f.get("LabelDetection") or {}).get("Text", "")
             val = (f.get("ValueDetection") or {}).get("Text", "")
             conf = (f.get("ValueDetection") or {}).get("Confidence", 0.0)
-            summary_fields.append(
-                {"type": ftype, "label": label, "value": val, "confidence": round(conf, 2)}
-            )
+            summary_fields.append({"type": ftype, "label": label, "value": val, "confidence": round(conf, 2)})
             confidences.append(conf)
         for group in doc.get("LineItemGroups", []):
             for li in group.get("LineItems", []):

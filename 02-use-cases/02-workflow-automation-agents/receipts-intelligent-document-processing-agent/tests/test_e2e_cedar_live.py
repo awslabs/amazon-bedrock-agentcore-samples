@@ -48,16 +48,14 @@ def _m2m_token_and_gateway():
         pytest.skip("Cognito outputs not present")
 
     cog = boto3.client("cognito-idp", region_name=REGION)
-    secret = cog.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)[
-        "UserPoolClient"
-    ]["ClientSecret"]
+    secret = cog.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)["UserPoolClient"][
+        "ClientSecret"
+    ]
     domain = cog.describe_user_pool(UserPoolId=user_pool_id)["UserPool"].get("Domain", "")
     token_endpoint = f"https://{domain}.auth.{REGION}.amazoncognito.com/oauth2/token"
 
     creds = base64.b64encode(f"{client_id}:{secret}".encode()).decode()
-    data = urllib.parse.urlencode(
-        {"grant_type": "client_credentials", "scope": "agentcore/invoke"}
-    ).encode()
+    data = urllib.parse.urlencode({"grant_type": "client_credentials", "scope": "agentcore/invoke"}).encode()
     req = urllib.request.Request(
         token_endpoint,
         data=data,
@@ -127,7 +125,11 @@ def _call_tool(tool_suffix: str, args: dict) -> "tuple[bool, str]":
     with client as gw:
         tools = gw.list_tools_sync()
         name = next(
-            (t.tool_name for t in tools if tool_suffix in t.tool_name or t.tool_name.endswith(tool_suffix.replace("_", "-"))),
+            (
+                t.tool_name
+                for t in tools
+                if tool_suffix in t.tool_name or t.tool_name.endswith(tool_suffix.replace("_", "-"))
+            ),
             tool_suffix,
         )
         result = gw.call_tool_sync(tool_use_id=uuid.uuid4().hex, name=name, arguments=args)

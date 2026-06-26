@@ -44,9 +44,7 @@ def test_s3_upload_runs_pipeline_via_front_door():
     table = boto3.resource("dynamodb", region_name=REGION).Table(EXPENSES_TABLE)
     found = False
     for _ in range(36):  # up to ~6 min
-        rows = table.query(
-            KeyConditionExpression=Key("userId").eq(user_id), ConsistentRead=True
-        ).get("Items", [])
+        rows = table.query(KeyConditionExpression=Key("userId").eq(user_id), ConsistentRead=True).get("Items", [])
         if any(s3_uri == r.get("sourceReceiptS3") for r in rows):
             found = True
             break

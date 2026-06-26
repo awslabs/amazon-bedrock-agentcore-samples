@@ -1,6 +1,6 @@
 REGION ?= us-west-2
 
-.PHONY: preflight lint scan unit synth e2e test-user user-demo clean help
+.PHONY: preflight lint format scan unit synth e2e test-user user-demo clean help
 
 # The user-perspective e2e files (NOT the dev-only resilience suite: ladder, controller,
 # drain, stepdown). These hit REAL AWS against an already-deployed stack — no mocks.
@@ -9,8 +9,9 @@ USER_E2E := tests/test_e2e_pipeline_live.py tests/test_e2e_frontdoor_live.py \
             tests/test_e2e_cedar_live.py tests/test_e2e_tools_live.py
 
 help:
-	@echo "make preflight - RUN BEFORE COMMIT/PR: ruff lint + unit tests + synth + sensitive-data scan"
-	@echo "make lint      - ruff check (app lambdas scripts tests)"
+	@echo "make preflight - RUN BEFORE COMMIT/PR: ruff lint + format-check + unit tests + synth + sensitive-data scan"
+	@echo "make lint      - ruff check + ruff format --check (app lambdas scripts tests)"
+	@echo "make format    - auto-fix: ruff format + ruff check --fix"
 	@echo "make scan      - fail if account id / alias / local paths leak into shipped files"
 	@echo "make unit      - pure-function tests (no AWS, no mocks)"
 	@echo "make synth     - install CDK deps + agentcore validate + cdk synth (no resources created)"
@@ -24,8 +25,21 @@ help:
 preflight: lint unit synth scan
 	@echo "✅ preflight passed — safe to commit / open the PR"
 
+# Mirror EXACTLY what the agentcore-samples CI python-lint job runs: BOTH
+# `ruff check` (lint) AND `ruff format --check` (formatter). They are different
+# commands — passing one does NOT imply the other. The repo root ships
+# `pyproject.toml` with `line-length = 120`; our sample/ tree has no ruff config,
+# so we MUST pass --line-length 120 here or local ruff falls back to 88 and
+# disagrees with CI (this exact gap broke PR #1748's python-lint job).
+RUFF_LINE_LENGTH ?= 120
 lint:
-	ruff check app lambdas scripts tests
+	ruff check --line-length $(RUFF_LINE_LENGTH) app lambdas scripts tests
+	ruff format --check --line-length $(RUFF_LINE_LENGTH) app lambdas scripts tests
+
+# Auto-fix formatting (apply what `make lint` checks). Run this if lint fails.
+format:
+	ruff format --line-length $(RUFF_LINE_LENGTH) app lambdas scripts tests
+	ruff check --fix --line-length $(RUFF_LINE_LENGTH) app lambdas scripts tests
 
 # Block account id / alias / absolute local paths from leaking into shipped source.
 # Scans ONLY git-tracked text files (exactly what ships) — so local clutter like

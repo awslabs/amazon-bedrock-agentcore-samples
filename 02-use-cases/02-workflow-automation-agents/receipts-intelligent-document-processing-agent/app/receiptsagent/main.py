@@ -177,8 +177,7 @@ def _process(payload, context=None):
     # L4 — defer: no model call. Queue the receipt for replay and return (spec §6.1).
     if active["defer"]:
         deferred = _defer_receipt(s3_uri, user_id, rung)
-        return {"status": "deferred", "rung": rung, "deferred": deferred,
-                "needs_review": True, "s3_uri": s3_uri}
+        return {"status": "deferred", "rung": rung, "deferred": deferred, "needs_review": True, "s3_uri": s3_uri}
 
     reset_state()
     session_id = f"receipt-{user_id}-{uuid.uuid4().hex}"
@@ -250,9 +249,15 @@ def _process(payload, context=None):
                     if not nxt_rung or nxt_rung["defer"]:
                         # bottomed out -> defer the receipt (spec §6.1 L4)
                         deferred = _defer_receipt(s3_uri, user_id, run_rung)
-                        return {"status": "deferred", "rung": run_rung, "deferred": deferred,
-                                "needs_review": True, "step_downs": step_downs,
-                                "reason": "503 persisted to the bottom of the ladder", "s3_uri": s3_uri}
+                        return {
+                            "status": "deferred",
+                            "rung": run_rung,
+                            "deferred": deferred,
+                            "needs_review": True,
+                            "step_downs": step_downs,
+                            "reason": "503 persisted to the bottom of the ladder",
+                            "s3_uri": s3_uri,
+                        }
                     step_downs.append({"from": run_rung, "to": nxt, "cause": "503"})
                     _emit_step_down_metric(run_rung, nxt)
                     run_rung, run_model = nxt, nxt_rung["model"]
@@ -429,7 +434,7 @@ def _answer_query(user_id: str, question: str) -> dict:
 
 def _backoff_jitter(attempt: int) -> float:
     """Exponential backoff with jitter for 429/500 retries (spec §6.3). Capped."""
-    return min(0.5 * (2 ** attempt) + random.uniform(0, 0.25), 4.0)
+    return min(0.5 * (2**attempt) + random.uniform(0, 0.25), 4.0)
 
 
 def _tag_span_rung(rung: str, model: str, needs_review: bool | None = None) -> None:
@@ -463,12 +468,14 @@ def _emit_step_down_metric(from_rung: str, to_rung: str) -> None:
 
         boto3.client("cloudwatch", region_name=REGION).put_metric_data(
             Namespace="ReceiptsAgent/Ladder",
-            MetricData=[{
-                "MetricName": "ModelStepDowns",
-                "Value": 1,
-                "Unit": "Count",
-                "Dimensions": [{"Name": "FromRung", "Value": from_rung}],
-            }],
+            MetricData=[
+                {
+                    "MetricName": "ModelStepDowns",
+                    "Value": 1,
+                    "Unit": "Count",
+                    "Dimensions": [{"Name": "FromRung", "Value": from_rung}],
+                }
+            ],
         )
     except Exception as exc:  # noqa: BLE001 — telemetry is best-effort
         log.warning("ModelStepDowns metric emit failed: %s", exc)
@@ -487,12 +494,14 @@ def _emit_run_ledger(s3_uri, user_id, result) -> None:
 
         detail = build_run_event(s3_uri, user_id, result)
         boto3.client("events", region_name=REGION).put_events(
-            Entries=[{
-                "Source": "receipts.agent",
-                "DetailType": "ReceiptProcessed",
-                "Detail": json.dumps(detail, default=str),
-                "EventBusName": RUN_EVENT_BUS,
-            }]
+            Entries=[
+                {
+                    "Source": "receipts.agent",
+                    "DetailType": "ReceiptProcessed",
+                    "Detail": json.dumps(detail, default=str),
+                    "EventBusName": RUN_EVENT_BUS,
+                }
+            ]
         )
     except Exception as exc:  # noqa: BLE001 — audit emit is best-effort
         log.warning("run-ledger emit failed: %s", exc)

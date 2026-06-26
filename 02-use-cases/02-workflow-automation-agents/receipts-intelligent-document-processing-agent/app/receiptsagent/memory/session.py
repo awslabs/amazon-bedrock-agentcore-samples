@@ -18,9 +18,7 @@ from bedrock_agentcore.memory.integrations.strands.session_manager import (
 from config import MEMORY_ID, REGION
 
 
-def get_memory_session_manager(
-    session_id: str, actor_id: str
-) -> Optional[AgentCoreMemorySessionManager]:
+def get_memory_session_manager(session_id: str, actor_id: str) -> Optional[AgentCoreMemorySessionManager]:
     """Create a session manager bound to a session + actor (the user_id).
 
     Returns None when MEMORY_ID is unset so callers degrade gracefully.
