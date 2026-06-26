@@ -25,6 +25,7 @@ from .stream_consumer import (
     make_target_client,
     process_kinesis_records,
     replicate_stream_event,
+    stream_delivery_resources,
 )
 from .dual_writer import DualRegionEventWriter
 
@@ -34,6 +35,7 @@ __all__ = [
     "make_target_client",
     "process_kinesis_records",
     "replicate_stream_event",
+    "stream_delivery_resources",
     # STM via dual-write CreateEvent (extractionMode="SKIP" on target)
     "DualRegionEventWriter",
 ]

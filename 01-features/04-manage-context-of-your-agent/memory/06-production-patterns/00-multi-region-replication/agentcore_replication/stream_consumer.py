@@ -54,6 +54,27 @@ SKIP_EVENTS = {"StreamingEnabled", "MemoryRecordDeleted"}
 RETRYABLE_ERRORS = {"ThrottledException", "ServiceException", "RetryableConflictException"}
 
 
+def stream_delivery_resources(stream_arn: str) -> dict:
+    """Build the ``streamDeliveryResources`` payload for full-content LTM records.
+
+    This is the source-side contract for the record stream this module consumes:
+    pass it to ``UpdateMemory``/``CreateMemory`` to publish every extracted record
+    (``MEMORY_RECORDS`` / ``FULL_CONTENT``) to the given Kinesis Data Stream.
+    """
+    return {
+        "resources": [
+            {
+                "kinesis": {
+                    "dataStreamArn": stream_arn,
+                    "contentConfigurations": [
+                        {"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"}
+                    ],
+                }
+            }
+        ]
+    }
+
+
 @dataclass
 class StreamStats:
     """Counters returned by a stream-consumption pass."""

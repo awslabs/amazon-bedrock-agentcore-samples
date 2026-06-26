@@ -46,6 +46,7 @@ from agentcore_replication import (
     StreamStats,
     make_target_client,
     process_kinesis_records,
+    stream_delivery_resources,
 )
 
 ACTOR_ID = "demo-user"
@@ -170,13 +171,7 @@ def ensure_memory_stream_role(iam, stream_arn, role_name):
 def enable_streaming(ctl, memory_id, stream_arn):
     ctl.update_memory(
         memoryId=memory_id,
-        streamDeliveryResources={"resources": [{
-            "kinesis": {
-                "dataStreamArn": stream_arn,
-                "contentConfigurations": [
-                    {"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"}],
-            }
-        }]},
+        streamDeliveryResources=stream_delivery_resources(stream_arn),
     )
     log(f"Record streaming enabled on {memory_id} -> {stream_arn}")
 

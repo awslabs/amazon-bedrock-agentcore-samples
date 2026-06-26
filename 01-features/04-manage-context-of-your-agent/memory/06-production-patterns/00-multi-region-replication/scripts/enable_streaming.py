@@ -24,25 +24,13 @@ Usage::
 
 import argparse
 import json
+import sys
 
 import boto3
 from botocore.exceptions import ClientError
 
-
-def stream_delivery_resources(stream_arn: str) -> dict:
-    """Build the streamDeliveryResources payload for full-content LTM records."""
-    return {
-        "resources": [
-            {
-                "kinesis": {
-                    "dataStreamArn": stream_arn,
-                    "contentConfigurations": [
-                        {"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"}
-                    ],
-                }
-            }
-        ]
-    }
+sys.path.insert(0, ".")
+from agentcore_replication import stream_delivery_resources
 
 
 def main():
