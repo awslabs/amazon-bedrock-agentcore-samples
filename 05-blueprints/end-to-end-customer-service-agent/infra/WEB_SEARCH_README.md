@@ -1,4 +1,4 @@
-# AgentCore Web Search Tool Integration
+# AgentCore Web Search Tool integration
 
 Provides web search capability for the customer service agent using the AgentCore managed Web Search Tool connector — zero infrastructure, no API keys, queries stay within AWS.
 
@@ -15,21 +15,23 @@ AgentCore Gateway (auth + interceptor)
 AgentCore Web Search Tool
     │
     ▼
-Purpose-built web index (tens of billions of documents)
+Purpose-built web index (continuously updated)
 ```
 
-## Key Benefits
+## Key benefits
 
 - **No API keys or external services** — fully managed by AWS
 - **Queries never leave AWS** — served entirely within AWS infrastructure
-- **Purpose-built web index** — tens of billions of documents, continuously updated
+- **Purpose-built web index** — broad coverage, continuously updated within minutes
 - **Semantic snippet extraction** — returns relevant passages optimized for LLM context windows
 - **Knowledge graph** — high-confidence factual answers for entity-based questions
 - **Zero infrastructure** — add as a connector target to your gateway, no Lambda or containers needed
 
+For the latest details on coverage, freshness, and capabilities, see the [Web Search Tool documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/).
+
 ## Setup
 
-### Via AWS Console
+### Via AWS console
 
 1. Go to **Bedrock → AgentCore → Gateways → your gateway**
 2. Click **Targets** → **Add**
@@ -47,9 +49,9 @@ aws bedrock-agentcore-control create-gateway-target \
   --region <your-region>
 ```
 
-### Gateway Service Role Permission
+### Gateway service role permissions
 
-The gateway execution role needs permission to invoke the connector. Add this policy:
+The gateway execution role needs permission to invoke the connector. Add this policy to your gateway's IAM role. Refer to the [official documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/) for the latest IAM action names:
 
 ```json
 {
@@ -64,7 +66,9 @@ The gateway execution role needs permission to invoke the connector. Add this po
 }
 ```
 
-## Input Schema
+> **Note:** If the above action doesn't work, check the official docs for the correct action string — IAM action names are case-sensitive and may change between preview and GA.
+
+## Input schema
 
 ```json
 {
@@ -73,7 +77,12 @@ The gateway execution role needs permission to invoke the connector. Add this po
 }
 ```
 
-## Response Format
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `query` | string | Yes | Search query, max 200 characters |
+| `maxResults` | integer | No | Results to return (1-25, default 10) |
+
+## Response format
 
 Returns MCP-compliant results with:
 - `text` — semantically relevant snippet
@@ -83,23 +92,58 @@ Returns MCP-compliant results with:
 
 ## Testing
 
+### List tools (verify WebSearch appears)
+
 ```bash
-# List tools (verify WebSearch appears)
 curl -s -X POST "<gateway-url>" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | python3 -m json.tool
+```
 
-# Invoke web search
+Expected: `web-search-target___WebSearch` in the tools list with `query` (required) and `maxResults` (optional) parameters.
+
+### Invoke web search
+
+```bash
 curl -s -X POST "<gateway-url>" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"web-search-target___WebSearch","arguments":{"query":"AWS re:Invent 2025 announcements","maxResults":5}}}' | python3 -m json.tool
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"web-search-target___WebSearch","arguments":{"query":"latest AWS announcements","maxResults":5}}}' | python3 -m json.tool
+```
+
+Expected response:
+```json
+{
+  "isError": false,
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"results\":[{\"text\":\"...\",\"url\":\"https://...\",\"title\":\"...\",\"publishedDate\":\"2026-06-25\"}]}"
+    }
+  ]
+}
+```
+
+### Invoke via Python
+
+```python
+import boto3, json
+
+# Assumes gateway token is already obtained
+response = gateway_client.invoke(
+    method="tools/call",
+    params={
+        "name": "web-search-target___WebSearch",
+        "arguments": {"query": "AWS AgentCore Web Search Tool", "maxResults": 3}
+    }
+)
+print(json.dumps(response["results"], indent=2))
 ```
 
 ## Terraform
 
-The AWS Terraform provider does not yet support the `connector` target type. The Terraform code removes the Tavily Lambda resources and documents the CLI/console post-apply step for adding the Web Search connector.
+The AWS Terraform provider does not yet support the `connector` target type. After `terraform apply`, add the Web Search target via the console or CLI as described above.
 
 ## Availability
 
