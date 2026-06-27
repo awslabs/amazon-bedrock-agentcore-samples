@@ -116,3 +116,21 @@ variable "interceptor_enable_rate_limit" {
   type        = bool
   default     = true
 }
+
+variable "interceptor_enable_guardrail_checks" {
+  description = "Enable InvokeGuardrailChecks API integration in the interceptor"
+  type        = bool
+  default     = true
+}
+
+variable "interceptor_guardrail_block_threshold" {
+  description = "Severity score threshold (0-1) at which to block requests"
+  type        = number
+  default     = 0.8
+}
+
+variable "interceptor_guardrail_escalate_threshold" {
+  description = "Severity/confidence score threshold (0-1) at which to log/escalate"
+  type        = number
+  default     = 0.4
+}

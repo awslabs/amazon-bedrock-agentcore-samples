@@ -62,12 +62,20 @@ Controlled by environment variables:
 - `RATE_LIMIT_MAX` — max calls per window (default 100)
 - `RATE_LIMIT_WINDOW` — window in seconds (default 3600 = 1 hour)
 
-**5. Input transformation**
+**5. Guardrail checks (InvokeGuardrailChecks API)**
+Runs the new resourceless Bedrock Guardrails API on user input:
+- Content filters: VIOLENCE, MISCONDUCT, HATE, SEXUAL, INSULTS (uses `severityScore` 0–1)
+- Prompt attacks: JAILBREAK, PROMPT_INJECTION, PROMPT_LEAKAGE (uses `severityScore` 0–1)
+- Blocks requests where severity ≥ `GUARDRAIL_BLOCK_THRESHOLD` (default 0.8)
+- Returns `-32004` JSON-RPC error when blocked
+- Gracefully skips if SDK doesn't have the API yet (`AttributeError` catch)
+- Fails open on service errors (doesn't block if Bedrock is unavailable)
+
+**6. Input transformation**
 Normalises parameter names before requests reach the target. For example, the agent may send `search_query` but the Tavily Lambda expects `query`. The interceptor translates these transparently so the agent doesn't need to know each target's exact schema.
 
 **6. Header injection**
 Injects downstream authentication and tracing headers:
-- `x-api-key` — downstream API key (from `DOWNSTREAM_API_KEY` env var)
 - `x-caller-id` — propagates caller identity for downstream audit trails
 - `x-request-time` — timestamp for distributed tracing correlation
 
@@ -78,12 +86,19 @@ Recursively walks the response body and redacts sensitive data patterns before t
 - Email addresses → `[EMAIL]`
 - Phone numbers → `[PHONE]`
 - US Social Security Numbers → `[SSN]`
-- Credit card numbers → `[CARD]`
-- ZIP codes → `[ZIP]`
+- Credit card numbers (Visa, MC, Amex, Discover prefixes) → `[CARD]`
 
 This is critical for a customer service agent that may retrieve customer records containing personal information.
 
-**8. Response logging**
+**8. Guardrail checks (InvokeGuardrailChecks API)**
+Runs the new resourceless Bedrock Guardrails API on tool output:
+- Content filters: VIOLENCE, HATE, MISCONDUCT
+- Sensitive information: EMAIL, PHONE, SSN, CREDIT_CARD (with character offsets)
+- Uses `confidenceScore` for PII detection (0–1)
+- Logs findings but does NOT block responses (detect-only on output)
+- Gracefully skips if SDK doesn't have the API yet (`AttributeError` catch)
+
+**9. Response logging**
 Emits a structured log entry for every tool response:
 ```json
 {"event": "tool_call_response", "method": "tools/call", "has_error": false, "streaming": false, "timestamp": 1234567890}
@@ -139,7 +154,9 @@ Both request and response interceptors point to the same Lambda. Set `Pass reque
 | `RATE_LIMIT_MAX` | Max tool calls per caller per window | `100` |
 | `RATE_LIMIT_WINDOW` | Rate limit window in seconds | `3600` |
 | `ENABLE_RATE_LIMIT` | Enable/disable rate limiting | `true` |
-| `DOWNSTREAM_API_KEY` | API key injected into downstream requests | `""` |
+| `ENABLE_GUARDRAIL_CHECKS` | Enable/disable InvokeGuardrailChecks API integration | `true` |
+| `GUARDRAIL_BLOCK_THRESHOLD` | Severity score (0-1) at which to block requests | `0.8` |
+| `GUARDRAIL_ESCALATE_THRESHOLD` | Score (0-1) at which to log/escalate findings | `0.4` |
 
 ## Local Testing
 

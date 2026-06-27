@@ -161,6 +161,21 @@ resource "aws_iam_role_policy" "interceptor_dynamodb_policy" {
   })
 }
 
+# Allow interceptor Lambda to call Bedrock InvokeGuardrailChecks
+resource "aws_iam_role_policy" "interceptor_bedrock_policy" {
+  name = "interceptor-bedrock-guardrails"
+  role = aws_iam_role.interceptor_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["bedrock:InvokeGuardrailChecks"]
+      Resource = "*"
+    }]
+  })
+}
+
 # Package the interceptor source file
 data "archive_file" "interceptor_lambda_zip" {
   type             = "zip"
@@ -185,11 +200,13 @@ resource "aws_lambda_function" "gateway_interceptor" {
 
   environment {
     variables = {
-      RATE_LIMIT_TABLE   = aws_dynamodb_table.rate_limit_table.name
-      RATE_LIMIT_MAX     = tostring(var.interceptor_rate_limit_max)
-      RATE_LIMIT_WINDOW  = tostring(var.interceptor_rate_limit_window)
-      DOWNSTREAM_API_KEY = var.gateway_api_key
-      ENABLE_RATE_LIMIT  = tostring(var.interceptor_enable_rate_limit)
+      RATE_LIMIT_TABLE        = aws_dynamodb_table.rate_limit_table.name
+      RATE_LIMIT_MAX          = tostring(var.interceptor_rate_limit_max)
+      RATE_LIMIT_WINDOW       = tostring(var.interceptor_rate_limit_window)
+      ENABLE_RATE_LIMIT       = tostring(var.interceptor_enable_rate_limit)
+      ENABLE_GUARDRAIL_CHECKS = tostring(var.interceptor_enable_guardrail_checks)
+      GUARDRAIL_BLOCK_THRESHOLD    = tostring(var.interceptor_guardrail_block_threshold)
+      GUARDRAIL_ESCALATE_THRESHOLD = tostring(var.interceptor_guardrail_escalate_threshold)
     }
   }
 
@@ -202,6 +219,7 @@ resource "aws_lambda_permission" "allow_gateway_interceptor" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.gateway_interceptor.function_name
   principal     = "bedrock-agentcore.amazonaws.com"
+  source_arn    = aws_bedrockagentcore_gateway.cx_gateway.gateway_arn
 }
 
 # ---------------------------------------------------------------------------

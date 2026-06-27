@@ -5,25 +5,27 @@ Handles both REQUEST and RESPONSE interception in a single Lambda function.
 
 REQUEST path capabilities:
   1. Token validation       - verify inbound JWT is present and well-formed
-  2. Header injection       - add downstream auth headers (API keys, bearer tokens)
+  2. Logging / auditing     - structured CloudWatch log per tool call
   3. Request validation     - block malformed or disallowed tool calls
-  4. Logging / auditing     - structured CloudWatch log per tool call
-  5. Rate limiting          - per-user call quota enforced via DynamoDB
+  4. Rate limiting          - per-user call quota enforced via DynamoDB
+  5. Guardrail checks       - content filters + prompt attack detection on user input
   6. Input transformation   - normalise parameter names before hitting targets
-  7. Guardrail checks       - content filters + prompt attack detection on user input
+  7. Header injection       - add downstream auth headers (API keys, bearer tokens)
 
 RESPONSE path capabilities:
   8. PII masking            - redact emails, phone numbers, SSNs from tool responses
-  9. Response logging       - record what each tool returned
-  10. Error normalisation   - standardise error shapes returned to the agent
-  11. Guardrail checks      - content filters + PII detection on tool output
+  9. Guardrail checks       - content filters + PII detection on tool output
+  10. Response logging      - record what each tool returned
+  11. Error normalisation   - standardise error shapes returned to the agent
 """
 
+import base64
 import json
 import logging
 import os
 import re
 import time
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -36,7 +38,6 @@ logger.setLevel(logging.INFO)
 RATE_LIMIT_TABLE   = os.environ.get("RATE_LIMIT_TABLE", "agentcore-gateway-rate-limits")
 RATE_LIMIT_MAX     = int(os.environ.get("RATE_LIMIT_MAX", "100"))   # calls per window
 RATE_LIMIT_WINDOW  = int(os.environ.get("RATE_LIMIT_WINDOW", "3600"))  # seconds (1 hour)
-DOWNSTREAM_API_KEY = os.environ.get("DOWNSTREAM_API_KEY", "")       # injected header value
 ENABLE_RATE_LIMIT  = os.environ.get("ENABLE_RATE_LIMIT", "true").lower() == "true"
 
 # Guardrail checks configuration
@@ -62,10 +63,8 @@ PII_PATTERNS = [
     (re.compile(r"\b(\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}\b"), "[PHONE]"),
     # US Social Security Numbers
     (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[SSN]"),
-    # Credit card numbers (basic pattern)
-    (re.compile(r"\b(?:\d[ \-]?){13,16}\b"), "[CARD]"),
-    # US ZIP codes (standalone — 5 digit)
-    (re.compile(r"\b\d{5}(?:-\d{4})?\b"), "[ZIP]"),
+    # Credit card numbers — match common prefixes (Visa, MC, Amex, Discover)
+    (re.compile(r"\b(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6(?:011|5\d{2}))[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{1,4}\b"), "[CARD]"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -178,12 +177,12 @@ def _handle_request(gateway_request: dict) -> dict:
                 )
 
     # ------------------------------------------------------------------
-    # 5. INPUT TRANSFORMATION — normalise parameter names
+    # 6. INPUT TRANSFORMATION — normalise parameter names
     # ------------------------------------------------------------------
     body = _transform_request_body(body, tool_name)
 
     # ------------------------------------------------------------------
-    # 6. HEADER INJECTION — add downstream auth headers
+    # 7. HEADER INJECTION — add downstream auth headers
     # ------------------------------------------------------------------
     headers = _inject_headers(headers, caller_id)
 
@@ -212,12 +211,12 @@ def _handle_response(gateway_request: dict, gateway_response: dict) -> dict:
     msg_id         = body.get("id") if isinstance(body, dict) else None
 
     # ------------------------------------------------------------------
-    # 7. PII MASKING — scrub sensitive data before it reaches the agent
+    # 8. PII MASKING — scrub sensitive data before it reaches the agent
     # ------------------------------------------------------------------
     body = _mask_pii(body)
 
     # ------------------------------------------------------------------
-    # 8. GUARDRAIL CHECKS — content filters + PII detection on tool output
+    # 9. GUARDRAIL CHECKS — content filters + PII detection on tool output
     # ------------------------------------------------------------------
     if ENABLE_GUARDRAIL_CHECKS:
         response_text = _extract_response_text(body)
@@ -228,7 +227,7 @@ def _handle_response(gateway_request: dict, gateway_response: dict) -> dict:
                 # Log findings but don't block — tool output is informational
 
     # ------------------------------------------------------------------
-    # 8. RESPONSE LOGGING
+    # 10. RESPONSE LOGGING
     # ------------------------------------------------------------------
     logger.info(json.dumps({
         "event":      "tool_call_response",
@@ -240,7 +239,7 @@ def _handle_response(gateway_request: dict, gateway_response: dict) -> dict:
     }))
 
     # ------------------------------------------------------------------
-    # 9. ERROR NORMALISATION — standardise error shapes
+    # 11. ERROR NORMALISATION — standardise error shapes
     # ------------------------------------------------------------------
     body = _normalise_error(body)
 
@@ -264,10 +263,22 @@ def _handle_response(gateway_request: dict, gateway_response: dict) -> dict:
 
 def _validate_token(auth_header: str):
     """
-    Basic JWT presence and format check.
-    Returns an error string if invalid, None if valid.
-    For production, replace with full JWT signature verification
-    using your Cognito JWKS endpoint.
+    JWT presence and structural validation.
+    Returns an error string if invalid, None if structurally valid.
+
+    WARNING — PRODUCTION USE:
+    This performs structural checks only (presence, Bearer scheme, 3-part JWT format).
+    It does NOT verify the token signature. In production deployments you MUST
+    verify signatures using your IdP's JWKS endpoint. Use python-jose or PyJWT:
+
+        from jose import jwt, JWTError
+        jwks = requests.get(f"{DISCOVERY_URL}/.well-known/jwks.json").json()
+        payload = jwt.decode(token, jwks, algorithms=["RS256"], audience=EXPECTED_AUDIENCE)
+
+    The AgentCore Gateway already performs full JWT validation before calling
+    this interceptor, so this check is a defense-in-depth measure. However,
+    if you rely on caller_id for rate limiting or downstream auth, signature
+    verification here prevents spoofing by compromised gateway configurations.
     """
     if not auth_header:
         return "Missing Authorization header"
@@ -280,14 +291,19 @@ def _validate_token(auth_header: str):
     parts = token.split(".")
     if len(parts) != 3:
         return "Malformed JWT token"
-    return None  # valid
+    return None  # structurally valid
 
 
 def _extract_caller_id(auth_header: str) -> str:
     """
     Extract a caller identifier from the JWT payload (sub claim).
     Falls back to 'anonymous' if extraction fails.
-    For production, use a proper JWT library (python-jose, PyJWT).
+
+    NOTE: This reads claims from an unverified token payload. The caller_id
+    is used for rate limiting and audit logging. Since the AgentCore Gateway
+    validates the JWT signature before invoking this interceptor, the claims
+    are trustworthy in normal operation. If you need defense against gateway
+    misconfiguration, add signature verification in _validate_token above.
     """
     try:
         token = auth_header.split(" ", 1)[1].strip()
@@ -296,7 +312,6 @@ def _extract_caller_id(auth_header: str) -> str:
         padding = 4 - len(payload_b64) % 4
         if padding != 4:
             payload_b64 += "=" * padding
-        import base64
         payload = json.loads(base64.urlsafe_b64decode(payload_b64))
         return payload.get("sub") or payload.get("client_id") or "anonymous"
     except Exception:
@@ -316,12 +331,13 @@ def _check_rate_limit(caller_id: str):
 
         response = table.update_item(
             Key={"pk": bucket_key},
-            UpdateExpression="ADD call_count :inc SET ttl = :ttl",
+            UpdateExpression="ADD call_count :inc SET #ttl_attr = :ttl",
+            ExpressionAttributeNames={"#ttl_attr": "ttl"},
             ExpressionAttributeValues={":inc": 1, ":ttl": ttl_value},
             ReturnValues="UPDATED_NEW",
         )
         count = int(response["Attributes"]["call_count"])
-        if count > RATE_LIMIT_MAX:
+        if count >= RATE_LIMIT_MAX:
             return f"Rate limit exceeded: {count}/{RATE_LIMIT_MAX} calls in current window"
         return None
     except ClientError as e:
@@ -375,10 +391,6 @@ def _inject_headers(headers: dict, caller_id: str) -> dict:
     """
     Inject downstream authentication and tracing headers.
     """
-    # Downstream API key (e.g. for an internal API gateway)
-    if DOWNSTREAM_API_KEY:
-        headers["x-api-key"] = DOWNSTREAM_API_KEY
-
     # Propagate caller identity for downstream audit trails
     if caller_id and caller_id != "anonymous":
         headers["x-caller-id"] = caller_id
@@ -389,7 +401,7 @@ def _inject_headers(headers: dict, caller_id: str) -> dict:
     return headers
 
 
-def _mask_pii(body) -> dict:
+def _mask_pii(body):
     """
     Recursively walk the response body and redact PII patterns.
     Operates on string values only — leaves structure intact.
@@ -490,7 +502,7 @@ def _check_input_guardrails(text: str):
 
         blocked_categories = []
 
-        # Check content filter results
+        # Check content filter results (uses severityScore)
         if "contentFilter" in response.get("results", {}):
             for finding in response["results"]["contentFilter"]["results"]:
                 if finding["severityScore"] >= GUARDRAIL_BLOCK_THRESHOLD:
@@ -498,7 +510,7 @@ def _check_input_guardrails(text: str):
                         f"{finding['category']}(severity={finding['severityScore']})"
                     )
 
-        # Check prompt attack results
+        # Check prompt attack results (uses severityScore)
         if "promptAttack" in response.get("results", {}):
             for finding in response["results"]["promptAttack"]["results"]:
                 if finding["severityScore"] >= GUARDRAIL_BLOCK_THRESHOLD:
@@ -551,7 +563,7 @@ def _check_output_guardrails(text: str) -> list:
 
         findings = []
 
-        # Content filter findings
+        # Content filter findings (uses severityScore)
         if "contentFilter" in response.get("results", {}):
             for finding in response["results"]["contentFilter"]["results"]:
                 if finding["severityScore"] >= GUARDRAIL_ESCALATE_THRESHOLD:
@@ -561,7 +573,7 @@ def _check_output_guardrails(text: str) -> list:
                         "score": finding["severityScore"],
                     })
 
-        # Sensitive information findings
+        # Sensitive information findings (uses confidenceScore)
         if "sensitiveInformation" in response.get("results", {}):
             for finding in response["results"]["sensitiveInformation"]["results"]:
                 if finding["confidenceScore"] >= GUARDRAIL_ESCALATE_THRESHOLD:
