@@ -32,6 +32,7 @@ Agents that run without a user in the loop. They are triggered by events such as
 | [visa-b2b-account-payable-agent](./02-workflow-automation-agents/visa-b2b-account-payable-agent/) | B2B Payments | Runtime, Gateway, Policy, Payments |
 | [enterprise-web-intelligence-agent](./02-workflow-automation-agents/enterprise-web-intelligence-agent/) | Market Intelligence | Runtime, Browser |
 | [intelligent-event-agent](./02-workflow-automation-agents/intelligent-event-agent/) | General / Events | Runtime, Memory, Gateway *(in development)* |
+| [multi-isv-orchestration](./02-workflow-automation-agents/multi-isv-orchestration/) | Enterprise CRM + ERP | Gateway (multi-target), Identity (Cognito + CustomOauth2) |
 
 ### [03-coding-assistants](./03-coding-assistants/) 
 

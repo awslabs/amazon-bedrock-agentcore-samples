@@ -30,6 +30,7 @@ Agents that run without a user in the loop. They are triggered by system events 
 | [visa-b2b-account-payable-agent](./visa-b2b-account-payable-agent/) | B2B Payments | Advanced | Runtime, Gateway, Policy, Payments; automated invoice matching and ISO 20022 payment file generation via Visa B2B Connect |
 | [enterprise-web-intelligence-agent](./enterprise-web-intelligence-agent/) | Market Intelligence | Intermediate | Runtime, Browser; automated web scraping pipeline implemented twice (LangGraph and Strands) for comparison |
 | [intelligent-event-agent](./intelligent-event-agent/) | General | Beginner | Runtime, Memory, Gateway *(in development, no README yet)* |
+| [multi-isv-orchestration](./multi-isv-orchestration/) | Enterprise CRM + ERP | Intermediate | Gateway (multi-target), Identity (Cognito inbound + CustomOauth2 outbound); Salesforce + SAP MCP Server through one Gateway for cross-system queries |
 
 
 ## See also
