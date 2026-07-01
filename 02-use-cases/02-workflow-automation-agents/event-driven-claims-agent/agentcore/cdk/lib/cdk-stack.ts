@@ -61,7 +61,10 @@ export class AgentCoreStack extends Stack {
         projectTags: spec.tags,
       });
 
-      // Order GatewayTargets after the gateway role policy so they deploy in a single clean pass
+      // Order GatewayTargets after the gateway role policy so they deploy in a single clean pass.
+      // NOTE: Verified against @aws/agentcore-cdk alpha.39 — the L3 construct does NOT add this
+      // dependency itself; removing this block drops the DependsOn and reintroduces a deploy race
+      // where targets are created before the gateway role's invoke permission is attached.
       const gatewayRolePolicy = this.node
         .findAll()
         .find(
@@ -82,88 +85,86 @@ export class AgentCoreStack extends Stack {
           target.addDependency(gatewayRolePolicy);
         }
       }
-    }
 
-    // ─── Step 5: Inject custom env vars into the Runtime ───────────
-    const runtimeConstruct = this.application.node
-      .findAll()
-      .find(c => (c as cdk.CfnResource).cfnResourceType === 'AWS::BedrockAgentCore::Runtime');
-    if (runtimeConstruct) {
-      const cfnRuntime = runtimeConstruct as cdk.CfnResource;
-
-      // Gateway URL alias (agent code reads AGENTCORE_GATEWAY_URL)
-      const gatewayCfn = this.node
-        .findAll()
-        .find(c => (c as cdk.CfnResource).cfnResourceType === 'AWS::BedrockAgentCore::Gateway') as cdk.CfnResource | undefined;
-      if (gatewayCfn) {
-        cfnRuntime.addPropertyOverride('EnvironmentVariables.AGENTCORE_GATEWAY_URL', gatewayCfn.getAtt('GatewayUrl'));
+      // ─── Suppress mis-parsed Gateway TARGET outputs (CLI deployed-state quirk) ──
+      // The @aws/agentcore-cdk construct emits one CfnOutput per gateway target named
+      // `GatewayTarget<Name>IdOutput`. The agentcore CLI (preview.13) builds its
+      // deployed-state by parsing CloudFormation output keys of the form
+      // `Gateway<Name><Arn|Id|Url>Output` and grouping them as gateways — so these
+      // target outputs get mis-parsed as gateways with no `gatewayArn`, producing a
+      // non-fatal but alarming "gatewayArn: Too small" validation error after EVERY
+      // deploy. The target Id outputs are not consumed by any script or test, so we
+      // remove them here. The real gateway's Arn/Id/Url outputs are preserved, so the
+      // CLI still records the gateway in deployed-state.json.
+      //
+      // NOTE: match by node id (not `instanceof CfnOutput`) — the L3 construct bundles
+      // its own aws-cdk-lib copy, so cross-realm `instanceof` returns false. CfnOutput
+      // ids end in `Output`, so the regex never matches the target resource constructs.
+      for (const child of this.node.findAll()) {
+        if (/^GatewayTarget.*Output$/.test(child.node.id)) {
+          child.node.scope?.node.tryRemoveChild(child.node.id);
+        }
       }
-
-      // Cognito token endpoint for M2M auth to Gateway
-      cfnRuntime.addPropertyOverride(
-        'EnvironmentVariables.AGENTCORE_GATEWAY_TOKEN_ENDPOINT',
-        this.infra.cognitoTokenEndpoint
-      );
-      cfnRuntime.addPropertyOverride(
-        'EnvironmentVariables.AGENTCORE_GATEWAY_CLIENT_ID',
-        this.infra.cognitoClientId
-      );
-      // Client secret completes the client_credentials flow for the Gateway CUSTOM_JWT authorizer.
-      cfnRuntime.addPropertyOverride(
-        'EnvironmentVariables.AGENTCORE_GATEWAY_CLIENT_SECRET',
-        this.infra.cognitoClientSecret
-      );
-      cfnRuntime.addPropertyOverride(
-        'EnvironmentVariables.AGENTCORE_GATEWAY_OAUTH_SCOPES',
-        'agentcore/invoke'
-      );
-
-      // Wire trigger Lambda to Runtime
-      const runtimeArn = cfnRuntime.getAtt('AgentRuntimeArn').toString();
-      this.infra.triggerFn.addEnvironment('AGENTCORE_RUNTIME_ARN', runtimeArn);
-      // Output the Runtime ARN so test scripts (test_invoke.py, test_e2e.py, test_cedar.py)
-      // can read it from CloudFormation outputs to invoke the deployed Runtime.
-      new CfnOutput(this, 'RuntimeArn', {
-        description: 'AgentCore Runtime ARN',
-        value: runtimeArn,
-      });
-      this.infra.triggerFn.addToRolePolicy(
-        new iam.PolicyStatement({
-          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-          resources: [runtimeArn, `${runtimeArn}/*`],
-        })
-      );
     }
 
-    // ─── Step 6: Grant Runtime additional permissions ──────────────
-    const runtimeRole = this.application.node
+    // ─── Steps 5+6: Configure the Runtime (env vars + permissions) ──
+    // Use the typed AgentEnvironment API instead of walking the construct tree.
+    const agentEnv = this.application.environments.get('claimsagent');
+    if (!agentEnv) {
+      throw new Error('Agent environment "claimsagent" not found in application.environments');
+    }
+    const runtime = agentEnv.runtime;
+
+    // Gateway URL alias (agent code reads AGENTCORE_GATEWAY_URL). The Gateway is
+    // not exposed as a typed property, so locate its CFN resource directly.
+    const gatewayCfn = this.node
       .findAll()
-      .find(
-        c =>
-          (c as cdk.CfnResource).cfnResourceType === 'AWS::IAM::Role' &&
-          c.node.path.includes('Runtime') &&
-          c.node.path.includes('ExecutionRole')
-      );
-    if (runtimeRole) {
-      const cfnRole = runtimeRole as cdk.CfnResource;
-      const roleName = cfnRole.ref;
-
-      new iam.Policy(this, 'RuntimeAdditionalPolicy', {
-        policyName: 'ClaimsAgentAdditionalPermissions',
-        roles: [iam.Role.fromRoleName(this, 'RuntimeRoleRef', roleName)],
-        statements: [
-          new iam.PolicyStatement({
-            sid: 'BedrockInvokeModel',
-            actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-            resources: [
-              `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-sonnet-4-6`,
-              'arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6',
-              'arn:aws:bedrock:*:*:inference-profile/*',
-            ],
-          }),
-        ],
-      });
+      .find(c => (c as cdk.CfnResource).cfnResourceType === 'AWS::BedrockAgentCore::Gateway') as cdk.CfnResource | undefined;
+    if (gatewayCfn) {
+      runtime.addEnvironmentVariable('AGENTCORE_GATEWAY_URL', gatewayCfn.getAtt('GatewayUrl').toString());
     }
+
+    // Identity credential provider name — the Runtime uses @requires_access_token
+    // with this provider name to get tokens from the AgentCore Identity vault.
+    // No client secrets are injected into the Runtime environment.
+    const credentialProvider = process.env.AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER || 'cognito-gateway-m2m';
+    runtime.addEnvironmentVariable('AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER', credentialProvider);
+    runtime.addEnvironmentVariable('AGENTCORE_GATEWAY_OAUTH_SCOPES', 'agentcore/invoke');
+
+    // Wire trigger Lambda → Runtime (grantInvoke adds the IAM permission).
+    runtime.grantInvoke(this.infra.triggerFn);
+    this.infra.triggerFn.addEnvironment('AGENTCORE_RUNTIME_ARN', runtime.runtimeArn);
+
+    // Fix: grantInvoke only grants on the runtime ARN, but the service evaluates
+    // permissions on BOTH the runtime AND the endpoint (hierarchical authorization).
+    // Add explicit permission on the endpoint wildcard.
+    this.infra.triggerFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'InvokeAgentEndpoint',
+        actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+        resources: [`${runtime.runtimeArn}/runtime-endpoint/*`],
+      })
+    );
+
+    // Grant the Runtime permission to invoke the Bedrock model.
+    runtime.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'BedrockInvokeModel',
+        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+        resources: [
+          `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-sonnet-4-6`,
+          'arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6',
+          'arn:aws:bedrock:*:*:inference-profile/*',
+        ],
+      })
+    );
+
+    // Output the Runtime ARN so test scripts (test_invoke.py, test_e2e.py, test_cedar.py)
+    // can read it from CloudFormation outputs to invoke the deployed Runtime.
+    new CfnOutput(this, 'RuntimeArn', {
+      description: 'AgentCore Runtime ARN',
+      value: runtime.runtimeArn,
+    });
 
     // ─── Step 7: Outputs ──────────────────────────────────────────
     new CfnOutput(this, 'StackNameOutput', {
