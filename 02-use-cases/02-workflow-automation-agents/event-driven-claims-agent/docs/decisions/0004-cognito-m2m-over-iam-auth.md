@@ -1,31 +1,42 @@
-# ADR-0004: Cognito M2M Over IAM Auth
+# ADR-0004: Hybrid Auth — SigV4 Inbound + Cognito M2M Outbound
 
 **Status:** Accepted  
-**Date:** 2025-06-17
+**Date:** 2025-06-24
 
 ## Context
 
-The Runtime needs to authenticate to the Gateway (for tool calls), and external callers need to authenticate to the Runtime (for invocations). AWS provides two primary options: IAM SigV4 or Cognito JWT.
+The system has two authentication boundaries:
+1. **Inbound to Runtime** — Trigger Lambda and test scripts invoking the AgentCore Runtime
+2. **Outbound from Runtime to Gateway** — the Runtime calling Lambda tools via the MCP Gateway
 
 ## Decision
 
-The Runtime uses `CUSTOM_JWT` Cognito auth rather than `AWS_IAM` (SigV4). All callers — the Trigger Lambda, test scripts, and the Runtime itself (when calling Gateway tools) — obtain a JWT via the OAuth2 `client_credentials` flow.
+Use a **hybrid auth model** with the simplest appropriate mechanism for each boundary:
+
+- **Inbound (callers → Runtime):** AWS_IAM (SigV4). The Trigger Lambda's execution role and users' IAM credentials sign requests to the Runtime endpoint. CDK grants permission via `runtime.grantInvoke(triggerFn)`.
+- **Outbound (Runtime → MCP Gateway):** Cognito M2M JWT (`client_credentials` flow). The Runtime obtains a JWT from the Cognito User Pool and sends it as `Authorization: Bearer {token}`. The Gateway validates via its CUSTOM_JWT authorizer (Cognito OIDC discovery URL).
 
 ## Reasoning
 
-IAM SigV4 is the default for AWS service-to-service communication but doesn't generalize to external callers (web applications, CI/CD systems, partner integrations, mobile apps). Demonstrating the `client_credentials` OAuth2 flow shows how to authenticate realistic API consumers — not just AWS SDK calls.
+### Why SigV4 for inbound
 
-It also demonstrates the **agent-as-principal** pattern: the Runtime itself obtains a Cognito token and presents it to the Gateway. This is how production agents authenticate to external APIs and tool registries.
+The Trigger Lambda runs in the same AWS account — IAM is the natural, zero-config auth mechanism. Using `runtime.grantInvoke()` is a single CDK line with no token management, no secret rotation, and no token endpoint latency. The test scripts also benefit: they use the user's existing AWS credentials (no separate Cognito client setup required).
+
+### Why Cognito JWT for outbound (Runtime → Gateway)
+
+The MCP Gateway's CUSTOM_JWT authorizer demonstrates a **portable, real-world auth pattern** that generalizes beyond AWS-internal callers. This shows how the agent authenticates as a principal to external APIs and tool registries — the same `client_credentials` flow any external app, partner integration, or CI system would use to reach an MCP Gateway.
+
+It also demonstrates the **agent-as-principal** pattern: the Runtime itself obtains a token and presents it to the Gateway, establishing the agent's identity for Cedar policy evaluation.
 
 ## Alternatives Considered
 
-- **IAM SigV4:** Simpler for AWS-internal use (just use boto3). But doesn't demonstrate external integration patterns and limits the sample's teaching value.
-- **API Key (x-api-key):** Even simpler but less secure (no rotation, no expiry, no scoping).
+- **SigV4 for both paths (AWS_IAM on Gateway):** Simpler overall, but doesn't demonstrate the external integration pattern. Limits teaching value for real-world scenarios where the Gateway serves non-AWS callers.
+- **Cognito JWT for both paths:** Uses the same auth mechanism everywhere, but adds unnecessary token management overhead for same-account Lambda → Runtime calls where IAM credentials are already available.
+- **API Key (x-api-key):** Simpler than JWT but less secure (no rotation, no expiry, no scoping via OAuth scopes).
 
 ## Consequences
 
-Callers authenticate with the standard OAuth2 `client_credentials` flow — the same pattern any external app, partner, or CI system would use to call the agent. It's ~15-20 lines, and the sample includes ready-to-copy implementations:
-- `scripts/test_invoke.py` → `get_cognito_token()` for a caller reaching the Runtime
-- `app/claimsagent/main.py` → `_get_gateway_token()` for the Runtime reaching the Gateway
-
-The payoff: a portable, real-world auth pattern that works for callers far beyond AWS-internal SigV4.
+- Trigger Lambda and test scripts use standard AWS credential chain — no Cognito setup needed for callers.
+- The Runtime → Gateway path uses `@requires_access_token(provider_name="cognito-gateway-m2m", auth_flow="M2M")` — secrets live in the AgentCore Identity vault, never in env vars or CloudFormation.
+- The deploy script (`deploy.sh`) handles Cognito provisioning interactively and registers the credential via `agentcore add credential`.
+- CDK only receives the credential provider name (`AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER`) — no client secrets flow through infrastructure-as-code.

@@ -19,6 +19,7 @@ cdk.out/
 # AWS
 .env
 .env.local
+.cognito-state.json
 cdk.context.json
 cdk-outputs.json
 agentcore/cdk/cdk.out/

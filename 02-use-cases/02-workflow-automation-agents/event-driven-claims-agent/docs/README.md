@@ -10,7 +10,7 @@ The Event-Driven Claims Agent is an insurance claims processor built on Amazon B
 | Understand how it works | [Architecture](ARCHITECTURE.md) |
 | Modify it for your use case | [Tutorial: Make It Your Own](tutorial.md) |
 | Look up a specific setting | [Configuration Reference](CONFIGURATION.md) |
-| Understand why a choice was made | [Decision Records](decisions/README.md) |
+| Validate auth & behavior after deploy | [`scripts/test_auth.py`](../scripts/test_auth.py) + [Deployment → Verify](deployment.md#9-verify-deployment) |
 | Deploy step-by-step (manual) | [Deployment Guide](deployment.md) |
 
 ## Prerequisites
@@ -30,4 +30,3 @@ The Event-Driven Claims Agent is an insurance claims processor built on Amazon B
 | [Tutorial](tutorial.md) | Guided walkthrough: change thresholds, add policies, add tools, adapt the domain |
 | [Deployment](deployment.md) | One-command deploy, manual step-by-step, local dev, verification, and teardown |
 | [Configuration](CONFIGURATION.md) | Every env var, Cedar policy, Cognito setting, model config, and memory parameter |
-| [Decisions](decisions/README.md) | 10 Architectural Decision Records explaining why each choice was made |

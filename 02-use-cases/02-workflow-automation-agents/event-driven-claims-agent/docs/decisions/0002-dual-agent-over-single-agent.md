@@ -17,7 +17,7 @@ A single agent asked to both evaluate a claim and validate its own evaluation ex
 
 ## Alternatives Considered
 
-A single agent with a two-phase prompt was tested but showed poor self-correction — the agent consistently validated its own decisions even when they were incorrect.
+A single agent with a two-phase prompt shows poor self-correction — the agent consistently validates its own decisions even when they are incorrect.
 
 ## Consequences
 

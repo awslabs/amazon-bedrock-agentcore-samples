@@ -6,7 +6,18 @@
 ./deploy.sh us-west-2
 ```
 
-This runs all steps below automatically and seeds test data. When complete, you'll see:
+This runs all steps below automatically:
+1. Configures deployment target (auto-detects account ID, generates `aws-targets.json`)
+2. Checks/creates Cognito User Pool for Gateway auth (interactive — auto-creates if needed)
+3. Registers OAuth credential with AgentCore Identity (`agentcore add credential`)
+4. Installs CDK dependencies (`npm install`)
+5. Installs agent Python dependencies (`uv sync`)
+6. Validates `agentcore.json`
+7. Bootstraps CDK (first-time only)
+8. Deploys via `agentcore deploy --target dev --yes`
+9. Seeds DynamoDB with test data (4 policies)
+
+When complete, you'll see:
 
 ```
 ✅ Done! Claims Agent deployed to us-west-2
@@ -17,8 +28,11 @@ This runs all steps below automatically and seeds test data. When complete, you'
 🛡️  Test Cedar policy (should block $100k+ claims):
    python3 scripts/test_invoke.py --region us-west-2 --prompt 'File a claim for POL-12345. Car totaled. $150000 damage.'
 
-🧪 Local dev:
-   agentcore dev --no-browser
+🔭 Enable full observability (optional — adds Gateway/Memory trace + log delivery):
+   python3 scripts/enable_observability.py --region us-west-2 --stack-name AgentCore-ClaimsAgent-dev
+
+🧹 Teardown:
+   ./scripts/destroy.sh us-west-2
 ```
 
 If the deploy fails at any step, see [Troubleshooting](#troubleshooting) below.
@@ -122,10 +136,11 @@ Sets environment variables, validates, bootstraps, deploys, and seeds data.
 python3 scripts/seed_dynamodb.py --region us-west-2
 ```
 
-Creates three test policies:
+Creates four test policies:
 - `POL-12345` — John Smith, auto, $50,000 coverage
 - `POL-67890` — Jane Doe, home, $250,000 coverage
 - `POL-11111` — Bob Johnson, auto, $75,000 coverage
+- `POL-99999` — Alice Williams, auto, $100,000 coverage (expired)
 
 ### 9. Verify Deployment
 
@@ -200,19 +215,44 @@ Run a single test:
 python3 scripts/test_e2e.py --region us-west-2 --test 2
 ```
 
-### 10. Teardown
-
-**Destroy all resources:**
+**Validate authentication patterns:**
 
 ```bash
-agentcore destroy --target dev --yes
+python3 scripts/test_auth.py --region us-west-2
 ```
 
-Or manually:
+This exercises the full auth model:
+1. SigV4 → Runtime (the correct inbound path) succeeds
+2. JWT → Runtime is rejected (Runtime uses AWS_IAM inbound, not CUSTOM_JWT)
+3. Runtime → Gateway Cognito M2M auth works (verified via a tool call)
+4. Unauthenticated request is rejected
+5. Invalid/expired JWT is rejected
+6. Wrong-scope token is rejected at the Cognito token endpoint
+
+### 10. Teardown
+
+**Unified teardown (recommended):**
 
 ```bash
-cd agentcore/cdk
-cdk destroy --all --force
+./scripts/destroy.sh us-west-2
+```
+
+This runs a two-step process:
+1. Removes observability deliveries (CloudWatch logs + traces) if enabled
+2. Calls `cleanup_agentcore.py` which handles stack deletion (with `DELETE_FAILED` auto-recovery), orphaned AgentCore resource cleanup, Cognito teardown, and local state cleanup
+
+**Manual teardown:**
+
+The AgentCore CLI does not have a `destroy` command. Use CDK directly:
+
+```bash
+cd agentcore/cdk && npx cdk destroy --all --force
+```
+
+Then clean up orphaned resources and Cognito:
+
+```bash
+python3 scripts/cleanup_agentcore.py --region us-west-2 --project-dir .
 ```
 
 **Note:** S3 buckets and DynamoDB tables are configured with `removalPolicy: DESTROY` and `autoDeleteObjects: true` for development. They will be deleted on stack teardown.
@@ -255,14 +295,26 @@ Run the agent locally while tools, auth, and data stay in the cloud.
    ```bash
    cp .env.example .env
    ```
-   Fill in values from the CloudFormation outputs:
+   Fill in values from the deployed stack. Note that for the new Identity-based auth, you only need:
    ```
    AGENTCORE_GATEWAY_URL=https://xxx.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp
-   AGENTCORE_GATEWAY_TOKEN_ENDPOINT=https://claims-agent-XXXXXX.auth.us-west-2.amazoncognito.com/oauth2/token
-   AGENTCORE_GATEWAY_CLIENT_ID=<from outputs>
-   AGENTCORE_GATEWAY_CLIENT_SECRET=<from outputs>
+   COGNITO_DISCOVERY_URL=https://cognito-idp.us-west-2.amazonaws.com/<pool-id>/.well-known/openid-configuration
+   AGENTCORE_GATEWAY_CLIENT_ID=<client-id>
+   AGENTCORE_GATEWAY_CLIENT_SECRET=<client-secret>
    AGENTCORE_GATEWAY_OAUTH_SCOPES=agentcore/invoke
+   AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER=cognito-gateway-m2m
    ```
+
+   Optional tuning (safe defaults are provided):
+   ```
+   # Confidence threshold for auto-approval (0-100)
+   AUTO_APPROVE_THRESHOLD=80
+   # Memory retrieval tuning
+   MEMORY_RETRIEVAL_TOP_K=5
+   MEMORY_RETRIEVAL_RELEVANCE=0.5
+   ```
+
+   The local `agentcore dev` server will use these to register a local workload identity automatically.
 
 4. Start the local dev server:
    ```bash
