@@ -5,25 +5,22 @@ Agent 1 (Claims Processor): Evaluates claim, verifies policy, makes ACCEPT/REJEC
 Agent 2 (Validation Agent): Reviews decision, assigns confidence score, routes accordingly
 """
 
-import base64
 import json
-import urllib.parse
-import urllib.request
 import uuid
 
+from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from config import (
-    GATEWAY_CLIENT_ID,
-    GATEWAY_CLIENT_SECRET,
+    AGENT_MODEL_ID,
+    GATEWAY_CREDENTIAL_PROVIDER,
     GATEWAY_OAUTH_SCOPES,
-    GATEWAY_TOKEN_ENDPOINT,
     GATEWAY_URL,
 )
 from mcp.client.streamable_http import streamablehttp_client
 from memory.session import get_memory_session_manager
-from model.load import load_model
-from parsing import parse_confidence, parse_decision
+from routing import decide_action, resolve_decision, resolve_routing
 from strands import Agent
+from strands.models.bedrock import BedrockModel
 from strands.tools.mcp import MCPClient
 from tools.structured_output import (
     get_last_decision,
@@ -98,53 +95,44 @@ _validator = None
 _mcp_client = None
 
 
-def _get_gateway_token():
-    """Get OAuth token for gateway access using client_credentials flow."""
-    if not GATEWAY_TOKEN_ENDPOINT or not GATEWAY_CLIENT_ID or not GATEWAY_CLIENT_SECRET:
-        log.warning("Gateway OAuth credentials not configured, trying without auth")
-        return None
+def load_model() -> BedrockModel:
+    """Load the Bedrock model for claims processing."""
+    return BedrockModel(model_id=AGENT_MODEL_ID)
 
-    try:
-        # Client credentials grant flow to gateway's Cognito M2M pool
-        creds = base64.b64encode(f"{GATEWAY_CLIENT_ID}:{GATEWAY_CLIENT_SECRET}".encode()).decode()
-        data = urllib.parse.urlencode(
-            {
-                "grant_type": "client_credentials",
-                "scope": GATEWAY_OAUTH_SCOPES.replace(",", " "),
-            }
-        ).encode()
 
-        req = urllib.request.Request(
-            GATEWAY_TOKEN_ENDPOINT,
-            data=data,
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": f"Basic {creds}",
-            },
-        )
+@requires_access_token(
+    provider_name=GATEWAY_CREDENTIAL_PROVIDER,
+    auth_flow="M2M",
+    scopes=GATEWAY_OAUTH_SCOPES.replace(",", " ").split(),
+)
+def _build_mcp_client(*, access_token: str) -> MCPClient:
+    """Build MCPClient with Identity-managed OAuth token.
 
-        if not GATEWAY_TOKEN_ENDPOINT.startswith("https://"):
-            raise ValueError(f"Only HTTPS URLs are permitted: {GATEWAY_TOKEN_ENDPOINT}")
-        with urllib.request.urlopen(req) as resp:  # nosec B310
-            token_data = json.loads(resp.read())
+    The @requires_access_token decorator handles:
+    - Token acquisition via the AgentCore Identity token vault
+    - Token caching and automatic refresh
+    - No secrets in env vars or code
+    """
 
-        log.info("Successfully obtained gateway access token")
-        return token_data["access_token"]
-    except Exception as e:
-        log.error(f"Failed to get gateway token: {e}")
-        return None
+    def _transport():
+        headers = {"Authorization": f"Bearer {access_token}"}
+        return streamablehttp_client(GATEWAY_URL, headers=headers)
+
+    return MCPClient(_transport)
 
 
 def get_mcp_client():
+    """Get or create the MCPClient for Gateway tool access."""
     global _mcp_client
     if _mcp_client is None:
-
-        def _transport():
-            token = _get_gateway_token()
-            headers = {"Authorization": f"Bearer {token}"} if token else None
-            return streamablehttp_client(GATEWAY_URL, headers=headers)
-
-        _mcp_client = MCPClient(_transport)
+        if not GATEWAY_URL:
+            log.warning("GATEWAY_URL not configured — tools unavailable")
+            return None
+        try:
+            _mcp_client = _build_mcp_client()
+        except Exception as exc:
+            log.warning("Failed to build MCP client (Identity auth): %s", exc)
+            return None
     return _mcp_client
 
 
@@ -175,10 +163,11 @@ def get_processor(session_manager=None):
 def get_validator():
     global _validator
     if _validator is None:
+        # Validator only validates — no Gateway tool access (least privilege)
         _validator = Agent(
             model=load_model(),
             system_prompt=VALIDATOR_PROMPT,
-            tools=[get_mcp_client(), submit_validation],
+            tools=[submit_validation],
         )
     return _validator
 
@@ -272,26 +261,11 @@ Please validate this decision and assign a confidence score."""
     # --- Phase 3: Routing ---
     yield "\n\n---\n## Phase 3: Execution\n\n"
 
-    if structured_validation:
-        confidence = structured_validation["confidence"]
-        routing = structured_validation["routing"]
-    else:
-        confidence = parse_confidence(validator_response)
-        if "HUMAN_REVIEW" in validator_response:
-            routing = "HUMAN_REVIEW"
-        elif "AUTO_APPROVE" in validator_response:
-            routing = "AUTO_APPROVE"
-        elif confidence >= 80:
-            routing = "AUTO_APPROVE"
-        else:
-            routing = "HUMAN_REVIEW"
+    confidence, routing = resolve_routing(structured_validation, validator_response)
+    decision = resolve_decision(structured_decision, processor_response)
+    action = decide_action(decision, routing)
 
-    if structured_decision:
-        decision = structured_decision["decision"]
-    else:
-        decision = parse_decision(processor_response)
-
-    if decision == "REJECT":
+    if action == "REJECT":
         yield f"**Claim rejected** (confidence: {confidence}/100)\n\n"
         executor = get_processor()
         exec_prompt = f"""The claim has been rejected.
@@ -300,7 +274,7 @@ Claimant email: {claimant_email or "unknown"}
 Rejection reasoning from processor:
 {processor_response}"""
 
-    elif routing == "AUTO_APPROVE":
+    elif action == "AUTO_APPROVE":
         yield f"**Auto-approved** (confidence: {confidence}/100)\n\n"
         executor = get_processor()
         exec_prompt = f"""The claim has been validated and approved. Now execute:
