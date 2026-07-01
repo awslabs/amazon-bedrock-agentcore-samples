@@ -5,6 +5,7 @@ bedrock-agentcore:InvokeAgentRuntime permission granted by CDK.
 """
 
 import json
+import logging
 import os
 import re
 import urllib.parse
@@ -14,6 +15,9 @@ import boto3
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from botocore.session import Session as BotocoreSession
+
+logger = logging.getLogger()
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 s3 = boto3.client("s3")
 
@@ -53,7 +57,7 @@ def invoke_runtime(payload_dict):
     if not url.startswith("https://"):
         raise ValueError(f"Only HTTPS URLs are permitted: {url}")
     content_parts = []
-    with urllib.request.urlopen(req, timeout=120) as resp:  # nosec B310
+    with urllib.request.urlopen(req, timeout=55) as resp:  # nosec B310  # 55s < Lambda 60s timeout
         for line in resp:
             decoded = line.decode("utf-8").strip()
             if not decoded:
@@ -127,5 +131,5 @@ def handler(event, context):
     # Invoke runtime with SigV4 (using Lambda execution role credentials)
     result = invoke_runtime(payload)
 
-    print(f"Agent response for {key}: {result[:1000]}")
+    logger.info("Agent response for %s: %s", key, result[:500])
     return {"statusCode": 200, "body": result}
