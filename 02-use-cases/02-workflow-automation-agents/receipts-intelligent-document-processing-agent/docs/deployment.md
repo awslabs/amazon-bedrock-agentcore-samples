@@ -27,10 +27,34 @@ python3 scripts/test_invoke.py --region us-west-2 \
 ## Tear down
 
 ```bash
-./destroy.sh us-west-2     # aws cloudformation delete-stack + wait; leaves nothing billable
+./destroy.sh us-west-2     # aws cloudformation delete-stack, with DELETE_FAILED recovery; leaves nothing billable
 ```
 
 > The CLI (`0.19.0-preview`) has no `destroy` command, so `destroy.sh` uses `aws cloudformation delete-stack`. A failed policy **create** can leave a `ROLLBACK_COMPLETE` stack that blocks the next deploy — delete it manually first (`aws cloudformation delete-stack`).
+
+### Teardown & DELETE_FAILED recovery
+
+The AgentCore control-plane resources (Runtime, Gateway, GatewayTarget, PolicyEngine, Evaluator) occasionally fail to delete on the first pass because of control-plane resource ordering, leaving the stack in `DELETE_FAILED`. `destroy.sh` handles this for you:
+
+1. **Retry once.** Most ordering orphans are transient — a second `delete-stack` clears them. The script polls for the terminal status and retries automatically.
+2. **Retain the stuck ones.** If specific resources are still stuck, the script re-issues the delete with `--retain-resources <LogicalId ...>` (valid only for a stack already in `DELETE_FAILED`). CloudFormation then deletes the stack and everything else — so nothing billable is left running — and keeps just those few resources.
+3. **Report for manual cleanup.** The script prints each retained resource as `ResourceType → PhysicalResourceId` so you can remove the handful by hand.
+
+Delete a retained resource with the matching control-plane call, for example:
+
+```bash
+# The physical id printed by destroy.sh is the resource's ARN/id.
+aws bedrock-agentcore-control delete-gateway        --gateway-identifier <id>       --region us-west-2
+aws bedrock-agentcore-control delete-gateway-target --gateway-identifier <gw> --target-id <id> --region us-west-2
+aws bedrock-agentcore-control delete-agent-runtime  --agent-runtime-id <id>         --region us-west-2
+```
+
+If teardown still can't complete automatically, inspect the failure reasons and remove what's left:
+
+```bash
+aws cloudformation describe-stack-events --stack-name AgentCore-ReceiptsAgent-dev --region us-west-2 \
+  --query "StackEvents[?ResourceStatus=='DELETE_FAILED'].[LogicalResourceId,ResourceStatusReason]" --output table
+```
 
 ## Local inner loop
 
