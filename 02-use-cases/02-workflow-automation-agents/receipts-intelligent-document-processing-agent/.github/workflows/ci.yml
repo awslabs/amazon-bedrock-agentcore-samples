@@ -16,9 +16,16 @@ on:
         type: boolean
         default: false
 
+# Least-privilege by default (Checkov CKV2_GHA_1): the workflow gets read-only
+# access, and each job requests only the extra scopes it actually needs.
+permissions: read-all
+
 jobs:
   unit:
     runs-on: ubuntu-latest
+    # Pure-function tests: only needs to read the repo.
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: sample
@@ -34,6 +41,11 @@ jobs:
     # Live AWS. Runs on main or when manually dispatched with run_e2e=true.
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.run_e2e)
     runs-on: ubuntu-latest
+    # id-token: write is required for the OIDC role assumption below
+    # (aws-actions/configure-aws-credentials); contents: read for the checkout.
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: sample
