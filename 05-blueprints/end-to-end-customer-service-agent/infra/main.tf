@@ -87,7 +87,6 @@ module "secrets" {
   langfuse_secret_key = var.langfuse_secret_key
   gateway_url         = var.gateway_url
   gateway_api_key     = var.gateway_api_key
-  tavily_api_key      = ""  # No longer used — replaced by AgentCore Web Search Tool connector
 
   depends_on = [module.cognito]
 }
@@ -120,6 +119,20 @@ resource "aws_iam_role_policy_attachment" "interceptor_xray" {
   role       = aws_iam_role.interceptor_lambda_role.name
 }
 
+resource "aws_iam_role_policy" "interceptor_dlq_policy" {
+  name = "interceptor-dlq-send"
+  role = aws_iam_role.interceptor_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:SendMessage"]
+      Resource = aws_sqs_queue.interceptor_dlq.arn
+    }]
+  })
+}
+
 # DynamoDB table for rate limiting (per-caller call counters)
 resource "aws_dynamodb_table" "rate_limit_table" {
   name         = "agentcore-gateway-rate-limits"
@@ -135,6 +148,14 @@ resource "aws_dynamodb_table" "rate_limit_table" {
   ttl {
     attribute_name = "ttl"
     enabled        = true
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
   }
 
   tags = {
@@ -194,8 +215,14 @@ resource "aws_lambda_function" "gateway_interceptor" {
   runtime          = "python3.12"
   timeout          = 10 # keep low — interceptor is on the hot path
 
+  reserved_concurrent_executions = 100
+
   tracing_config {
     mode = "Active"
+  }
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.interceptor_dlq.arn
   }
 
   environment {
@@ -211,6 +238,13 @@ resource "aws_lambda_function" "gateway_interceptor" {
   }
 
   depends_on = [data.archive_file.interceptor_lambda_zip]
+}
+
+# Dead letter queue for interceptor Lambda
+resource "aws_sqs_queue" "interceptor_dlq" {
+  name                    = "cx-gateway-interceptor-dlq"
+  message_retention_seconds = 1209600 # 14 days
+  sqs_managed_sse_enabled = true
 }
 
 # Allow AgentCore Gateway to invoke the interceptor Lambda
@@ -255,7 +289,7 @@ resource "aws_iam_role_policy" "gateway_policy" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "*"
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/*"
       },
       {
         Effect = "Allow"
