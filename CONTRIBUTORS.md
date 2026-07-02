@@ -23,6 +23,7 @@
 - Grace Lang
 - Hari Tripathi
 - Joshua Samuel
+- Naga Gaddamu(nagagaddamu)
 - khastation
 - manchandakp
 - madhurprash
@@ -114,4 +115,10 @@
 - Richa Gupta (richagpt)
 - Chandra Dhandapani
 - Anant Murarka (anantmu)
+- Renya Kujirada (ren8k)
 - Cristiano Scandura (scandura)
+- palbiren
+- Gui Ruggiero (guiruggiero)
+- Visakh Madathil (vmmadathil)
+- JobRamos (jobdram)
+- Will Matos (wilmatos)
