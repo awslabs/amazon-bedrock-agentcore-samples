@@ -53,8 +53,11 @@ def main() -> None:
     domain = must_env("OKTA_DOMAIN")
     auth_server_id = must_env("OKTA_AUTH_SERVER_ID")
     audience = must_env("OKTA_AUDIENCE")
-    agent_client_id = must_env("AGENT_CLIENT_ID")
-    frontend_client_id = must_env("FRONTEND_CLIENT_ID")
+    # AGENT_CLIENT_ID is validated (fails fast if missing) but not used to
+    # patch agentcore.json — Okta's customJwtAuthorizer validates by
+    # audience only, not by cid.
+    must_env("AGENT_CLIENT_ID")
+    frontend_client_id = must_env("FRONTEND_CLIENT_ID")  # printed for reference below
     agent_runtime_name = must_env("AGENT_RUNTIME_NAME")
     workload_name = must_env("WORKLOAD_NAME")
     actor_provider_name = must_env("ACTOR_PROVIDER_NAME")
@@ -134,7 +137,7 @@ def main() -> None:
     agentcore_json.write_text(json.dumps(config, indent=2) + "\n")
     print(f"✓ Patched {agentcore_json.relative_to(real_world_root)}")
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
-    print(f"  authorizerType:         CUSTOM_JWT")
+    print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {oidc_discovery_url}")
     print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
     print(f"  frontend cid (for ref): {frontend_client_id}")

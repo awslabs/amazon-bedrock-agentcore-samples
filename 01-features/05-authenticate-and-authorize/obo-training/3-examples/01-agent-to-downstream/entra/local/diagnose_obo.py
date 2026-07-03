@@ -66,7 +66,7 @@ def main() -> int:
 
     print("▶ Cached user JWT")
     if not CACHE_PATH.exists():
-        check("cache exists", False, f"Run `python generate_user_jwt.py` first.")
+        check("cache exists", False, "Run `python generate_user_jwt.py` first.")
         return 1
     check("cache exists", True, str(CACHE_PATH))
 
@@ -95,7 +95,13 @@ def main() -> int:
         tenant_id in iss,
         f"iss = {iss}",
     )
-    print(f"    token version hint: {'v1.0' if 'sts.windows.net' in iss else 'v2.0'}")
+    # Parse the issuer URL properly to check the host — `'foo' in url` is a
+    # substring match that can be spoofed (e.g., https://evil.example/sts.windows.net/x).
+    # Even in a diagnostic display we want the host-based check.
+    from urllib.parse import urlparse
+    iss_host = urlparse(iss).netloc.lower()
+    is_v1 = iss_host == "sts.windows.net"
+    print(f"    token version hint: {'v1.0' if is_v1 else 'v2.0'}")
     print()
 
     if seconds_left <= 60 or (aud != agent_client_id and aud != f"api://{agent_client_id}"):

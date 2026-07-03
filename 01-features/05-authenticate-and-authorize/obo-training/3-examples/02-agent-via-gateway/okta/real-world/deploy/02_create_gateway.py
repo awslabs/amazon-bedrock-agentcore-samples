@@ -201,7 +201,7 @@ def create_gateway_service_role(role_name: str, account_id: str, region: str) ->
         PolicyName="AgentCoreGatewayOboPermissions",
         PolicyDocument=json.dumps(permission_policy),
     )
-    print(f"  ✓ Attached inline policy: AgentCoreGatewayOboPermissions")
+    print("  ✓ Attached inline policy: AgentCoreGatewayOboPermissions")
 
     return role_arn
 
@@ -325,7 +325,7 @@ def main() -> None:
             existing_audience = set(existing_authorizer.get("allowedAudience", []) or [])
             desired_audience = set(authorizer_config["customJWTAuthorizer"]["allowedAudience"])
             if existing_discovery != discovery_url or existing_audience != desired_audience:
-                print(f"  • Authorizer drift detected — updating.")
+                print("  • Authorizer drift detected — updating.")
                 if existing_discovery != discovery_url:
                     print(f"      discoveryUrl was: {existing_discovery or '(unset)'}")
                     print(f"      discoveryUrl now: {discovery_url}")
@@ -340,7 +340,7 @@ def main() -> None:
                     authorizerType="CUSTOM_JWT",
                     authorizerConfiguration=authorizer_config,
                 )
-                print(f"  ✓ Gateway authorizer updated.")
+                print("  ✓ Gateway authorizer updated.")
         except ClientError as e:
             print(f"  ⚠ Could not reconcile authorizer config: {e}. "
                   f"Consider `python deploy/teardown.py` + re-run if the "
@@ -451,14 +451,14 @@ def main() -> None:
         # audience). To avoid this trap: delete the existing target and
         # recreate. The target has no persistent state we need to
         # preserve, so recreation is safe.
-        print(f"  • Deleting and recreating to guarantee fresh config…")
+        print("  • Deleting and recreating to guarantee fresh config…")
         try:
             ac_control.delete_gateway_target(
                 gatewayIdentifier=gateway_id, targetId=target_id,
             )
         except ClientError as e:
             print(f"  ⚠ Could not delete existing target: {e}", file=sys.stderr)
-            print(f"    Manual fallback:")
+            print("    Manual fallback:")
             print(f"      aws bedrock-agentcore-control delete-gateway-target "
                   f"--gateway-identifier {gateway_id} --target-id {target_id} "
                   f"--region {region}")
@@ -469,10 +469,10 @@ def main() -> None:
                 break
             time.sleep(1)
         else:
-            print(f"  ⚠ Target still present after 20s. Re-run this script in a "
-                  f"moment.", file=sys.stderr)
+            print("  ⚠ Target still present after 20s. Re-run this script in a "
+                  "moment.", file=sys.stderr)
             sys.exit(1)
-        print(f"  ✓ Old target deleted.")
+        print("  ✓ Old target deleted.")
 
     target_resp = ac_control.create_gateway_target(
         gatewayIdentifier=gateway_id,

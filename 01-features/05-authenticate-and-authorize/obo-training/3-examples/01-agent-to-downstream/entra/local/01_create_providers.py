@@ -104,7 +104,7 @@ def main() -> None:
 
     # Client provider — used for the initial 3LO sign-in to get a user JWT.
     # In production this role is played by the real frontend, not AgentCore.
-    client_resp = ensure_microsoft_provider(
+    ensure_microsoft_provider(
         ac_control,
         name=client_provider_name,
         client_id=agent_client_id,
@@ -116,7 +116,7 @@ def main() -> None:
     # For this simple example we reuse the same Entra app for both roles. In a
     # realistic multi-hop setup you would have separate apps for the frontend client
     # and the middle-tier actor.
-    actor_resp = ensure_microsoft_provider(
+    ensure_microsoft_provider(
         ac_control,
         name=actor_provider_name,
         client_id=agent_client_id,

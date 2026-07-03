@@ -134,7 +134,7 @@ def main() -> None:
     agentcore_json.write_text(json.dumps(config, indent=2) + "\n")
     print(f"✓ Patched {agentcore_json.relative_to(real_world_root)}")
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
-    print(f"  authorizerType:         CUSTOM_JWT")
+    print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {oidc_discovery_url}")
     print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
     print()

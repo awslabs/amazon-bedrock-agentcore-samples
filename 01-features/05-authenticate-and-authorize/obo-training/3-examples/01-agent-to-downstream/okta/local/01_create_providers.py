@@ -70,7 +70,7 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
         sys.exit(1)
     except URLError as e:
         print(f"✗ Could not reach discovery URL: {e.reason}", file=sys.stderr)
-        print(f"  Check OKTA_DOMAIN is correct and reachable from your network.", file=sys.stderr)
+        print("  Check OKTA_DOMAIN is correct and reachable from your network.", file=sys.stderr)
         sys.exit(1)
 
     if status != 200 or '"issuer"' not in body:
@@ -242,12 +242,12 @@ def main() -> None:
     print()
     print("Next steps:")
     print(" 1. Register AgentCore's managed callback URL on the Okta Native App.")
-    print(f"    Find the URL in the AWS console under AgentCore Identity →")
+    print("    Find the URL in the AWS console under AgentCore Identity →")
     print(f"    Credential providers → {client_provider_name} (look for the")
-    print(f"    return URL under `oauthDiscovery`).")
-    print(f"    In Okta: Applications → <native app> → General tab → General")
-    print(f"    Settings → Edit → Sign-in redirect URIs → Add URI → Save.")
-    print(f"    (Full walkthrough in IDP_SETUP.md Step 5.)")
+    print("    return URL under `oauthDiscovery`).")
+    print("    In Okta: Applications → <native app> → General tab → General")
+    print("    Settings → Edit → Sign-in redirect URIs → Add URI → Save.")
+    print("    (Full walkthrough in IDP_SETUP.md Step 5.)")
     print(" 2. Run: python 02_run_example.py")
 
 

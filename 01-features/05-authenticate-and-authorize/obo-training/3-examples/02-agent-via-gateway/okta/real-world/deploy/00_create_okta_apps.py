@@ -143,25 +143,59 @@ class OktaClient:
             "Content-Type": "application/json",
         })
 
+    @staticmethod
+    def _redact_response(body: Any) -> Any:
+        """Return only Okta's error-diagnostic fields from a response body.
+
+        Defensive redaction — even though we never call `_raise` on a
+        successful `POST /credentials/secrets` (that endpoint's success
+        payload IS the secret and hits the happy path in rotate_client_secret),
+        this makes sure that if any future code path mistakenly feeds a
+        credentials response through here, the raw secret can't hit stderr.
+        Also satisfies CodeQL's `py/clear-text-logging-sensitive-data`.
+        """
+        if not isinstance(body, dict):
+            return body  # plain error text — no keys to redact
+        safe_keys = {
+            "errorCode", "errorSummary", "errorLink", "errorId", "errorCauses",
+        }
+        return {k: v for k, v in body.items() if k in safe_keys}
+
+    @staticmethod
+    def _redact_sent(sent_body: Any) -> Any:
+        """Strip fields with credential-looking key names from a request body."""
+        if not isinstance(sent_body, dict):
+            return sent_body
+        sensitive = {"client_secret", "password", "token", "secret"}
+        def scrub(d):
+            if isinstance(d, dict):
+                return {
+                    k: ("<redacted>" if k.lower() in sensitive else scrub(v))
+                    for k, v in d.items()
+                }
+            if isinstance(d, list):
+                return [scrub(x) for x in d]
+            return d
+        return scrub(sent_body)
+
     def _raise(self, method: str, url: str, resp: requests.Response,
                sent_body: Any = None) -> None:
         try:
             body = resp.json()
         except Exception:
             body = resp.text
-        # Okta's E0000003 often has an empty errorCauses[], so also show the
-        # request body we sent. That's usually enough to spot the offending
-        # field.
+        safe_body = self._redact_response(body)
+        safe_sent = self._redact_sent(sent_body) if sent_body is not None else None
         sent_repr = (
-            json.dumps(sent_body, indent=2)
-            if sent_body is not None else "(no body sent)"
+            json.dumps(safe_sent, indent=2)
+            if safe_sent is not None else "(no body sent)"
         )
         die(
             f"Okta API call failed: {method} {url}\n"
             f"  HTTP {resp.status_code}\n"
-            f"  Response body: "
-            f"{json.dumps(body, indent=2) if isinstance(body, dict) else body}\n"
-            f"  Request body we sent:\n{sent_repr}"
+            f"  Response body (redacted): "
+            f"{json.dumps(safe_body, indent=2) if isinstance(safe_body, dict) else safe_body}\n"
+            f"  Request body we sent (redacted):\n{sent_repr}"
         )
 
     def request(self, method: str, path: str, *, json_body: Any = None,
@@ -430,7 +464,7 @@ def ensure_web_app_extras(client: OktaClient, app: dict) -> dict:
         updated = _put_minimal_web_app(client, app, pkce_required=True)
         print(f"    ✓ Enabled PKCE + set post-logout redirect on {app['label']}")
         return updated
-    except SystemExit as e:
+    except SystemExit:
         print(
             f"    ⚠ Could not enable PKCE via API on {app['label']}.\n"
             f"      Flip it manually: Okta admin -> Applications -> {app['label']} ->\n"
@@ -453,7 +487,14 @@ def rotate_client_secret(client: OktaClient, app_id: str) -> str:
     # Response shape: {id, client_secret, status, ...}
     secret = resp.get("client_secret")
     if not secret:
-        die(f"Okta returned no client_secret for app {app_id}: {resp}")
+        # Only print the set of keys returned — never the raw response, since
+        # this endpoint's success payload includes `client_secret`. Even on the
+        # unexpected "no secret returned" branch we avoid dumping the response
+        # to stderr so a mistakenly-parsed success payload can't leak.
+        die(
+            f"Okta returned no client_secret for app {app_id}. "
+            f"Response keys: {sorted(resp.keys()) if isinstance(resp, dict) else '(non-dict)'}"
+        )
     return secret
 
 
@@ -537,7 +578,12 @@ def get_or_create_app(client: OktaClient, kind: str, label: str) -> tuple[dict, 
     """
     existing = find_app_by_label(client, label)
     if existing:
-        print(f"  • App exists: {label} (client_id={existing['credentials']['oauthClient']['client_id']})")
+        # We intentionally don't include the client_id (or any field pulled
+        # from the API response dict) in this log line. The final [6/6]
+        # summary prints every client_id from .env — that's the canonical
+        # place to see them. Avoiding it here keeps CodeQL's taint tracker
+        # happy on the /apps response.
+        print(f"  • App exists: {label}")
         if kind == "web":
             ensure_web_app_extras(client, existing)
             assign_app_to_everyone(client, existing)
@@ -551,7 +597,8 @@ def get_or_create_app(client: OktaClient, kind: str, label: str) -> tuple[dict, 
         app = create_api_services_app(client, label)
     else:
         raise ValueError(f"unknown app kind: {kind}")
-    print(f"  ✓ Created app: {label} (client_id={app['credentials']['oauthClient']['client_id']})")
+    # Same reasoning as above: don't inline the client_id from the response.
+    print(f"  ✓ Created app: {label}")
 
     # Apply extras via follow-up updates.
     #   Web:          PKCE-required + post-logout redirect (PUT) + Everyone
@@ -852,8 +899,14 @@ def main() -> None:
 
     for k, v in env_writes.items():
         upsert_env_value(env_path, k, v)
-        masked = v if not k.endswith("_SECRET") else "***"
-        print(f"  ✓ {k}={masked}")
+        # Split branches so the printed expression is either a hard-coded
+        # placeholder ("***") or a non-sensitive config value — never a
+        # variable that CodeQL's taint tracker sees as flowing from a
+        # secret source into stdout.
+        if k.endswith("_SECRET"):
+            print(f"  ✓ {k}=***")
+        else:
+            print(f"  ✓ {k}={v}")
 
     print()
     print("✓ Okta setup complete.")

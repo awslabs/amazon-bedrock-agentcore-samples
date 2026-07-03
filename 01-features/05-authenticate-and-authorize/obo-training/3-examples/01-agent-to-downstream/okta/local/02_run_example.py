@@ -24,6 +24,7 @@ import os
 import sys
 import webbrowser
 from typing import Any
+from urllib.parse import urlparse as _urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -229,7 +230,7 @@ ourselves, and the user is NOT re-prompted to consent.
     success("User token wrapped into an AgentCore workload token")
 
     action("Calling GetResourceOauth2Token with oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE")
-    info(f"  customParameters: subject_token_type=urn:ietf:params:oauth:token-type:access_token")
+    info("  customParameters: subject_token_type=urn:ietf:params:oauth:token-type:access_token")
     info(f"  audiences:        [{audience}]")
     info(f"  scopes:           [{downstream_scope}]")
     obo_resp = ac_identity.get_resource_oauth2_token(
@@ -356,7 +357,13 @@ token claims the downstream API would see.
             f"scp contains {downstream_scope!r}",
             downstream_scope in (outbound_claims.get("scp") or []),
         ),
-        ("iss is an Okta authorization server", "okta.com" in str(outbound_claims.get("iss", ""))),
+        # Parse the issuer URL and check the host suffix instead of a naive
+        # substring — a URL like https://evil.example/okta.com/x would spoof
+        # the substring form.
+        (
+            "iss is an Okta authorization server",
+            _urlparse(str(outbound_claims.get("iss", ""))).netloc.lower().endswith(".okta.com"),
+        ),
     ]
     for label, ok in checks:
         if ok:

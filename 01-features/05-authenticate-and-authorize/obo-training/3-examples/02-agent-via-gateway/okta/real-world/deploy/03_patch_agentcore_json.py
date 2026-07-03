@@ -141,10 +141,10 @@ def main() -> None:
 
     print(f"✓ Patched {agentcore_json.relative_to(real_world_root)}")
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
-    print(f"  authorizerType:         CUSTOM_JWT")
+    print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {discovery_url}")
     print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
-    print(f"  envVars:")
+    print("  envVars:")
     for k, v in env_map.items():
         print(f"    {k}={v}")
     print()

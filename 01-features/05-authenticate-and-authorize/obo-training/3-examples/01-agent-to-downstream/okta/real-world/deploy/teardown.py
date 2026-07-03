@@ -61,7 +61,7 @@ def main() -> None:
     print(f"\nTo remove the deployed Runtime '{agent_runtime_name}':")
     print(f"  cd {example_root}/{agent_runtime_name}")
     print(f"  agentcore remove agent --name {agent_runtime_name} -y")
-    print(f"  agentcore deploy -y -v   # tears down the CloudFormation stack")
+    print("  agentcore deploy -y -v   # tears down the CloudFormation stack")
     print()
     print("Okta app registrations are left in place — delete them from the Okta")
     print("admin console if you no longer need them.")

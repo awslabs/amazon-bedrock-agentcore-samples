@@ -183,7 +183,7 @@ def create_gateway_service_role(role_name: str, account_id: str, region: str) ->
         PolicyName="AgentCoreGatewayOboPermissions",
         PolicyDocument=json.dumps(permission_policy),
     )
-    print(f"  ✓ Attached inline policy: AgentCoreGatewayOboPermissions")
+    print("  ✓ Attached inline policy: AgentCoreGatewayOboPermissions")
 
     return role_arn
 
@@ -314,7 +314,7 @@ def main() -> None:
             existing_audience = set(existing_authorizer.get("allowedAudience", []) or [])
             desired_audience = set(authorizer_config["customJWTAuthorizer"]["allowedAudience"])
             if existing_discovery != discovery_url or existing_audience != desired_audience:
-                print(f"  • Authorizer drift detected — updating.")
+                print("  • Authorizer drift detected — updating.")
                 if existing_discovery != discovery_url:
                     print(f"      discoveryUrl was: {existing_discovery or '(unset)'}")
                     print(f"      discoveryUrl now: {discovery_url}")
@@ -329,7 +329,7 @@ def main() -> None:
                     authorizerType="CUSTOM_JWT",
                     authorizerConfiguration=authorizer_config,
                 )
-                print(f"  ✓ Gateway authorizer updated.")
+                print("  ✓ Gateway authorizer updated.")
         except ClientError as e:
             # If update_gateway isn't supported in your boto3, just warn.
             print(f"  ⚠ Could not reconcile authorizer config: {e}. "

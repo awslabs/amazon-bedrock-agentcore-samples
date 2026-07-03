@@ -76,23 +76,10 @@ def set_retention(logs, log_group_name: str, days: int) -> None:
               f"{e.response['Error'].get('Message')}", file=sys.stderr)
 
 
-def check_transaction_search(logs) -> bool:
-    """Return True if CloudWatch Transaction Search is enabled in this region."""
-    try:
-        resp = logs.get_log_object_policy() if False else None
-        # The API surface for Transaction Search has moved a couple times.
-        # Best portable check: try describe_log_groups with a query filter —
-        # if TS is off, it silently returns no matches even for present data.
-        # More reliable: check `get_log_delivery` isn't the answer either.
-        # Fallback: query the account setting via the well-known API name.
-        resp = logs.list_log_deliveries()  # requires cloudwatch-logs perms
-        # Presence of any delivery does not directly imply TS. We surface a
-        # helpful hint rather than a hard yes/no.
-        return True
-    except AttributeError:
-        return False
-    except ClientError:
-        return False
+# Note: an earlier version of this script had a `check_transaction_search()`
+# helper. Removed because there's no reliable public API to detect whether
+# CloudWatch Transaction Search is enabled — the "Also do this" printout
+# at the end of main() links the user directly to the console toggle.
 
 
 def main() -> None:
@@ -139,30 +126,30 @@ def main() -> None:
 
     # 2) Print ready-to-run debug commands.
     print()
-    print(f"[2/2] Debug quick-reference")
+    print("[2/2] Debug quick-reference")
     print("  Tail agent runtime logs (all levels):")
     print(f"    agentcore logs --since 10m --runtime {agent_runtime_name}")
     print()
-    print(f"  Tail agent runtime logs (warn+ only, useful when 'iss mismatch'):")
+    print("  Tail agent runtime logs (warn+ only, useful when 'iss mismatch'):")
     print(f"    agentcore logs --since 10m --runtime {agent_runtime_name} --level warn")
     print()
-    print(f"  Search runtime logs for a substring:")
+    print("  Search runtime logs for a substring:")
     print(f"    agentcore logs --since 30m --runtime {agent_runtime_name} --query 'OBO'")
     print()
-    print(f"  List traces (needs CloudWatch Application Signals enabled — see below):")
+    print("  List traces (needs CloudWatch Application Signals enabled — see below):")
     print(f"    agentcore traces list --runtime {agent_runtime_name}")
     print()
-    print(f"  Get a specific trace:")
-    print(f"    agentcore traces get <trace-id>")
+    print("  Get a specific trace:")
+    print("    agentcore traces get <trace-id>")
     print()
-    print(f"  Raw CloudWatch tail (fallback, region-explicit):")
-    print(f"    aws logs describe-log-groups \\")
-    print(f"      --log-group-name-prefix /aws/bedrock-agentcore \\")
+    print("  Raw CloudWatch tail (fallback, region-explicit):")
+    print("    aws logs describe-log-groups \\")
+    print("      --log-group-name-prefix /aws/bedrock-agentcore \\")
     print(f"      --region {region} \\")
     print(f"      --query 'logGroups[?contains(logGroupName, `{agent_runtime_name[:15]}`)"
           f" || contains(logGroupName, `{gateway_name}`)].logGroupName' --output text")
     print()
-    print(f"  Then tail a specific group:")
+    print("  Then tail a specific group:")
     print(f"    aws logs tail <log-group-name> --since 10m --follow --region {region}")
     print()
 

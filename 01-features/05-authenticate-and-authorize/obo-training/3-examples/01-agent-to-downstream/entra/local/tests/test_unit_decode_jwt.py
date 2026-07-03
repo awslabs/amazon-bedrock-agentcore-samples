@@ -5,10 +5,8 @@ These tests do not hit any network or AWS service.
 from __future__ import annotations
 
 import importlib.util
-import json
 from pathlib import Path
 
-import pytest
 
 from tests.conftest import make_jwt
 
