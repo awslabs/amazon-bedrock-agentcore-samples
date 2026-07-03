@@ -148,24 +148,17 @@ def build_policy(account_id: str, region: str, workload_name: str) -> dict:
         f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
         f"workload-identity-directory/default/workload-identity/{workload_name}"
     )
-    workload_directory_arn = (
-        f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
-        f"workload-identity-directory/default"
-    )
-    token_vault_arn = (
-        f"arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default"
-    )
+    workload_directory_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default"
+    token_vault_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default"
     token_vault_provider_arn = (
-        f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
-        f"token-vault/default/oauth2credentialprovider/*"
+        f"arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default/oauth2credentialprovider/*"
     )
     # ARN pattern for AgentCore-managed OAuth credential storage in Secrets
     # Manager. Not a secret value — an ARN pattern used in IAM policy
     # `Resource` scoping. Local variable named without "secret" so CodeQL's
     # taint heuristic doesn't flag downstream `print` diagnostics.
     agentcore_oauth_arn_pattern = (
-        f"arn:aws:secretsmanager:{region}:{account_id}:"
-        f"secret:bedrock-agentcore-identity!default/oauth2/*"
+        f"arn:aws:secretsmanager:{region}:{account_id}:secret:bedrock-agentcore-identity!default/oauth2/*"
     )
 
     return {
@@ -235,8 +228,7 @@ def main() -> None:
     )
     print(f"✓ Attached inline policy '{POLICY_NAME}' to {role_name}")
     print(
-        f"  ({len(policy['Statement'])} statement(s) granting the OBO actions "
-        f"listed in this file's module docstring.)"
+        f"  ({len(policy['Statement'])} statement(s) granting the OBO actions listed in this file's module docstring.)"
     )
     print()
     print("IAM changes propagate within seconds. No redeploy needed.")

@@ -102,11 +102,7 @@ def main() -> None:
     if not args.user_token and not args.user_token_file:
         parser.error("One of --user-token or --user-token-file is required.")
 
-    user_jwt = (
-        args.user_token
-        if args.user_token
-        else Path(args.user_token_file).read_text().strip()
-    )
+    user_jwt = args.user_token if args.user_token else Path(args.user_token_file).read_text().strip()
 
     # Validate the input actually looks like a JWT before we call AWS APIs
     # with garbage. Common learner mistake: pasting "<placeholder>" text or
@@ -144,9 +140,9 @@ def main() -> None:
     print_claims("T_user (held by BFF after sign-in)", decode_jwt_payload(user_jwt))
 
     # OBO #1: T_user → T_gateway (this is what the agent does).
-    workload_token = ac.get_workload_access_token_for_jwt(
-        workloadName=workload_name, userToken=user_jwt
-    )["workloadAccessToken"]
+    workload_token = ac.get_workload_access_token_for_jwt(workloadName=workload_name, userToken=user_jwt)[
+        "workloadAccessToken"
+    ]
     t_gateway = ac.get_resource_oauth2_token(
         workloadIdentityToken=workload_token,
         resourceCredentialProviderName=agent_provider,
@@ -163,9 +159,9 @@ def main() -> None:
     # OBO #2: T_gateway → T_graph (this is what the Gateway does internally).
     # We re-do it here for visibility. In the real flow, we don't see this
     # token from outside the Gateway.
-    workload_token2 = ac.get_workload_access_token_for_jwt(
-        workloadName=workload_name, userToken=t_gateway
-    )["workloadAccessToken"]
+    workload_token2 = ac.get_workload_access_token_for_jwt(workloadName=workload_name, userToken=t_gateway)[
+        "workloadAccessToken"
+    ]
     t_graph = ac.get_resource_oauth2_token(
         workloadIdentityToken=workload_token2,
         resourceCredentialProviderName=gateway_provider,
@@ -173,14 +169,10 @@ def main() -> None:
         oauth2Flow="ON_BEHALF_OF_TOKEN_EXCHANGE",
         customParameters={"requested_token_use": "on_behalf_of"},
     )["accessToken"]
-    print_claims(
-        "T_graph (after OBO #2, used by Gateway → Graph)", decode_jwt_payload(t_graph)
-    )
+    print_claims("T_graph (after OBO #2, used by Gateway → Graph)", decode_jwt_payload(t_graph))
 
     print("\n--- Summary ---")
-    print(
-        "Watch the `aud` claim rotate across the three tokens (agent → gateway → graph)."
-    )
+    print("Watch the `aud` claim rotate across the three tokens (agent → gateway → graph).")
     print("Watch the `azp`/`appid` claim rotate (frontend → agent → gateway).")
     print("Watch the `oid` claim STAY THE SAME — that's the user identity propagating.")
     print("`sub` will differ at every hop (Entra mints a new PPID per audience).")

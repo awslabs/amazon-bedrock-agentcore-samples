@@ -68,9 +68,7 @@ def main() -> None:
         )
 
         if "accessToken" in fed:
-            print(
-                "✓ AgentCore had a cached token from a previous sign-in — reusing it."
-            )
+            print("✓ AgentCore had a cached token from a previous sign-in — reusing it.")
             token = fed["accessToken"]
         else:
             print("No cached token; starting 3LO sign-in...")
@@ -103,9 +101,7 @@ def main() -> None:
             )
         )
         print(f"\n✓ Cached user JWT to {CACHE_PATH.name}")
-        print(
-            f"  Expires: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(claims.get('exp', 0)))}"
-        )
+        print(f"  Expires: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(claims.get('exp', 0)))}")
         print(f"  sub: {claims.get('sub')}")
         print(f"  aud: {claims.get('aud')}")
         print(f"  cid: {claims.get('cid')}")

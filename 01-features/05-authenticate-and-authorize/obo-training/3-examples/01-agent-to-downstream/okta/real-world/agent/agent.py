@@ -32,20 +32,14 @@ from strands import Agent, tool
 
 
 WORKLOAD_NAME = os.environ.get("WORKLOAD_NAME", "obo-usecase1-okta-realworld")
-ACTOR_PROVIDER_NAME = os.environ.get(
-    "ACTOR_PROVIDER_NAME", "obo-uc1-okta-realworld-actor"
-)
+ACTOR_PROVIDER_NAME = os.environ.get("ACTOR_PROVIDER_NAME", "obo-uc1-okta-realworld-actor")
 DOWNSTREAM_SCOPE = os.environ.get("DOWNSTREAM_SCOPE", "openid profile email")
 OKTA_AUDIENCE = os.environ.get("OKTA_AUDIENCE", "api://default")
 OKTA_DOMAIN = os.environ.get("OKTA_DOMAIN", "")
 OKTA_AUTH_SERVER_ID = os.environ.get("OKTA_AUTH_SERVER_ID", "default")
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
 
-USERINFO_URL = (
-    f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}/v1/userinfo"
-    if OKTA_DOMAIN
-    else ""
-)
+USERINFO_URL = f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}/v1/userinfo" if OKTA_DOMAIN else ""
 
 app = BedrockAgentCoreApp()
 log = app.logger

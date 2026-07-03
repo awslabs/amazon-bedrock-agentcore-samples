@@ -55,9 +55,7 @@ DISCOVERY_URL = f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}/.well-known
 
 app = FastAPI(title="OBO Use Case 1 — Real-world frontend (Okta)")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax")
-templates = Jinja2Templates(
-    directory=str(Path(__file__).resolve().parent / "templates")
-)
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 oauth = OAuth()
 oauth.register(

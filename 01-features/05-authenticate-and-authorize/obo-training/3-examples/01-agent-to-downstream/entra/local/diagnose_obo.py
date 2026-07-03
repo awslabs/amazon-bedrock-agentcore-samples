@@ -79,9 +79,7 @@ def main() -> int:
     check(
         "token not expired",
         seconds_left > 60,
-        f"{seconds_left}s remaining"
-        if seconds_left > 0
-        else "EXPIRED — re-run generate_user_jwt.py",
+        f"{seconds_left}s remaining" if seconds_left > 0 else "EXPIRED — re-run generate_user_jwt.py",
     )
 
     aud = claims.get("aud", "")
@@ -107,9 +105,7 @@ def main() -> int:
     print(f"    token version hint: {'v1.0' if is_v1 else 'v2.0'}")
     print()
 
-    if seconds_left <= 60 or (
-        aud != agent_client_id and aud != f"api://{agent_client_id}"
-    ):
+    if seconds_left <= 60 or (aud != agent_client_id and aud != f"api://{agent_client_id}"):
         print("Fix the above issues, then re-run this script.")
         return 1
 
@@ -146,19 +142,11 @@ def main() -> int:
         check("GetResourceOauth2Token (OBO) succeeded", False, msg)
         print()
         print("  Likely causes for HTTP 400 from Entra:")
-        print(
-            "    1. Admin consent not granted. Go to Entra → App registrations → your agent app →"
-        )
-        print(
-            "       API permissions and verify every permission shows 'Granted for <tenant>'."
-        )
+        print("    1. Admin consent not granted. Go to Entra → App registrations → your agent app →")
+        print("       API permissions and verify every permission shows 'Granted for <tenant>'.")
         print("    2. GRAPH_SCOPE is wrong or not granted to your agent app.")
-        print(
-            "    3. Client secret expired — regenerate and re-run 01_create_providers.py."
-        )
-        print(
-            "    4. Token version mismatch (rare with built-in MicrosoftOauth2 provider)."
-        )
+        print("    3. Client secret expired — regenerate and re-run 01_create_providers.py.")
+        print("    4. Token version mismatch (rare with built-in MicrosoftOauth2 provider).")
         return 1
 
 

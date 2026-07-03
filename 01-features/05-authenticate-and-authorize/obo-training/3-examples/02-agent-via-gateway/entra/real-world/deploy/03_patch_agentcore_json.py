@@ -106,11 +106,7 @@ def main() -> None:
         "GATEWAY_MCP_URL": gateway_mcp_url,
         "AWS_REGION": region,
     }
-    existing = {
-        e["name"]: e["value"]
-        for e in runtime.get("envVars", [])
-        if "name" in e and "value" in e
-    }
+    existing = {e["name"]: e["value"] for e in runtime.get("envVars", []) if "name" in e and "value" in e}
     existing.update(env_map)
     runtime["envVars"] = [{"name": k, "value": v} for k, v in existing.items()]
 
@@ -123,9 +119,7 @@ def main() -> None:
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
     print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {discovery_url}")
-    print(
-        f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}"
-    )
+    print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
     print("  envVars:")
     for k, v in env_map.items():
         masked = v if not k.endswith("SECRET") else "***"

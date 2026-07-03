@@ -89,8 +89,7 @@ def set_retention(logs, log_group_name: str, days: int) -> None:
         )
     except ClientError as e:
         print(
-            f"  ✗ {log_group_name}: {e.response['Error'].get('Code')}: "
-            f"{e.response['Error'].get('Message')}",
+            f"  ✗ {log_group_name}: {e.response['Error'].get('Code')}: {e.response['Error'].get('Message')}",
             file=sys.stderr,
         )
 
@@ -107,8 +106,7 @@ def main() -> None:
 
     if args.retention not in VALID_RETENTIONS:
         print(
-            f"ERROR: --retention must be one of {sorted(VALID_RETENTIONS)} "
-            f"(CloudWatch-imposed values).",
+            f"ERROR: --retention must be one of {sorted(VALID_RETENTIONS)} (CloudWatch-imposed values).",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -126,10 +124,7 @@ def main() -> None:
     print(f"[1/2] Log retention → {args.retention} days")
     matched = find_uc2_log_groups(logs, agent_runtime_name, gateway_name)
     if not matched:
-        print(
-            f"  • No /aws/bedrock-agentcore/* log groups found yet for "
-            f"'{agent_runtime_name}' or '{gateway_name}'."
-        )
+        print(f"  • No /aws/bedrock-agentcore/* log groups found yet for '{agent_runtime_name}' or '{gateway_name}'.")
         print("    Trigger at least one invocation, then re-run this script.")
     else:
         for lg in matched:
@@ -151,9 +146,7 @@ def main() -> None:
     print(f"    agentcore logs --since 10m --runtime {agent_runtime_name} --level warn")
     print()
     print("  Search runtime logs for a substring:")
-    print(
-        f"    agentcore logs --since 30m --runtime {agent_runtime_name} --query 'OBOTRACE'"
-    )
+    print(f"    agentcore logs --since 30m --runtime {agent_runtime_name} --query 'OBOTRACE'")
     print()
     print("  Use the trace helper — cleaner than raw logs:")
     print("    python deploy/show_obo_trace.py --since 10m")
@@ -176,9 +169,7 @@ def main() -> None:
     print(
         f"    open 'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#application-signals-services'"
     )
-    print(
-        "  Enable CloudWatch Transaction Search so `agentcore logs --query` searches log CONTENT:"
-    )
+    print("  Enable CloudWatch Transaction Search so `agentcore logs --query` searches log CONTENT:")
     print(
         f"    open 'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#logsV2:logs-transaction-search'"
     )

@@ -69,7 +69,5 @@ def cached_user_jwt(user_jwt_cache_path: Path) -> str:
         "exp": int(time.time()) + 3600,
     }
     token = make_jwt(claims)
-    user_jwt_cache_path.write_text(
-        json.dumps({"token": token, "claims": claims, "expires_at": claims["exp"]})
-    )
+    user_jwt_cache_path.write_text(json.dumps({"token": token, "claims": claims, "expires_at": claims["exp"]}))
     return token

@@ -60,9 +60,7 @@ def decode_jwt_claims(token: str) -> dict[str, Any]:
     try:
         payload_b64 = token.split(".")[1]
         padding = "=" * (-len(payload_b64) % 4)
-        return json.loads(
-            base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8")
-        )
+        return json.loads(base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8"))
     except Exception as e:  # pragma: no cover
         return {"_decode_error": str(e)}
 
@@ -165,16 +163,12 @@ the token was never meant for us — we can't use it.
     pause()
 
     claims = decode_jwt_claims(user_token)
-    show_claims(
-        "Inbound user JWT claims", claims, highlight=["aud", "oid", "scp", "appid"]
-    )
+    show_claims("Inbound user JWT claims", claims, highlight=["aud", "oid", "scp", "appid"])
 
     if claims.get("aud") == agent_client_id:
         success(f"aud matches AGENT_CLIENT_ID ({agent_client_id}) — token is for us")
     else:
-        info(
-            f"aud is {claims.get('aud')!r}, AGENT_CLIENT_ID is {agent_client_id!r} — would fail OBO"
-        )
+        info(f"aud is {claims.get('aud')!r}, AGENT_CLIENT_ID is {agent_client_id!r} — would fail OBO")
 
     observe(
         "Key property: user identity is encoded here",
@@ -276,9 +270,7 @@ Entra's flavor does NOT include a nested `act` claim (that's Okta). Instead,
     if inbound_claims.get("oid") == graph_claims.get("oid"):
         success("USER IDENTITY PRESERVED — oid matches on both tokens")
     else:
-        info(
-            "oid changed — this would mean the user identity was lost. Check your setup."
-        )
+        info("oid changed — this would mean the user identity was lost. Check your setup.")
 
     if inbound_claims.get("aud") != graph_claims.get("aud"):
         success("AUDIENCE ROTATED — new token is for Graph, not the agent")

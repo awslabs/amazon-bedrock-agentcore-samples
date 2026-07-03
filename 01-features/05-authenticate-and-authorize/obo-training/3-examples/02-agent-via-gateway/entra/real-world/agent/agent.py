@@ -43,9 +43,7 @@ from strands.tools.mcp.mcp_client import MCPClient
 
 
 AGENT_WORKLOAD_NAME = os.environ.get("AGENT_WORKLOAD_NAME", "obo-uc2-entra-agent")
-AGENT_OBO_PROVIDER_NAME = os.environ.get(
-    "AGENT_OBO_PROVIDER_NAME", "obo-uc2-entra-agent-actor"
-)
+AGENT_OBO_PROVIDER_NAME = os.environ.get("AGENT_OBO_PROVIDER_NAME", "obo-uc2-entra-agent-actor")
 GATEWAY_SCOPE = os.environ.get("GATEWAY_SCOPE", "")
 GATEWAY_MCP_URL = os.environ.get("GATEWAY_MCP_URL", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
@@ -71,10 +69,7 @@ def _safe_claims(jwt: str) -> dict:
         raw = _json.loads(base64.urlsafe_b64decode(payload))
     except Exception:
         return {}
-    return {
-        k: raw.get(k)
-        for k in ("iss", "aud", "azp", "appid", "oid", "sub", "scp", "ver", "exp")
-    }
+    return {k: raw.get(k) for k in ("iss", "aud", "azp", "appid", "oid", "sub", "scp", "ver", "exp")}
 
 
 def _obo_user_to_gateway(user_token: str) -> str:
@@ -86,9 +81,7 @@ def _obo_user_to_gateway(user_token: str) -> str:
          actual exchange via the agent-actor credential provider, which
          authenticates as AgentApp to Entra.
     """
-    log.info(
-        "OBOTRACE: OBO 1 start. Exchanging T_user for T_gateway via AgentCore Identity."
-    )
+    log.info("OBOTRACE: OBO 1 start. Exchanging T_user for T_gateway via AgentCore Identity.")
     workload_token = _ac_identity.get_workload_access_token_for_jwt(
         workloadName=AGENT_WORKLOAD_NAME,
         userToken=user_token,
@@ -132,8 +125,7 @@ def _gateway_mcp_client(gateway_token: str) -> Iterator[MCPClient]:
     """
     if not GATEWAY_MCP_URL:
         raise RuntimeError(
-            "GATEWAY_MCP_URL is not set. Re-run "
-            "deploy/03_patch_agentcore_json.py after creating the Gateway."
+            "GATEWAY_MCP_URL is not set. Re-run deploy/03_patch_agentcore_json.py after creating the Gateway."
         )
 
     headers = {"Authorization": f"Bearer {gateway_token}"}
@@ -212,9 +204,7 @@ async def invoke(payload, context):
             # Inside Gateway, OBO #2 will run against T_gateway.
             log.info("OBOTRACE: MCP session opened to Gateway. About to list tools.")
             tools = mcp_client.list_tools_sync()
-            tool_names = [
-                getattr(t, "tool_name", getattr(t, "name", repr(t))) for t in tools
-            ]
+            tool_names = [getattr(t, "tool_name", getattr(t, "name", repr(t))) for t in tools]
             log.info(
                 "OBOTRACE: Gateway MCP tools discovered: %s (count=%d)",
                 tool_names,
@@ -239,9 +229,7 @@ async def invoke(payload, context):
         def _unwrap(err, depth=0):
             if depth > 5:
                 return err
-            inner = getattr(err, "exceptions", None) or (
-                (err.__cause__,) if err.__cause__ else ()
-            )
+            inner = getattr(err, "exceptions", None) or ((err.__cause__,) if err.__cause__ else ())
             if inner:
                 return _unwrap(inner[0], depth + 1)
             return err
@@ -254,9 +242,7 @@ async def invoke(payload, context):
             type(root).__name__,
             root,
         )
-        yield (
-            f"ERROR: {type(e).__name__}: {e}\nroot cause: {type(root).__name__}: {root}"
-        )
+        yield (f"ERROR: {type(e).__name__}: {e}\nroot cause: {type(root).__name__}: {root}")
 
 
 if __name__ == "__main__":

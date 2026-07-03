@@ -121,11 +121,7 @@ def main() -> None:
         "AWS_REGION": region,
     }
 
-    existing = {
-        e["name"]: e["value"]
-        for e in runtime.get("envVars", [])
-        if "name" in e and "value" in e
-    }
+    existing = {e["name"]: e["value"] for e in runtime.get("envVars", []) if "name" in e and "value" in e}
     existing.update(env_map)
     runtime["envVars"] = [{"name": k, "value": v} for k, v in existing.items()]
 
@@ -137,9 +133,7 @@ def main() -> None:
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
     print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {oidc_discovery_url}")
-    print(
-        f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}"
-    )
+    print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
     print()
     print("Next steps (from inside the project folder):")
     print("  cd " + str(project_dir.relative_to(real_world_root)))

@@ -25,9 +25,7 @@ class TestCallbackServer:
         server, future = start_callback_server(port)
         try:
             # Simulate the IdP redirect
-            with urlopen(
-                f"http://127.0.0.1:{port}/callback?code=abc123&state=xyz"
-            ) as r:
+            with urlopen(f"http://127.0.0.1:{port}/callback?code=abc123&state=xyz") as r:
                 assert r.status == 200
                 assert b"OAuth callback received" in r.read()
 
@@ -41,9 +39,7 @@ class TestCallbackServer:
         port = _find_free_port()
         server, future = start_callback_server(port)
         try:
-            urlopen(
-                f"http://127.0.0.1:{port}/callback?error=access_denied&error_description=user+denied"
-            ).read()
+            urlopen(f"http://127.0.0.1:{port}/callback?error=access_denied&error_description=user+denied").read()
 
             with pytest.raises(RuntimeError, match="access_denied"):
                 future.result(timeout=5)

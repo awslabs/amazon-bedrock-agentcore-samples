@@ -151,8 +151,7 @@ def delete_all_targets(client, gateway_id: str) -> None:
     if remaining:
         names = ", ".join(t.get("name", t["targetId"]) for t in remaining)
         raise RuntimeError(
-            f"Gateway {gateway_id} still has targets after 90s: {names}. "
-            f"Re-run teardown once they finish deleting."
+            f"Gateway {gateway_id} still has targets after 90s: {names}. Re-run teardown once they finish deleting."
         )
 
 
@@ -203,14 +202,10 @@ def delete_iam_role_if_exists(role_name: str) -> None:
     iam = boto3.client("iam")
     try:
         # Detach inline policies (there's typically only one from us).
-        for policy_name in iam.list_role_policies(RoleName=role_name).get(
-            "PolicyNames", []
-        ):
+        for policy_name in iam.list_role_policies(RoleName=role_name).get("PolicyNames", []):
             iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
         # Detach managed policies (we don't attach any, but be defensive).
-        for p in iam.list_attached_role_policies(RoleName=role_name).get(
-            "AttachedPolicies", []
-        ):
+        for p in iam.list_attached_role_policies(RoleName=role_name).get("AttachedPolicies", []):
             iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
         iam.delete_role(RoleName=role_name)
         print(f"✓ Deleted IAM role: {role_name}")
@@ -266,9 +261,7 @@ def verify_all_gone(
             targets = list_all_targets(ac_control, gateway_id)
             detail = f"{gateway_name} (id={gateway_id})"
             if targets:
-                detail += f" with {len(targets)} target(s): " + ", ".join(
-                    t.get("name", t["targetId"]) for t in targets
-                )
+                detail += f" with {len(targets)} target(s): " + ", ".join(t.get("name", t["targetId"]) for t in targets)
             survivors.append(f"Gateway still exists: {detail}")
             print(f"  ✗ gateway               : {detail} — STILL PRESENT")
         else:
@@ -340,11 +333,7 @@ def main() -> None:
     workload_name = must_env("AGENT_WORKLOAD_NAME")
 
     role_arn = os.environ.get("GATEWAY_SERVICE_ROLE_ARN", "").strip()
-    role_name = (
-        role_arn.rsplit("/", 1)[-1]
-        if role_arn
-        else f"AmazonBedrockAgentCoreGatewayRole-{gateway_name}"
-    )
+    role_name = role_arn.rsplit("/", 1)[-1] if role_arn else f"AmazonBedrockAgentCoreGatewayRole-{gateway_name}"
 
     ac_control = boto3.client("bedrock-agentcore-control", region_name=region)
 
@@ -405,9 +394,7 @@ def main() -> None:
     print("  - The agent runtime: from inside $AGENT_RUNTIME_NAME/")
     print('      agentcore remove agent --name "$AGENT_RUNTIME_NAME" -y')
     print("      agentcore deploy -y -v")
-    print(
-        "  - The scaffolded CLI project folder ($AGENT_RUNTIME_NAME/) — rm -rf if you like."
-    )
+    print("  - The scaffolded CLI project folder ($AGENT_RUNTIME_NAME/) — rm -rf if you like.")
     print("  - The Okta app registrations — either leave them (cost nothing) or:")
     print("      python deploy/00_delete_okta_apps.py --yes")
 

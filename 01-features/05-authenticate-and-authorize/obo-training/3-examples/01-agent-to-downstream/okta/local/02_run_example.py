@@ -61,9 +61,7 @@ def decode_jwt_claims(token: str) -> dict[str, Any]:
     try:
         payload_b64 = token.split(".")[1]
         padding = "=" * (-len(payload_b64) % 4)
-        return json.loads(
-            base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8")
-        )
+        return json.loads(base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8"))
     except Exception as e:  # pragma: no cover
         return {"_decode_error": str(e)}
 
@@ -143,9 +141,7 @@ a standard Okta-issued access token you can feed into the next chapter.
     return user_token
 
 
-def chapter_2_inspect_inbound(
-    user_token: str, native_client_id: str, audience: str
-) -> dict:
+def chapter_2_inspect_inbound(user_token: str, native_client_id: str, audience: str) -> dict:
     """Decode the inbound user token and point out the claims that matter."""
     chapter(
         2,
@@ -178,22 +174,14 @@ authorization server. If it doesn't, the exchange fails at the IdP.
     )
 
     if claims.get("cid") == native_client_id:
-        success(
-            f"cid matches NATIVE_APP_CLIENT_ID ({native_client_id}) — token issued to the frontend app"
-        )
+        success(f"cid matches NATIVE_APP_CLIENT_ID ({native_client_id}) — token issued to the frontend app")
     else:
-        info(
-            f"cid is {claims.get('cid')!r}, expected {native_client_id!r} — token was issued to a different client"
-        )
+        info(f"cid is {claims.get('cid')!r}, expected {native_client_id!r} — token was issued to a different client")
 
     if claims.get("aud") == audience:
-        success(
-            f"aud matches OKTA_AUDIENCE ({audience}) — token is for your auth server"
-        )
+        success(f"aud matches OKTA_AUDIENCE ({audience}) — token is for your auth server")
     else:
-        info(
-            f"aud is {claims.get('aud')!r}, expected {audience!r} — would fail OBO at the exchange step"
-        )
+        info(f"aud is {claims.get('aud')!r}, expected {audience!r} — would fail OBO at the exchange step")
 
     observe(
         "Key property: user identity is encoded in `sub`",
@@ -258,9 +246,7 @@ ourselves, and the user is NOT re-prompted to consent.
     success("User token wrapped into an AgentCore workload token")
 
     action("Calling GetResourceOauth2Token with oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE")
-    info(
-        "  customParameters: subject_token_type=urn:ietf:params:oauth:token-type:access_token"
-    )
+    info("  customParameters: subject_token_type=urn:ietf:params:oauth:token-type:access_token")
     info(f"  audiences:        [{audience}]")
     info(f"  scopes:           [{downstream_scope}]")
     obo_resp = ac_identity.get_resource_oauth2_token(
@@ -318,9 +304,7 @@ agent app to Microsoft Graph. Which claim moves depends on the IdP.
     if inbound_claims.get("sub") == outbound_claims.get("sub"):
         success("USER IDENTITY PRESERVED — sub matches on both tokens")
     else:
-        info(
-            "sub changed — this would mean the user identity was lost. Check your setup."
-        )
+        info("sub changed — this would mean the user identity was lost. Check your setup.")
 
     if inbound_claims.get("cid") != outbound_claims.get("cid"):
         success("ACTOR ROTATED — cid changed from the native app to the service app")
@@ -396,9 +380,7 @@ token claims the downstream API would see.
         # the substring form.
         (
             "iss is an Okta authorization server",
-            _urlparse(str(outbound_claims.get("iss", "")))
-            .netloc.lower()
-            .endswith(".okta.com"),
+            _urlparse(str(outbound_claims.get("iss", ""))).netloc.lower().endswith(".okta.com"),
         ),
     ]
     for label, ok in checks:
@@ -456,9 +438,7 @@ INTERACTIVE_NO_PAUSE=1 in your shell to skip the pauses.
             upstream_scope,
             user_alias,
         )
-        inbound_claims = chapter_2_inspect_inbound(
-            user_token, native_client_id, audience
-        )
+        inbound_claims = chapter_2_inspect_inbound(user_token, native_client_id, audience)
         downstream_token = chapter_3_obo_exchange(
             ac_identity,
             workload_name,

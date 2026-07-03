@@ -98,10 +98,7 @@ def az(*args: str, capture: bool = True, check: bool = True) -> Any:
     proc = subprocess.run(cmd, capture_output=capture, text=True)
     if proc.returncode != 0:
         if check:
-            die(
-                f"`{' '.join(cmd)}` failed with exit {proc.returncode}:\n"
-                f"{proc.stderr.strip() or proc.stdout.strip()}"
-            )
+            die(f"`{' '.join(cmd)}` failed with exit {proc.returncode}:\n{proc.stderr.strip() or proc.stdout.strip()}")
         return None
     if capture and proc.stdout.strip():
         try:
@@ -112,9 +109,7 @@ def az(*args: str, capture: bool = True, check: bool = True) -> Any:
 
 
 def graph_get(path: str) -> dict:
-    return az(
-        "rest", "--method", "GET", "--url", f"https://graph.microsoft.com/v1.0{path}"
-    )
+    return az("rest", "--method", "GET", "--url", f"https://graph.microsoft.com/v1.0{path}")
 
 
 def graph_patch(path: str, body: dict) -> None:
@@ -196,9 +191,7 @@ def ensure_v2_access_tokens(object_id: str) -> None:
     if current == 2:
         print("    • api.requestedAccessTokenVersion already 2")
         return
-    graph_patch(
-        f"/applications/{object_id}", {"api": {"requestedAccessTokenVersion": 2}}
-    )
+    graph_patch(f"/applications/{object_id}", {"api": {"requestedAccessTokenVersion": 2}})
     print(f"    ✓ Set api.requestedAccessTokenVersion = 2 (was {current!r})")
 
 
@@ -221,9 +214,7 @@ def ensure_access_as_user_scope(object_id: str) -> str:
 
     scope_id = str(uuid.uuid4())
     new_scope = {
-        "adminConsentDescription": (
-            "Allows the calling application to invoke this API as the signed-in user."
-        ),
+        "adminConsentDescription": ("Allows the calling application to invoke this API as the signed-in user."),
         "adminConsentDisplayName": "Access as the signed-in user",
         "id": scope_id,
         "isEnabled": True,
@@ -233,16 +224,12 @@ def ensure_access_as_user_scope(object_id: str) -> str:
         "value": SCOPE_VALUE,
     }
     scopes.append(new_scope)
-    graph_patch(
-        f"/applications/{object_id}", {"api": {"oauth2PermissionScopes": scopes}}
-    )
+    graph_patch(f"/applications/{object_id}", {"api": {"oauth2PermissionScopes": scopes}})
     print(f"    ✓ Added scope: {SCOPE_VALUE} (id={scope_id})")
     return scope_id
 
 
-def add_api_permission(
-    consumer_app_id: str, *, api_app_id: str, permission_id: str, label: str = ""
-) -> None:
+def add_api_permission(consumer_app_id: str, *, api_app_id: str, permission_id: str, label: str = "") -> None:
     """Add a delegated API permission to a consumer app. Idempotent (az dedupes)."""
     az(
         "ad",
@@ -285,9 +272,7 @@ def grant_admin_consent(app_id: str, label: str) -> bool:
         print(f"    ✓ Granted admin consent: {label}")
         return True
     err = (proc.stderr or proc.stdout).strip()
-    print(
-        f"    ⚠ admin-consent failed for {label}: {err.splitlines()[-1] if err else 'unknown'}"
-    )
+    print(f"    ⚠ admin-consent failed for {label}: {err.splitlines()[-1] if err else 'unknown'}")
     return False
 
 
@@ -471,15 +456,10 @@ def main() -> None:
     new_secrets: dict[str, str] = {}
     for env_key, (app_obj, name) in secret_map.items():
         if args.rotate_secrets or env_value_is_placeholder(env_path, env_key):
-            new_secrets[env_key] = reset_client_secret(
-                app_obj["appId"], display_name=f"deploy-{name}"
-            )
+            new_secrets[env_key] = reset_client_secret(app_obj["appId"], display_name=f"deploy-{name}")
     rotated = len(new_secrets)
     kept = len(secret_map) - rotated
-    print(
-        f"  ✓ Client secrets: {rotated} freshly minted, {kept} kept "
-        f"(use --rotate-secrets to force-rotate all)"
-    )
+    print(f"  ✓ Client secrets: {rotated} freshly minted, {kept} kept (use --rotate-secrets to force-rotate all)")
 
     # 7) Persist values to .env.
     print("\n[7/7] Writing .env…")
@@ -500,10 +480,7 @@ def main() -> None:
     # per config.example.env, and the user can inspect .env directly.
     for key, value in env_writes.items():
         upsert_env_value(env_path, key, value)
-    print(
-        f"  ✓ Wrote {len(env_writes)} value(s) to .env "
-        f"(tenant/client IDs and any freshly-minted secrets)."
-    )
+    print(f"  ✓ Wrote {len(env_writes)} value(s) to .env (tenant/client IDs and any freshly-minted secrets).")
 
     print()
     print("✓ Entra ID setup complete.")

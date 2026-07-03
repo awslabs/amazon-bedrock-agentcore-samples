@@ -96,8 +96,7 @@ def main() -> None:
     )
     if proc.returncode != 0:
         print(
-            f"ERROR: `agentcore logs` failed (exit {proc.returncode}):\n"
-            f"{proc.stderr.strip() or proc.stdout.strip()}",
+            f"ERROR: `agentcore logs` failed (exit {proc.returncode}):\n{proc.stderr.strip() or proc.stdout.strip()}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -186,12 +185,8 @@ def main() -> None:
         value = os.environ.get(env_key, "").strip()
         if value:
             print(f"  {label:<12} <- {env_key} = {value}")
-    print(
-        f"  {'user sub':<12} = user login (typically an email); unchanged across every token in the chain"
-    )
-    print(
-        f"  {'user uid':<12} = Okta user's internal ID; also unchanged across the chain"
-    )
+    print(f"  {'user sub':<12} = user login (typically an email); unchanged across every token in the chain")
+    print(f"  {'user uid':<12} = Okta user's internal ID; also unchanged across the chain")
     print()
     print("Format below: cid=<Label> (<raw-id>) — the raw ID is preserved so you can")
     print("cross-check against `.env` without leaving this output.")
@@ -205,22 +200,14 @@ def main() -> None:
         print()
 
     total = sum(len(g) for g in invocations)
-    print(
-        f"Found {total} OBOTRACE line(s) across {len(invocations)} invocation(s) in the last {args.since}."
-    )
+    print(f"Found {total} OBOTRACE line(s) across {len(invocations)} invocation(s) in the last {args.since}.")
     print()
     print("What to watch for:")
     print("  * `aud` STAYS THE SAME (api://default) across T_user and T_gateway —")
     print("    Okta's default auth server mints every token with the same audience.")
-    print(
-        "  * `cid` rotates: FrontendApp -> AgentApp -> GatewayApp   (the actor chain)"
-    )
-    print(
-        "  * `sub` and `uid` STAY THE SAME across every T_* — that's user identity propagation"
-    )
-    print(
-        "  * `scp` narrows: agent.access -> gateway.access -> (downstream.access, invisible here)"
-    )
+    print("  * `cid` rotates: FrontendApp -> AgentApp -> GatewayApp   (the actor chain)")
+    print("  * `sub` and `uid` STAY THE SAME across every T_* — that's user identity propagation")
+    print("  * `scp` narrows: agent.access -> gateway.access -> (downstream.access, invisible here)")
 
 
 if __name__ == "__main__":

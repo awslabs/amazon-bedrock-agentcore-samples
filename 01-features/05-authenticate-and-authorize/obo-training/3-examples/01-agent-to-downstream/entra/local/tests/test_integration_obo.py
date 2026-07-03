@@ -34,15 +34,10 @@ pytestmark = pytest.mark.skipif(
 
 def _load_cached_user_jwt() -> tuple[str, dict]:
     if not CACHE_PATH.exists():
-        pytest.skip(
-            f"No cached user JWT at {CACHE_PATH.name}. "
-            "Run `python generate_user_jwt.py` first."
-        )
+        pytest.skip(f"No cached user JWT at {CACHE_PATH.name}. Run `python generate_user_jwt.py` first.")
     data = json.loads(CACHE_PATH.read_text())
     if data["expires_at"] < int(time.time()) + 60:
-        pytest.skip(
-            "Cached user JWT has expired. Re-run `python generate_user_jwt.py`."
-        )
+        pytest.skip("Cached user JWT has expired. Re-run `python generate_user_jwt.py`.")
     return data["token"], data["claims"]
 
 

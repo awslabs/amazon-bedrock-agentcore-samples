@@ -101,10 +101,7 @@ def main() -> None:
     # for the agent — the SCOPE (agent.access) does. `customJwtAuthorizer`
     # only validates aud, iss, sig, and exp; scope validation would happen
     # at the resource layer if you had one.
-    discovery_url = (
-        f"https://{okta_domain}/oauth2/{okta_auth_server_id}"
-        f"/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://{okta_domain}/oauth2/{okta_auth_server_id}/.well-known/openid-configuration"
     runtime["authorizerType"] = "CUSTOM_JWT"
     runtime["authorizerConfiguration"] = {
         "customJwtAuthorizer": {
@@ -126,11 +123,7 @@ def main() -> None:
         "OKTA_AUDIENCE": okta_audience,
         "AWS_REGION": region,
     }
-    existing = {
-        e["name"]: e["value"]
-        for e in runtime.get("envVars", [])
-        if "name" in e and "value" in e
-    }
+    existing = {e["name"]: e["value"] for e in runtime.get("envVars", []) if "name" in e and "value" in e}
     existing.update(env_map)
     runtime["envVars"] = [{"name": k, "value": v} for k, v in existing.items()]
 
@@ -143,9 +136,7 @@ def main() -> None:
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
     print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {discovery_url}")
-    print(
-        f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}"
-    )
+    print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
     print("  envVars:")
     for k, v in env_map.items():
         print(f"    {k}={v}")

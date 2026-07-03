@@ -25,9 +25,7 @@ def mock_ac_identity():
     """Build a mocked AgentCore Identity client with realistic responses."""
     client = MagicMock()
 
-    client.get_workload_access_token_for_user_id.return_value = {
-        "workloadAccessToken": "wl-token-for-user"
-    }
+    client.get_workload_access_token_for_user_id.return_value = {"workloadAccessToken": "wl-token-for-user"}
 
     client.get_resource_oauth2_token.side_effect = [
         # 1st call: USER_FEDERATION init — returns session/authorizationUrl
@@ -59,16 +57,12 @@ def mock_ac_identity():
     ]
 
     client.complete_resource_token_auth.return_value = {}
-    client.get_workload_access_token_for_jwt.return_value = {
-        "workloadAccessToken": "obo-wl-token"
-    }
+    client.get_workload_access_token_for_jwt.return_value = {"workloadAccessToken": "obo-wl-token"}
     return client
 
 
 class TestRunExample:
-    def test_happy_path_makes_expected_api_calls(
-        self, required_env, mock_ac_identity, monkeypatch
-    ):
+    def test_happy_path_makes_expected_api_calls(self, required_env, mock_ac_identity, monkeypatch):
         mod = _load_module()
 
         # Mock boto3.client to return our fake AgentCore Identity client
@@ -123,9 +117,7 @@ class TestRunExample:
 
         # Override the fixture: first call returns a cached token, no sessionUri.
         client = MagicMock()
-        client.get_workload_access_token_for_user_id.return_value = {
-            "workloadAccessToken": "wl-token-for-user"
-        }
+        client.get_workload_access_token_for_user_id.return_value = {"workloadAccessToken": "wl-token-for-user"}
         client.get_resource_oauth2_token.side_effect = [
             # First USER_FEDERATION call — cached token branch
             {"accessToken": make_jwt({"aud": "agent-client-id", "oid": "alice-oid"})},
@@ -140,9 +132,7 @@ class TestRunExample:
                 )
             },
         ]
-        client.get_workload_access_token_for_jwt.return_value = {
-            "workloadAccessToken": "obo-wl-token"
-        }
+        client.get_workload_access_token_for_jwt.return_value = {"workloadAccessToken": "obo-wl-token"}
 
         monkeypatch.setattr(mod.boto3, "client", lambda *_, **__: client)
 

@@ -139,15 +139,9 @@ def main() -> None:
     # the user — the actual URL is visible in the AWS console.
     print()
     print("Next steps:")
-    print(
-        " 1. If your Entra app doesn't yet have the AgentCore-managed redirect URI as"
-    )
-    print(
-        "    a platform redirect, add it in Entra → App registrations → Authentication."
-    )
-    print(
-        "    You can find the redirect URI in the AWS console under AgentCore Identity →"
-    )
+    print(" 1. If your Entra app doesn't yet have the AgentCore-managed redirect URI as")
+    print("    a platform redirect, add it in Entra → App registrations → Authentication.")
+    print("    You can find the redirect URI in the AWS console under AgentCore Identity →")
     print(f"    Credential providers → {client_provider_name}.")
     print(" 2. Run: python 02_run_example.py")
 

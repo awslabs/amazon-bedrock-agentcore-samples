@@ -116,9 +116,7 @@ def create_gateway_service_role(role_name: str, account_id: str, region: str) ->
                 # Recommended confused-deputy guards
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -142,8 +140,7 @@ def create_gateway_service_role(role_name: str, account_id: str, region: str) ->
                 "Effect": "Allow",
                 "Action": ["secretsmanager:GetSecretValue"],
                 "Resource": [
-                    f"arn:aws:secretsmanager:{region}:{account_id}:"
-                    f"secret:bedrock-agentcore-identity!default/oauth2/*"
+                    f"arn:aws:secretsmanager:{region}:{account_id}:secret:bedrock-agentcore-identity!default/oauth2/*"
                 ],
             },
             {
@@ -155,10 +152,7 @@ def create_gateway_service_role(role_name: str, account_id: str, region: str) ->
                     "logs:PutLogEvents",
                     "logs:DescribeLogStreams",
                 ],
-                "Resource": (
-                    f"arn:aws:logs:{region}:{account_id}:"
-                    "log-group:/aws/bedrock-agentcore/gateway*"
-                ),
+                "Resource": (f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/gateway*"),
             },
         ],
     }
@@ -241,9 +235,7 @@ def main() -> None:
         else:
             print(f"• Creating Gateway service role: {conventional_role_name}")
             account_id = boto3.client("sts").get_caller_identity()["Account"]
-            gateway_service_role_arn = create_gateway_service_role(
-                conventional_role_name, account_id, region
-            )
+            gateway_service_role_arn = create_gateway_service_role(conventional_role_name, account_id, region)
             print("  ⏳ Waiting 10s for IAM role propagation…")
             import time
 
@@ -255,21 +247,16 @@ def main() -> None:
     ac_control = boto3.client("bedrock-agentcore-control", region_name=region)
 
     # 1) Look up the gateway-actor credential provider (created in step 01).
-    print(
-        f"• Looking up Gateway-actor credential provider: {gateway_obo_provider_name}"
-    )
+    print(f"• Looking up Gateway-actor credential provider: {gateway_obo_provider_name}")
     try:
-        gateway_provider_arn = get_gateway_provider_arn(
-            ac_control, gateway_obo_provider_name
-        )
+        gateway_provider_arn = get_gateway_provider_arn(ac_control, gateway_obo_provider_name)
     except ClientError as e:
         if e.response["Error"]["Code"] in {
             "ResourceNotFoundException",
             "NotFoundException",
         }:
             print(
-                f"ERROR: Credential provider '{gateway_obo_provider_name}' not found. "
-                "Run step 01 first.",
+                f"ERROR: Credential provider '{gateway_obo_provider_name}' not found. Run step 01 first.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -317,24 +304,15 @@ def main() -> None:
             existing_config = existing_gw.get("authorizerConfiguration") or {}
             existing_authorizer = existing_config.get("customJWTAuthorizer", {}) or {}
             existing_discovery = existing_authorizer.get("discoveryUrl", "")
-            existing_audience = set(
-                existing_authorizer.get("allowedAudience", []) or []
-            )
-            desired_audience = set(
-                authorizer_config["customJWTAuthorizer"]["allowedAudience"]
-            )
-            if (
-                existing_discovery != discovery_url
-                or existing_audience != desired_audience
-            ):
+            existing_audience = set(existing_authorizer.get("allowedAudience", []) or [])
+            desired_audience = set(authorizer_config["customJWTAuthorizer"]["allowedAudience"])
+            if existing_discovery != discovery_url or existing_audience != desired_audience:
                 print("  • Authorizer drift detected — updating.")
                 if existing_discovery != discovery_url:
                     print(f"      discoveryUrl was: {existing_discovery or '(unset)'}")
                     print(f"      discoveryUrl now: {discovery_url}")
                 if existing_audience != desired_audience:
-                    print(
-                        f"      allowedAudience was: {sorted(existing_audience) or '(unset)'}"
-                    )
+                    print(f"      allowedAudience was: {sorted(existing_audience) or '(unset)'}")
                     print(f"      allowedAudience now: {sorted(desired_audience)}")
                 ac_control.update_gateway(
                     gatewayIdentifier=gateway_id,
@@ -392,8 +370,7 @@ def main() -> None:
         time.sleep(3)
     else:
         print(
-            "ERROR: Gateway did not reach READY within 2 minutes. "
-            "Check the console; re-run this script once it does.",
+            "ERROR: Gateway did not reach READY within 2 minutes. Check the console; re-run this script once it does.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -449,22 +426,13 @@ def main() -> None:
         # SDKs accept the bare gateway URL and append /mcp internally — to
         # be safe we surface both via the same env var (we use the /mcp form
         # in the agent code).
-        mcp_url = (
-            gateway_url.rstrip("/") + "/mcp"
-            if not gateway_url.endswith("/mcp")
-            else gateway_url
-        )
+        mcp_url = gateway_url.rstrip("/") + "/mcp" if not gateway_url.endswith("/mcp") else gateway_url
         upsert_env_value(env_path, "GATEWAY_MCP_URL", mcp_url)
-        print(
-            f"\n✓ Wrote GATEWAY_MCP_URL to {env_path.relative_to(real_world_root.parent)}:"
-        )
+        print(f"\n✓ Wrote GATEWAY_MCP_URL to {env_path.relative_to(real_world_root.parent)}:")
         print(f"  GATEWAY_MCP_URL={mcp_url}")
     else:
         print("\n⚠ Gateway URL not returned in API response. Look it up later via:")
-        print(
-            "    aws bedrock-agentcore-control get-gateway --gateway-identifier "
-            f"{gateway_id}"
-        )
+        print(f"    aws bedrock-agentcore-control get-gateway --gateway-identifier {gateway_id}")
         print("  and set GATEWAY_MCP_URL=<gateway-url>/mcp in .env manually.")
 
     print()

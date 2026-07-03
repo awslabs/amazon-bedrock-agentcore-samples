@@ -24,9 +24,7 @@ def _load_module():
 def mock_ac_identity():
     client = MagicMock()
 
-    client.get_workload_access_token_for_user_id.return_value = {
-        "workloadAccessToken": "wl-token-for-user"
-    }
+    client.get_workload_access_token_for_user_id.return_value = {"workloadAccessToken": "wl-token-for-user"}
 
     client.get_resource_oauth2_token.side_effect = [
         # 1st: USER_FEDERATION init — returns session URI + authorization URL
@@ -59,16 +57,12 @@ def mock_ac_identity():
     ]
 
     client.complete_resource_token_auth.return_value = {}
-    client.get_workload_access_token_for_jwt.return_value = {
-        "workloadAccessToken": "obo-wl-token"
-    }
+    client.get_workload_access_token_for_jwt.return_value = {"workloadAccessToken": "obo-wl-token"}
     return client
 
 
 class TestRunExample:
-    def test_obo_call_has_okta_specific_parameters(
-        self, required_env, mock_ac_identity, monkeypatch
-    ):
+    def test_obo_call_has_okta_specific_parameters(self, required_env, mock_ac_identity, monkeypatch):
         """Okta OBO must include subject_token_type in customParameters and audience."""
         mod = _load_module()
         monkeypatch.setattr(mod.boto3, "client", lambda *_, **__: mock_ac_identity)
@@ -105,26 +99,14 @@ class TestRunExample:
         mod = _load_module()
 
         client = MagicMock()
-        client.get_workload_access_token_for_user_id.return_value = {
-            "workloadAccessToken": "wl-token-for-user"
-        }
+        client.get_workload_access_token_for_user_id.return_value = {"workloadAccessToken": "wl-token-for-user"}
         client.get_resource_oauth2_token.side_effect = [
             # Cached token branch on first USER_FEDERATION call
-            {
-                "accessToken": make_jwt(
-                    {"sub": "alice@example.com", "cid": "native-client-id"}
-                )
-            },
+            {"accessToken": make_jwt({"sub": "alice@example.com", "cid": "native-client-id"})},
             # OBO
-            {
-                "accessToken": make_jwt(
-                    {"sub": "alice@example.com", "cid": "service-client-id"}
-                )
-            },
+            {"accessToken": make_jwt({"sub": "alice@example.com", "cid": "service-client-id"})},
         ]
-        client.get_workload_access_token_for_jwt.return_value = {
-            "workloadAccessToken": "obo-wl-token"
-        }
+        client.get_workload_access_token_for_jwt.return_value = {"workloadAccessToken": "obo-wl-token"}
 
         monkeypatch.setattr(mod.boto3, "client", lambda *_, **__: client)
 

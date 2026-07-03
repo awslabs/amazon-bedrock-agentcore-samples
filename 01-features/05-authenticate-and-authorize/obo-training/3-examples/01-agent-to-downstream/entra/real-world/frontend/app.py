@@ -52,9 +52,7 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 
 app = FastAPI(title="OBO Use Case 1 — Real-world frontend")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax")
-templates = Jinja2Templates(
-    directory=str(Path(__file__).resolve().parent / "templates")
-)
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 
 def _msal_app() -> msal.ConfidentialClientApplication:
@@ -103,15 +101,11 @@ async def callback(request: Request) -> RedirectResponse:
         redirect_uri=FRONTEND_REDIRECT_URI,
     )
     if "error" in result:
-        raise HTTPException(
-            400, f"{result['error']}: {result.get('error_description', '')}"
-        )
+        raise HTTPException(400, f"{result['error']}: {result.get('error_description', '')}")
 
     request.session["user"] = {
         "name": result.get("id_token_claims", {}).get("name"),
-        "preferred_username": result.get("id_token_claims", {}).get(
-            "preferred_username"
-        ),
+        "preferred_username": result.get("id_token_claims", {}).get("preferred_username"),
         "oid": result.get("id_token_claims", {}).get("oid"),
     }
     request.session["access_token"] = result["access_token"]

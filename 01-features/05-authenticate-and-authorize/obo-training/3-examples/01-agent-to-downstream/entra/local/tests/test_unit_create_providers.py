@@ -90,9 +90,7 @@ class TestEnsureMicrosoftProvider:
         client.create_oauth2_credential_provider.side_effect = _conflict_error()
         client.get_oauth2_credential_provider.return_value = {"name": "p"}
 
-        result = mod.ensure_microsoft_provider(
-            client, name="p", client_id="cid", client_secret="sec", tenant_id="tid"
-        )
+        result = mod.ensure_microsoft_provider(client, name="p", client_id="cid", client_secret="sec", tenant_id="tid")
 
         assert result == {"name": "p"}
 

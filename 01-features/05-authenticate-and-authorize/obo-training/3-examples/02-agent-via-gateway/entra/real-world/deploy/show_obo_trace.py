@@ -95,8 +95,7 @@ def main() -> None:
     )
     if proc.returncode != 0:
         print(
-            f"ERROR: `agentcore logs` failed (exit {proc.returncode}):\n"
-            f"{proc.stderr.strip() or proc.stdout.strip()}",
+            f"ERROR: `agentcore logs` failed (exit {proc.returncode}):\n{proc.stderr.strip() or proc.stdout.strip()}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -189,9 +188,7 @@ def main() -> None:
         value = os.environ.get(env_key, "").strip()
         if value:
             print(f"  {label:<12} <- {env_key} = {value}")
-    print(
-        f"  {'user oid':<12} = unique per user; unchanged across every token in the chain"
-    )
+    print(f"  {'user oid':<12} = unique per user; unchanged across every token in the chain")
     print()
     print("Format below: aud=<Label> (<raw-id>) — the raw ID is preserved so you can")
     print("cross-check against `.env` without leaving this output.")
@@ -205,20 +202,12 @@ def main() -> None:
         print()
 
     total = sum(len(g) for g in invocations)
-    print(
-        f"Found {total} OBOTRACE line(s) across {len(invocations)} invocation(s) in the last {args.since}."
-    )
+    print(f"Found {total} OBOTRACE line(s) across {len(invocations)} invocation(s) in the last {args.since}.")
     print()
     print("What to watch for:")
-    print(
-        "  * `aud` rotates:  AgentApp -> GatewayApp -> (graph audience, invisible from the agent)"
-    )
-    print(
-        "  * `azp` rotates:  FrontendApp -> AgentApp -> GatewayApp   (the actor chain)"
-    )
-    print(
-        "  * `oid` STAYS THE SAME across every T_* — that's user identity propagation"
-    )
+    print("  * `aud` rotates:  AgentApp -> GatewayApp -> (graph audience, invisible from the agent)")
+    print("  * `azp` rotates:  FrontendApp -> AgentApp -> GatewayApp   (the actor chain)")
+    print("  * `oid` STAYS THE SAME across every T_* — that's user identity propagation")
 
 
 if __name__ == "__main__":

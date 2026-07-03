@@ -61,17 +61,12 @@ FRONTEND_REDIRECT_URI = _env("FRONTEND_REDIRECT_URI")
 SESSION_SECRET = _env("FRONTEND_SESSION_SECRET", secrets.token_hex(32))
 AGENT_RUNTIME_INVOKE_URL = os.environ.get("AGENT_RUNTIME_INVOKE_URL", "").strip()
 
-DISCOVERY_URL = (
-    f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}"
-    f"/.well-known/openid-configuration"
-)
+DISCOVERY_URL = f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}/.well-known/openid-configuration"
 
 
 app = FastAPI(title="OBO Use Case 2 — Real-world frontend (Okta)")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax")
-templates = Jinja2Templates(
-    directory=str(Path(__file__).resolve().parent / "templates")
-)
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 oauth = OAuth()
 oauth.register(

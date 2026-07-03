@@ -84,23 +84,15 @@ def pause(prompt: str = "Press Enter to continue") -> None:
         sys.exit(0)
 
 
-def show_claims(
-    label: str, claims: dict[str, Any], highlight: list[str] | None = None
-) -> None:
+def show_claims(label: str, claims: dict[str, Any], highlight: list[str] | None = None) -> None:
     """Pretty-print JWT claims, optionally bolding specified keys."""
     highlight = highlight or []
     print(f"  {BOLD}{label}:{RESET}")
     # Preserve insertion order; highlighted keys first if present
-    ordered_keys = [k for k in highlight if k in claims] + [
-        k for k in claims if k not in highlight
-    ]
+    ordered_keys = [k for k in highlight if k in claims] + [k for k in claims if k not in highlight]
     for key in ordered_keys:
         value = claims[key]
-        value_str = (
-            json.dumps(value, default=str)
-            if isinstance(value, (dict, list))
-            else str(value)
-        )
+        value_str = json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
         # Truncate very long values
         if len(value_str) > 60:
             value_str = value_str[:57] + "..."

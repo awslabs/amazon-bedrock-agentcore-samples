@@ -64,9 +64,7 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
     url = _discovery_url(domain, auth_server_id)
     print(f"Preflighting discovery URL:\n  {url}")
     try:
-        with urlopen(
-            Request(url, headers={"Accept": "application/json"}), timeout=10
-        ) as resp:
+        with urlopen(Request(url, headers={"Accept": "application/json"}), timeout=10) as resp:
             status = resp.status
             body = resp.read(2048).decode("utf-8", errors="replace")
     except HTTPError as e:

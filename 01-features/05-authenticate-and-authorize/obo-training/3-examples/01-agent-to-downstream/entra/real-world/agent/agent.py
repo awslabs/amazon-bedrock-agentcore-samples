@@ -31,9 +31,7 @@ from strands import Agent, tool
 
 
 WORKLOAD_NAME = os.environ.get("WORKLOAD_NAME", "obo-usecase1-entra-realworld")
-ACTOR_PROVIDER_NAME = os.environ.get(
-    "ACTOR_PROVIDER_NAME", "obo-uc1-entra-realworld-actor"
-)
+ACTOR_PROVIDER_NAME = os.environ.get("ACTOR_PROVIDER_NAME", "obo-uc1-entra-realworld-actor")
 GRAPH_SCOPE = os.environ.get("GRAPH_SCOPE", "https://graph.microsoft.com/User.Read")
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
 

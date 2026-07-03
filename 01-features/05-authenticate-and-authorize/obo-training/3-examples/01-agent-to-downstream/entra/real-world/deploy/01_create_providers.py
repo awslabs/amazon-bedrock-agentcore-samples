@@ -120,9 +120,7 @@ def main() -> None:
     )
 
     print("\n✓ AgentCore Identity resources ready.")
-    print(
-        "Next step: follow README.md sections 5–10 to scaffold and deploy the agent with the AgentCore CLI."
-    )
+    print("Next step: follow README.md sections 5–10 to scaffold and deploy the agent with the AgentCore CLI.")
 
 
 if __name__ == "__main__":

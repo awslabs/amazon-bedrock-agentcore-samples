@@ -57,10 +57,7 @@ def start_callback_server(port: int = 8081) -> Tuple[HTTPServer, "Future[dict]"]
             if not result.done():
                 if "error" in params:
                     result.set_exception(
-                        RuntimeError(
-                            f"OAuth error: {params.get('error')} — "
-                            f"{params.get('error_description', '')}"
-                        )
+                        RuntimeError(f"OAuth error: {params.get('error')} — {params.get('error_description', '')}")
                     )
                 else:
                     result.set_result(params)

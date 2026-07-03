@@ -151,20 +151,14 @@ def _print_table(inbound: dict, outbound: dict, *, show_all: bool) -> None:
 
 def _teaching_summary(inbound: dict, outbound: dict) -> None:
     print("\nOBO invariants:")
-    user_stable = (
-        inbound.get("oid") == outbound.get("oid") and inbound.get("oid") is not None
-    )
+    user_stable = inbound.get("oid") == outbound.get("oid") and inbound.get("oid") is not None
     aud_rotated = inbound.get("aud") != outbound.get("aud")
     actor_key_in = "appid" if "appid" in inbound else "azp"
     actor_key_out = "appid" if "appid" in outbound else "azp"
     actor_rotated = inbound.get(actor_key_in) != outbound.get(actor_key_out)
 
-    print(
-        f"  {'✓' if user_stable else '✗'} user identity preserved   — same oid on both tokens"
-    )
-    print(
-        f"  {'✓' if aud_rotated else '✗'} audience rotated          — aud changed from inbound to outbound"
-    )
+    print(f"  {'✓' if user_stable else '✗'} user identity preserved   — same oid on both tokens")
+    print(f"  {'✓' if aud_rotated else '✗'} audience rotated          — aud changed from inbound to outbound")
     print(
         f"  {'✓' if actor_rotated else '✗'} actor rotated             — {actor_key_in}/{actor_key_out} changed (frontend → agent)"
     )

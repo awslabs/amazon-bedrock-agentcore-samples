@@ -83,9 +83,9 @@ class TestEnsureActorProvider:
             client_secret="sec",
         )
 
-        cfg = client.create_oauth2_credential_provider.call_args.kwargs[
-            "oauth2ProviderConfigInput"
-        ]["customOauth2ProviderConfig"]
+        cfg = client.create_oauth2_credential_provider.call_args.kwargs["oauth2ProviderConfigInput"][
+            "customOauth2ProviderConfig"
+        ]
         obo = cfg["onBehalfOfTokenExchangeConfig"]
         assert obo["grantType"] == "TOKEN_EXCHANGE"
         assert obo["tokenExchangeGrantTypeConfig"]["actorTokenContent"] == "NONE"
