@@ -103,7 +103,8 @@ def main() -> None:
         parser.error("One of --user-token or --user-token-file is required.")
 
     user_jwt = (
-        args.user_token if args.user_token
+        args.user_token
+        if args.user_token
         else Path(args.user_token_file).read_text().strip()
     )
 
@@ -124,7 +125,7 @@ def main() -> None:
             f"       2. Visit http://localhost:8000/debug/token in the browser.\n"
             f"       3. Triple-click the textarea, copy the whole token.\n"
             f"       4. Paste it as the argument between quotes:\n"
-            f"            python deploy/compare_obo_claims.py --user-token \"eyJ...\"",
+            f'            python deploy/compare_obo_claims.py --user-token "eyJ..."',
             file=sys.stderr,
         )
         sys.exit(1)
@@ -154,8 +155,10 @@ def main() -> None:
         # Required for Microsoft OBO — see agent/agent.py for the full note.
         customParameters={"requested_token_use": "on_behalf_of"},
     )["accessToken"]
-    print_claims("T_gateway (after OBO #1, used by agent → Gateway)",
-                 decode_jwt_payload(t_gateway))
+    print_claims(
+        "T_gateway (after OBO #1, used by agent → Gateway)",
+        decode_jwt_payload(t_gateway),
+    )
 
     # OBO #2: T_gateway → T_graph (this is what the Gateway does internally).
     # We re-do it here for visibility. In the real flow, we don't see this
@@ -170,11 +173,14 @@ def main() -> None:
         oauth2Flow="ON_BEHALF_OF_TOKEN_EXCHANGE",
         customParameters={"requested_token_use": "on_behalf_of"},
     )["accessToken"]
-    print_claims("T_graph (after OBO #2, used by Gateway → Graph)",
-                 decode_jwt_payload(t_graph))
+    print_claims(
+        "T_graph (after OBO #2, used by Gateway → Graph)", decode_jwt_payload(t_graph)
+    )
 
     print("\n--- Summary ---")
-    print("Watch the `aud` claim rotate across the three tokens (agent → gateway → graph).")
+    print(
+        "Watch the `aud` claim rotate across the three tokens (agent → gateway → graph)."
+    )
     print("Watch the `azp`/`appid` claim rotate (frontend → agent → gateway).")
     print("Watch the `oid` claim STAY THE SAME — that's the user identity propagating.")
     print("`sub` will differ at every hop (Entra mints a new PPID per audience).")

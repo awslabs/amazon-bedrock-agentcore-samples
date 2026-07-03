@@ -34,9 +34,7 @@ WORKLOAD_NAME = os.environ.get("WORKLOAD_NAME", "obo-usecase1-entra-realworld")
 ACTOR_PROVIDER_NAME = os.environ.get(
     "ACTOR_PROVIDER_NAME", "obo-uc1-entra-realworld-actor"
 )
-GRAPH_SCOPE = os.environ.get(
-    "GRAPH_SCOPE", "https://graph.microsoft.com/User.Read"
-)
+GRAPH_SCOPE = os.environ.get("GRAPH_SCOPE", "https://graph.microsoft.com/User.Read")
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
 
 app = BedrockAgentCoreApp()
@@ -59,7 +57,8 @@ def _obo_exchange(user_token: str) -> str:
          actual exchange via the configured MicrosoftOauth2 credential provider.
     """
     workload_token = _ac_identity.get_workload_access_token_for_jwt(
-        workloadName=WORKLOAD_NAME, userToken=user_token,
+        workloadName=WORKLOAD_NAME,
+        userToken=user_token,
     )["workloadAccessToken"]
 
     return _ac_identity.get_resource_oauth2_token(
@@ -102,7 +101,6 @@ def get_my_profile() -> dict[str, Any]:
             "error": f"Graph call failed: {e.response.status_code if e.response else 'unknown'}",
             "detail": e.response.text if e.response else "",
         }
-
 
 
 SYSTEM_PROMPT = """

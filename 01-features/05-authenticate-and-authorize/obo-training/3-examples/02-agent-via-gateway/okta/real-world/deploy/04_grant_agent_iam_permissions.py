@@ -229,13 +229,10 @@ def main() -> None:
         PolicyDocument=json.dumps(policy),
     )
     print(f"✓ Attached inline policy '{POLICY_NAME}' to {role_name}")
-
-    print()
-    print("Permissions granted:")
-    for stmt in policy["Statement"]:
-        print(f"  {stmt['Sid']}: {', '.join(stmt['Action'])}")
-        for r in stmt["Resource"]:
-            print(f"    on {r}")
+    print(
+        f"  ({len(policy['Statement'])} statement(s) granting the OBO actions "
+        f"listed in this file's module docstring.)"
+    )
     print()
     print("IAM changes propagate within seconds. No redeploy needed.")
 

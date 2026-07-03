@@ -101,7 +101,10 @@ def provider_exists(ac_control, name: str) -> bool:
         ac_control.get_oauth2_credential_provider(name=name)
         return True
     except ClientError as e:
-        if e.response["Error"].get("Code") in {"ResourceNotFoundException", "NotFoundException"}:
+        if e.response["Error"].get("Code") in {
+            "ResourceNotFoundException",
+            "NotFoundException",
+        }:
             return False
         raise
 
@@ -123,7 +126,8 @@ def delete_all_targets(client, gateway_id: str) -> None:
         name = t.get("name") or t.get("targetId")
         try:
             client.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=t["targetId"],
+                gatewayIdentifier=gateway_id,
+                targetId=t["targetId"],
             )
             print(f"  ✓ Deleted target: {name} ({t['targetId']})")
         except ClientError as e:
@@ -157,7 +161,10 @@ def delete_gateway_if_exists(client, gateway_id: str, name: str) -> None:
         client.delete_gateway(gatewayIdentifier=gateway_id)
         print(f"✓ Deleted gateway: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ResourceNotFoundException", "NotFoundException"}:
+        if e.response["Error"]["Code"] in {
+            "ResourceNotFoundException",
+            "NotFoundException",
+        }:
             print(f"• Gateway already gone: {name}")
         else:
             raise
@@ -168,7 +175,10 @@ def delete_provider_if_exists(client, name: str) -> None:
         client.delete_oauth2_credential_provider(name=name)
         print(f"✓ Deleted credential provider: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ResourceNotFoundException", "NotFoundException"}:
+        if e.response["Error"]["Code"] in {
+            "ResourceNotFoundException",
+            "NotFoundException",
+        }:
             print(f"• Credential provider already gone: {name}")
         else:
             raise
@@ -179,7 +189,10 @@ def delete_workload_if_exists(client, name: str) -> None:
         client.delete_workload_identity(name=name)
         print(f"✓ Deleted workload identity: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ResourceNotFoundException", "NotFoundException"}:
+        if e.response["Error"]["Code"] in {
+            "ResourceNotFoundException",
+            "NotFoundException",
+        }:
             print(f"• Workload identity already gone: {name}")
         else:
             raise
@@ -233,8 +246,10 @@ def verify_all_gone(
         print(f"  ? workload identity     : check errored ({type(e).__name__}: {e})")
 
     # 2) Credential providers.
-    for label, name in [("agent-actor provider  ", agent_provider),
-                        ("gateway-actor provider", gateway_provider)]:
+    for label, name in [
+        ("agent-actor provider  ", agent_provider),
+        ("gateway-actor provider", gateway_provider),
+    ]:
         try:
             if provider_exists(ac_control, name):
                 survivors.append(f"Credential provider still exists: {name}")
@@ -303,13 +318,15 @@ def clean_env_values(env_path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--verify-only", action="store_true",
+        "--verify-only",
+        action="store_true",
         help="Skip deletions; just report what's still present.",
     )
     parser.add_argument(
-        "--clean-env", action="store_true",
+        "--clean-env",
+        action="store_true",
         help="After teardown, clear deploy-populated values (GATEWAY_MCP_URL, "
-             "GATEWAY_SERVICE_ROLE_ARN, AGENT_RUNTIME_INVOKE_URL) from .env.",
+        "GATEWAY_SERVICE_ROLE_ARN, AGENT_RUNTIME_INVOKE_URL) from .env.",
     )
     args = parser.parse_args()
 
@@ -368,7 +385,10 @@ def main() -> None:
         print()
         print("If a resource is stuck (e.g. Gateway target won't delete), inspect it:")
         print("    aws bedrock-agentcore-control list-gateways --region", region)
-        print("    aws bedrock-agentcore-control list-gateway-targets --gateway-identifier <id> --region", region)
+        print(
+            "    aws bedrock-agentcore-control list-gateway-targets --gateway-identifier <id> --region",
+            region,
+        )
         sys.exit(1 if not args.verify_only else 0)
     else:
         print()
@@ -383,9 +403,11 @@ def main() -> None:
     print()
     print("Still to clean up manually if you're done for good:")
     print("  - The agent runtime: from inside $AGENT_RUNTIME_NAME/")
-    print("      agentcore remove agent --name \"$AGENT_RUNTIME_NAME\" -y")
+    print('      agentcore remove agent --name "$AGENT_RUNTIME_NAME" -y')
     print("      agentcore deploy -y -v")
-    print("  - The scaffolded CLI project folder ($AGENT_RUNTIME_NAME/) — rm -rf if you like.")
+    print(
+        "  - The scaffolded CLI project folder ($AGENT_RUNTIME_NAME/) — rm -rf if you like."
+    )
     print("  - The Okta app registrations — either leave them (cost nothing) or:")
     print("      python deploy/00_delete_okta_apps.py --yes")
 

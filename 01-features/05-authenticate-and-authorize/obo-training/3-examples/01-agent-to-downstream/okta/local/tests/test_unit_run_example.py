@@ -1,4 +1,5 @@
 """Unit tests for 02_run_example.py (Okta flavor) — AWS calls mocked."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -35,21 +36,25 @@ def mock_ac_identity():
         },
         # 2nd: USER_FEDERATION after completion — returns user token
         {
-            "accessToken": make_jwt({
-                "aud": "api://default",
-                "sub": "alice@example.com",
-                "cid": "native-client-id",
-                "scp": ["openid"],
-            }),
+            "accessToken": make_jwt(
+                {
+                    "aud": "api://default",
+                    "sub": "alice@example.com",
+                    "cid": "native-client-id",
+                    "scp": ["openid"],
+                }
+            ),
         },
         # 3rd: OBO exchange — returns downstream token
         {
-            "accessToken": make_jwt({
-                "aud": "api://default",
-                "sub": "alice@example.com",
-                "cid": "service-client-id",
-                "scp": ["oboe2e.apiC.read"],
-            }),
+            "accessToken": make_jwt(
+                {
+                    "aud": "api://default",
+                    "sub": "alice@example.com",
+                    "cid": "service-client-id",
+                    "scp": ["oboe2e.apiC.read"],
+                }
+            ),
         },
     ]
 
@@ -72,7 +77,8 @@ class TestRunExample:
         fake_future = MagicMock()
         fake_future.result.return_value = {"code": "c"}
         monkeypatch.setattr(
-            mod, "start_callback_server",
+            mod,
+            "start_callback_server",
             lambda port: (fake_server, fake_future),
         )
         monkeypatch.setattr(mod.webbrowser, "open", lambda url: None)
@@ -94,7 +100,6 @@ class TestRunExample:
         with pytest.raises(SystemExit):
             mod.main()
 
-
     def test_cached_user_token_skips_3lo(self, required_env, monkeypatch):
         """If a cached token is returned, skip the browser flow."""
         mod = _load_module()
@@ -105,9 +110,17 @@ class TestRunExample:
         }
         client.get_resource_oauth2_token.side_effect = [
             # Cached token branch on first USER_FEDERATION call
-            {"accessToken": make_jwt({"sub": "alice@example.com", "cid": "native-client-id"})},
+            {
+                "accessToken": make_jwt(
+                    {"sub": "alice@example.com", "cid": "native-client-id"}
+                )
+            },
             # OBO
-            {"accessToken": make_jwt({"sub": "alice@example.com", "cid": "service-client-id"})},
+            {
+                "accessToken": make_jwt(
+                    {"sub": "alice@example.com", "cid": "service-client-id"}
+                )
+            },
         ]
         client.get_workload_access_token_for_jwt.return_value = {
             "workloadAccessToken": "obo-wl-token"
@@ -118,7 +131,8 @@ class TestRunExample:
         fake_server = MagicMock()
         fake_future = MagicMock()
         monkeypatch.setattr(
-            mod, "start_callback_server",
+            mod,
+            "start_callback_server",
             lambda port: (fake_server, fake_future),
         )
         monkeypatch.setattr(mod.webbrowser, "open", lambda url: None)

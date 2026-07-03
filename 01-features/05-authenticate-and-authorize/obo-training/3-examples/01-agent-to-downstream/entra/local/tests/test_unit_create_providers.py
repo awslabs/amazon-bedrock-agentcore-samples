@@ -1,4 +1,5 @@
 """Unit tests for 01_create_providers.py — all boto3 calls mocked."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -101,8 +102,12 @@ class TestMain:
         mod = _load_module()
         # Clear all required vars
         for var in [
-            "TENANT_ID", "AGENT_CLIENT_ID", "AGENT_CLIENT_SECRET",
-            "WORKLOAD_NAME", "CLIENT_PROVIDER_NAME", "ACTOR_PROVIDER_NAME",
+            "TENANT_ID",
+            "AGENT_CLIENT_ID",
+            "AGENT_CLIENT_SECRET",
+            "WORKLOAD_NAME",
+            "CLIENT_PROVIDER_NAME",
+            "ACTOR_PROVIDER_NAME",
         ]:
             monkeypatch.delenv(var, raising=False)
 

@@ -50,14 +50,14 @@ FRONTEND_REDIRECT_URI = _env("FRONTEND_REDIRECT_URI")
 SESSION_SECRET = _env("FRONTEND_SESSION_SECRET", secrets.token_hex(32))
 AGENT_RUNTIME_INVOKE_URL = os.environ.get("AGENT_RUNTIME_INVOKE_URL", "").strip()
 
-DISCOVERY_URL = (
-    f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}/.well-known/openid-configuration"
-)
+DISCOVERY_URL = f"https://{OKTA_DOMAIN}/oauth2/{OKTA_AUTH_SERVER_ID}/.well-known/openid-configuration"
 
 
 app = FastAPI(title="OBO Use Case 1 — Real-world frontend (Okta)")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax")
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+templates = Jinja2Templates(
+    directory=str(Path(__file__).resolve().parent / "templates")
+)
 
 oauth = OAuth()
 oauth.register(
@@ -157,15 +157,22 @@ async def ask(request: Request) -> Any:
             return templates.TemplateResponse(
                 request,
                 "result.html",
-                {"user": user, "prompt": prompt, "error": f"Network error calling agent: {e}"},
+                {
+                    "user": user,
+                    "prompt": prompt,
+                    "error": f"Network error calling agent: {e}",
+                },
             )
 
     if response.status_code != 200:
         return templates.TemplateResponse(
             request,
             "result.html",
-            {"user": user, "prompt": prompt,
-             "error": f"Agent returned {response.status_code}: {response.text}"},
+            {
+                "user": user,
+                "prompt": prompt,
+                "error": f"Agent returned {response.status_code}: {response.text}",
+            },
         )
 
     # AgentCore Runtime streams the agent's response as Server-Sent Events
@@ -180,7 +187,7 @@ async def ask(request: Request) -> Any:
         for line in raw_text.splitlines():
             if not line.startswith("data:"):
                 continue
-            payload = line[len("data:"):].strip()
+            payload = line[len("data:") :].strip()
             if not payload:
                 continue
             try:

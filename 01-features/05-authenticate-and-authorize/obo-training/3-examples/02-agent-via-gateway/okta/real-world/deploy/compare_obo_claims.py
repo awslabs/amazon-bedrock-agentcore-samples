@@ -107,7 +107,8 @@ def main() -> None:
         parser.error("One of --user-token or --user-token-file is required.")
 
     user_jwt = (
-        args.user_token if args.user_token
+        args.user_token
+        if args.user_token
         else Path(args.user_token_file).read_text().strip()
     )
 
@@ -127,7 +128,7 @@ def main() -> None:
             f"       2. Visit http://localhost:8000/debug/token in the browser.\n"
             f"       3. Triple-click the textarea, copy the whole token.\n"
             f"       4. Paste it as the argument between quotes:\n"
-            f"            python deploy/compare_obo_claims.py --user-token \"eyJ...\"",
+            f'            python deploy/compare_obo_claims.py --user-token "eyJ..."',
             file=sys.stderr,
         )
         sys.exit(1)

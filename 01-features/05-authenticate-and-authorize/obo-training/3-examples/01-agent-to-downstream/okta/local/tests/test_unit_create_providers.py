@@ -1,4 +1,5 @@
 """Unit tests for 01_create_providers.py (Okta flavor) — boto3 calls mocked."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -56,8 +57,12 @@ class TestEnsureClientProvider:
         client.get_oauth2_credential_provider.return_value = {"name": "p"}
 
         result = mod.ensure_okta_client_provider(
-            client, name="p", domain="x", auth_server_id="default",
-            client_id="c", client_secret="s",
+            client,
+            name="p",
+            domain="x",
+            auth_server_id="default",
+            client_id="c",
+            client_secret="s",
         )
 
         assert result == {"name": "p"}
@@ -70,8 +75,12 @@ class TestEnsureActorProvider:
         client.create_oauth2_credential_provider.return_value = {}
 
         mod.ensure_okta_actor_provider(
-            client, name="p", domain="foo.okta.com", auth_server_id="default",
-            client_id="cid", client_secret="sec",
+            client,
+            name="p",
+            domain="foo.okta.com",
+            auth_server_id="default",
+            client_id="cid",
+            client_secret="sec",
         )
 
         cfg = client.create_oauth2_credential_provider.call_args.kwargs[

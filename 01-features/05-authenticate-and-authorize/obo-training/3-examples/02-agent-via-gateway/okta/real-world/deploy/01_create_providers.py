@@ -82,22 +82,28 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
     url = _discovery_url(domain, auth_server_id)
     print(f"Preflighting discovery URL:\n  {url}")
     try:
-        with urlopen(Request(url, headers={"Accept": "application/json"}),
-                     timeout=10) as resp:
+        with urlopen(
+            Request(url, headers={"Accept": "application/json"}), timeout=10
+        ) as resp:
             status = resp.status
             body = resp.read(2048).decode("utf-8", errors="replace")
     except HTTPError as e:
-        print(f"✗ Discovery URL returned HTTP {e.code}. "
-              f"Check OKTA_DOMAIN and OKTA_AUTH_SERVER_ID in .env.",
-              file=sys.stderr)
+        print(
+            f"✗ Discovery URL returned HTTP {e.code}. "
+            f"Check OKTA_DOMAIN and OKTA_AUTH_SERVER_ID in .env.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     except URLError as e:
         print(f"✗ Could not reach discovery URL: {e.reason}", file=sys.stderr)
         sys.exit(1)
 
     if status != 200 or '"issuer"' not in body:
-        print(f"✗ Discovery URL returned HTTP {status} but content doesn't "
-              f"look like an OIDC doc.", file=sys.stderr)
+        print(
+            f"✗ Discovery URL returned HTTP {status} but content doesn't "
+            f"look like an OIDC doc.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     print("✓ Discovery URL reachable and returns a valid-looking OIDC document.")
@@ -112,10 +118,10 @@ def ensure_workload_identity(client, name: str) -> None:
         msg = e.response["Error"].get("Message", "")
         # AgentCore returns ValidationException with an "already exists"
         # message when the workload is a duplicate instead of ConflictException.
-        already_exists = (
-            code in {"ConflictException", "ResourceAlreadyExistsException"}
-            or ("already exists" in msg.lower())
-        )
+        already_exists = code in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        } or ("already exists" in msg.lower())
         if already_exists:
             print(f"• Workload identity already exists: {name}")
         else:
@@ -183,10 +189,10 @@ def ensure_okta_obo_provider(
     except ClientError as e:
         code = e.response["Error"].get("Code", "")
         msg = e.response["Error"].get("Message", "")
-        already_exists = (
-            code in {"ConflictException", "ResourceAlreadyExistsException"}
-            or ("already exists" in msg.lower())
-        )
+        already_exists = code in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        } or ("already exists" in msg.lower())
         if not already_exists:
             raise
 

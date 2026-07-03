@@ -62,7 +62,9 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
     url = _discovery_url(domain, auth_server_id)
     print(f"Preflighting discovery URL:\n  {url}")
     try:
-        with urlopen(Request(url, headers={"Accept": "application/json"}), timeout=10) as resp:
+        with urlopen(
+            Request(url, headers={"Accept": "application/json"}), timeout=10
+        ) as resp:
             status = resp.status
             body = resp.read(2048).decode("utf-8", errors="replace")
     except HTTPError as e:
@@ -73,8 +75,10 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
         sys.exit(1)
 
     if status != 200 or '"issuer"' not in body:
-        print(f"✗ Discovery URL returned HTTP {status} but content doesn't look like an OIDC doc.",
-              file=sys.stderr)
+        print(
+            f"✗ Discovery URL returned HTTP {status} but content doesn't look like an OIDC doc.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     print("✓ Discovery URL reachable and returns a valid-looking OIDC document.")
@@ -85,15 +89,23 @@ def ensure_workload_identity(client, name: str) -> None:
         client.create_workload_identity(name=name)
         print(f"✓ Created workload identity: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Workload identity already exists: {name}")
         else:
             raise
 
 
 def ensure_okta_actor_provider(
-    client, *, name: str, domain: str, auth_server_id: str,
-    client_id: str, client_secret: str,
+    client,
+    *,
+    name: str,
+    domain: str,
+    auth_server_id: str,
+    client_id: str,
+    client_secret: str,
 ) -> None:
     """Create the OBO-enabled credential provider using Okta's Token Exchange grant."""
     config = {
@@ -120,7 +132,10 @@ def ensure_okta_actor_provider(
         )
         print(f"✓ Created credential provider: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Credential provider already exists: {name}")
         else:
             raise
@@ -160,7 +175,9 @@ def main() -> None:
     )
 
     print("\n✓ AgentCore Identity resources ready.")
-    print("Next step: follow README.md sections 5–10 to scaffold and deploy the agent with the AgentCore CLI.")
+    print(
+        "Next step: follow README.md sections 5–10 to scaffold and deploy the agent with the AgentCore CLI."
+    )
 
 
 if __name__ == "__main__":

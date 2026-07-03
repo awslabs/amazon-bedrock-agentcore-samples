@@ -39,7 +39,6 @@ def header(title: str, subtitle: str = "") -> None:
     print(f"{BOLD}{CYAN}{'═' * 72}{RESET}")
 
 
-
 def chapter(num: int, title: str, objective: str) -> None:
     print()
     print(f"{BOLD}{MAGENTA}━━━ Chapter {num}: {title} ━━━{RESET}")
@@ -85,8 +84,9 @@ def pause(prompt: str = "Press Enter to continue") -> None:
         sys.exit(0)
 
 
-
-def show_claims(label: str, claims: dict[str, Any], highlight: list[str] | None = None) -> None:
+def show_claims(
+    label: str, claims: dict[str, Any], highlight: list[str] | None = None
+) -> None:
     """Pretty-print JWT claims, optionally bolding specified keys."""
     highlight = highlight or []
     print(f"  {BOLD}{label}:{RESET}")
@@ -96,7 +96,11 @@ def show_claims(label: str, claims: dict[str, Any], highlight: list[str] | None 
     ]
     for key in ordered_keys:
         value = claims[key]
-        value_str = json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
+        value_str = (
+            json.dumps(value, default=str)
+            if isinstance(value, (dict, list))
+            else str(value)
+        )
         # Truncate very long values
         if len(value_str) > 60:
             value_str = value_str[:57] + "..."
@@ -108,8 +112,10 @@ def show_claims(label: str, claims: dict[str, Any], highlight: list[str] | None 
 
 
 def compare_claims(
-    left_label: str, left: dict[str, Any],
-    right_label: str, right: dict[str, Any],
+    left_label: str,
+    left: dict[str, Any],
+    right_label: str,
+    right: dict[str, Any],
     keys: list[str],
 ) -> None:
     """Side-by-side comparison of specific claims, showing matches vs changes."""
@@ -139,4 +145,4 @@ def _format_claim(value: Any) -> str:
 
 
 def _truncate(s: str, width: int) -> str:
-    return (s[:width - 3] + "...") if len(s) > width else s
+    return (s[: width - 3] + "...") if len(s) > width else s

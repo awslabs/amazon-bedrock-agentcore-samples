@@ -60,7 +60,9 @@ def main() -> None:
     print(f"\nTo remove the deployed Runtime '{agent_runtime_name}':")
     print(f"  cd {example_root}")
     print(f"  agentcore remove agent {agent_runtime_name}")
-    print("  agentcore deploy   # tears down the CloudFormation stack for the removed agent")
+    print(
+        "  agentcore deploy   # tears down the CloudFormation stack for the removed agent"
+    )
     print()
     print("Remember to delete the Entra app registrations by hand if no longer needed.")
 

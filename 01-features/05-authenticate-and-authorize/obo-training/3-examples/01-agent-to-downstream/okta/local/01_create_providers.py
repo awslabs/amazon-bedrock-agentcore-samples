@@ -32,7 +32,10 @@ from dotenv import load_dotenv
 def must_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
-        print(f"ERROR: required env var {name} is not set. See config.example.env.", file=sys.stderr)
+        print(
+            f"ERROR: required env var {name} is not set. See config.example.env.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return value
 
@@ -61,7 +64,9 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
     url = _discovery_url(domain, auth_server_id)
     print(f"Preflighting discovery URL:\n  {url}")
     try:
-        with urlopen(Request(url, headers={"Accept": "application/json"}), timeout=10) as resp:
+        with urlopen(
+            Request(url, headers={"Accept": "application/json"}), timeout=10
+        ) as resp:
             status = resp.status
             body = resp.read(2048).decode("utf-8", errors="replace")
     except HTTPError as e:
@@ -70,13 +75,21 @@ def preflight_discovery_url(domain: str, auth_server_id: str) -> None:
         sys.exit(1)
     except URLError as e:
         print(f"✗ Could not reach discovery URL: {e.reason}", file=sys.stderr)
-        print("  Check OKTA_DOMAIN is correct and reachable from your network.", file=sys.stderr)
+        print(
+            "  Check OKTA_DOMAIN is correct and reachable from your network.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if status != 200 or '"issuer"' not in body:
-        print(f"✗ Discovery URL returned HTTP {status} but content doesn't look like an OIDC discovery doc.",
-              file=sys.stderr)
-        print("  First 500 chars:\n    " + body[:500].replace("\n", "\n    "), file=sys.stderr)
+        print(
+            f"✗ Discovery URL returned HTTP {status} but content doesn't look like an OIDC discovery doc.",
+            file=sys.stderr,
+        )
+        print(
+            "  First 500 chars:\n    " + body[:500].replace("\n", "\n    "),
+            file=sys.stderr,
+        )
         _print_discovery_hints(domain, auth_server_id)
         sys.exit(1)
 
@@ -108,7 +121,10 @@ def ensure_workload_identity(client, name: str) -> dict:
         print(f"✓ Created workload identity: {name}")
         return resp
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Workload identity already exists: {name}")
             return client.get_workload_identity(name=name)
         raise
@@ -147,7 +163,10 @@ def ensure_okta_client_provider(
         print(f"✓ Created client credential provider: {name}")
         return resp
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Client credential provider already exists: {name}")
             return client.get_oauth2_credential_provider(name=name)
         raise
@@ -188,7 +207,10 @@ def ensure_okta_actor_provider(
         print(f"✓ Created actor credential provider: {name}")
         return resp
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Actor credential provider already exists: {name}")
             return client.get_oauth2_credential_provider(name=name)
         raise

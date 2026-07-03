@@ -6,6 +6,7 @@ Integration tests read this cache. Re-run whenever the token expires.
 Usage:
     python generate_user_jwt.py
 """
+
 from __future__ import annotations
 
 import base64
@@ -53,7 +54,8 @@ def main() -> None:
     server = None
     try:
         wl = ac.get_workload_access_token_for_user_id(
-            workloadName=workload_name, userId=user_alias,
+            workloadName=workload_name,
+            userId=user_alias,
         )["workloadAccessToken"]
 
         # First call returns either a cached access token OR an authorization URL.
@@ -66,7 +68,9 @@ def main() -> None:
         )
 
         if "accessToken" in fed:
-            print("✓ AgentCore had a cached token from a previous sign-in — reusing it.")
+            print(
+                "✓ AgentCore had a cached token from a previous sign-in — reusing it."
+            )
             token = fed["accessToken"]
         else:
             print("No cached token; starting 3LO sign-in...")
@@ -76,7 +80,8 @@ def main() -> None:
             code_future.result(timeout=300)
 
             ac.complete_resource_token_auth(
-                userIdentifier={"userId": user_alias}, sessionUri=fed["sessionUri"],
+                userIdentifier={"userId": user_alias},
+                sessionUri=fed["sessionUri"],
             )
             token = ac.get_resource_oauth2_token(
                 workloadIdentityToken=wl,
@@ -87,13 +92,20 @@ def main() -> None:
             )["accessToken"]
 
         claims = decode_claims(token)
-        CACHE_PATH.write_text(json.dumps({
-            "token": token,
-            "claims": claims,
-            "expires_at": claims.get("exp", int(time.time()) + 3600),
-        }, indent=2))
+        CACHE_PATH.write_text(
+            json.dumps(
+                {
+                    "token": token,
+                    "claims": claims,
+                    "expires_at": claims.get("exp", int(time.time()) + 3600),
+                },
+                indent=2,
+            )
+        )
         print(f"\n✓ Cached user JWT to {CACHE_PATH.name}")
-        print(f"  Expires: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(claims.get('exp', 0)))}")
+        print(
+            f"  Expires: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(claims.get('exp', 0)))}"
+        )
         print(f"  sub: {claims.get('sub')}")
         print(f"  aud: {claims.get('aud')}")
         print(f"  cid: {claims.get('cid')}")

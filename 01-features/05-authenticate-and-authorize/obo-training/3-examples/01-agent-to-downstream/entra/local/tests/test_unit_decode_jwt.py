@@ -2,6 +2,7 @@
 
 These tests do not hit any network or AWS service.
 """
+
 from __future__ import annotations
 
 import importlib.util

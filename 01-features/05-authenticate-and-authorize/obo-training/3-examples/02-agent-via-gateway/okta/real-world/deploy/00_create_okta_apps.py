@@ -132,16 +132,20 @@ class OktaClient:
         # If the caller pasted the -admin variant, strip it — the admin
         # endpoints work on the app-facing hostname too.
         if "-admin." in domain:
-            print(f"  ! OKTA_DOMAIN={domain} looks like the admin host; using "
-                  f"{domain.replace('-admin.', '.')} instead")
+            print(
+                f"  ! OKTA_DOMAIN={domain} looks like the admin host; using "
+                f"{domain.replace('-admin.', '.')} instead"
+            )
             domain = domain.replace("-admin.", ".")
         self.base = f"https://{domain}/api/v1"
         self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"SSWS {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        })
+        self.session.headers.update(
+            {
+                "Authorization": f"SSWS {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
+        )
 
     @staticmethod
     def _redact_response(body: Any) -> Any:
@@ -157,7 +161,11 @@ class OktaClient:
         if not isinstance(body, dict):
             return body  # plain error text — no keys to redact
         safe_keys = {
-            "errorCode", "errorSummary", "errorLink", "errorId", "errorCauses",
+            "errorCode",
+            "errorSummary",
+            "errorLink",
+            "errorId",
+            "errorCauses",
         }
         return {k: v for k, v in body.items() if k in safe_keys}
 
@@ -167,6 +175,7 @@ class OktaClient:
         if not isinstance(sent_body, dict):
             return sent_body
         sensitive = {"client_secret", "password", "token", "secret"}
+
         def scrub(d):
             if isinstance(d, dict):
                 return {
@@ -176,10 +185,12 @@ class OktaClient:
             if isinstance(d, list):
                 return [scrub(x) for x in d]
             return d
+
         return scrub(sent_body)
 
-    def _raise(self, method: str, url: str, resp: requests.Response,
-               sent_body: Any = None) -> None:
+    def _raise(
+        self, method: str, url: str, resp: requests.Response, sent_body: Any = None
+    ) -> None:
         try:
             body = resp.json()
         except Exception:
@@ -188,7 +199,8 @@ class OktaClient:
         safe_sent = self._redact_sent(sent_body) if sent_body is not None else None
         sent_repr = (
             json.dumps(safe_sent, indent=2)
-            if safe_sent is not None else "(no body sent)"
+            if safe_sent is not None
+            else "(no body sent)"
         )
         die(
             f"Okta API call failed: {method} {url}\n"
@@ -198,11 +210,21 @@ class OktaClient:
             f"  Request body we sent (redacted):\n{sent_repr}"
         )
 
-    def request(self, method: str, path: str, *, json_body: Any = None,
-                params: dict | None = None) -> Any:
+    def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json_body: Any = None,
+        params: dict | None = None,
+    ) -> Any:
         url = f"{self.base}{path}"
         resp = self.session.request(
-            method, url, json=json_body, params=params, timeout=30,
+            method,
+            url,
+            json=json_body,
+            params=params,
+            timeout=30,
         )
         if resp.status_code == 204:
             return None
@@ -213,10 +235,17 @@ class OktaClient:
         except ValueError:
             return resp.text
 
-    def get(self, path: str, **kw): return self.request("GET", path, **kw)
-    def post(self, path: str, **kw): return self.request("POST", path, **kw)
-    def put(self, path: str, **kw): return self.request("PUT", path, **kw)
-    def delete(self, path: str, **kw): return self.request("DELETE", path, **kw)
+    def get(self, path: str, **kw):
+        return self.request("GET", path, **kw)
+
+    def post(self, path: str, **kw):
+        return self.request("POST", path, **kw)
+
+    def put(self, path: str, **kw):
+        return self.request("PUT", path, **kw)
+
+    def delete(self, path: str, **kw):
+        return self.request("DELETE", path, **kw)
 
 
 def upsert_env_value(env_path: Path, key: str, value: str) -> None:
@@ -243,7 +272,7 @@ def env_value_is_placeholder(env_path: Path, key: str) -> bool:
         return True
     for line in env_path.read_text().splitlines():
         if line.startswith(f"{key}="):
-            value = line[len(key) + 1:].strip()
+            value = line[len(key) + 1 :].strip()
             return value in ("", "replace-me", "REPLACE_ME")
     return True
 
@@ -252,8 +281,14 @@ def env_value_is_placeholder(env_path: Path, key: str) -> bool:
 def verify_auth_server(client: OktaClient, auth_server_id: str) -> dict:
     """Verify the auth server exists and return its metadata (incl. audiences)."""
     servers = client.get("/authorizationServers")
-    match = next((s for s in servers if s["id"] == auth_server_id
-                  or s["name"] == auth_server_id), None)
+    match = next(
+        (
+            s
+            for s in servers
+            if s["id"] == auth_server_id or s["name"] == auth_server_id
+        ),
+        None,
+    )
     if not match:
         die(
             f"Authorization server '{auth_server_id}' not found on this tenant.\n"
@@ -293,11 +328,14 @@ def ensure_scope(client: OktaClient, auth_server_id: str, scope_def: dict) -> No
 # ── Apps ────────────────────────────────────────────────────────────────────
 def find_app_by_label(client: OktaClient, label: str) -> dict | None:
     """Look up an OIDC app by human label. Only searches active apps."""
-    apps = client.get("/apps", params={
-        "q": label,
-        "filter": "status eq \"ACTIVE\"",
-        "limit": 20,
-    })
+    apps = client.get(
+        "/apps",
+        params={
+            "q": label,
+            "filter": 'status eq "ACTIVE"',
+            "limit": 20,
+        },
+    )
     for a in apps:
         if a.get("label") == label:
             return a
@@ -369,9 +407,7 @@ def create_api_services_app(client: OktaClient, label: str) -> dict:
     return client.post("/apps", json_body=body)
 
 
-def _put_minimal_web_app(
-    client: OktaClient, app: dict, *, pkce_required: bool
-) -> dict:
+def _put_minimal_web_app(client: OktaClient, app: dict, *, pkce_required: bool) -> dict:
     """PUT a minimal Web App body — includes ONLY fields Okta's admin API accepts.
 
     Reusing the GET response as PUT body fails with E0000003 because Okta
@@ -613,7 +649,9 @@ def get_or_create_app(client: OktaClient, kind: str, label: str) -> tuple[dict, 
 
 
 # ── Access policies ────────────────────────────────────────────────────────
-def find_policy_by_name(client: OktaClient, auth_server_id: str, name: str) -> dict | None:
+def find_policy_by_name(
+    client: OktaClient, auth_server_id: str, name: str
+) -> dict | None:
     policies = client.get(f"/authorizationServers/{auth_server_id}/policies")
     for p in policies:
         if p.get("name") == name:
@@ -653,7 +691,9 @@ def ensure_policy(
         # Activate explicitly in case PUT with status ACTIVE isn't honored
         # (some Okta orgs treat status transitions via dedicated endpoints).
         try:
-            client.post(f"/authorizationServers/{auth_server_id}/policies/{policy_id}/lifecycle/activate")
+            client.post(
+                f"/authorizationServers/{auth_server_id}/policies/{policy_id}/lifecycle/activate"
+            )
         except SystemExit:
             # Already active — Okta returns 400. Ignore.
             pass
@@ -661,14 +701,16 @@ def ensure_policy(
         return {"id": policy_id, **body}
 
     resp = client.post(
-        f"/authorizationServers/{auth_server_id}/policies", json_body=body,
+        f"/authorizationServers/{auth_server_id}/policies",
+        json_body=body,
     )
     print(f"  ✓ Policy created: {name}")
     return resp
 
 
-def find_rule_by_name(client: OktaClient, auth_server_id: str,
-                      policy_id: str, name: str) -> dict | None:
+def find_rule_by_name(
+    client: OktaClient, auth_server_id: str, policy_id: str, name: str
+) -> dict | None:
     rules = client.get(
         f"/authorizationServers/{auth_server_id}/policies/{policy_id}/rules"
     )
@@ -736,7 +778,8 @@ def ensure_rule(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--rotate-secrets", action="store_true",
+        "--rotate-secrets",
+        action="store_true",
         help="Force rotation of client secrets even if .env already has values.",
     )
     args = parser.parse_args()
@@ -756,15 +799,21 @@ def main() -> None:
 
     okta_domain = os.environ.get("OKTA_DOMAIN", "").strip()
     okta_token = os.environ.get("OKTA_ADMIN_TOKEN", "").strip()
-    auth_server_id = os.environ.get("OKTA_AUTH_SERVER_ID", "default").strip() or "default"
+    auth_server_id = (
+        os.environ.get("OKTA_AUTH_SERVER_ID", "default").strip() or "default"
+    )
 
     if not okta_domain or okta_domain.startswith("integrator-1234567"):
-        die("OKTA_DOMAIN must be set to your Okta tenant (e.g. integrator-1234567.okta.com).\n"
-            "Edit .env and re-run.")
+        die(
+            "OKTA_DOMAIN must be set to your Okta tenant (e.g. integrator-1234567.okta.com).\n"
+            "Edit .env and re-run."
+        )
     if not okta_token:
-        die("OKTA_ADMIN_TOKEN is not set. Create one at Okta admin -> Security ->\n"
+        die(
+            "OKTA_ADMIN_TOKEN is not set. Create one at Okta admin -> Security ->\n"
             "API -> Tokens -> Create Token, then set OKTA_ADMIN_TOKEN in .env.\n"
-            "The token needs Super Admin or Org Admin permissions.")
+            "The token needs Super Admin or Org Admin permissions."
+        )
 
     client = OktaClient(okta_domain, okta_token)
 
@@ -789,19 +838,30 @@ def main() -> None:
 
     # 3) Apps.
     print("\n[3/6] Ensuring app registrations…")
-    frontend_app, frontend_new = get_or_create_app(client, "web", APP_LABELS["frontend"])
-    agent_app, agent_new = get_or_create_app(client, "api-services", APP_LABELS["agent"])
-    gateway_app, gateway_new = get_or_create_app(client, "api-services", APP_LABELS["gateway"])
+    frontend_app, frontend_new = get_or_create_app(
+        client, "web", APP_LABELS["frontend"]
+    )
+    agent_app, agent_new = get_or_create_app(
+        client, "api-services", APP_LABELS["agent"]
+    )
+    gateway_app, gateway_new = get_or_create_app(
+        client, "api-services", APP_LABELS["gateway"]
+    )
 
     # 4) Client secrets.
     #    Newly-created apps have a secret in the create response. Existing
     #    apps don't expose their current secret via API — we can only mint
     #    new ones. Mint only if .env is missing / placeholder / --rotate.
     print("\n[4/6] Handling client secrets…")
+
     def get_secret(app: dict, is_new: bool, env_key: str) -> str | None:
         # For a freshly created app the secret is embedded in the response.
         if is_new:
-            secret = (app.get("credentials") or {}).get("oauthClient", {}).get("client_secret")
+            secret = (
+                (app.get("credentials") or {})
+                .get("oauthClient", {})
+                .get("client_secret")
+            )
             if secret:
                 print(f"  ✓ Fresh secret for {app['label']}")
                 return secret
@@ -811,7 +871,9 @@ def main() -> None:
             print(f"  ✓ Rotated secret for {app['label']}")
             return secret
 
-        print(f"  • {env_key} already set; leaving alone (use --rotate-secrets to force)")
+        print(
+            f"  • {env_key} already set; leaving alone (use --rotate-secrets to force)"
+        )
         return None
 
     frontend_secret = get_secret(frontend_app, frontend_new, "FRONTEND_CLIENT_SECRET")
@@ -835,13 +897,16 @@ def main() -> None:
     # tokens are issued automatically when the Authorization Code grant is
     # used AND the `offline_access` scope is present in scopes.include.
     fp = ensure_policy(
-        client, resolved_auth_server_id,
+        client,
+        resolved_auth_server_id,
         name="AgentCore OBO UC2 - Frontend",
         description="Allows the Frontend Web App to mint user tokens via Authorization Code.",
         client_id=frontend_client_id,
     )
     ensure_rule(
-        client, resolved_auth_server_id, fp["id"],
+        client,
+        resolved_auth_server_id,
+        fp["id"],
         name="Frontend Auth Code",
         grant_types=["authorization_code"],
         scopes=["openid", "profile", "email", "offline_access", "agent.access"],
@@ -849,13 +914,16 @@ def main() -> None:
 
     # Agent policy — Token Exchange + gateway.access.
     ap = ensure_policy(
-        client, resolved_auth_server_id,
+        client,
+        resolved_auth_server_id,
         name="AgentCore OBO UC2 - Agent OBO",
         description="Allows the Agent to exchange user tokens for gateway.access via Token Exchange.",
         client_id=agent_client_id,
     )
     ensure_rule(
-        client, resolved_auth_server_id, ap["id"],
+        client,
+        resolved_auth_server_id,
+        ap["id"],
         name="Agent Token Exchange",
         grant_types=[TOKEN_EXCHANGE_GRANT],
         scopes=["gateway.access"],
@@ -863,13 +931,16 @@ def main() -> None:
 
     # Gateway policy — Token Exchange + downstream.access.
     gp = ensure_policy(
-        client, resolved_auth_server_id,
+        client,
+        resolved_auth_server_id,
         name="AgentCore OBO UC2 - Gateway OBO",
         description="Allows the Gateway to exchange gateway tokens for downstream.access via Token Exchange.",
         client_id=gateway_client_id,
     )
     ensure_rule(
-        client, resolved_auth_server_id, gp["id"],
+        client,
+        resolved_auth_server_id,
+        gp["id"],
         name="Gateway Token Exchange",
         grant_types=[TOKEN_EXCHANGE_GRANT],
         scopes=["downstream.access"],
@@ -897,22 +968,26 @@ def main() -> None:
     if gateway_secret:
         env_writes["GATEWAY_CLIENT_SECRET"] = gateway_secret
 
+    # Silently persist to .env. We deliberately do NOT print the keys or
+    # values here — every element of `env_writes` is derived from an Okta
+    # API response, and CodeQL's taint tracker flags any print that reads
+    # from that dict, even for values it labels as ***. The keys are named
+    # deterministically per config.example.env, and the user can inspect
+    # .env directly after the run.
     for k, v in env_writes.items():
         upsert_env_value(env_path, k, v)
-        # Split branches so the printed expression is either a hard-coded
-        # placeholder ("***") or a non-sensitive config value — never a
-        # variable that CodeQL's taint tracker sees as flowing from a
-        # secret source into stdout.
-        if k.endswith("_SECRET"):
-            print(f"  ✓ {k}=***")
-        else:
-            print(f"  ✓ {k}={v}")
+    print(
+        f"  ✓ Wrote {len(env_writes)} value(s) to .env "
+        f"(client IDs, scopes, and any freshly-minted secrets)."
+    )
 
     print()
     print("✓ Okta setup complete.")
     print()
-    print("Verify:")
-    print("  grep -E '^(OKTA_|FRONTEND_|AGENT_|GATEWAY_)' .env | grep -v _SECRET")
+    print("Verify (client IDs and scopes only; secrets stay in .env):")
+    print(
+        "  grep -E '^(OKTA_DOMAIN|OKTA_AUTH_SERVER_ID|OKTA_AUDIENCE|FRONTEND_CLIENT_ID|AGENT_CLIENT_ID|GATEWAY_CLIENT_ID|UPSTREAM_SCOPE|GATEWAY_SCOPE|DOWNSTREAM_SCOPE)=' .env"
+    )
     print()
     print("Assign the Frontend Web App to your test user (if your tenant isn't in")
     print("Federation Broker Mode):")

@@ -43,14 +43,22 @@ def ensure_workload_identity(client, name: str) -> None:
         client.create_workload_identity(name=name)
         print(f"✓ Created workload identity: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Workload identity already exists: {name}")
         else:
             raise
 
 
 def ensure_actor_provider(
-    client, *, name: str, client_id: str, client_secret: str, tenant_id: str,
+    client,
+    *,
+    name: str,
+    client_id: str,
+    client_secret: str,
+    tenant_id: str,
 ) -> None:
     """Create the OBO-enabled credential provider.
 
@@ -72,7 +80,10 @@ def ensure_actor_provider(
         )
         print(f"✓ Created credential provider: {name}")
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Credential provider already exists: {name}")
         else:
             raise
@@ -107,7 +118,9 @@ def main() -> None:
     )
 
     print("\n✓ AgentCore Identity resources ready.")
-    print("Next step: follow README.md sections 5–10 to scaffold and deploy the agent with the AgentCore CLI.")
+    print(
+        "Next step: follow README.md sections 5–10 to scaffold and deploy the agent with the AgentCore CLI."
+    )
 
 
 if __name__ == "__main__":

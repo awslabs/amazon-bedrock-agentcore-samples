@@ -43,7 +43,6 @@ def must_env(name: str) -> str:
     return value
 
 
-
 def main() -> None:
     # The script's own location (always in <real-world>/deploy/).
     deploy_dir = Path(__file__).resolve().parent
@@ -70,7 +69,7 @@ def main() -> None:
         print(
             f"ERROR: {agentcore_json} does not exist.\n"
             f"Run step 5 first:\n"
-            f"  agentcore create --name \"$AGENT_RUNTIME_NAME\" "
+            f'  agentcore create --name "$AGENT_RUNTIME_NAME" '
             f"--framework Strands --model-provider Bedrock "
             f"--memory none --build CodeZip --defaults",
             file=sys.stderr,
@@ -90,9 +89,7 @@ def main() -> None:
 
     # Entra OIDC discovery URL. Entra issues v1.0 tokens by default;
     # change to /v2.0/.well-known/... if your app uses v2.0 tokens.
-    oidc_discovery_url = (
-        f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"
-    )
+    oidc_discovery_url = f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"
 
     # 1. requestHeaderAllowlist: allow the Authorization header through so the agent
     #    can read the JWT inside its handler.
@@ -124,7 +121,11 @@ def main() -> None:
         "AWS_REGION": region,
     }
 
-    existing = {e["name"]: e["value"] for e in runtime.get("envVars", []) if "name" in e and "value" in e}
+    existing = {
+        e["name"]: e["value"]
+        for e in runtime.get("envVars", [])
+        if "name" in e and "value" in e
+    }
     existing.update(env_map)
     runtime["envVars"] = [{"name": k, "value": v} for k, v in existing.items()]
 
@@ -136,7 +137,9 @@ def main() -> None:
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
     print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {oidc_discovery_url}")
-    print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
+    print(
+        f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}"
+    )
     print()
     print("Next steps (from inside the project folder):")
     print("  cd " + str(project_dir.relative_to(real_world_root)))

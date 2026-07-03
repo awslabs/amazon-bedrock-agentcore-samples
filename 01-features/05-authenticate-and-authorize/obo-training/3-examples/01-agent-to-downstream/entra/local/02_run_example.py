@@ -47,7 +47,6 @@ CALLBACK_PORT = 8081
 CALLBACK_URL = f"http://localhost:{CALLBACK_PORT}/callback"
 
 
-
 def must_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
@@ -61,17 +60,24 @@ def decode_jwt_claims(token: str) -> dict[str, Any]:
     try:
         payload_b64 = token.split(".")[1]
         padding = "=" * (-len(payload_b64) % 4)
-        return json.loads(base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8"))
+        return json.loads(
+            base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8")
+        )
     except Exception as e:  # pragma: no cover
         return {"_decode_error": str(e)}
 
 
-
-def chapter_1_sign_in(ac_identity, workload_name: str, client_provider_name: str,
-                       agent_scope: str, user_alias: str) -> str:
+def chapter_1_sign_in(
+    ac_identity,
+    workload_name: str,
+    client_provider_name: str,
+    agent_scope: str,
+    user_alias: str,
+) -> str:
     """Obtain a user JWT — either from AgentCore's cache or via a fresh 3LO."""
     chapter(
-        1, "Sign the user in (simulating the frontend)",
+        1,
+        "Sign the user in (simulating the frontend)",
         "Get a JWT that says 'Alice is signed in and has consented to the agent'",
     )
     explain("""
@@ -85,9 +91,12 @@ a standard Entra-issued JWT you can feed into the next chapter.
 """)
     pause()
 
-    action("Calling get_workload_access_token_for_user_id — gets a scratch token AgentCore will use to track this user's session")
+    action(
+        "Calling get_workload_access_token_for_user_id — gets a scratch token AgentCore will use to track this user's session"
+    )
     wl_resp = ac_identity.get_workload_access_token_for_user_id(
-        workloadName=workload_name, userId=user_alias,
+        workloadName=workload_name,
+        userId=user_alias,
     )
     user_wl_token = wl_resp["workloadAccessToken"]
     success("Got a workload token for the test user")
@@ -132,11 +141,11 @@ a standard Entra-issued JWT you can feed into the next chapter.
     return user_token
 
 
-
 def chapter_2_inspect_inbound(user_token: str, agent_client_id: str) -> dict:
     """Decode the inbound user JWT and point out the claims that matter."""
     chapter(
-        2, "Inspect the inbound user JWT",
+        2,
+        "Inspect the inbound user JWT",
         "Confirm this token really is 'for the agent, about the user'",
     )
     explain("""
@@ -156,30 +165,37 @@ the token was never meant for us — we can't use it.
     pause()
 
     claims = decode_jwt_claims(user_token)
-    show_claims("Inbound user JWT claims", claims, highlight=["aud", "oid", "scp", "appid"])
+    show_claims(
+        "Inbound user JWT claims", claims, highlight=["aud", "oid", "scp", "appid"]
+    )
 
     if claims.get("aud") == agent_client_id:
         success(f"aud matches AGENT_CLIENT_ID ({agent_client_id}) — token is for us")
     else:
-        info(f"aud is {claims.get('aud')!r}, AGENT_CLIENT_ID is {agent_client_id!r} — would fail OBO")
+        info(
+            f"aud is {claims.get('aud')!r}, AGENT_CLIENT_ID is {agent_client_id!r} — would fail OBO"
+        )
 
     observe(
         "Key property: user identity is encoded here",
         f"The `oid` claim ({claims.get('oid', '?')}) identifies this user stably. "
-        "Remember this value — we will look for it again in the OBO'd token."
+        "Remember this value — we will look for it again in the OBO'd token.",
     )
     pause()
     return claims
 
 
-
 def chapter_3_obo_exchange(
-    ac_identity, workload_name: str, actor_provider_name: str,
-    graph_scope: str, user_token: str,
+    ac_identity,
+    workload_name: str,
+    actor_provider_name: str,
+    graph_scope: str,
+    user_token: str,
 ) -> str:
     """Perform the on-behalf-of exchange and return the Graph token."""
     chapter(
-        3, "Perform the OBO token exchange",
+        3,
+        "Perform the OBO token exchange",
         "Swap the user JWT for a Graph-scoped token — all without user interaction",
     )
     explain("""
@@ -205,7 +221,8 @@ the user is NOT re-prompted to consent (they consented once, at sign-in).
 
     action("Calling GetWorkloadAccessTokenForJWT to wrap the user token")
     obo_wl_resp = ac_identity.get_workload_access_token_for_jwt(
-        workloadName=workload_name, userToken=user_token,
+        workloadName=workload_name,
+        userToken=user_token,
     )
     obo_workload_token = obo_wl_resp["workloadAccessToken"]
     success("User JWT wrapped into an AgentCore workload token")
@@ -221,11 +238,11 @@ the user is NOT re-prompted to consent (they consented once, at sign-in).
     return obo_resp["accessToken"]
 
 
-
 def chapter_4_compare_tokens(inbound_claims: dict, graph_token: str) -> dict:
     """Side-by-side comparison that makes the OBO guarantee obvious."""
     chapter(
-        4, "Compare the inbound and outbound tokens",
+        4,
+        "Compare the inbound and outbound tokens",
         "See what changed (audience, scope, actor) and what stayed the same (user)",
     )
     explain("""
@@ -248,8 +265,10 @@ Entra's flavor does NOT include a nested `act` claim (that's Okta). Instead,
 
     graph_claims = decode_jwt_claims(graph_token)
     compare_claims(
-        "Inbound (user → agent)", inbound_claims,
-        "Outbound (agent → Graph)", graph_claims,
+        "Inbound (user → agent)",
+        inbound_claims,
+        "Outbound (agent → Graph)",
+        graph_claims,
         keys=["aud", "oid", "scp", "appid", "iss"],
     )
 
@@ -257,7 +276,9 @@ Entra's flavor does NOT include a nested `act` claim (that's Okta). Instead,
     if inbound_claims.get("oid") == graph_claims.get("oid"):
         success("USER IDENTITY PRESERVED — oid matches on both tokens")
     else:
-        info("oid changed — this would mean the user identity was lost. Check your setup.")
+        info(
+            "oid changed — this would mean the user identity was lost. Check your setup."
+        )
 
     if inbound_claims.get("aud") != graph_claims.get("aud"):
         success("AUDIENCE ROTATED — new token is for Graph, not the agent")
@@ -268,17 +289,17 @@ Entra's flavor does NOT include a nested `act` claim (that's Okta). Instead,
         "This is the OBO guarantee in action",
         "Same user. Different audience. Different scope. No extra consent. "
         "The agent now holds a token it can send to Graph, and Graph will accept "
-        "it and run as the user, not as the agent."
+        "it and run as the user, not as the agent.",
     )
     pause()
     return graph_claims
 
 
-
 def chapter_5_call_graph(graph_token: str) -> None:
     """Actually call Graph to prove the token works end-to-end."""
     chapter(
-        5, "Use the OBO token against Microsoft Graph",
+        5,
+        "Use the OBO token against Microsoft Graph",
         "Prove end-to-end that the token works by calling /me",
     )
     explain("""
@@ -299,7 +320,13 @@ then runs the /me endpoint as the user who was identified in `oid`.
 
     success(f"HTTP {r.status_code} — Graph returned the user's profile")
     print()
-    for key in ("displayName", "mail", "userPrincipalName", "jobTitle", "officeLocation"):
+    for key in (
+        "displayName",
+        "mail",
+        "userPrincipalName",
+        "jobTitle",
+        "officeLocation",
+    ):
         if key in profile and profile[key]:
             print(f"    {key:<22} = {profile[key]}")
 
@@ -307,9 +334,8 @@ then runs the /me endpoint as the user who was identified in `oid`.
         "What just happened",
         "Your agent called Microsoft Graph on behalf of the user, using the user's "
         "permissions (not the agent's), without re-prompting for consent. "
-        "That's the complete OBO loop."
+        "That's the complete OBO loop.",
     )
-
 
 
 def main() -> None:
@@ -344,22 +370,35 @@ INTERACTIVE_NO_PAUSE=1 in your shell to skip the pauses.
 
     try:
         user_token = chapter_1_sign_in(
-            ac_identity, workload_name, client_provider_name, agent_scope, user_alias,
+            ac_identity,
+            workload_name,
+            client_provider_name,
+            agent_scope,
+            user_alias,
         )
         inbound_claims = chapter_2_inspect_inbound(user_token, agent_client_id)
         graph_token = chapter_3_obo_exchange(
-            ac_identity, workload_name, actor_provider_name, graph_scope, user_token,
+            ac_identity,
+            workload_name,
+            actor_provider_name,
+            graph_scope,
+            user_token,
         )
         chapter_4_compare_tokens(inbound_claims, graph_token)
         chapter_5_call_graph(graph_token)
 
-        header("✓ Walkthrough complete",
-               "Review what just happened in the comparison tables above.")
+        header(
+            "✓ Walkthrough complete",
+            "Review what just happened in the comparison tables above.",
+        )
     except ClientError as e:
         print(f"\nAWS error: {e}", file=sys.stderr)
         sys.exit(1)
     except requests.HTTPError as e:
-        print(f"\nGraph call failed: {e}\n{e.response.text if e.response else ''}", file=sys.stderr)
+        print(
+            f"\nGraph call failed: {e}\n{e.response.text if e.response else ''}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 

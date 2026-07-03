@@ -64,13 +64,17 @@ def _safe_claims(jwt: str) -> dict:
     """
     import base64
     import json as _json
+
     try:
         payload = jwt.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         raw = _json.loads(base64.urlsafe_b64decode(payload))
     except Exception:
         return {}
-    return {k: raw.get(k) for k in ("iss", "aud", "azp", "appid", "oid", "sub", "scp", "ver", "exp")}
+    return {
+        k: raw.get(k)
+        for k in ("iss", "aud", "azp", "appid", "oid", "sub", "scp", "ver", "exp")
+    }
 
 
 def _obo_user_to_gateway(user_token: str) -> str:
@@ -82,7 +86,9 @@ def _obo_user_to_gateway(user_token: str) -> str:
          actual exchange via the agent-actor credential provider, which
          authenticates as AgentApp to Entra.
     """
-    log.info("OBOTRACE: OBO 1 start. Exchanging T_user for T_gateway via AgentCore Identity.")
+    log.info(
+        "OBOTRACE: OBO 1 start. Exchanging T_user for T_gateway via AgentCore Identity."
+    )
     workload_token = _ac_identity.get_workload_access_token_for_jwt(
         workloadName=AGENT_WORKLOAD_NAME,
         userToken=user_token,
@@ -243,11 +249,13 @@ async def invoke(payload, context):
         root = _unwrap(e)
         log.error(
             "Gateway / MCP / agent error: outer=%s: %s | root_cause=%s: %s",
-            type(e).__name__, e, type(root).__name__, root,
+            type(e).__name__,
+            e,
+            type(root).__name__,
+            root,
         )
         yield (
-            f"ERROR: {type(e).__name__}: {e}\n"
-            f"root cause: {type(root).__name__}: {root}"
+            f"ERROR: {type(e).__name__}: {e}\nroot cause: {type(root).__name__}: {root}"
         )
 
 

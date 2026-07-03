@@ -51,10 +51,10 @@ def ensure_workload_identity(client, name: str) -> None:
         msg = e.response["Error"].get("Message", "")
         # AgentCore returns ValidationException with an "already exists"
         # message when the workload is a duplicate, instead of ConflictException.
-        already_exists = (
-            code in {"ConflictException", "ResourceAlreadyExistsException"}
-            or ("already exists" in msg.lower())
-        )
+        already_exists = code in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        } or ("already exists" in msg.lower())
         if already_exists:
             print(f"• Workload identity already exists: {name}")
         else:
@@ -79,9 +79,7 @@ def ensure_obo_provider(
 
     Returns the provider ARN.
     """
-    discovery_url = (
-        f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
     config = {
         "customOauth2ProviderConfig": {
             "oauthDiscovery": {"discoveryUrl": discovery_url},
@@ -109,10 +107,10 @@ def ensure_obo_provider(
     except ClientError as e:
         code = e.response["Error"].get("Code", "")
         msg = e.response["Error"].get("Message", "")
-        already_exists = (
-            code in {"ConflictException", "ResourceAlreadyExistsException"}
-            or ("already exists" in msg.lower())
-        )
+        already_exists = code in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        } or ("already exists" in msg.lower())
         if not already_exists:
             raise
 

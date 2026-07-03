@@ -35,8 +35,28 @@ from dotenv import load_dotenv
 
 
 VALID_RETENTIONS = {
-    1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096,
-    1827, 2192, 2557, 2922, 3288, 3653,
+    1,
+    3,
+    5,
+    7,
+    14,
+    30,
+    60,
+    90,
+    120,
+    150,
+    180,
+    365,
+    400,
+    545,
+    731,
+    1096,
+    1827,
+    2192,
+    2557,
+    2922,
+    3288,
+    3653,
 }
 
 
@@ -72,8 +92,11 @@ def set_retention(logs, log_group_name: str, days: int) -> None:
             retentionInDays=days,
         )
     except ClientError as e:
-        print(f"  ✗ {log_group_name}: {e.response['Error'].get('Code')}: "
-              f"{e.response['Error'].get('Message')}", file=sys.stderr)
+        print(
+            f"  ✗ {log_group_name}: {e.response['Error'].get('Code')}: "
+            f"{e.response['Error'].get('Message')}",
+            file=sys.stderr,
+        )
 
 
 # Note: an earlier version of this script had a `check_transaction_search()`
@@ -85,7 +108,9 @@ def set_retention(logs, log_group_name: str, days: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--retention", type=int, default=30,
+        "--retention",
+        type=int,
+        default=30,
         help="Log retention in days (CloudWatch-valid values only, e.g. 7, 30, 90).",
     )
     args = parser.parse_args()
@@ -111,8 +136,10 @@ def main() -> None:
     print(f"[1/2] Log retention → {args.retention} days")
     matched = find_uc2_log_groups(logs, agent_runtime_name, gateway_name)
     if not matched:
-        print(f"  • No /aws/bedrock-agentcore/* log groups found yet for "
-              f"'{agent_runtime_name}' or '{gateway_name}'.")
+        print(
+            f"  • No /aws/bedrock-agentcore/* log groups found yet for "
+            f"'{agent_runtime_name}' or '{gateway_name}'."
+        )
         print("    Trigger at least one invocation, then re-run this script.")
     else:
         for lg in matched:
@@ -134,7 +161,9 @@ def main() -> None:
     print(f"    agentcore logs --since 10m --runtime {agent_runtime_name} --level warn")
     print()
     print("  Search runtime logs for a substring:")
-    print(f"    agentcore logs --since 30m --runtime {agent_runtime_name} --query 'OBO'")
+    print(
+        f"    agentcore logs --since 30m --runtime {agent_runtime_name} --query 'OBO'"
+    )
     print()
     print("  List traces (needs CloudWatch Application Signals enabled — see below):")
     print(f"    agentcore traces list --runtime {agent_runtime_name}")
@@ -146,8 +175,10 @@ def main() -> None:
     print("    aws logs describe-log-groups \\")
     print("      --log-group-name-prefix /aws/bedrock-agentcore \\")
     print(f"      --region {region} \\")
-    print(f"      --query 'logGroups[?contains(logGroupName, `{agent_runtime_name[:15]}`)"
-          f" || contains(logGroupName, `{gateway_name}`)].logGroupName' --output text")
+    print(
+        f"      --query 'logGroups[?contains(logGroupName, `{agent_runtime_name[:15]}`)"
+        f" || contains(logGroupName, `{gateway_name}`)].logGroupName' --output text"
+    )
     print()
     print("  Then tail a specific group:")
     print(f"    aws logs tail <log-group-name> --since 10m --follow --region {region}")
@@ -155,9 +186,15 @@ def main() -> None:
 
     print("Also do this (one-time, per account/region):")
     print("  Enable CloudWatch Application Signals so traces are queryable:")
-    print(f"    open 'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#application-signals-services'")
-    print("  Enable CloudWatch Transaction Search so `agentcore logs --query` searches log CONTENT:")
-    print(f"    open 'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#logsV2:logs-transaction-search'")
+    print(
+        f"    open 'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#application-signals-services'"
+    )
+    print(
+        "  Enable CloudWatch Transaction Search so `agentcore logs --query` searches log CONTENT:"
+    )
+    print(
+        f"    open 'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#logsV2:logs-transaction-search'"
+    )
     print()
     print("✓ Observability config ready.")
 

@@ -65,7 +65,7 @@ def main() -> None:
         print(
             f"ERROR: {agentcore_json} does not exist.\n"
             f"Run the scaffold step first:\n"
-            f"  agentcore create --name \"$AGENT_RUNTIME_NAME\" "
+            f'  agentcore create --name "$AGENT_RUNTIME_NAME" '
             f"--framework Strands --model-provider Bedrock "
             f"--memory none --build CodeZip --defaults",
             file=sys.stderr,
@@ -143,7 +143,9 @@ def main() -> None:
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
     print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {discovery_url}")
-    print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
+    print(
+        f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}"
+    )
     print("  envVars:")
     for k, v in env_map.items():
         print(f"    {k}={v}")

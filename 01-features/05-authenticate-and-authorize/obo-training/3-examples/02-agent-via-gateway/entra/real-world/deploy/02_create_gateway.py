@@ -246,6 +246,7 @@ def main() -> None:
             )
             print("  ⏳ Waiting 10s for IAM role propagation…")
             import time
+
             time.sleep(10)
 
         # Persist for teardown and future re-runs
@@ -254,11 +255,18 @@ def main() -> None:
     ac_control = boto3.client("bedrock-agentcore-control", region_name=region)
 
     # 1) Look up the gateway-actor credential provider (created in step 01).
-    print(f"• Looking up Gateway-actor credential provider: {gateway_obo_provider_name}")
+    print(
+        f"• Looking up Gateway-actor credential provider: {gateway_obo_provider_name}"
+    )
     try:
-        gateway_provider_arn = get_gateway_provider_arn(ac_control, gateway_obo_provider_name)
+        gateway_provider_arn = get_gateway_provider_arn(
+            ac_control, gateway_obo_provider_name
+        )
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ResourceNotFoundException", "NotFoundException"}:
+        if e.response["Error"]["Code"] in {
+            "ResourceNotFoundException",
+            "NotFoundException",
+        }:
             print(
                 f"ERROR: Credential provider '{gateway_obo_provider_name}' not found. "
                 "Run step 01 first.",
@@ -282,9 +290,7 @@ def main() -> None:
     # apps. If you created the apps manually, run:
     #     az ad app update --id <AGENT_CLIENT_ID>   --set 'api.requestedAccessTokenVersion=2'
     #     az ad app update --id <GATEWAY_CLIENT_ID> --set 'api.requestedAccessTokenVersion=2'
-    discovery_url = (
-        f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
     authorizer_config = {
         "customJWTAuthorizer": {
             "discoveryUrl": discovery_url,
@@ -311,15 +317,24 @@ def main() -> None:
             existing_config = existing_gw.get("authorizerConfiguration") or {}
             existing_authorizer = existing_config.get("customJWTAuthorizer", {}) or {}
             existing_discovery = existing_authorizer.get("discoveryUrl", "")
-            existing_audience = set(existing_authorizer.get("allowedAudience", []) or [])
-            desired_audience = set(authorizer_config["customJWTAuthorizer"]["allowedAudience"])
-            if existing_discovery != discovery_url or existing_audience != desired_audience:
+            existing_audience = set(
+                existing_authorizer.get("allowedAudience", []) or []
+            )
+            desired_audience = set(
+                authorizer_config["customJWTAuthorizer"]["allowedAudience"]
+            )
+            if (
+                existing_discovery != discovery_url
+                or existing_audience != desired_audience
+            ):
                 print("  • Authorizer drift detected — updating.")
                 if existing_discovery != discovery_url:
                     print(f"      discoveryUrl was: {existing_discovery or '(unset)'}")
                     print(f"      discoveryUrl now: {discovery_url}")
                 if existing_audience != desired_audience:
-                    print(f"      allowedAudience was: {sorted(existing_audience) or '(unset)'}")
+                    print(
+                        f"      allowedAudience was: {sorted(existing_audience) or '(unset)'}"
+                    )
                     print(f"      allowedAudience now: {sorted(desired_audience)}")
                 ac_control.update_gateway(
                     gatewayIdentifier=gateway_id,
@@ -332,9 +347,12 @@ def main() -> None:
                 print("  ✓ Gateway authorizer updated.")
         except ClientError as e:
             # If update_gateway isn't supported in your boto3, just warn.
-            print(f"  ⚠ Could not reconcile authorizer config: {e}. "
-                  f"Consider `python deploy/teardown.py` + re-run if the "
-                  f"'iss mismatch' or 403 error appears at runtime.", file=sys.stderr)
+            print(
+                f"  ⚠ Could not reconcile authorizer config: {e}. "
+                f"Consider `python deploy/teardown.py` + re-run if the "
+                f"'iss mismatch' or 403 error appears at runtime.",
+                file=sys.stderr,
+            )
     else:
         create_resp = ac_control.create_gateway(
             name=gateway_name,
@@ -354,6 +372,7 @@ def main() -> None:
     #     the call while the Gateway is still CREATING. Poll every 3s for
     #     up to 2 minutes.
     import time
+
     for attempt in range(40):
         gw = ac_control.get_gateway(gatewayIdentifier=gateway_id)
         status = gw.get("status", "UNKNOWN")
@@ -362,17 +381,21 @@ def main() -> None:
                 print(f"  ✓ Gateway status: READY (after {attempt * 3}s)")
             break
         if status in {"FAILED", "DELETING", "DELETED"}:
-            print(f"ERROR: Gateway entered terminal state {status}. "
-                  f"Reason: {gw.get('statusReasons', gw.get('failureReason', 'n/a'))}",
-                  file=sys.stderr)
+            print(
+                f"ERROR: Gateway entered terminal state {status}. "
+                f"Reason: {gw.get('statusReasons', gw.get('failureReason', 'n/a'))}",
+                file=sys.stderr,
+            )
             sys.exit(1)
         if attempt == 0:
             print(f"  ⏳ Waiting for Gateway to reach READY (current: {status})…")
         time.sleep(3)
     else:
-        print("ERROR: Gateway did not reach READY within 2 minutes. "
-              "Check the console; re-run this script once it does.",
-              file=sys.stderr)
+        print(
+            "ERROR: Gateway did not reach READY within 2 minutes. "
+            "Check the console; re-run this script once it does.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # 3) Load the OpenAPI spec.
@@ -426,19 +449,29 @@ def main() -> None:
         # SDKs accept the bare gateway URL and append /mcp internally — to
         # be safe we surface both via the same env var (we use the /mcp form
         # in the agent code).
-        mcp_url = gateway_url.rstrip("/") + "/mcp" if not gateway_url.endswith("/mcp") else gateway_url
+        mcp_url = (
+            gateway_url.rstrip("/") + "/mcp"
+            if not gateway_url.endswith("/mcp")
+            else gateway_url
+        )
         upsert_env_value(env_path, "GATEWAY_MCP_URL", mcp_url)
-        print(f"\n✓ Wrote GATEWAY_MCP_URL to {env_path.relative_to(real_world_root.parent)}:")
+        print(
+            f"\n✓ Wrote GATEWAY_MCP_URL to {env_path.relative_to(real_world_root.parent)}:"
+        )
         print(f"  GATEWAY_MCP_URL={mcp_url}")
     else:
         print("\n⚠ Gateway URL not returned in API response. Look it up later via:")
-        print("    aws bedrock-agentcore-control get-gateway --gateway-identifier "
-              f"{gateway_id}")
+        print(
+            "    aws bedrock-agentcore-control get-gateway --gateway-identifier "
+            f"{gateway_id}"
+        )
         print("  and set GATEWAY_MCP_URL=<gateway-url>/mcp in .env manually.")
 
     print()
-    print("Next step: python deploy/03_patch_agentcore_json.py "
-          "(after `agentcore create --defaults` has scaffolded the project)")
+    print(
+        "Next step: python deploy/03_patch_agentcore_json.py "
+        "(after `agentcore create --defaults` has scaffolded the project)"
+    )
 
 
 if __name__ == "__main__":

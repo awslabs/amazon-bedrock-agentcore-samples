@@ -68,7 +68,6 @@ from pathlib import Path
 from typing import Any
 
 
-
 # ── Constants ──────────────────────────────────────────────────────────────
 APP_DISPLAY_NAMES = {
     "frontend": "agentcore-obo-uc2-frontend",
@@ -113,17 +112,22 @@ def az(*args: str, capture: bool = True, check: bool = True) -> Any:
 
 
 def graph_get(path: str) -> dict:
-    return az("rest", "--method", "GET", "--url",
-              f"https://graph.microsoft.com/v1.0{path}")
+    return az(
+        "rest", "--method", "GET", "--url", f"https://graph.microsoft.com/v1.0{path}"
+    )
 
 
 def graph_patch(path: str, body: dict) -> None:
     az(
         "rest",
-        "--method", "PATCH",
-        "--url", f"https://graph.microsoft.com/v1.0{path}",
-        "--headers", "Content-Type=application/json",
-        "--body", json.dumps(body),
+        "--method",
+        "PATCH",
+        "--url",
+        f"https://graph.microsoft.com/v1.0{path}",
+        "--headers",
+        "Content-Type=application/json",
+        "--body",
+        json.dumps(body),
     )
 
 
@@ -141,15 +145,26 @@ def create_or_get_app(name: str, *, redirect_uri: str | None = None) -> dict:
             web = existing.get("web", {}) or {}
             uris = web.get("redirectUris", []) or []
             if redirect_uri not in uris:
-                az("ad", "app", "update", "--id", existing["appId"],
-                   "--web-redirect-uris", redirect_uri)
+                az(
+                    "ad",
+                    "app",
+                    "update",
+                    "--id",
+                    existing["appId"],
+                    "--web-redirect-uris",
+                    redirect_uri,
+                )
                 print(f"    ✓ Updated redirect URI: {redirect_uri}")
         return existing
 
     args = [
-        "ad", "app", "create",
-        "--display-name", name,
-        "--sign-in-audience", SIGN_IN_AUDIENCE,
+        "ad",
+        "app",
+        "create",
+        "--display-name",
+        name,
+        "--sign-in-audience",
+        SIGN_IN_AUDIENCE,
     ]
     if redirect_uri:
         args.extend(["--web-redirect-uris", redirect_uri])
@@ -181,7 +196,9 @@ def ensure_v2_access_tokens(object_id: str) -> None:
     if current == 2:
         print("    • api.requestedAccessTokenVersion already 2")
         return
-    graph_patch(f"/applications/{object_id}", {"api": {"requestedAccessTokenVersion": 2}})
+    graph_patch(
+        f"/applications/{object_id}", {"api": {"requestedAccessTokenVersion": 2}}
+    )
     print(f"    ✓ Set api.requestedAccessTokenVersion = 2 (was {current!r})")
 
 
@@ -216,19 +233,28 @@ def ensure_access_as_user_scope(object_id: str) -> str:
         "value": SCOPE_VALUE,
     }
     scopes.append(new_scope)
-    graph_patch(f"/applications/{object_id}", {"api": {"oauth2PermissionScopes": scopes}})
+    graph_patch(
+        f"/applications/{object_id}", {"api": {"oauth2PermissionScopes": scopes}}
+    )
     print(f"    ✓ Added scope: {SCOPE_VALUE} (id={scope_id})")
     return scope_id
 
 
-def add_api_permission(consumer_app_id: str, *, api_app_id: str, permission_id: str,
-                       label: str = "") -> None:
+def add_api_permission(
+    consumer_app_id: str, *, api_app_id: str, permission_id: str, label: str = ""
+) -> None:
     """Add a delegated API permission to a consumer app. Idempotent (az dedupes)."""
     az(
-        "ad", "app", "permission", "add",
-        "--id", consumer_app_id,
-        "--api", api_app_id,
-        "--api-permissions", f"{permission_id}=Scope",
+        "ad",
+        "app",
+        "permission",
+        "add",
+        "--id",
+        consumer_app_id,
+        "--api",
+        api_app_id,
+        "--api-permissions",
+        f"{permission_id}=Scope",
         # az emits a misleading warning here; suppress it by capturing.
         check=False,
     )
@@ -252,23 +278,32 @@ def grant_admin_consent(app_id: str, label: str) -> bool:
     """
     proc = subprocess.run(
         ["az", "ad", "app", "permission", "admin-consent", "--id", app_id],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if proc.returncode == 0:
         print(f"    ✓ Granted admin consent: {label}")
         return True
     err = (proc.stderr or proc.stdout).strip()
-    print(f"    ⚠ admin-consent failed for {label}: {err.splitlines()[-1] if err else 'unknown'}")
+    print(
+        f"    ⚠ admin-consent failed for {label}: {err.splitlines()[-1] if err else 'unknown'}"
+    )
     return False
 
 
 def reset_client_secret(app_id: str, *, display_name: str) -> str:
     """Always creates and returns a NEW secret, appending to existing creds."""
     result = az(
-        "ad", "app", "credential", "reset",
-        "--id", app_id,
-        "--display-name", display_name,
-        "--years", "1",
+        "ad",
+        "app",
+        "credential",
+        "reset",
+        "--id",
+        app_id,
+        "--display-name",
+        display_name,
+        "--years",
+        "1",
         "--append",
     )
     return result["password"]
@@ -298,7 +333,7 @@ def env_value_is_placeholder(env_path: Path, key: str) -> bool:
         return True
     for line in env_path.read_text().splitlines():
         if line.startswith(f"{key}="):
-            value = line[len(key) + 1:].strip()
+            value = line[len(key) + 1 :].strip()
             return value in ("", "replace-me", "REPLACE_ME")
     return True
 
@@ -307,14 +342,17 @@ def env_value_is_placeholder(env_path: Path, key: str) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--rotate-secrets", action="store_true",
+        "--rotate-secrets",
+        action="store_true",
         help="Force rotation of client secrets even if .env already has values.",
     )
     args = parser.parse_args()
 
     if not shutil.which("az"):
-        die("Azure CLI (`az`) not found on PATH. Install it first:\n"
-            "  https://learn.microsoft.com/en-us/cli/azure/install-azure-cli")
+        die(
+            "Azure CLI (`az`) not found on PATH. Install it first:\n"
+            "  https://learn.microsoft.com/en-us/cli/azure/install-azure-cli"
+        )
 
     # Verify signed in.
     account = az("account", "show", check=False)
@@ -340,7 +378,8 @@ def main() -> None:
     gateway_app = create_or_get_app(APP_DISPLAY_NAMES["gateway"])
     agent_app = create_or_get_app(APP_DISPLAY_NAMES["agent"])
     frontend_app = create_or_get_app(
-        APP_DISPLAY_NAMES["frontend"], redirect_uri=REDIRECT_URI,
+        APP_DISPLAY_NAMES["frontend"],
+        redirect_uri=REDIRECT_URI,
     )
 
     # 2) Identifier URIs + v2 access tokens + Expose-an-API scopes on Agent
@@ -403,12 +442,17 @@ def main() -> None:
         for app_label, ok in consents.items():
             if ok:
                 continue
-            app_obj = {"FrontendApp": frontend_app, "AgentApp": agent_app, "GatewayApp": gateway_app}[app_label]
-            print(f"    - Open Entra → App registrations → {app_obj['displayName']} "
-                  f"({app_obj['appId']}) → API permissions → "
-                  f"\"Grant admin consent for <tenant>\".")
-        print("  Or have them run: "
-              "az ad app permission admin-consent --id <appId>")
+            app_obj = {
+                "FrontendApp": frontend_app,
+                "AgentApp": agent_app,
+                "GatewayApp": gateway_app,
+            }[app_label]
+            print(
+                f"    - Open Entra → App registrations → {app_obj['displayName']} "
+                f"({app_obj['appId']}) → API permissions → "
+                f'"Grant admin consent for <tenant>".'
+            )
+        print("  Or have them run: az ad app permission admin-consent --id <appId>")
 
     # 6) Client secrets — only mint new ones if .env has a placeholder
     #    (or --rotate-secrets is given).
@@ -422,11 +466,15 @@ def main() -> None:
     new_secrets: dict[str, str] = {}
     for env_key, (app_obj, name) in secret_map.items():
         if args.rotate_secrets or env_value_is_placeholder(env_path, env_key):
-            secret = reset_client_secret(app_obj["appId"], display_name=f"deploy-{name}")
+            secret = reset_client_secret(
+                app_obj["appId"], display_name=f"deploy-{name}"
+            )
             new_secrets[env_key] = secret
             print(f"  ✓ Created secret for {name} → will write to .env")
         else:
-            print(f"  • {env_key} already set; leaving alone (use --rotate-secrets to force)")
+            print(
+                f"  • {env_key} already set; leaving alone (use --rotate-secrets to force)"
+            )
 
     # 7) Persist values to .env.
     print("\n[7/7] Writing .env…")
@@ -439,22 +487,26 @@ def main() -> None:
         "GATEWAY_SCOPE": f"api://{gateway_app['appId']}/access_as_user",
     }
     env_writes.update(new_secrets)
+    # Silently persist to .env. We deliberately do NOT print the keys or
+    # values here — every element of `env_writes` is derived from a
+    # Microsoft Graph API response (or a freshly minted secret), and
+    # CodeQL's taint tracker flags any print that reads from that dict,
+    # even for values it labels as ***. The keys are named deterministically
+    # per config.example.env, and the user can inspect .env directly.
     for key, value in env_writes.items():
         upsert_env_value(env_path, key, value)
-        # Split branches so the printed expression is either a hard-coded
-        # placeholder ("***") or a non-sensitive config value — never a
-        # variable that CodeQL's taint tracker sees as flowing from a
-        # secret source into stdout.
-        if key.endswith("_SECRET"):
-            print(f"  ✓ {key}=***")
-        else:
-            print(f"  ✓ {key}={value}")
+    print(
+        f"  ✓ Wrote {len(env_writes)} value(s) to .env "
+        f"(tenant/client IDs and any freshly-minted secrets)."
+    )
 
     print()
     print("✓ Entra ID setup complete.")
     print()
-    print("Verify:")
-    print("  cat .env | grep -E '^(TENANT_ID|FRONTEND_|AGENT_|GATEWAY_)'")
+    print("Verify (tenant + client IDs only; secrets stay in .env):")
+    print(
+        "  cat .env | grep -E '^(TENANT_ID|FRONTEND_CLIENT_ID|AGENT_CLIENT_ID|GATEWAY_CLIENT_ID|AGENT_SCOPE|GATEWAY_SCOPE)='"
+    )
     print()
     print("Next step: python deploy/01_create_providers.py")
 

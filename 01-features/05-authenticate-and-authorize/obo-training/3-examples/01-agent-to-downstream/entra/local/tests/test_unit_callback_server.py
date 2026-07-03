@@ -1,4 +1,5 @@
 """Unit tests for the local OAuth callback server."""
+
 from __future__ import annotations
 
 from urllib.request import urlopen
@@ -10,6 +11,7 @@ from callback_server import start_callback_server
 
 def _find_free_port() -> int:
     import socket
+
     s = socket.socket()
     s.bind(("127.0.0.1", 0))
     port = s.getsockname()[1]
@@ -23,7 +25,9 @@ class TestCallbackServer:
         server, future = start_callback_server(port)
         try:
             # Simulate the IdP redirect
-            with urlopen(f"http://127.0.0.1:{port}/callback?code=abc123&state=xyz") as r:
+            with urlopen(
+                f"http://127.0.0.1:{port}/callback?code=abc123&state=xyz"
+            ) as r:
                 assert r.status == 200
                 assert b"OAuth callback received" in r.read()
 

@@ -29,19 +29,18 @@ from typing import Any
 # Claims we expect to see — ordered by teaching relevance.
 # Entra calls the actor "appid" (v1.0) or "azp" (v2.0); we display whichever is present.
 INTERESTING_CLAIMS = [
-    "sub",           # who the token is about (Entra: PPID, per-app pseudonym)
-    "oid",           # stable user identity — THE claim to watch for "same user"
-    "tid",           # tenant — should be the same across hops within one tenant
-    "aud",           # who the token is FOR — should ROTATE
-    "iss",           # who issued it — Entra for both
-    "appid",         # v1.0 actor (the client that requested this token)
-    "azp",           # v2.0 equivalent of appid
-    "scp",           # scopes — should ROTATE (upstream scope → downstream scope)
-    "roles",         # app-role claims, if any
-    "iat",           # issued-at
-    "exp",           # expiration
+    "sub",  # who the token is about (Entra: PPID, per-app pseudonym)
+    "oid",  # stable user identity — THE claim to watch for "same user"
+    "tid",  # tenant — should be the same across hops within one tenant
+    "aud",  # who the token is FOR — should ROTATE
+    "iss",  # who issued it — Entra for both
+    "appid",  # v1.0 actor (the client that requested this token)
+    "azp",  # v2.0 equivalent of appid
+    "scp",  # scopes — should ROTATE (upstream scope → downstream scope)
+    "roles",  # app-role claims, if any
+    "iat",  # issued-at
+    "exp",  # expiration
 ]
-
 
 
 def _fetch_logs(since: str) -> str:
@@ -49,7 +48,10 @@ def _fetch_logs(since: str) -> str:
     try:
         result = subprocess.run(
             ["agentcore", "logs", "--since", since],
-            capture_output=True, text=True, check=False, timeout=30,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
         )
     except FileNotFoundError:
         print("ERROR: `agentcore` CLI not found on PATH.", file=sys.stderr)
@@ -98,7 +100,6 @@ def _extract_claims_pair(log_text: str) -> tuple[dict[str, Any], dict[str, Any]]
     return pairs[-1]
 
 
-
 def _stringify(value: Any, *, max_len: int = 54) -> str:
     if value is None:
         return "—"
@@ -135,27 +136,38 @@ def _print_table(inbound: dict, outbound: dict, *, show_all: bool) -> None:
 
     border = "─" * (col_claim_w + 2 * col_val_w + col_verdict_w + 10)
     print(border)
-    print(f"  {'claim':<{col_claim_w}}  {'INBOUND (user → agent)':<{col_val_w}}  {'OUTBOUND (agent → Graph)':<{col_val_w}}  {'':<{col_verdict_w}}")
+    print(
+        f"  {'claim':<{col_claim_w}}  {'INBOUND (user → agent)':<{col_val_w}}  {'OUTBOUND (agent → Graph)':<{col_val_w}}  {'':<{col_verdict_w}}"
+    )
     print(border)
     for k in keys:
         iv = inbound.get(k)
         ov = outbound.get(k)
-        print(f"  {k:<{col_claim_w}}  {_stringify(iv, max_len=col_val_w):<{col_val_w}}  {_stringify(ov, max_len=col_val_w):<{col_val_w}}  {_verdict(iv, ov):<{col_verdict_w}}")
+        print(
+            f"  {k:<{col_claim_w}}  {_stringify(iv, max_len=col_val_w):<{col_val_w}}  {_stringify(ov, max_len=col_val_w):<{col_val_w}}  {_verdict(iv, ov):<{col_verdict_w}}"
+        )
     print(border)
-
 
 
 def _teaching_summary(inbound: dict, outbound: dict) -> None:
     print("\nOBO invariants:")
-    user_stable = inbound.get("oid") == outbound.get("oid") and inbound.get("oid") is not None
+    user_stable = (
+        inbound.get("oid") == outbound.get("oid") and inbound.get("oid") is not None
+    )
     aud_rotated = inbound.get("aud") != outbound.get("aud")
     actor_key_in = "appid" if "appid" in inbound else "azp"
     actor_key_out = "appid" if "appid" in outbound else "azp"
     actor_rotated = inbound.get(actor_key_in) != outbound.get(actor_key_out)
 
-    print(f"  {'✓' if user_stable else '✗'} user identity preserved   — same oid on both tokens")
-    print(f"  {'✓' if aud_rotated else '✗'} audience rotated          — aud changed from inbound to outbound")
-    print(f"  {'✓' if actor_rotated else '✗'} actor rotated             — {actor_key_in}/{actor_key_out} changed (frontend → agent)")
+    print(
+        f"  {'✓' if user_stable else '✗'} user identity preserved   — same oid on both tokens"
+    )
+    print(
+        f"  {'✓' if aud_rotated else '✗'} audience rotated          — aud changed from inbound to outbound"
+    )
+    print(
+        f"  {'✓' if actor_rotated else '✗'} actor rotated             — {actor_key_in}/{actor_key_out} changed (frontend → agent)"
+    )
     if user_stable and aud_rotated and actor_rotated:
         print("\n  → All three invariants hold. This is OBO doing its job.")
     else:
@@ -164,8 +176,16 @@ def _teaching_summary(inbound: dict, outbound: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--since", default="5m", help="Time window for `agentcore logs --since` (default: 5m).")
-    parser.add_argument("--all-claims", action="store_true", help="Show all claims, not just the OBO-relevant ones.")
+    parser.add_argument(
+        "--since",
+        default="5m",
+        help="Time window for `agentcore logs --since` (default: 5m).",
+    )
+    parser.add_argument(
+        "--all-claims",
+        action="store_true",
+        help="Show all claims, not just the OBO-relevant ones.",
+    )
     args = parser.parse_args()
 
     log_text = _fetch_logs(args.since)

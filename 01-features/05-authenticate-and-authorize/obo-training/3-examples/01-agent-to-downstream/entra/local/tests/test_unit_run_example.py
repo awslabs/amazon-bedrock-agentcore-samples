@@ -1,4 +1,5 @@
 """Unit tests for 02_run_example.py — AWS + Graph calls mocked."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -36,20 +37,24 @@ def mock_ac_identity():
         },
         # 2nd call: USER_FEDERATION after completion — returns user token
         {
-            "accessToken": make_jwt({
-                "aud": "agent-client-id",
-                "oid": "alice-oid",
-                "scp": "access_as_user",
-            }),
+            "accessToken": make_jwt(
+                {
+                    "aud": "agent-client-id",
+                    "oid": "alice-oid",
+                    "scp": "access_as_user",
+                }
+            ),
         },
         # 3rd call: OBO exchange — returns Graph token
         {
-            "accessToken": make_jwt({
-                "aud": "00000003-0000-0000-c000-000000000000",
-                "oid": "alice-oid",
-                "scp": "User.Read",
-                "appid": "agent-client-id",
-            }),
+            "accessToken": make_jwt(
+                {
+                    "aud": "00000003-0000-0000-c000-000000000000",
+                    "oid": "alice-oid",
+                    "scp": "User.Read",
+                    "appid": "agent-client-id",
+                }
+            ),
         },
     ]
 
@@ -74,7 +79,8 @@ class TestRunExample:
         fake_future = MagicMock()
         fake_future.result.return_value = {"code": "auth-code-xyz"}
         monkeypatch.setattr(
-            mod, "start_callback_server",
+            mod,
+            "start_callback_server",
             lambda port: (fake_server, fake_future),
         )
 
@@ -110,10 +116,7 @@ class TestRunExample:
         with pytest.raises(SystemExit):
             mod.main()
 
-
-    def test_cached_user_token_skips_3lo(
-        self, required_env, monkeypatch
-    ):
+    def test_cached_user_token_skips_3lo(self, required_env, monkeypatch):
         """If AgentCore has a cached user token, the first call returns accessToken
         directly and we should skip the browser/callback dance."""
         mod = _load_module()
@@ -127,11 +130,15 @@ class TestRunExample:
             # First USER_FEDERATION call — cached token branch
             {"accessToken": make_jwt({"aud": "agent-client-id", "oid": "alice-oid"})},
             # OBO exchange
-            {"accessToken": make_jwt({
-                "aud": "00000003-0000-0000-c000-000000000000",
-                "oid": "alice-oid",
-                "appid": "agent-client-id",
-            })},
+            {
+                "accessToken": make_jwt(
+                    {
+                        "aud": "00000003-0000-0000-c000-000000000000",
+                        "oid": "alice-oid",
+                        "appid": "agent-client-id",
+                    }
+                )
+            },
         ]
         client.get_workload_access_token_for_jwt.return_value = {
             "workloadAccessToken": "obo-wl-token"
@@ -142,7 +149,8 @@ class TestRunExample:
         fake_server = MagicMock()
         fake_future = MagicMock()
         monkeypatch.setattr(
-            mod, "start_callback_server",
+            mod,
+            "start_callback_server",
             lambda port: (fake_server, fake_future),
         )
         # If the cached-token branch works correctly, webbrowser.open and

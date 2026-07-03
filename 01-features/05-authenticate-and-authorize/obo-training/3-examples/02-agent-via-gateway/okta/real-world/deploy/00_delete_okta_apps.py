@@ -56,10 +56,15 @@ POLICY_NAMES = [
 ]
 
 DEPLOY_POPULATED_KEYS = [
-    "FRONTEND_CLIENT_ID", "FRONTEND_CLIENT_SECRET",
-    "AGENT_CLIENT_ID", "AGENT_CLIENT_SECRET",
-    "GATEWAY_CLIENT_ID", "GATEWAY_CLIENT_SECRET",
-    "UPSTREAM_SCOPE", "GATEWAY_SCOPE", "DOWNSTREAM_SCOPE",
+    "FRONTEND_CLIENT_ID",
+    "FRONTEND_CLIENT_SECRET",
+    "AGENT_CLIENT_ID",
+    "AGENT_CLIENT_SECRET",
+    "GATEWAY_CLIENT_ID",
+    "GATEWAY_CLIENT_SECRET",
+    "UPSTREAM_SCOPE",
+    "GATEWAY_SCOPE",
+    "DOWNSTREAM_SCOPE",
     "OKTA_AUDIENCE",
 ]
 
@@ -69,8 +74,9 @@ def die(msg: str) -> None:
     sys.exit(1)
 
 
-def deactivate_and_delete_policy(client: OktaClient, auth_server_id: str,
-                                 policy: dict, dry_run: bool) -> None:
+def deactivate_and_delete_policy(
+    client: OktaClient, auth_server_id: str, policy: dict, dry_run: bool
+) -> None:
     if dry_run:
         print(f"  would delete policy: {policy['name']} (id={policy['id']})")
         return
@@ -89,8 +95,9 @@ def deactivate_and_delete_policy(client: OktaClient, auth_server_id: str,
         print(f"  ✗ Failed to delete policy {policy['name']}: {e}", file=sys.stderr)
 
 
-def delete_scope(client: OktaClient, auth_server_id: str, scope_name: str,
-                 dry_run: bool) -> None:
+def delete_scope(
+    client: OktaClient, auth_server_id: str, scope_name: str, dry_run: bool
+) -> None:
     scopes = client.get(f"/authorizationServers/{auth_server_id}/scopes")
     match = next((s for s in scopes if s["name"] == scope_name), None)
     if not match:
@@ -100,9 +107,7 @@ def delete_scope(client: OktaClient, auth_server_id: str, scope_name: str,
         print(f"  would delete scope: {scope_name} (id={match['id']})")
         return
     try:
-        client.delete(
-            f"/authorizationServers/{auth_server_id}/scopes/{match['id']}"
-        )
+        client.delete(f"/authorizationServers/{auth_server_id}/scopes/{match['id']}")
         print(f"  ✓ Deleted scope: {scope_name}")
     except SystemExit as e:
         print(f"  ✗ Failed to delete scope {scope_name}: {e}", file=sys.stderr)
@@ -143,12 +148,19 @@ def clean_env_values(env_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--yes", "-y", action="store_true",
-                        help="Skip the confirmation prompt.")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be deleted without doing it.")
-    parser.add_argument("--clean-env", action="store_true",
-                        help="Also clear deploy-populated values from .env.")
+    parser.add_argument(
+        "--yes", "-y", action="store_true", help="Skip the confirmation prompt."
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without doing it.",
+    )
+    parser.add_argument(
+        "--clean-env",
+        action="store_true",
+        help="Also clear deploy-populated values from .env.",
+    )
     args = parser.parse_args()
 
     real_world_root = Path(__file__).resolve().parent.parent
@@ -157,7 +169,9 @@ def main() -> None:
 
     okta_domain = os.environ.get("OKTA_DOMAIN", "").strip()
     okta_token = os.environ.get("OKTA_ADMIN_TOKEN", "").strip()
-    auth_server_id = os.environ.get("OKTA_AUTH_SERVER_ID", "default").strip() or "default"
+    auth_server_id = (
+        os.environ.get("OKTA_AUTH_SERVER_ID", "default").strip() or "default"
+    )
 
     if not okta_domain:
         die("OKTA_DOMAIN is not set in .env.")
@@ -167,8 +181,9 @@ def main() -> None:
     if not args.yes and not args.dry_run:
         print(f"About to delete Okta artifacts on {okta_domain}:")
         print(f"  - 3 access policies on '{auth_server_id}': {POLICY_NAMES}")
-        print(f"  - 3 custom scopes on '{auth_server_id}': "
-              f"{[s['name'] for s in SCOPES]}")
+        print(
+            f"  - 3 custom scopes on '{auth_server_id}': {[s['name'] for s in SCOPES]}"
+        )
         print(f"  - 3 app registrations: {list(APP_LABELS.values())}")
         answer = input("Continue? [y/N] ").strip().lower()
         if answer not in ("y", "yes"):
@@ -205,7 +220,11 @@ def main() -> None:
         clean_env_values(env_path)
 
     print()
-    print("✓ Okta cleanup complete." if not args.dry_run else "✓ Dry run complete (no changes made).")
+    print(
+        "✓ Okta cleanup complete."
+        if not args.dry_run
+        else "✓ Dry run complete (no changes made)."
+    )
 
 
 if __name__ == "__main__":

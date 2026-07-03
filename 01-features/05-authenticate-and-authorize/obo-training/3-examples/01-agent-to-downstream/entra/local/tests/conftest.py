@@ -1,4 +1,5 @@
 """Shared test fixtures and utilities for Use Case 1 Entra tests."""
+
 from __future__ import annotations
 
 import base64
@@ -22,8 +23,10 @@ def make_jwt(payload: dict[str, Any]) -> str:
     Used by unit tests to feed synthetic tokens into decode helpers.
     """
     header = {"alg": "none", "typ": "JWT"}
+
     def b64(d: dict[str, Any]) -> str:
         return base64.urlsafe_b64encode(json.dumps(d).encode()).rstrip(b"=").decode()
+
     return f"{b64(header)}.{b64(payload)}.fake-signature"
 
 
@@ -66,5 +69,7 @@ def cached_user_jwt(user_jwt_cache_path: Path) -> str:
         "exp": int(time.time()) + 3600,
     }
     token = make_jwt(claims)
-    user_jwt_cache_path.write_text(json.dumps({"token": token, "claims": claims, "expires_at": claims["exp"]}))
+    user_jwt_cache_path.write_text(
+        json.dumps({"token": token, "claims": claims, "expires_at": claims["exp"]})
+    )
     return token

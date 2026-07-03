@@ -9,6 +9,7 @@ Prerequisites:
   3. python generate_user_jwt.py  (populates .user-jwt-cache.json)
   4. RUN_INTEGRATION=1 pytest tests/test_integration_obo.py -v
 """
+
 from __future__ import annotations
 
 import base64
@@ -68,7 +69,8 @@ class TestOktaObo:
         workload_name = os.environ["WORKLOAD_NAME"]
 
         resp = agentcore.get_workload_access_token_for_jwt(
-            workloadName=workload_name, userToken=token,
+            workloadName=workload_name,
+            userToken=token,
         )
 
         assert "workloadAccessToken" in resp
@@ -83,7 +85,8 @@ class TestOktaObo:
         service_app_client_id = os.environ["SERVICE_APP_CLIENT_ID"]
 
         wl = agentcore.get_workload_access_token_for_jwt(
-            workloadName=workload_name, userToken=token,
+            workloadName=workload_name,
+            userToken=token,
         )["workloadAccessToken"]
 
         obo = agentcore.get_resource_oauth2_token(

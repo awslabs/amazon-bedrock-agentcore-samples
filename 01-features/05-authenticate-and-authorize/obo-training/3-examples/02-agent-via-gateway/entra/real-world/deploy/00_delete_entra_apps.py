@@ -48,7 +48,8 @@ ENV_KEYS_TO_CLEAR = [
 def az_json(*args: str) -> object | None:
     proc = subprocess.run(
         ["az", *args, "--output", "json"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if proc.returncode != 0:
         return None
@@ -89,8 +90,9 @@ def clear_env_value(env_path: Path, key: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--yes", "-y", action="store_true",
-                        help="Skip interactive confirmation.")
+    parser.add_argument(
+        "--yes", "-y", action="store_true", help="Skip interactive confirmation."
+    )
     args = parser.parse_args()
 
     if not shutil.which("az"):
@@ -112,23 +114,32 @@ def main() -> None:
         if not app:
             print(f"  • {name}: not found")
             continue
-        if not confirm(f"Delete app '{name}' (appId={app['appId']})?", auto_yes=args.yes):
+        if not confirm(
+            f"Delete app '{name}' (appId={app['appId']})?", auto_yes=args.yes
+        ):
             print(f"  • {name}: skipped")
             continue
         proc = subprocess.run(
             ["az", "ad", "app", "delete", "--id", app["appId"]],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if proc.returncode == 0:
             print(f"  ✓ {name}: deleted (appId={app['appId']})")
             deleted += 1
         else:
-            print(f"  ✗ {name}: delete failed: {proc.stderr.strip() or proc.stdout.strip()}")
+            print(
+                f"  ✗ {name}: delete failed: {proc.stderr.strip() or proc.stdout.strip()}"
+            )
 
-    if env_path.exists() and confirm("\nClear app-related values from .env?", auto_yes=args.yes):
+    if env_path.exists() and confirm(
+        "\nClear app-related values from .env?", auto_yes=args.yes
+    ):
         for key in ENV_KEYS_TO_CLEAR:
             clear_env_value(env_path, key)
-        print("  ✓ Cleared *_CLIENT_ID, *_CLIENT_SECRET, AGENT_SCOPE, GATEWAY_SCOPE in .env")
+        print(
+            "  ✓ Cleared *_CLIENT_ID, *_CLIENT_SECRET, AGENT_SCOPE, GATEWAY_SCOPE in .env"
+        )
 
     print()
     print(f"Done. {deleted} app(s) deleted.")

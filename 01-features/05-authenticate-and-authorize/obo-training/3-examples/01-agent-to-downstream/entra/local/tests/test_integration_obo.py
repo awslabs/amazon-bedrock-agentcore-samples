@@ -9,6 +9,7 @@ Prerequisites:
   3. Run `python generate_user_jwt.py` to populate .user-jwt-cache.json
   4. RUN_INTEGRATION=1 pytest tests/test_integration_obo.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -66,7 +67,8 @@ class TestEntraObo:
         workload_name = os.environ["WORKLOAD_NAME"]
 
         resp = agentcore.get_workload_access_token_for_jwt(
-            workloadName=workload_name, userToken=token,
+            workloadName=workload_name,
+            userToken=token,
         )
 
         assert "workloadAccessToken" in resp
@@ -83,7 +85,8 @@ class TestEntraObo:
         graph_scope = os.environ["GRAPH_SCOPE"]
 
         wl = agentcore.get_workload_access_token_for_jwt(
-            workloadName=workload_name, userToken=token,
+            workloadName=workload_name,
+            userToken=token,
         )["workloadAccessToken"]
 
         obo = agentcore.get_resource_oauth2_token(
@@ -113,7 +116,8 @@ class TestEntraObo:
         graph_scope = os.environ["GRAPH_SCOPE"]
 
         wl = agentcore.get_workload_access_token_for_jwt(
-            workloadName=workload_name, userToken=token,
+            workloadName=workload_name,
+            userToken=token,
         )["workloadAccessToken"]
 
         graph_token = agentcore.get_resource_oauth2_token(

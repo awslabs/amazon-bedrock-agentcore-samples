@@ -28,7 +28,10 @@ from dotenv import load_dotenv
 def must_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
-        print(f"ERROR: required env var {name} is not set. See config.example.env.", file=sys.stderr)
+        print(
+            f"ERROR: required env var {name} is not set. See config.example.env.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return value
 
@@ -39,7 +42,10 @@ def ensure_workload_identity(client, name: str) -> dict:
         print(f"✓ Created workload identity: {name}")
         return resp
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Workload identity already exists: {name}")
             return client.get_workload_identity(name=name)
         raise
@@ -75,7 +81,10 @@ def ensure_microsoft_provider(
         print(f"✓ Created credential provider: {name}")
         return resp
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ConflictException", "ResourceAlreadyExistsException"}:
+        if e.response["Error"]["Code"] in {
+            "ConflictException",
+            "ResourceAlreadyExistsException",
+        }:
             print(f"• Credential provider already exists: {name}")
             return client.get_oauth2_credential_provider(name=name)
         raise
@@ -129,9 +138,15 @@ def main() -> None:
     # the user — the actual URL is visible in the AWS console.
     print()
     print("Next steps:")
-    print(" 1. If your Entra app doesn't yet have the AgentCore-managed redirect URI as")
-    print("    a platform redirect, add it in Entra → App registrations → Authentication.")
-    print("    You can find the redirect URI in the AWS console under AgentCore Identity →")
+    print(
+        " 1. If your Entra app doesn't yet have the AgentCore-managed redirect URI as"
+    )
+    print(
+        "    a platform redirect, add it in Entra → App registrations → Authentication."
+    )
+    print(
+        "    You can find the redirect URI in the AWS console under AgentCore Identity →"
+    )
     print(f"    Credential providers → {client_provider_name}.")
     print(" 2. Run: python 02_run_example.py")
 

@@ -270,13 +270,18 @@ def main() -> None:
     ac_control = boto3.client("bedrock-agentcore-control", region_name=region)
 
     # 1) Look up the gateway-actor credential provider (created in step 01).
-    print(f"• Looking up Gateway-actor credential provider: {gateway_obo_provider_name}")
+    print(
+        f"• Looking up Gateway-actor credential provider: {gateway_obo_provider_name}"
+    )
     try:
         gateway_provider_arn = get_gateway_provider_arn(
             ac_control, gateway_obo_provider_name
         )
     except ClientError as e:
-        if e.response["Error"]["Code"] in {"ResourceNotFoundException", "NotFoundException"}:
+        if e.response["Error"]["Code"] in {
+            "ResourceNotFoundException",
+            "NotFoundException",
+        }:
             print(
                 f"ERROR: Credential provider '{gateway_obo_provider_name}' not "
                 f"found. Run step 01 first.",
@@ -322,15 +327,24 @@ def main() -> None:
             existing_config = existing_gw.get("authorizerConfiguration") or {}
             existing_authorizer = existing_config.get("customJWTAuthorizer", {}) or {}
             existing_discovery = existing_authorizer.get("discoveryUrl", "")
-            existing_audience = set(existing_authorizer.get("allowedAudience", []) or [])
-            desired_audience = set(authorizer_config["customJWTAuthorizer"]["allowedAudience"])
-            if existing_discovery != discovery_url or existing_audience != desired_audience:
+            existing_audience = set(
+                existing_authorizer.get("allowedAudience", []) or []
+            )
+            desired_audience = set(
+                authorizer_config["customJWTAuthorizer"]["allowedAudience"]
+            )
+            if (
+                existing_discovery != discovery_url
+                or existing_audience != desired_audience
+            ):
                 print("  • Authorizer drift detected — updating.")
                 if existing_discovery != discovery_url:
                     print(f"      discoveryUrl was: {existing_discovery or '(unset)'}")
                     print(f"      discoveryUrl now: {discovery_url}")
                 if existing_audience != desired_audience:
-                    print(f"      allowedAudience was: {sorted(existing_audience) or '(unset)'}")
+                    print(
+                        f"      allowedAudience was: {sorted(existing_audience) or '(unset)'}"
+                    )
                     print(f"      allowedAudience now: {sorted(desired_audience)}")
                 ac_control.update_gateway(
                     gatewayIdentifier=gateway_id,
@@ -342,9 +356,12 @@ def main() -> None:
                 )
                 print("  ✓ Gateway authorizer updated.")
         except ClientError as e:
-            print(f"  ⚠ Could not reconcile authorizer config: {e}. "
-                  f"Consider `python deploy/teardown.py` + re-run if the "
-                  f"401 error appears at runtime.", file=sys.stderr)
+            print(
+                f"  ⚠ Could not reconcile authorizer config: {e}. "
+                f"Consider `python deploy/teardown.py` + re-run if the "
+                f"401 error appears at runtime.",
+                file=sys.stderr,
+            )
     else:
         create_resp = ac_control.create_gateway(
             name=gateway_name,
@@ -371,17 +388,21 @@ def main() -> None:
                 print(f"  ✓ Gateway status: READY (after {attempt * 3}s)")
             break
         if status in {"FAILED", "DELETING", "DELETED"}:
-            print(f"ERROR: Gateway entered terminal state {status}. "
-                  f"Reason: {gw.get('statusReasons', gw.get('failureReason', 'n/a'))}",
-                  file=sys.stderr)
+            print(
+                f"ERROR: Gateway entered terminal state {status}. "
+                f"Reason: {gw.get('statusReasons', gw.get('failureReason', 'n/a'))}",
+                file=sys.stderr,
+            )
             sys.exit(1)
         if attempt == 0:
             print(f"  ⏳ Waiting for Gateway to reach READY (current: {status})…")
         time.sleep(3)
     else:
-        print("ERROR: Gateway did not reach READY within 2 minutes. "
-              "Check the console; re-run this script once it does.",
-              file=sys.stderr)
+        print(
+            "ERROR: Gateway did not reach READY within 2 minutes. "
+            "Check the console; re-run this script once it does.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # 3) Load the OpenAPI spec.
@@ -454,14 +475,17 @@ def main() -> None:
         print("  • Deleting and recreating to guarantee fresh config…")
         try:
             ac_control.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id,
+                gatewayIdentifier=gateway_id,
+                targetId=target_id,
             )
         except ClientError as e:
             print(f"  ⚠ Could not delete existing target: {e}", file=sys.stderr)
             print("    Manual fallback:")
-            print(f"      aws bedrock-agentcore-control delete-gateway-target "
-                  f"--gateway-identifier {gateway_id} --target-id {target_id} "
-                  f"--region {region}")
+            print(
+                f"      aws bedrock-agentcore-control delete-gateway-target "
+                f"--gateway-identifier {gateway_id} --target-id {target_id} "
+                f"--region {region}"
+            )
             sys.exit(1)
         # Wait briefly for async deletion to complete.
         for _ in range(20):
@@ -469,8 +493,10 @@ def main() -> None:
                 break
             time.sleep(1)
         else:
-            print("  ⚠ Target still present after 20s. Re-run this script in a "
-                  "moment.", file=sys.stderr)
+            print(
+                "  ⚠ Target still present after 20s. Re-run this script in a moment.",
+                file=sys.stderr,
+            )
             sys.exit(1)
         print("  ✓ Old target deleted.")
 
@@ -488,20 +514,27 @@ def main() -> None:
     if gateway_url:
         mcp_url = (
             gateway_url.rstrip("/") + "/mcp"
-            if not gateway_url.endswith("/mcp") else gateway_url
+            if not gateway_url.endswith("/mcp")
+            else gateway_url
         )
         upsert_env_value(env_path, "GATEWAY_MCP_URL", mcp_url)
-        print(f"\n✓ Wrote GATEWAY_MCP_URL to {env_path.relative_to(real_world_root.parent)}:")
+        print(
+            f"\n✓ Wrote GATEWAY_MCP_URL to {env_path.relative_to(real_world_root.parent)}:"
+        )
         print(f"  GATEWAY_MCP_URL={mcp_url}")
     else:
         print("\n⚠ Gateway URL not returned in API response. Look it up later via:")
-        print("    aws bedrock-agentcore-control get-gateway --gateway-identifier "
-              f"{gateway_id}")
+        print(
+            "    aws bedrock-agentcore-control get-gateway --gateway-identifier "
+            f"{gateway_id}"
+        )
         print("  and set GATEWAY_MCP_URL=<gateway-url>/mcp in .env manually.")
 
     print()
-    print("Next step: python deploy/03_patch_agentcore_json.py "
-          "(after `agentcore create --defaults` has scaffolded the project)")
+    print(
+        "Next step: python deploy/03_patch_agentcore_json.py "
+        "(after `agentcore create --defaults` has scaffolded the project)"
+    )
 
 
 if __name__ == "__main__":

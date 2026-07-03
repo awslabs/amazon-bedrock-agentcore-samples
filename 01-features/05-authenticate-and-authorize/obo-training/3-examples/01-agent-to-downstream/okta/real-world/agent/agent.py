@@ -71,7 +71,8 @@ def _obo_exchange(user_token: str) -> str:
     or handle the client secret from this code.
     """
     workload_token = _ac_identity.get_workload_access_token_for_jwt(
-        workloadName=WORKLOAD_NAME, userToken=user_token,
+        workloadName=WORKLOAD_NAME,
+        userToken=user_token,
     )["workloadAccessToken"]
 
     # DOWNSTREAM_SCOPE is a space-separated string (e.g. "openid profile email");
@@ -176,6 +177,7 @@ def _decode_token_claims(token: str) -> dict[str, Any]:
     """
     import base64 as _b64
     import json as _json
+
     try:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)

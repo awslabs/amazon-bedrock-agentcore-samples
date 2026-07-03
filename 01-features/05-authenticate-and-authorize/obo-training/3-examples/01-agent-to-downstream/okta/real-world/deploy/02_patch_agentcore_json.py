@@ -70,7 +70,7 @@ def main() -> None:
         print(
             f"ERROR: {agentcore_json} does not exist.\n"
             f"Run the scaffold step first:\n"
-            f"  agentcore create --name \"$AGENT_RUNTIME_NAME\" "
+            f'  agentcore create --name "$AGENT_RUNTIME_NAME" '
             f"--framework Strands --model-provider Bedrock "
             f"--memory none --build CodeZip --defaults",
             file=sys.stderr,
@@ -88,7 +88,9 @@ def main() -> None:
         )
         sys.exit(1)
 
-    oidc_discovery_url = f"https://{domain}/oauth2/{auth_server_id}/.well-known/openid-configuration"
+    oidc_discovery_url = (
+        f"https://{domain}/oauth2/{auth_server_id}/.well-known/openid-configuration"
+    )
 
     # 1. requestHeaderAllowlist: allow the Authorization header through so the
     #    agent handler can read the user's JWT.
@@ -126,7 +128,11 @@ def main() -> None:
 
     # Start with whatever the runtime already has (preserves anything the
     # user manually set) then overwrite with our managed values.
-    existing = {e["name"]: e["value"] for e in runtime.get("envVars", []) if "name" in e and "value" in e}
+    existing = {
+        e["name"]: e["value"]
+        for e in runtime.get("envVars", [])
+        if "name" in e and "value" in e
+    }
     existing.update(env_map)
     runtime["envVars"] = [{"name": k, "value": v} for k, v in existing.items()]
 
@@ -139,7 +145,9 @@ def main() -> None:
     print(f"  requestHeaderAllowlist: {runtime['requestHeaderAllowlist']}")
     print("  authorizerType:         CUSTOM_JWT")
     print(f"  discoveryUrl:           {oidc_discovery_url}")
-    print(f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}")
+    print(
+        f"  allowedAudience:        {runtime['authorizerConfiguration']['customJwtAuthorizer']['allowedAudience']}"
+    )
     print(f"  frontend cid (for ref): {frontend_client_id}")
     print()
     print("Next steps (from inside the project folder):")

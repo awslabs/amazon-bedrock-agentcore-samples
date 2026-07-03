@@ -146,7 +146,9 @@ def main() -> None:
     print()
     print("Permissions now granted:")
     for stmt in policy["Statement"]:
-        print(f"  - {stmt['Sid']}: {', '.join(stmt['Action'] if isinstance(stmt['Action'], list) else [stmt['Action']])}")
+        print(
+            f"  - {stmt['Sid']}: {', '.join(stmt['Action'] if isinstance(stmt['Action'], list) else [stmt['Action']])}"
+        )
     print()
     print("IAM changes take effect within seconds. Retry the frontend flow.")
 

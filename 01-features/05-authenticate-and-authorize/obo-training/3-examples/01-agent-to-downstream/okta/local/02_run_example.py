@@ -48,7 +48,6 @@ CALLBACK_PORT = 8081
 CALLBACK_URL = f"http://localhost:{CALLBACK_PORT}/callback"
 
 
-
 def must_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
@@ -62,17 +61,24 @@ def decode_jwt_claims(token: str) -> dict[str, Any]:
     try:
         payload_b64 = token.split(".")[1]
         padding = "=" * (-len(payload_b64) % 4)
-        return json.loads(base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8"))
+        return json.loads(
+            base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8")
+        )
     except Exception as e:  # pragma: no cover
         return {"_decode_error": str(e)}
 
 
-
-def chapter_1_sign_in(ac_identity, workload_name: str, client_provider_name: str,
-                       upstream_scope: str, user_alias: str) -> str:
+def chapter_1_sign_in(
+    ac_identity,
+    workload_name: str,
+    client_provider_name: str,
+    upstream_scope: str,
+    user_alias: str,
+) -> str:
     """Obtain a user access token — either from AgentCore's cache or via a fresh 3LO."""
     chapter(
-        1, "Sign the user in (simulating the frontend)",
+        1,
+        "Sign the user in (simulating the frontend)",
         "Get an Okta access token that says 'Alice is signed in and consented'",
     )
     explain("""
@@ -87,9 +93,12 @@ a standard Okta-issued access token you can feed into the next chapter.
 """)
     pause()
 
-    action("Calling get_workload_access_token_for_user_id — gets a scratch token AgentCore will use to track this user's session")
+    action(
+        "Calling get_workload_access_token_for_user_id — gets a scratch token AgentCore will use to track this user's session"
+    )
     wl_resp = ac_identity.get_workload_access_token_for_user_id(
-        workloadName=workload_name, userId=user_alias,
+        workloadName=workload_name,
+        userId=user_alias,
     )
     user_wl_token = wl_resp["workloadAccessToken"]
     success("Got a workload token for the test user")
@@ -134,11 +143,13 @@ a standard Okta-issued access token you can feed into the next chapter.
     return user_token
 
 
-
-def chapter_2_inspect_inbound(user_token: str, native_client_id: str, audience: str) -> dict:
+def chapter_2_inspect_inbound(
+    user_token: str, native_client_id: str, audience: str
+) -> dict:
     """Decode the inbound user token and point out the claims that matter."""
     chapter(
-        2, "Inspect the inbound user access token",
+        2,
+        "Inspect the inbound user access token",
         "Confirm this token really is 'for your auth server, about the user, issued to the native app'",
     )
     explain("""
@@ -160,35 +171,51 @@ authorization server. If it doesn't, the exchange fails at the IdP.
     pause()
 
     claims = decode_jwt_claims(user_token)
-    show_claims("Inbound user access token claims", claims, highlight=["aud", "sub", "cid", "scp"])
+    show_claims(
+        "Inbound user access token claims",
+        claims,
+        highlight=["aud", "sub", "cid", "scp"],
+    )
 
     if claims.get("cid") == native_client_id:
-        success(f"cid matches NATIVE_APP_CLIENT_ID ({native_client_id}) — token issued to the frontend app")
+        success(
+            f"cid matches NATIVE_APP_CLIENT_ID ({native_client_id}) — token issued to the frontend app"
+        )
     else:
-        info(f"cid is {claims.get('cid')!r}, expected {native_client_id!r} — token was issued to a different client")
+        info(
+            f"cid is {claims.get('cid')!r}, expected {native_client_id!r} — token was issued to a different client"
+        )
 
     if claims.get("aud") == audience:
-        success(f"aud matches OKTA_AUDIENCE ({audience}) — token is for your auth server")
+        success(
+            f"aud matches OKTA_AUDIENCE ({audience}) — token is for your auth server"
+        )
     else:
-        info(f"aud is {claims.get('aud')!r}, expected {audience!r} — would fail OBO at the exchange step")
+        info(
+            f"aud is {claims.get('aud')!r}, expected {audience!r} — would fail OBO at the exchange step"
+        )
 
     observe(
         "Key property: user identity is encoded in `sub`",
         f"The `sub` claim ({claims.get('sub', '?')}) identifies this user stably. "
-        "Remember this value — we will look for it again in the OBO'd token."
+        "Remember this value — we will look for it again in the OBO'd token.",
     )
     pause()
     return claims
 
 
-
 def chapter_3_obo_exchange(
-    ac_identity, workload_name: str, actor_provider_name: str,
-    downstream_scope: str, audience: str, user_token: str,
+    ac_identity,
+    workload_name: str,
+    actor_provider_name: str,
+    downstream_scope: str,
+    audience: str,
+    user_token: str,
 ) -> str:
     """Perform the Okta token-exchange OBO flow and return the downstream token."""
     chapter(
-        3, "Perform the OBO token exchange (RFC 8693)",
+        3,
+        "Perform the OBO token exchange (RFC 8693)",
         "Swap the user token for an API2-scoped token — no user interaction",
     )
     explain(f"""
@@ -224,13 +251,16 @@ ourselves, and the user is NOT re-prompted to consent.
 
     action("Calling GetWorkloadAccessTokenForJWT to wrap the user token")
     obo_wl_resp = ac_identity.get_workload_access_token_for_jwt(
-        workloadName=workload_name, userToken=user_token,
+        workloadName=workload_name,
+        userToken=user_token,
     )
     obo_workload_token = obo_wl_resp["workloadAccessToken"]
     success("User token wrapped into an AgentCore workload token")
 
     action("Calling GetResourceOauth2Token with oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE")
-    info("  customParameters: subject_token_type=urn:ietf:params:oauth:token-type:access_token")
+    info(
+        "  customParameters: subject_token_type=urn:ietf:params:oauth:token-type:access_token"
+    )
     info(f"  audiences:        [{audience}]")
     info(f"  scopes:           [{downstream_scope}]")
     obo_resp = ac_identity.get_resource_oauth2_token(
@@ -247,11 +277,11 @@ ourselves, and the user is NOT re-prompted to consent.
     return obo_resp["accessToken"]
 
 
-
 def chapter_4_compare_tokens(inbound_claims: dict, downstream_token: str) -> dict:
     """Side-by-side comparison that makes the OBO guarantee obvious."""
     chapter(
-        4, "Compare the inbound and outbound tokens",
+        4,
+        "Compare the inbound and outbound tokens",
         "See what changed (scope, actor) and what stayed the same (user, audience)",
     )
     explain("""
@@ -277,8 +307,10 @@ agent app to Microsoft Graph. Which claim moves depends on the IdP.
 
     outbound_claims = decode_jwt_claims(downstream_token)
     compare_claims(
-        "Inbound (user → agent)", inbound_claims,
-        "Outbound (agent → API2)", outbound_claims,
+        "Inbound (user → agent)",
+        inbound_claims,
+        "Outbound (agent → API2)",
+        outbound_claims,
         keys=["aud", "sub", "cid", "scp", "iss", "uid"],
     )
 
@@ -286,7 +318,9 @@ agent app to Microsoft Graph. Which claim moves depends on the IdP.
     if inbound_claims.get("sub") == outbound_claims.get("sub"):
         success("USER IDENTITY PRESERVED — sub matches on both tokens")
     else:
-        info("sub changed — this would mean the user identity was lost. Check your setup.")
+        info(
+            "sub changed — this would mean the user identity was lost. Check your setup."
+        )
 
     if inbound_claims.get("cid") != outbound_claims.get("cid"):
         success("ACTOR ROTATED — cid changed from the native app to the service app")
@@ -304,17 +338,17 @@ agent app to Microsoft Graph. Which claim moves depends on the IdP.
         "This is the OBO guarantee in Okta's flavor",
         "Same user (sub). Different actor (cid). Different scope (scp). No extra "
         "consent. The agent now holds a token it can send to the downstream API, "
-        "and the API will accept it and run as the user, not as the agent."
+        "and the API will accept it and run as the user, not as the agent.",
     )
     pause()
     return outbound_claims
 
 
-
 def chapter_5_simulate_downstream(outbound_claims: dict, downstream_scope: str) -> None:
     """Show what the agent would do next with the downstream token."""
     chapter(
-        5, "Use the OBO token against the downstream API",
+        5,
+        "Use the OBO token against the downstream API",
         "Show where the token goes next and what the downstream enforces",
     )
     explain(f"""
@@ -362,7 +396,9 @@ token claims the downstream API would see.
         # the substring form.
         (
             "iss is an Okta authorization server",
-            _urlparse(str(outbound_claims.get("iss", ""))).netloc.lower().endswith(".okta.com"),
+            _urlparse(str(outbound_claims.get("iss", "")))
+            .netloc.lower()
+            .endswith(".okta.com"),
         ),
     ]
     for label, ok in checks:
@@ -376,9 +412,8 @@ token claims the downstream API would see.
         "Your agent obtained a token scoped to API2, on behalf of the user, using "
         "the user's consent (not the agent's), without re-prompting. That's the "
         "complete OBO loop in Okta's flavor — same shape as Entra, different "
-        "protocol details."
+        "protocol details.",
     )
-
 
 
 def main() -> None:
@@ -415,18 +450,30 @@ INTERACTIVE_NO_PAUSE=1 in your shell to skip the pauses.
 
     try:
         user_token = chapter_1_sign_in(
-            ac_identity, workload_name, client_provider_name, upstream_scope, user_alias,
+            ac_identity,
+            workload_name,
+            client_provider_name,
+            upstream_scope,
+            user_alias,
         )
-        inbound_claims = chapter_2_inspect_inbound(user_token, native_client_id, audience)
+        inbound_claims = chapter_2_inspect_inbound(
+            user_token, native_client_id, audience
+        )
         downstream_token = chapter_3_obo_exchange(
-            ac_identity, workload_name, actor_provider_name,
-            downstream_scope, audience, user_token,
+            ac_identity,
+            workload_name,
+            actor_provider_name,
+            downstream_scope,
+            audience,
+            user_token,
         )
         outbound_claims = chapter_4_compare_tokens(inbound_claims, downstream_token)
         chapter_5_simulate_downstream(outbound_claims, downstream_scope)
 
-        header("✓ Walkthrough complete",
-               "Review what just happened in the comparison tables above.")
+        header(
+            "✓ Walkthrough complete",
+            "Review what just happened in the comparison tables above.",
+        )
     except ClientError as e:
         msg = str(e)
         print(f"\n✗ AWS error: {msg}", file=sys.stderr)
