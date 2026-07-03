@@ -130,13 +130,15 @@ def ensure_okta_actor_provider(
             credentialProviderVendor="CustomOauth2",
             oauth2ProviderConfigInput=config,
         )
-        print(f"✓ Created credential provider: {name}")
+        # No print here — this function receives a client_secret argument,
+        # so CodeQL's clear-text-logging query flags any print in scope.
+        # main() prints a summary after the function returns.
     except ClientError as e:
         if e.response["Error"]["Code"] in {
             "ConflictException",
             "ResourceAlreadyExistsException",
         }:
-            print(f"• Credential provider already exists: {name}")
+            pass  # already exists — main() logs the summary
         else:
             raise
 

@@ -182,10 +182,10 @@ def ensure_okta_obo_provider(
             credentialProviderVendor="CustomOauth2",
             oauth2ProviderConfigInput=config,
         )
-        arn = resp["credentialProviderArn"]
-        print(f"✓ Created credential provider: {name}")
-        print(f"  ARN: {arn}")
-        return arn
+        # No success-path print here — this function receives a client_secret
+        # argument, so CodeQL's clear-text-logging query flags any print in
+        # scope even for static message bodies. Caller prints a summary.
+        return resp["credentialProviderArn"]
     except ClientError as e:
         code = e.response["Error"].get("Code", "")
         msg = e.response["Error"].get("Message", "")
@@ -203,10 +203,7 @@ def ensure_okta_obo_provider(
             credentialProviderVendor="CustomOauth2",
             oauth2ProviderConfigInput=config,
         )
-        arn = resp["credentialProviderArn"]
-        print(f"✓ Updated credential provider (secrets refreshed): {name}")
-        print(f"  ARN: {arn}")
-        return arn
+        return resp["credentialProviderArn"]
     except ClientError as e:
         # Fall back to fetching the ARN for callers that don't need fresh
         # credentials, but surface the error clearly.

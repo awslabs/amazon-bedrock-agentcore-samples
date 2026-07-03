@@ -78,14 +78,15 @@ def ensure_microsoft_provider(
             credentialProviderVendor="MicrosoftOauth2",
             oauth2ProviderConfigInput=config,
         )
-        print(f"✓ Created credential provider: {name}")
+        # No print here — this function receives a client_secret argument,
+        # so CodeQL's clear-text-logging query flags any print in scope.
+        # main() prints a summary after the function returns.
         return resp
     except ClientError as e:
         if e.response["Error"]["Code"] in {
             "ConflictException",
             "ResourceAlreadyExistsException",
         }:
-            print(f"• Credential provider already exists: {name}")
             return client.get_oauth2_credential_provider(name=name)
         raise
 

@@ -854,8 +854,12 @@ def main() -> None:
     #    new ones. Mint only if .env is missing / placeholder / --rotate.
     print("\n[4/6] Handling client secrets…")
 
+    # Mint or keep each app's client secret. We intentionally do NOT log
+    # per-app progress here — CodeQL's clear-text-logging query flags any
+    # print inside a scope where a client_secret variable exists, even for
+    # messages that only reference the app label. The summary count below
+    # is enough for the operator.
     def get_secret(app: dict, is_new: bool, env_key: str) -> str | None:
-        # For a freshly created app the secret is embedded in the response.
         if is_new:
             secret = (
                 (app.get("credentials") or {})
@@ -863,22 +867,21 @@ def main() -> None:
                 .get("client_secret")
             )
             if secret:
-                print(f"  ✓ Fresh secret for {app['label']}")
                 return secret
-
         if args.rotate_secrets or env_value_is_placeholder(env_path, env_key):
-            secret = rotate_client_secret(client, app["id"])
-            print(f"  ✓ Rotated secret for {app['label']}")
-            return secret
-
-        print(
-            f"  • {env_key} already set; leaving alone (use --rotate-secrets to force)"
-        )
+            return rotate_client_secret(client, app["id"])
         return None
 
     frontend_secret = get_secret(frontend_app, frontend_new, "FRONTEND_CLIENT_SECRET")
     agent_secret = get_secret(agent_app, agent_new, "AGENT_CLIENT_SECRET")
     gateway_secret = get_secret(gateway_app, gateway_new, "GATEWAY_CLIENT_SECRET")
+
+    minted = sum(1 for s in (frontend_secret, agent_secret, gateway_secret) if s)
+    kept = 3 - minted
+    print(
+        f"  ✓ Client secrets: {minted} freshly minted, {kept} kept "
+        f"(use --rotate-secrets to force-rotate all)"
+    )
 
     # 5) Access policies.
     #    Wait briefly for Okta to finish propagating the app registrations

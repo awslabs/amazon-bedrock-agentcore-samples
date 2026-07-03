@@ -463,18 +463,23 @@ def main() -> None:
         "AGENT_CLIENT_SECRET": (agent_app, APP_DISPLAY_NAMES["agent"]),
         "GATEWAY_CLIENT_SECRET": (gateway_app, APP_DISPLAY_NAMES["gateway"]),
     }
+    # Mint or keep client secrets. We intentionally do NOT log per-app
+    # progress here — CodeQL's clear-text-logging query flags any print
+    # inside a scope where a client_secret variable exists, even for
+    # messages that only reference the app label. The summary count
+    # printed by the caller after this block is sufficient.
     new_secrets: dict[str, str] = {}
     for env_key, (app_obj, name) in secret_map.items():
         if args.rotate_secrets or env_value_is_placeholder(env_path, env_key):
-            secret = reset_client_secret(
+            new_secrets[env_key] = reset_client_secret(
                 app_obj["appId"], display_name=f"deploy-{name}"
             )
-            new_secrets[env_key] = secret
-            print(f"  ✓ Created secret for {name} → will write to .env")
-        else:
-            print(
-                f"  • {env_key} already set; leaving alone (use --rotate-secrets to force)"
-            )
+    rotated = len(new_secrets)
+    kept = len(secret_map) - rotated
+    print(
+        f"  ✓ Client secrets: {rotated} freshly minted, {kept} kept "
+        f"(use --rotate-secrets to force-rotate all)"
+    )
 
     # 7) Persist values to .env.
     print("\n[7/7] Writing .env…")

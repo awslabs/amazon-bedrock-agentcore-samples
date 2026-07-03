@@ -93,17 +93,17 @@ def ensure_obo_provider(
     }
 
     # Try create first; on conflict, update in place so the provider reflects
-    # the client_id/client_secret currently in .env.
+    # the client_id/client_secret currently in .env. All success-path prints
+    # are omitted from this function — it receives a client_secret argument,
+    # so CodeQL's clear-text-logging query flags any print in scope even
+    # when the message body is static. The caller prints a summary.
     try:
         resp = client.create_oauth2_credential_provider(
             name=name,
             credentialProviderVendor="CustomOauth2",
             oauth2ProviderConfigInput=config,
         )
-        arn = resp["credentialProviderArn"]
-        print(f"✓ Created credential provider: {name}")
-        print(f"  ARN: {arn}")
-        return arn
+        return resp["credentialProviderArn"]
     except ClientError as e:
         code = e.response["Error"].get("Code", "")
         msg = e.response["Error"].get("Message", "")
@@ -121,10 +121,7 @@ def ensure_obo_provider(
             credentialProviderVendor="CustomOauth2",
             oauth2ProviderConfigInput=config,
         )
-        arn = resp["credentialProviderArn"]
-        print(f"✓ Updated credential provider (secrets refreshed): {name}")
-        print(f"  ARN: {arn}")
-        return arn
+        return resp["credentialProviderArn"]
     except ClientError as e:
         # Fall back to fetching the ARN for callers that don't need fresh
         # credentials, but surface the error clearly.
