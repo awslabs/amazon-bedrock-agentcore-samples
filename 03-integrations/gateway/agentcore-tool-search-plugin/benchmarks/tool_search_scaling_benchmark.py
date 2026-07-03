@@ -543,7 +543,7 @@ def main():
     suite.print_report()
 
     # Save results to JSON
-    output_path = os.path.join(os.path.dirname(__file__), "benchmark_results.json")
+    output_path = os.path.join(os.path.dirname(__file__), "results", "benchmark_results.json")
     with open(output_path, "w") as f:
         json.dump([{
             "tool_count": r.tool_count,
