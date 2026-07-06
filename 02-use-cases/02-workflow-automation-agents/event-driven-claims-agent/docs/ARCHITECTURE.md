@@ -37,7 +37,7 @@ This document explains:
 - **Auth (outbound to Gateway):** Cognito M2M JWT via `@requires_access_token` decorator — secrets managed by AgentCore Identity vault (no env vars)
 - **Entrypoint:** `app/claimsagent/main.py`
 - **Agents:** Two `Agent` instances (Claims Processor, Validation Agent), lazily initialized as module-level singletons
-- **Model:** `global.anthropic.claude-sonnet-4-6` (cross-region inference profile)
+- **Model (cost routing):** Claims Processor and Executor use `global.anthropic.claude-sonnet-4-6` (complex reasoning + tool use); Validation Agent uses `FAST_MODEL_ID` (`us.anthropic.claude-haiku-4-5-20251001-v1:0`) — classification task with no external tools, ~5x cheaper and 3–8s faster
 - **Co-located tools:** `submit_decision`, `submit_validation` (Strands `@tool` decorators for structured output)
 
 ### AgentCore Gateway

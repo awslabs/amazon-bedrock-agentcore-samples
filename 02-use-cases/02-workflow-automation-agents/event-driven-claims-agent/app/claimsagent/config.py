@@ -9,6 +9,8 @@ import os
 
 # ─── Model ──────────────────────────────────────────────────────────────────
 AGENT_MODEL_ID = os.getenv("AGENT_MODEL_ID", "global.anthropic.claude-sonnet-4-6")
+# Fast/cheap model for the Validation Agent (classification task, no tool use).
+FAST_MODEL_ID = os.getenv("FAST_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # ─── AWS Region ─────────────────────────────────────────────────────────────
 REGION = os.getenv("AWS_REGION", "us-west-2")

@@ -8,7 +8,8 @@ AgentCore resources are declared in `agentcore/agentcore.json`; supplementary AW
 |-----------|------------|---------|-------|
 | `SENDER_EMAIL` | `export SENDER_EMAIL=...` before deploy | `noreply@example.com` | SES verified sender for notifications. `infra-construct.ts` reads `process.env.SENDER_EMAIL` at synth. Must be SES-verified or emails are logged as drafts, not sent. |
 | Region | `./deploy.sh <region>` | `us-west-2` | Sets `AWS_REGION`/`CDK_DEFAULT_REGION`. |
-| Model | `AGENT_MODEL_ID` runtime env | `global.anthropic.claude-sonnet-4-6` | Model used for all claims processing. |
+| Model | `AGENT_MODEL_ID` runtime env | `global.anthropic.claude-sonnet-4-6` | Primary model for Claims Processor (Phase 1) and Executor (Phase 3). |
+| Fast model | `FAST_MODEL_ID` runtime env | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Fast/cheap model for the Validation Agent (Phase 2). Classification task — no tool use needed. |
 | Auto-approve threshold | `AUTO_APPROVE_THRESHOLD` runtime env | `80` | Confidence score (0-100) at or above which claims are auto-approved. |
 | Memory top_k | `MEMORY_RETRIEVAL_TOP_K` runtime env | `5` | Number of prior facts/sessions retrieved per invocation. |
 | Memory relevance | `MEMORY_RETRIEVAL_RELEVANCE` runtime env | `0.5` | Minimum relevance score (0.0-1.0) for memory results. |
@@ -32,6 +33,7 @@ Injected into the Container runtime by CDK. All are set automatically on deploy.
 | `AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER` | CDK hardcoded | `cognito-gateway-m2m` |
 | `AGENTCORE_GATEWAY_OAUTH_SCOPES` | CDK hardcoded | `agentcore/invoke` |
 | `AGENT_MODEL_ID` | `agentcore.json` envVars | `global.anthropic.claude-sonnet-4-6` |
+| `FAST_MODEL_ID` | `agentcore.json` envVars | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `AUTO_APPROVE_THRESHOLD` | `agentcore.json` envVars | `80` |
 | `AGENT_OBSERVABILITY_ENABLED` | `agentcore.json` envVars | `true` |
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `agentcore.json` envVars | `true` |

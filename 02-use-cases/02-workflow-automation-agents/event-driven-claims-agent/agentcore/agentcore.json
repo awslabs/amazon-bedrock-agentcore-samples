@@ -23,6 +23,10 @@
           "value": "global.anthropic.claude-sonnet-4-6"
         },
         {
+          "name": "FAST_MODEL_ID",
+          "value": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+        },
+        {
           "name": "AUTO_APPROVE_THRESHOLD",
           "value": "80"
         },

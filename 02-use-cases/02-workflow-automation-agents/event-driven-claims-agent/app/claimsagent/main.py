@@ -12,6 +12,7 @@ from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from config import (
     AGENT_MODEL_ID,
+    FAST_MODEL_ID,
     GATEWAY_CREDENTIAL_PROVIDER,
     GATEWAY_OAUTH_SCOPES,
     GATEWAY_URL,
@@ -102,9 +103,15 @@ _validator = None
 _mcp_client = None
 
 
-def load_model() -> BedrockModel:
-    """Load the Bedrock model for claims processing."""
-    return BedrockModel(model_id=AGENT_MODEL_ID)
+def load_model(fast: bool = False) -> BedrockModel:
+    """Load a Bedrock model.
+
+    Cost routing: the Validation Agent (Phase 2) is a classification task
+    that doesn't require tool use — Haiku is sufficient and ~5x cheaper/faster.
+    The Processor and Executor use the full Sonnet model for complex reasoning.
+    """
+    model_id = FAST_MODEL_ID if fast else AGENT_MODEL_ID
+    return BedrockModel(model_id=model_id)
 
 
 @requires_access_token(
@@ -170,9 +177,11 @@ def get_processor(session_manager=None):
 def get_validator():
     global _validator
     if _validator is None:
-        # Validator only validates — no Gateway tool access (least privilege)
+        # Validator only validates — no Gateway tool access (least privilege).
+        # Uses the fast model (Haiku): validation is a classification task,
+        # ~5x cheaper and ~3-8s faster per invocation than Sonnet.
         _validator = Agent(
-            model=load_model(),
+            model=load_model(fast=True),
             system_prompt=VALIDATOR_PROMPT,
             tools=[submit_validation],
         )

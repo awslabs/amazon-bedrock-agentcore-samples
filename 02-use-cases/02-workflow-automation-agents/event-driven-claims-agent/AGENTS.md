@@ -168,6 +168,7 @@ find app/ lambdas/ scripts/ -name "*.py" -exec python3 -m py_compile {} \;
 | `AGENT_OBSERVABILITY_ENABLED` | `true` — enables OTEL instrumentation |
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `true` — captures LLM messages in traces |
 | `AGENT_MODEL_ID` | `global.anthropic.claude-sonnet-4-6` |
+| `FAST_MODEL_ID` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` — used by Validation Agent (Phase 2) |
 | `AUTO_APPROVE_THRESHOLD` | `80` — confidence threshold for auto-approval |
 
 ### Lambda functions (set by CDK)
