@@ -1,7 +1,12 @@
-"""Trigger Lambda: S3 email → EventBridge → Invoke Agent Runtime with SigV4 auth.
+"""Trigger Lambda: S3 email → EventBridge → Invoke Agent Runtime (fire-and-forget).
 
 The Runtime uses IAM (SigV4) authentication. This Lambda's execution role has
 bedrock-agentcore:InvokeAgentRuntime permission granted by CDK.
+
+The invocation is fire-and-forget: the Lambda sends the signed HTTPS request
+and confirms the Runtime accepted it (HTTP 200), but does NOT wait for the full
+streaming response. The agent processes the claim asynchronously — results are
+written to DynamoDB by the agent's tool calls, not returned to this Lambda.
 """
 
 import json
@@ -26,8 +31,13 @@ RUNTIME_ARN = os.environ.get("AGENTCORE_RUNTIME_ARN", "")
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 
 
-def invoke_runtime(payload_dict):
-    """Invoke the AgentCore Runtime via HTTPS with SigV4 auth."""
+def invoke_runtime_async(payload_dict):
+    """Invoke the AgentCore Runtime via HTTPS with SigV4 auth (fire-and-forget).
+
+    Sends the request and reads only the first chunk to confirm acceptance.
+    Does NOT buffer the full streaming response — the agent processes
+    asynchronously and writes results to DynamoDB via tool calls.
+    """
     escaped_arn = urllib.parse.quote(RUNTIME_ARN, safe="")
     url = f"https://bedrock-agentcore.{REGION}.amazonaws.com/runtimes/{escaped_arn}/invocations"
 
@@ -53,26 +63,24 @@ def invoke_runtime(payload_dict):
         headers=dict(aws_request.headers),
     )
 
-    # Buffer streaming SSE response into clean text
+    # Fire-and-forget: open the connection, confirm HTTP 200, read first few
+    # lines to verify the agent started, then close without waiting for completion.
+    # Timeout covers the Runtime cold start (~30-60s on first invocation).
     if not url.startswith("https://"):
         raise ValueError(f"Only HTTPS URLs are permitted: {url}")
-    content_parts = []
-    with urllib.request.urlopen(req, timeout=55) as resp:  # nosec B310  # 55s < Lambda 60s timeout
-        for line in resp:
-            decoded = line.decode("utf-8").strip()
-            if not decoded:
-                continue
-            if decoded.startswith("data: "):
-                chunk = decoded[6:]
-                # Remove surrounding quotes from JSON-encoded strings
-                if chunk.startswith('"') and chunk.endswith('"'):
-                    chunk = json.loads(chunk)  # proper JSON unescape
-                content_parts.append(chunk)
-            elif decoded.startswith("{") and "error" in decoded:
-                # Error response
-                content_parts.append(f"\n[ERROR] {decoded}\n")
 
-    return "".join(content_parts)
+    with urllib.request.urlopen(req, timeout=65) as resp:  # nosec B310  # 65s covers cold start
+        status = resp.status
+        # Read up to 5 lines to confirm the agent started streaming
+        preview_lines = []
+        for i, line in enumerate(resp):
+            if i >= 5:
+                break
+            decoded = line.decode("utf-8").strip()
+            if decoded:
+                preview_lines.append(decoded)
+
+    return status, preview_lines
 
 
 def parse_email(content):
@@ -128,8 +136,22 @@ def handler(event, context):
     if claimant_email:
         payload["claimant_email"] = claimant_email
 
-    # Invoke runtime with SigV4 (using Lambda execution role credentials)
-    result = invoke_runtime(payload)
+    # Fire-and-forget: invoke Runtime and confirm it accepted the request.
+    # The agent processes asynchronously — results go to DynamoDB via tool calls.
+    status, preview = invoke_runtime_async(payload)
 
-    logger.info("Agent response for %s: %s", key, result[:500])
-    return {"statusCode": 200, "body": result}
+    logger.info(
+        "Runtime accepted claim from %s (HTTP %d). Preview: %s",
+        key,
+        status,
+        " | ".join(preview[:3]),
+    )
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "message": "Claim submitted for processing",
+            "source": f"s3://{bucket}/{key}",
+            "runtime_status": status,
+        }),
+    }

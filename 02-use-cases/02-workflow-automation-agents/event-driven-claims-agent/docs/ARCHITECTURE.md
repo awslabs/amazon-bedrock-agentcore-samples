@@ -74,13 +74,16 @@ All handlers return `json.dumps({...})` directly — no HTTP envelope.
 
 ### Trigger Lambda
 
-Handles the event-driven path from S3 → Runtime:
+Handles the event-driven path from S3 → Runtime (fire-and-forget):
 1. Receives EventBridge event with S3 object details
 2. Reads the file from S3 (email format or raw JSON)
 3. Parses email headers to extract `claimant_email` and `subject`
 4. Signs the request with SigV4 using the Lambda's execution role credentials (IAM auth)
 5. Invokes the Runtime via HTTPS POST to `/runtimes/{arn}/invocations`
-6. Buffers the SSE streaming response
+6. Confirms HTTP 200 and reads first few lines to verify the agent started streaming
+7. Closes the connection immediately — does NOT wait for the full response
+
+The agent processes the claim asynchronously after the Lambda returns. Results are written to DynamoDB by the agent's tool calls (`create_claim`, `request_human_review`, `send_notification`), not returned to this Lambda.
 
 **Auth:** The Trigger Lambda uses AWS_IAM (SigV4) authentication. CDK grants `bedrock-agentcore:InvokeAgentRuntime` permission via `runtime.grantInvoke(triggerFn)`. No Cognito credentials needed for this path.
 

@@ -231,7 +231,7 @@ export class InfraConstruct extends Construct {
         // AGENTCORE_RUNTIME_ARN injected by parent stack after Runtime is created
         AGENTCORE_RUNTIME_ARN: 'PENDING',
       },
-      timeout: cdk.Duration.seconds(60),
+      timeout: cdk.Duration.seconds(90),
       deadLetterQueue: triggerDlq,
       retryAttempts: 2,
     });

@@ -295,9 +295,9 @@ Jane Doe
         print(f"  ❌ Upload failed: {e}")
         return False
 
-    # Wait for processing (EventBridge → Lambda → Agent takes 40-60s)
-    print("  ⏳ Waiting 60s for event-driven processing...")
-    time.sleep(60)
+    # Wait for processing (EventBridge → Lambda fires immediately, agent processes async ~60-90s)
+    print("  ⏳ Waiting 90s for async agent processing...")
+    time.sleep(90)
 
     # Get Claims table name from CloudFormation or fall back to known conventions
     claims_table_name = None
@@ -391,33 +391,46 @@ def main():
         print(f"   ✅ Connected | Runtime: {runtime_arn}")
 
     results = {}
+    timings = {}
 
     if args.test == 0 or args.test == 1:
+        start = time.time()
         results["Test 1: Normal Claim (Auto-Approve)"] = test_1_normal_claim(runtime_arn, args.region)
+        timings["Test 1: Normal Claim (Auto-Approve)"] = time.time() - start
 
     if args.test == 0 or args.test == 2:
+        start = time.time()
         results["Test 2: Cedar Block ($150k)"] = test_2_cedar_block(runtime_arn, args.region)
+        timings["Test 2: Cedar Block ($150k)"] = time.time() - start
 
     if args.test == 0 or args.test == 3:
+        start = time.time()
         results["Test 3: Human Review (Low Confidence)"] = test_3_human_review(runtime_arn, args.region)
+        timings["Test 3: Human Review (Low Confidence)"] = time.time() - start
 
     if args.test == 0 or args.test == 4:
+        start = time.time()
         results["Test 4: Expired Policy (Reject)"] = test_4_expired_policy(runtime_arn, args.region)
+        timings["Test 4: Expired Policy (Reject)"] = time.time() - start
 
     if args.test == 0 or args.test == 5:
+        start = time.time()
         results["Test 5: Event-Driven Email"] = test_5_event_driven_email(args.region)
+        timings["Test 5: Event-Driven Email"] = time.time() - start
 
     # Summary
+    total_time = sum(timings.values())
     print("\n" + "=" * 70)
     print("📊 TEST RESULTS SUMMARY")
     print("=" * 70)
     for name, passed in results.items():
         status = "✅ PASSED" if passed else "❌ FAILED / ⚠️  CHECK"
-        print(f"  {status} — {name}")
+        duration = timings[name]
+        print(f"  {status} — {name} ({duration:.1f}s)")
 
     total = len(results)
     passed_count = sum(1 for v in results.values() if v)
-    print(f"\n  {passed_count}/{total} tests passed")
+    print(f"\n  {passed_count}/{total} tests passed | Total time: {total_time:.1f}s")
     print("=" * 70)
 
 
