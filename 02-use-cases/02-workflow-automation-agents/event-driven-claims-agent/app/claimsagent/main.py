@@ -188,6 +188,40 @@ def get_validator():
     return _validator
 
 
+async def _call_tool(mcp: MCPClient, tool_name: str, arguments: dict) -> dict:
+    """Call a Gateway tool directly via MCP (no LLM intermediary).
+
+    Used by Phase 3 to execute deterministic actions without an additional
+    LLM invocation. The routing decision is already made — we just need
+    to call the tools with known parameters.
+
+    The MCPClient is already started by the Agent in Phase 1, so we can
+    call tools directly without re-initializing the connection.
+    """
+    tool_use_id = f"phase3-{uuid.uuid4().hex[:8]}"
+    result = await mcp.call_tool_async(
+        tool_use_id=tool_use_id,
+        name=tool_name,
+        arguments=arguments,
+    )
+    # MCPToolResult has .content list; extract the text payload
+    if result and hasattr(result, "content") and result.content:
+        for content_block in result.content:
+            if hasattr(content_block, "text"):
+                try:
+                    return json.loads(content_block.text)
+                except (json.JSONDecodeError, TypeError):
+                    return {"raw": content_block.text}
+    return {"raw": str(result)}
+
+
+def _extract_claim_id(result: dict) -> str:
+    """Extract claim_id from create_claim tool result."""
+    if isinstance(result, dict):
+        return result.get("claim_id", "unknown")
+    return "unknown"
+
+
 @app.entrypoint
 async def invoke(payload, context):
     """Dual-agent claim processing with confidence-based routing."""
@@ -274,46 +308,135 @@ Please validate this decision and assign a confidence score."""
     # Prefer structured output from tool call; fall back to regex parsing
     structured_validation = get_last_validation()
 
-    # --- Phase 3: Routing ---
+    # --- Phase 3: Execution (deterministic — no LLM call needed) ---
     yield "\n\n---\n## Phase 3: Execution\n\n"
 
     confidence, routing = resolve_routing(structured_validation, validator_response)
     decision = resolve_decision(structured_decision, processor_response)
     action = decide_action(decision, routing)
 
+    # Phase 3 executes deterministically based on routing. No LLM call needed —
+    # we have all the data from structured output tools and can call Gateway
+    # tools directly via MCP, saving 6–16s and ~$0.01 per invocation.
+    mcp = get_mcp_client()
+
     if action == "REJECT":
         yield f"**Claim rejected** (confidence: {confidence}/100)\n\n"
-        executor = get_processor()
-        exec_prompt = f"""The claim has been rejected.
-1. Call send_notification to inform the claimant of the rejection with the reasoning.
-Claimant email: {claimant_email or "unknown"}
-Rejection reasoning from processor:
-{processor_response}"""
+        reasoning = structured_decision.get("reasoning", "Claim did not meet policy criteria.")
+        yield f"Reasoning: {reasoning}\n\n"
+
+        # Notify claimant of rejection
+        if mcp and claimant_email and claimant_email != "unknown":
+            try:
+                result = await _call_tool(mcp, "send_notification", {
+                    "recipient_email": claimant_email,
+                    "subject": f"Claim Update — Policy {structured_decision.get('policy_number', 'N/A')}",
+                    "body": f"Your claim has been reviewed and rejected.\n\nReason: {reasoning}",
+                })
+                yield f"📧 Notification sent to {claimant_email}\n"
+                log.info("Rejection notification sent: %s", result)
+            except Exception as exc:
+                log.warning("Failed to send rejection notification (non-fatal): %s", exc)
+                yield f"⚠️ Could not send notification: {exc}\n"
 
     elif action == "AUTO_APPROVE":
         yield f"**Auto-approved** (confidence: {confidence}/100)\n\n"
-        executor = get_processor()
-        exec_prompt = f"""The claim has been validated and approved. Now execute:
-1. Call create_claim with the details from this decision:
-{processor_response}
-2. Call send_notification to inform the claimant of approval.
-Claimant email: {claimant_email or "unknown"}"""
 
-    else:
+        # Create the claim record
+        claim_result = None
+        if mcp:
+            try:
+                claim_result = await _call_tool(mcp, "create_claim", {
+                    "policy_number": structured_decision.get("policy_number", ""),
+                    "description": structured_decision.get("description", ""),
+                    "estimated_amount": structured_decision.get("amount", 0),
+                    "category": structured_decision.get("category", "general"),
+                    "status": "approved",
+                    "decision": "auto_approved",
+                })
+                yield f"✅ Claim created: {_extract_claim_id(claim_result)}\n"
+                log.info("Claim created (auto-approved): %s", claim_result)
+            except Exception as exc:
+                log.warning("Failed to create claim (non-fatal): %s", exc)
+                yield f"⚠️ Could not create claim record: {exc}\n"
+
+        # Notify claimant of approval
+        if mcp and claimant_email and claimant_email != "unknown":
+            try:
+                result = await _call_tool(mcp, "send_notification", {
+                    "recipient_email": claimant_email,
+                    "subject": f"Claim Approved — Policy {structured_decision.get('policy_number', 'N/A')}",
+                    "body": (
+                        f"Your claim has been approved.\n\n"
+                        f"Amount: ${structured_decision.get('amount', 0):,}\n"
+                        f"Category: {structured_decision.get('category', 'N/A')}\n\n"
+                        f"You will receive further instructions shortly."
+                    ),
+                })
+                yield f"📧 Approval notification sent to {claimant_email}\n"
+                log.info("Approval notification sent: %s", result)
+            except Exception as exc:
+                log.warning("Failed to send approval notification (non-fatal): %s", exc)
+                yield f"⚠️ Could not send notification: {exc}\n"
+
+    else:  # HUMAN_REVIEW
         yield f"**Routed to human review** (confidence: {confidence}/100)\n\n"
-        executor = get_processor()
-        exec_prompt = f"""The claim decision needs human review (confidence: {confidence}/100).
-1. Call create_claim with the extracted details from:
-{processor_response}
-2. Call request_human_review explaining why review is needed based on these concerns:
-{validator_response}
-3. Call send_notification to inform the claimant their claim is under review.
-Claimant email: {claimant_email or "unknown"}"""
 
-    stream = executor.stream_async(exec_prompt)
-    async for event in stream:
-        if "data" in event and isinstance(event["data"], str):
-            yield event["data"]
+        # Create the claim record in pending state
+        claim_id = None
+        if mcp:
+            try:
+                claim_result = await _call_tool(mcp, "create_claim", {
+                    "policy_number": structured_decision.get("policy_number", ""),
+                    "description": structured_decision.get("description", ""),
+                    "estimated_amount": structured_decision.get("amount", 0),
+                    "category": structured_decision.get("category", "general"),
+                    "status": "pending_review",
+                    "decision": "escalated",
+                })
+                claim_id = _extract_claim_id(claim_result)
+                yield f"📋 Claim created (pending review): {claim_id}\n"
+                log.info("Claim created (pending review): %s", claim_result)
+            except Exception as exc:
+                log.warning("Failed to create claim (non-fatal): %s", exc)
+                yield f"⚠️ Could not create claim record: {exc}\n"
+
+        # Escalate to human review
+        if mcp and claim_id:
+            concerns = structured_validation.get("concerns", "Low confidence score")
+            try:
+                result = await _call_tool(mcp, "request_human_review", {
+                    "claim_id": claim_id,
+                    "reason": f"Confidence: {confidence}/100. {concerns}",
+                    "estimated_amount": structured_decision.get("amount", 0),
+                })
+                yield f"🔍 Escalated to human review\n"
+                log.info("Human review requested: %s", result)
+            except Exception as exc:
+                log.warning("Failed to request human review (non-fatal): %s", exc)
+                yield f"⚠️ Could not escalate to human review: {exc}\n"
+
+        # Notify claimant their claim is under review
+        if mcp and claimant_email and claimant_email != "unknown":
+            try:
+                result = await _call_tool(mcp, "send_notification", {
+                    "recipient_email": claimant_email,
+                    "subject": f"Claim Under Review — Policy {structured_decision.get('policy_number', 'N/A')}",
+                    "body": (
+                        f"Your claim has been received and is currently under review "
+                        f"by our claims team.\n\n"
+                        f"Claim ID: {claim_id or 'pending'}\n"
+                        f"Amount: ${structured_decision.get('amount', 0):,}\n\n"
+                        f"You will be contacted once a decision is made."
+                    ),
+                })
+                yield f"📧 Review notification sent to {claimant_email}\n"
+                log.info("Review notification sent: %s", result)
+            except Exception as exc:
+                log.warning("Failed to send review notification (non-fatal): %s", exc)
+                yield f"⚠️ Could not send notification: {exc}\n"
+
+    yield "\n\n✅ Processing complete.\n"
 
 
 if __name__ == "__main__":

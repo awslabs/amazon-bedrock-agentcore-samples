@@ -152,7 +152,7 @@ flowchart TB
         P2_Input --> P2_Output
     end
 
-    subgraph Phase3["Phase 3: Execution"]
+    subgraph Phase3["Phase 3: Deterministic Execution (no LLM)"]
         direction LR
         Reject["REJECT: send_notification"]
         AutoApprove["AUTO_APPROVE: create_claim + notify"]
@@ -173,6 +173,12 @@ The routing logic lives in `app/claimsagent/routing.py` (extracted from `main.py
 Both agents MUST call their respective structured-output tools (`submit_decision`, `submit_validation`). If they fail to do so, routing defaults to safe outcomes:
 - Missing `submit_decision` → defaults to REJECT (no unintended approvals)
 - Missing `submit_validation` → defaults to HUMAN_REVIEW (ensures human oversight)
+
+### Phase 3: Deterministic Execution
+
+Phase 3 does **not** use an LLM call. Once routing is resolved (REJECT / AUTO_APPROVE / HUMAN_REVIEW), the execution is deterministic — we have all required data from the structured output tools and call Gateway tools directly via `MCPClient.call_tool_async()`. This eliminates one Sonnet invocation (~6–16s and ~$0.01 per request).
+
+All Phase 3 tool calls are non-fatal: if any fails, the agent logs a warning and continues. The primary response stream is never interrupted by secondary action failures.
 
 ---
 

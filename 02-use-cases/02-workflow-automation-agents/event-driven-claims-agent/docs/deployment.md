@@ -175,12 +175,15 @@ ROUTING: AUTO_APPROVE
 ---
 ## Phase 3: Execution
 **Auto-approved** (confidence: 92/100)
-[Agent calls create_claim and send_notification]
+✅ Claim created: CLM-XXXXXXXX
+📧 Approval notification sent to claimant@example.com
+
+✅ Processing complete.
 
 ━━━━━━━━━━━━━━━━━━━━━
 ```
 
-> **Note:** The exact wording varies between runs (LLM output is non-deterministic), but the structure (3 phases, DECISION, CONFIDENCE, ROUTING) is consistent.
+> **Note:** Phase 3 is deterministic — it does not use an LLM call. Tool calls are made directly via MCPClient based on the routing decision from Phase 2. The exact wording of Phase 1/2 varies between runs (LLM output is non-deterministic), but the structure (3 phases, DECISION, CONFIDENCE, ROUTING) is consistent.
 
 **Test Cedar policy enforcement (should block — $150k exceeds the $100k threshold):**
 
@@ -318,14 +321,13 @@ Run the agent locally while tools, auth, and data stay in the cloud.
 
 4. Start the local dev server:
    ```bash
-   agentcore dev --no-browser
+   agentcore dev --logs
    ```
-   Expected output:
+   Or run the agent directly:
+   ```bash
+   cd app/claimsagent && source .venv/bin/activate && python main.py
    ```
-   🚀 Starting local development server...
-   ✅ Runtime available at http://localhost:3000
-   👀 Watching for file changes...
-   ```
+   The agent serves on `http://localhost:8080`.
 
 5. Test against local:
    ```bash
@@ -333,7 +335,7 @@ Run the agent locally while tools, auth, and data stay in the cloud.
    ```
    Or use curl directly:
    ```bash
-   curl -X POST http://localhost:3000/invocations \
+   curl -X POST http://localhost:8080/invocations \
      -H "Content-Type: application/json" \
      -d '{"prompt": "File a claim for POL-12345. $3000 windshield damage."}'
    ```

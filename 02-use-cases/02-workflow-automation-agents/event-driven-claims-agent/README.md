@@ -92,7 +92,10 @@ ROUTING: AUTO_APPROVE
 ---
 ## Phase 3: Execution
 **Auto-approved** (confidence: 92/100)
-[Agent creates claim record and sends notification email]
+✅ Claim created: CLM-XXXXXXXX
+📧 Approval notification sent to claimant@example.com
+
+✅ Processing complete.
 
 ━━━━━━━━━━━━━━━━━━━━━
 ```

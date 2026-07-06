@@ -2,7 +2,7 @@
 
 > **For humans:** This file provides context for AI coding assistants (Kiro, Cursor, Claude Code, GitHub Copilot). For the human-readable documentation, see [docs/](./docs/README.md), [README.md](./README.md), or [docs/tutorial.md](./docs/tutorial.md).
 
-This project is an **event-driven insurance claims processor** built on Amazon Bedrock AgentCore. It uses a dual-agent architecture (Claims Processor + Validation Agent) and deploys as a single CloudFormation stack (`AgentCore-ClaimsAgent-dev`) via the AgentCore CLI.
+This project is an **event-driven insurance claims processor** built on Amazon Bedrock AgentCore. It uses a dual-agent architecture (Claims Processor + Validation Agent) with cost-based model routing (Sonnet for reasoning, Haiku for validation) and a deterministic execution phase. Deploys as a single CloudFormation stack (`AgentCore-ClaimsAgent-dev`) via the AgentCore CLI.
 
 > **Important:** AgentCore resources (Runtime, Gateway, Memory, PolicyEngine, OnlineEval) are declared in `agentcore/agentcore.json` and managed by the AgentCore CLI. Supplementary infrastructure (DynamoDB, Lambda tools, SNS, S3, EventBridge) is defined in the TypeScript CDK app at `agentcore/cdk/lib/infra-construct.ts`. The Cognito User Pool (Gateway M2M auth) is managed by `scripts/setup_cognito.sh` (AWS CLI, not CDK). Use `agentcore validate` and `agentcore dev` while iterating; run `agentcore deploy --target dev` to deploy everything together.
 
@@ -14,11 +14,11 @@ This project is an **event-driven insurance claims processor** built on Amazon B
 S3 upload (claims-inbox/)
   → EventBridge rule
     → Trigger Lambda (lambdas/trigger/handler.py)
-        reads S3 object, invokes Runtime via SigV4-signed HTTPS
+        reads S3 object, invokes Runtime via SigV4-signed HTTPS (fire-and-forget)
       → AgentCore Runtime (Container: app/claimsagent/)
-          Phase 1: Claims Processor → lookup_policy → ACCEPT/REJECT decision
-          Phase 2: Validation Agent → reviews decision → CONFIDENCE + ROUTING
-          Phase 3: Execution → create_claim / human_review / send_notification
+          Phase 1: Claims Processor (Sonnet) → lookup_policy → ACCEPT/REJECT decision
+          Phase 2: Validation Agent (Haiku) → reviews decision → CONFIDENCE + ROUTING
+          Phase 3: Deterministic Execution (no LLM) → create_claim / human_review / send_notification
         → AgentCore Gateway (MCP, Cognito CUSTOM_JWT auth, Cedar policy enforcement)
             → 6 Lambda tool functions (lambdas/<tool>/handler.py)
 ```
@@ -154,6 +154,7 @@ find app/ lambdas/ scripts/ -name "*.py" -exec python3 -m py_compile {} \;
 5. **`agentcore/agentcore.json` is the source of truth for AgentCore resources** (Runtime, Gateway, Memory, PolicyEngine, OnlineEval). Supplementary AWS infra is in `agentcore/cdk/lib/infra-construct.ts`; `cdk-stack.ts` wires the two together (patches Lambda ARNs + the Gateway CUSTOM_JWT authorizer discovery URL, injects runtime env vars). Don't hand-edit generated CDK output.
 6. **Two auth paths:** Inbound to Runtime uses AWS_IAM (SigV4) — CDK grants `runtime.grantInvoke()` to the Trigger Lambda. Outbound from Runtime to Gateway uses Cognito M2M JWT via `@requires_access_token(provider_name="cognito-gateway-m2m", auth_flow="M2M")` — secrets live in AgentCore Identity vault, not env vars.
 7. **Structured output tools** (`tools/structured_output.py`) — the agent calls `submit_decision` and `submit_validation` to produce machine-parseable results. When agents fail to call these tools, routing defaults to safe fallbacks (REJECT for missing decision, HUMAN_REVIEW for missing validation).
+8. **Phase 3 is deterministic (no LLM call)** — once routing is resolved, tool calls are made directly via `MCPClient.call_tool_async()` using structured data from Phase 1/2. This saves one Sonnet invocation per request. All Phase 3 actions are non-fatal (log + continue on failure).
 
 ---
 
