@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+reports/
+*.pyc
+.DS_Store
+
+# AgentCore CLI deploy artifacts (local only; may contain account-specific config/secrets)
+.agentcore-deploy/
+X402SecureData/
