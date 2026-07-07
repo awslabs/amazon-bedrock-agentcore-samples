@@ -63,3 +63,18 @@ output "user_pool_client_id" {
   description = "Cognito user pool client ID"
   value       = module.cognito.user_pool_client_id
 }
+
+output "interceptor_lambda_arn" {
+  description = "ARN of the gateway interceptor Lambda"
+  value       = aws_lambda_function.gateway_interceptor.arn
+}
+
+output "interceptor_lambda_name" {
+  description = "Name of the gateway interceptor Lambda"
+  value       = aws_lambda_function.gateway_interceptor.function_name
+}
+
+output "rate_limit_table_name" {
+  description = "DynamoDB table name used for interceptor rate limiting"
+  value       = aws_dynamodb_table.rate_limit_table.name
+}
