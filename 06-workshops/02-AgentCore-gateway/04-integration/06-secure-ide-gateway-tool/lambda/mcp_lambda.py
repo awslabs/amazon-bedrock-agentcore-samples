@@ -85,6 +85,8 @@ def _proxy_to_gateway(event):
 
     try:
         gateway_url = _get_gateway_url()
+        if not gateway_url.startswith("https://"):
+            raise ValueError("Gateway URL must use the https scheme")
         if method == "POST" and body:
             data = body.encode() if isinstance(body, str) else body
             req = urllib.request.Request(gateway_url, data=data, method="POST")
@@ -98,7 +100,8 @@ def _proxy_to_gateway(event):
         if auth:
             req.add_header("Authorization", auth)
 
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        # nosec B310 - gateway_url scheme is validated to be https above
+        with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
             resp_body = resp.read().decode()
             resp_headers = {
                 "Content-Type": resp.headers.get("Content-Type", "application/json")

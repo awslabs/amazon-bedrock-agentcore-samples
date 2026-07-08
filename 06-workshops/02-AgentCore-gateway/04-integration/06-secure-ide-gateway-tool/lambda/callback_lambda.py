@@ -55,7 +55,10 @@ def _get_jwks(issuer):
     if issuer in _jwks_cache:
         return _jwks_cache[issuer]
     jwks_url = f"{issuer}/.well-known/jwks.json"
-    with urllib.request.urlopen(jwks_url, timeout=5) as resp:
+    if not jwks_url.startswith("https://"):
+        raise ValueError("JWKS URL must use the https scheme")
+    # nosec B310 - scheme is validated to be https above; issuer is a trusted Cognito URL
+    with urllib.request.urlopen(jwks_url, timeout=5) as resp:  # noqa: S310
         keys = json.loads(resp.read().decode())
     _jwks_cache[issuer] = keys
     return keys

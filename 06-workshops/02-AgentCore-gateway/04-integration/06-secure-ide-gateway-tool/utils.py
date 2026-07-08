@@ -347,7 +347,7 @@ def get_token(user_pool_id, client_id, client_secret, scope_string, REGION):
 
     data = {"grant_type": "client_credentials", "scope": scope_string}
 
-    response = requests.post(token_endpoint, headers=headers, data=data)
+    response = requests.post(token_endpoint, headers=headers, data=data, timeout=30)
     response.raise_for_status()
     return response.json()
 
