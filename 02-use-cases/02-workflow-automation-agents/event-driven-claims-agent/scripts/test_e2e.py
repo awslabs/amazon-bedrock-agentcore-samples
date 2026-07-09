@@ -377,7 +377,7 @@ Jane Doe
         if email_claims:
             latest = email_claims[-1]
             print("  ✅ Claim found in DynamoDB!")
-            print(f"  📋 Evidence (DynamoDB record):")
+            print("  📋 Evidence (DynamoDB record):")
             print(f"     ✓ Claim ID:  {latest.get('claim_id', 'N/A')}")
             print(f"     ✓ Policy:    {latest.get('policy_number', 'N/A')}")
             print(f"     ✓ Status:    {latest.get('status', 'N/A')}")

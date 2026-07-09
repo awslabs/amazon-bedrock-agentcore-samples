@@ -410,7 +410,7 @@ Please validate this decision and assign a confidence score."""
                     "reason": f"Confidence: {confidence}/100. {concerns}",
                     "estimated_amount": structured_decision.get("amount", 0),
                 })
-                yield f"🔍 Escalated to human review\n"
+                yield "🔍 Escalated to human review\n"
                 log.info("Human review requested: %s", result)
             except Exception as exc:
                 log.warning("Failed to request human review (non-fatal): %s", exc)
