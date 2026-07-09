@@ -234,7 +234,6 @@ The elicitation session entry in DynamoDB has a 5-minute TTL. If the user takes 
 | [lambda/mcp_lambda.py](lambda/mcp_lambda.py) | MCP Proxy Lambda — gateway forwarding, elicitation rewriting |
 | [lambda/callback_lambda.py](lambda/callback_lambda.py) | Callback Lambda — 3LO completion, session verification |
 | [01_gateway_secure_3lo_auth.ipynb](01_gateway_secure_3lo_auth.ipynb) | Setup notebook — credential provider, Figma DCR, gateway target, IDE config |
-| [server.py](server.py) | Standalone single-request HTTP listener; a minimal reference for the local callback pattern used inside the notebook |
 | [utils.py](utils.py) | Optional helper functions (Cognito user pool / resource server / M2M client setup, IAM role creation, gateway and pool cleanup) — not called by the current notebook, kept for scripting ad hoc setups |
 | [SECURITY-REVIEW.md](SECURITY-REVIEW.md) | Security review notes from an earlier iteration of this sample; several findings have since been addressed (see below) |
 

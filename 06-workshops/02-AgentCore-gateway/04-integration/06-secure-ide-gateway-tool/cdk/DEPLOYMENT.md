@@ -1,254 +1,139 @@
-# VS Code AgentCore Confluence Serverless - CDK Deployment Guide
+# Secure IDE Gateway Tool (Figma) — CDK Deployment Guide
 
-This CDK stack deploys a serverless OAuth proxy for VS Code + AgentCore Gateway integration, eliminating the need for local proxy servers.
+This CDK stack deploys the serverless OAuth proxy that connects an IDE (VS Code or Kiro)
+to an **Amazon Bedrock AgentCore Gateway** exposing **Figma** as an MCP tool, with OAuth 2.0
+three-legged authorization (3LO) for user-delegated access. No local proxy servers are required.
 
-## Architecture
+This guide covers the CDK deployment mechanics. For the end-to-end architecture, OAuth flows,
+and design rationale, see the [sample README](../README.md).
 
-The stack creates:
+## What the stack creates
 
-1. **Cognito User Pool** - JWT authentication for inbound auth
-2. **Lambda Functions** - MCP proxy and OAuth callback handlers
-3. **API Gateway** - Public HTTP API endpoint
-4. **IAM Roles** - Necessary permissions for Lambda and AgentCore
+Defined in [lib/cdk-stack.ts](lib/cdk-stack.ts):
+
+1. **Cognito User Pool** — inbound JWT authentication, with two app clients:
+   - VS Code client — authorization code grant, public (no secret), PKCE
+   - M2M client — client credentials grant, with secret (for testing)
+   - Resource server with `mcp.read` / `mcp.write` scopes
+2. **Three Lambda functions** — IDP (`idp_lambda.py`), MCP Proxy (`mcp_lambda.py`), and Callback (`callback_lambda.py`), each with a least-privilege IAM role
+3. **HTTP API Gateway** — public HTTPS endpoint fronting the Lambdas
+4. **DynamoDB table** — short-lived (5-minute TTL) auth codes and elicitation sessions
+5. **AgentCore Gateway** — AWS-managed MCP gateway with a Cognito JWT authorizer
+6. **SSM parameters** — client id, callback URL, gateway URL, and the `redirect_uri` allowlist
+
+The Figma credential provider and the gateway target are created **after** deployment via the
+[setup notebook](../01_gateway_secure_3lo_auth.ipynb), since they require interactive steps
+(Figma Dynamic Client Registration and fetching the Figma MCP tool schemas).
 
 ## Prerequisites
 
-- AWS CLI configured with appropriate credentials
-- Node.js 18+ and npm installed
-- AWS CDK CLI installed: `npm install -g aws-cdk`
-- Docker installed (required for Lambda bundling)
+- AWS CLI configured with credentials that can manage Lambda, API Gateway, Cognito, IAM, DynamoDB, SSM, and Bedrock AgentCore
+- Node.js 18+ and [pnpm](https://pnpm.io/)
+- AWS CDK CLI (`pnpm add -g aws-cdk`, or use the bundled `pnpm cdk`)
+- Docker (required for Lambda bundling during `cdk deploy`)
 
 ## Installation
 
-1. Navigate to the CDK directory:
+From this `cdk/` directory:
 
 ```bash
-cd 01-tutorials/02-AgentCore-gateway/04-integration/03-ide-gateway-tool/cdk
+cd 06-workshops/02-AgentCore-gateway/04-integration/06-secure-ide-gateway-tool/cdk
+pnpm install
 ```
 
-2. Install dependencies:
+Bootstrap CDK (first time per account/region only):
 
 ```bash
-npm install
-```
-
-3. Bootstrap CDK (first time only):
-
-```bash
-cdk bootstrap
+pnpm cdk bootstrap
 ```
 
 ## Deployment
 
-### Deploy the Stack
-
 ```bash
-cdk deploy
+pnpm cdk deploy
 ```
 
-The deployment will create all resources and output important values including:
+The stack name is `FigmaMCP`. Copy the stack outputs — the setup notebook needs them.
 
-- API Gateway endpoint
-- Cognito User Pool ID
-- Client IDs
-- VS Code MCP configuration
+### Stack outputs
 
-### Post-Deployment Steps
+| Output | Description |
+| --- | --- |
+| `ApiEndpoint` | API Gateway URL the IDE connects to (append `mcp` for the MCP endpoint) |
+| `UserPoolId` / `UserPoolArn` | Cognito User Pool identifiers |
+| `CognitoDomain` / `CognitoDomainUrl` | Cognito hosted domain |
+| `DiscoveryUrl` | OIDC discovery URL |
+| `VSCodeClientId` | Public client ID for the IDE OAuth flow |
+| `M2MClientId` | Client ID for machine-to-machine testing |
+| `IdpLambdaName` / `McpLambdaName` / `CallbackLambdaName` | Lambda function names |
+| `Gateway` | AgentCore Gateway ID |
+| `VSCodeMcpConfig` | Ready-to-use MCP configuration JSON |
+| `RedirectUriAllowlistParamOutput` | SSM parameter holding the OAuth `redirect_uri` allowlist |
 
-#### 1. Create a Test User
+## Post-deployment
 
-After deployment, create a test user in the Cognito User Pool:
+The Cognito test user, Figma credential provider, and gateway target are all created by the
+[setup notebook](../01_gateway_secure_3lo_auth.ipynb) — run it after `cdk deploy` and paste the
+stack outputs into its config cell. The notebook then prints the VS Code and Kiro MCP configuration.
 
-```bash
-# Get the User Pool ID from CDK outputs
-USER_POOL_ID="<from-cdk-output>"
+Unlike earlier versions of this sample, you do **not** need to manually create the Cognito user,
+wire up `GATEWAY_URL`, or create the gateway — the stack creates the gateway and wires the Lambda
+environment via SSM parameters, and the notebook handles the Figma-specific setup.
 
-# Create user
-aws cognito-idp admin-create-user \
-  --user-pool-id $USER_POOL_ID \
-  --username vscode-user \
-  --temporary-password "TempPassword123!" \
-  --user-attributes Name=email,Value=vscode-user@example.com Name=email_verified,Value=true \
-  --message-action SUPPRESS
+## API Gateway routes
 
-# Set permanent password
-aws cognito-idp admin-set-user-password \
-  --user-pool-id $USER_POOL_ID \
-  --username vscode-user \
-  --password "TempPassword123!" \
-  --permanent
-```
-
-#### 2. Configure Atlassian OAuth (Optional)
-
-If you want to connect to Confluence:
-
-1. Create an OAuth app in Atlassian Developer Console
-2. Use the AgentCore Gateway callback URL (see notebook for details)
-3. Create AgentCore Gateway and Confluence target using the notebook or AWS Console
-
-#### 3. Update Lambda Environment Variables
-
-If you create an AgentCore Gateway, update the Lambda environment variable:
-
-```bash
-LAMBDA_NAME="<proxy-lambda-name-from-output>"
-GATEWAY_URL="<your-gateway-url>"
-
-aws lambda update-function-configuration \
-  --function-name $LAMBDA_NAME \
-  --environment "Variables={GATEWAY_URL=$GATEWAY_URL,COGNITO_DOMAIN=<cognito-domain>,CLIENT_ID=<client-id>,CALLBACK_LAMBDA_URL=<api-endpoint>}"
-```
-
-#### 4. Configure VS Code
-
-Add the MCP configuration to your VS Code settings (the exact JSON is provided in CDK outputs):
-
-Create or update `.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "agentcore-confluence-<timestamp>": {
-      "type": "http",
-      "url": "<api-gateway-endpoint>",
-      "headers": {
-        "MCP-Protocol-Version": "2025-11-25"
-      }
-    }
-  }
-}
-```
-
-## Stack Outputs
-
-After deployment, the stack provides these outputs:
-
-- **ApiEndpoint** - API Gateway URL for VS Code to connect to
-- **UserPoolId** - Cognito User Pool ID
-- **CognitoDomain** - Cognito domain name
-- **VSCodeClientId** - Client ID for VS Code OAuth
-- **M2MClientId** - Client ID for machine-to-machine testing
-- **ProxyLambdaName** - Name of the MCP proxy Lambda function
-- **CallbackLambdaName** - Name of the OAuth callback Lambda function
-- **VSCodeMcpConfig** - Ready-to-use MCP configuration JSON
+| Method | Path | Handler | Description |
+| --- | --- | --- | --- |
+| GET | `/.well-known/oauth-authorization-server` | IDP | OAuth server metadata |
+| GET | `/.well-known/oauth-protected-resource` | IDP | RFC 9728 protected-resource metadata |
+| GET | `/authorize` | IDP | OAuth authorization + login page |
+| POST | `/token` | IDP | Token exchange (PKCE + `redirect_uri`/`client_id` validation) |
+| POST | `/register` | IDP | Dynamic Client Registration (RFC 7591) |
+| POST | `/login` | IDP | Login form submission |
+| ANY | `/mcp` | MCP Proxy | Forwards MCP requests to AgentCore Gateway |
+| GET | `/ping` | Callback | Health check |
+| GET, POST | `/oauth2/callback` | Callback | 3LO callback → `CompleteResourceTokenAuth` |
 
 ## Testing
 
-### Test the API Gateway
-
 ```bash
-API_ENDPOINT="<from-cdk-output>"
+API_ENDPOINT="<ApiEndpoint from output>"
 
-# Test OAuth metadata endpoint
-curl $API_ENDPOINT/.well-known/oauth-authorization-server
+# OAuth server metadata
+curl "$API_ENDPOINT.well-known/oauth-authorization-server"
 
-# Test ping endpoint
-curl $API_ENDPOINT/ping
+# Health check
+curl "$API_ENDPOINT/ping"
 ```
 
-### Test with VS Code
-
-1. Open VS Code with the MCP extension
-2. The extension should prompt for authentication
-3. Use credentials: `vscode-user` / `TempPassword123!`
-4. After authentication, MCP tools should be available
+Then configure your IDE with the `VSCodeMcpConfig` output (see the [sample README](../README.md)
+for VS Code and Kiro config snippets), reload the IDE, sign in with the Cognito user, and invoke a
+Figma tool — 3LO consent triggers on first use.
 
 ## Cleanup
 
-To delete all resources:
+1. Run the cleanup cell in the notebook to delete the Figma credential provider and gateway target.
+2. Destroy the stack:
 
-```bash
-cdk destroy
-```
+   ```bash
+   pnpm cdk destroy
+   ```
 
-Note: You may need to manually delete:
-
-- CloudWatch Log Groups (not auto-deleted by default)
-- Any AgentCore Gateways created separately
+CloudWatch log groups are not deleted automatically — remove them manually if desired.
 
 ## Troubleshooting
 
-### Lambda Function Errors
+- **Lambda errors** — `aws logs tail /aws/lambda/<function-name> --follow`
+- **`redirect_mismatch` from Cognito** — the callback URL isn't registered on the Cognito app client; confirm the stack deployed cleanly.
+- **Lambda timeouts** — check the AgentCore Gateway target is `ACTIVE` (not `FAILED`).
+- **3LO completed but tool still fails** — the IDE does not auto-retry; invoke the tool again after consent.
 
-Check Lambda logs:
+See the [sample README](../README.md) troubleshooting section for more, including the
+`MCP-Protocol-Version: 2025-11-25` header requirement and the `redirect_uri` allowlist.
 
-```bash
-aws logs tail /aws/lambda/<lambda-function-name> --follow
-```
+## References
 
-### Cognito Authentication Issues
-
-Verify Cognito configuration:
-
-```bash
-aws cognito-idp describe-user-pool --user-pool-id <user-pool-id>
-aws cognito-idp describe-user-pool-client --user-pool-id <user-pool-id> --client-id <client-id>
-```
-
-### API Gateway Issues
-
-Test API Gateway endpoints:
-
-```bash
-# Test OAuth metadata
-curl -v <api-endpoint>/.well-known/oauth-authorization-server
-
-# Test with authentication
-TOKEN="<your-jwt-token>"
-curl -H "Authorization: Bearer $TOKEN" <api-endpoint>/
-```
-
-## Architecture Details
-
-### Lambda Functions
-
-1. **MCP Proxy Lambda** (`mcp_proxy_lambda.py`)
-
-   - Handles OAuth metadata endpoints
-   - Proxies MCP requests to AgentCore Gateway
-   - Manages token exchange with Cognito
-   - Intercepts OAuth callbacks
-
-2. **Callback Lambda** (`callback_lambda.py`)
-   - Handles 3LO OAuth callbacks
-   - Calls CompleteResourceTokenAuth API
-   - Stores user tokens for session binding
-
-### API Gateway Routes
-
-| Method | Path                                      | Handler  | Description                 |
-| ------ | ----------------------------------------- | -------- | --------------------------- |
-| GET    | `/.well-known/oauth-authorization-server` | Proxy    | OAuth server metadata       |
-| GET    | `/.well-known/oauth-protected-resource`   | Proxy    | Resource metadata           |
-| GET    | `/authorize`                              | Proxy    | OAuth authorization         |
-| GET    | `/callback`                               | Proxy    | OAuth callback intercept    |
-| POST   | `/token`                                  | Proxy    | Token exchange              |
-| POST   | `/register`                               | Proxy    | Dynamic client registration |
-| GET    | `/ping`                                   | Callback | Health check                |
-| POST   | `/userIdentifier/token`                   | Callback | Store user token            |
-| GET    | `/oauth2/callback`                        | Callback | 3LO callback                |
-| ANY    | `/{proxy+}`                               | Proxy    | MCP proxy (default)         |
-
-### Security
-
-- Cognito User Pool with password policy
-- JWT token authentication
-- IAM roles with least privilege
-- CORS enabled for VS Code
-- Resource server scopes for fine-grained access
-
-## Additional Resources
-
-- [Original Jupyter Notebook](../01_vscode_agentcore_confluence_serverless.ipynb)
-- [AgentCore Documentation](https://docs.aws.amazon.com/bedrock/)
-- [MCP Protocol Specification](https://modelcontextprotocol.io/)
-
-## Support
-
-For issues or questions:
-
-1. Check CloudWatch Logs for Lambda errors
-2. Review API Gateway execution logs
-3. Verify Cognito configuration
-4. Refer to the original notebook for detailed explanations
+- [Sample README](../README.md) — full architecture and OAuth flow details
+- [Setup notebook](../01_gateway_secure_3lo_auth.ipynb)
+- [AgentCore Gateway documentation](https://docs.aws.amazon.com/bedrock-agentcore/)
+- [MCP Specification 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)
