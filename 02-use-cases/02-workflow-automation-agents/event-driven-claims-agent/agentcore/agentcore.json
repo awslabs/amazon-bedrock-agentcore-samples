@@ -72,7 +72,7 @@
     {
       "authorizerType": "OAuthCredentialProvider",
       "name": "cognito-gateway-m2m",
-      "discoveryUrl": "https://cognito-idp.us-west-2.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
+      "discoveryUrl": "https://cognito-idp.PLACEHOLDER_REGION.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
       "scopes": [
         "agentcore/invoke"
       ],
@@ -191,7 +191,7 @@
       "authorizerType": "CUSTOM_JWT",
       "authorizerConfiguration": {
         "customJwtAuthorizer": {
-          "discoveryUrl": "https://cognito-idp.us-west-2.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
+          "discoveryUrl": "https://cognito-idp.PLACEHOLDER_REGION.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
           "allowedClients": [
             "PLACEHOLDER_CLIENT_ID"
           ]
