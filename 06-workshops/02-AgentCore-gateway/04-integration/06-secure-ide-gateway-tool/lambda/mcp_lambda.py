@@ -100,8 +100,8 @@ def _proxy_to_gateway(event):
         if auth:
             req.add_header("Authorization", auth)
 
-        # nosec B310 - gateway_url scheme is validated to be https above
-        with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+        # gateway_url scheme is validated to be https above; it is a trusted SSM value
+        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
             resp_headers = {
                 "Content-Type": resp.headers.get("Content-Type", "application/json")

@@ -8,7 +8,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import * as path from "path";
-import * as agentcore from "@aws-cdk/aws-bedrock-agentcore-alpha";
+import * as agentcore from "aws-cdk-lib/aws-bedrockagentcore";
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -555,7 +555,7 @@ export class CdkStack extends cdk.Stack {
         supportedVersions: [
           agentcore.MCPProtocolVersion.MCP_2025_03_26,
           agentcore.MCPProtocolVersion.MCP_2025_06_18,
-          "2025-11-25" as agentcore.MCPProtocolVersion,
+          agentcore.MCPProtocolVersion.of("2025-11-25"),
         ],
       }),
       role: gatewayRole,
