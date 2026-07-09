@@ -328,11 +328,15 @@ Please validate this decision and assign a confidence score."""
         # Notify claimant of rejection
         if mcp and claimant_email and claimant_email != "unknown":
             try:
-                result = await _call_tool(mcp, "send_notification", {
-                    "recipient_email": claimant_email,
-                    "subject": f"Claim Update — Policy {structured_decision.get('policy_number', 'N/A')}",
-                    "body": f"Your claim has been reviewed and rejected.\n\nReason: {reasoning}",
-                })
+                result = await _call_tool(
+                    mcp,
+                    "send_notification",
+                    {
+                        "recipient_email": claimant_email,
+                        "subject": f"Claim Update — Policy {structured_decision.get('policy_number', 'N/A')}",
+                        "body": f"Your claim has been reviewed and rejected.\n\nReason: {reasoning}",
+                    },
+                )
                 yield f"📧 Notification sent to {claimant_email}\n"
                 log.info("Rejection notification sent: %s", result)
             except Exception as exc:
@@ -346,14 +350,18 @@ Please validate this decision and assign a confidence score."""
         claim_result = None
         if mcp:
             try:
-                claim_result = await _call_tool(mcp, "create_claim", {
-                    "policy_number": structured_decision.get("policy_number", ""),
-                    "description": structured_decision.get("description", ""),
-                    "estimated_amount": structured_decision.get("amount", 0),
-                    "category": structured_decision.get("category", "general"),
-                    "status": "approved",
-                    "decision": "auto_approved",
-                })
+                claim_result = await _call_tool(
+                    mcp,
+                    "create_claim",
+                    {
+                        "policy_number": structured_decision.get("policy_number", ""),
+                        "description": structured_decision.get("description", ""),
+                        "estimated_amount": structured_decision.get("amount", 0),
+                        "category": structured_decision.get("category", "general"),
+                        "status": "approved",
+                        "decision": "auto_approved",
+                    },
+                )
                 yield f"✅ Claim created: {_extract_claim_id(claim_result)}\n"
                 log.info("Claim created (auto-approved): %s", claim_result)
             except Exception as exc:
@@ -363,16 +371,20 @@ Please validate this decision and assign a confidence score."""
         # Notify claimant of approval
         if mcp and claimant_email and claimant_email != "unknown":
             try:
-                result = await _call_tool(mcp, "send_notification", {
-                    "recipient_email": claimant_email,
-                    "subject": f"Claim Approved — Policy {structured_decision.get('policy_number', 'N/A')}",
-                    "body": (
-                        f"Your claim has been approved.\n\n"
-                        f"Amount: ${structured_decision.get('amount', 0):,}\n"
-                        f"Category: {structured_decision.get('category', 'N/A')}\n\n"
-                        f"You will receive further instructions shortly."
-                    ),
-                })
+                result = await _call_tool(
+                    mcp,
+                    "send_notification",
+                    {
+                        "recipient_email": claimant_email,
+                        "subject": f"Claim Approved — Policy {structured_decision.get('policy_number', 'N/A')}",
+                        "body": (
+                            f"Your claim has been approved.\n\n"
+                            f"Amount: ${structured_decision.get('amount', 0):,}\n"
+                            f"Category: {structured_decision.get('category', 'N/A')}\n\n"
+                            f"You will receive further instructions shortly."
+                        ),
+                    },
+                )
                 yield f"📧 Approval notification sent to {claimant_email}\n"
                 log.info("Approval notification sent: %s", result)
             except Exception as exc:
@@ -386,14 +398,18 @@ Please validate this decision and assign a confidence score."""
         claim_id = None
         if mcp:
             try:
-                claim_result = await _call_tool(mcp, "create_claim", {
-                    "policy_number": structured_decision.get("policy_number", ""),
-                    "description": structured_decision.get("description", ""),
-                    "estimated_amount": structured_decision.get("amount", 0),
-                    "category": structured_decision.get("category", "general"),
-                    "status": "pending_review",
-                    "decision": "escalated",
-                })
+                claim_result = await _call_tool(
+                    mcp,
+                    "create_claim",
+                    {
+                        "policy_number": structured_decision.get("policy_number", ""),
+                        "description": structured_decision.get("description", ""),
+                        "estimated_amount": structured_decision.get("amount", 0),
+                        "category": structured_decision.get("category", "general"),
+                        "status": "pending_review",
+                        "decision": "escalated",
+                    },
+                )
                 claim_id = _extract_claim_id(claim_result)
                 yield f"📋 Claim created (pending review): {claim_id}\n"
                 log.info("Claim created (pending review): %s", claim_result)
@@ -405,11 +421,15 @@ Please validate this decision and assign a confidence score."""
         if mcp and claim_id:
             concerns = structured_validation.get("concerns", "Low confidence score")
             try:
-                result = await _call_tool(mcp, "request_human_review", {
-                    "claim_id": claim_id,
-                    "reason": f"Confidence: {confidence}/100. {concerns}",
-                    "estimated_amount": structured_decision.get("amount", 0),
-                })
+                result = await _call_tool(
+                    mcp,
+                    "request_human_review",
+                    {
+                        "claim_id": claim_id,
+                        "reason": f"Confidence: {confidence}/100. {concerns}",
+                        "estimated_amount": structured_decision.get("amount", 0),
+                    },
+                )
                 yield "🔍 Escalated to human review\n"
                 log.info("Human review requested: %s", result)
             except Exception as exc:
@@ -419,17 +439,21 @@ Please validate this decision and assign a confidence score."""
         # Notify claimant their claim is under review
         if mcp and claimant_email and claimant_email != "unknown":
             try:
-                result = await _call_tool(mcp, "send_notification", {
-                    "recipient_email": claimant_email,
-                    "subject": f"Claim Under Review — Policy {structured_decision.get('policy_number', 'N/A')}",
-                    "body": (
-                        f"Your claim has been received and is currently under review "
-                        f"by our claims team.\n\n"
-                        f"Claim ID: {claim_id or 'pending'}\n"
-                        f"Amount: ${structured_decision.get('amount', 0):,}\n\n"
-                        f"You will be contacted once a decision is made."
-                    ),
-                })
+                result = await _call_tool(
+                    mcp,
+                    "send_notification",
+                    {
+                        "recipient_email": claimant_email,
+                        "subject": f"Claim Under Review — Policy {structured_decision.get('policy_number', 'N/A')}",
+                        "body": (
+                            f"Your claim has been received and is currently under review "
+                            f"by our claims team.\n\n"
+                            f"Claim ID: {claim_id or 'pending'}\n"
+                            f"Amount: ${structured_decision.get('amount', 0):,}\n\n"
+                            f"You will be contacted once a decision is made."
+                        ),
+                    },
+                )
                 yield f"📧 Review notification sent to {claimant_email}\n"
                 log.info("Review notification sent: %s", result)
             except Exception as exc:

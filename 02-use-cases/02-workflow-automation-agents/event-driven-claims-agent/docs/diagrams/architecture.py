@@ -4,6 +4,7 @@ Source of truth for the app-root architecture.png. Regenerate with:
     uv run --with diagrams python3 docs/diagrams/architecture.py
 (run from the event-driven-claims-agent/ directory)
 """
+
 import os
 
 from diagrams import Cluster, Diagram, Edge

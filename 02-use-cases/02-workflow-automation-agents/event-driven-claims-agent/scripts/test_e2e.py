@@ -243,7 +243,7 @@ def test_3_human_review(runtime_arn, region):
     for marker in ["CONFIDENCE:", "confidence:"]:
         if marker in response:
             idx = response.index(marker) + len(marker)
-            confidence_str = response[idx:idx + 10].strip().split()[0] if idx < len(response) else ""
+            confidence_str = response[idx : idx + 10].strip().split()[0] if idx < len(response) else ""
             break
 
     passed = bool(review_matched)
@@ -347,7 +347,12 @@ Jane Doe
         cf = boto3.client("cloudformation", region_name=region)
         resources = cf.list_stack_resources(StackName="AgentCore-ClaimsAgent-dev")["StackResourceSummaries"]
         for r in resources:
-            if r["ResourceType"] == "AWS::DynamoDB::Table" and "Claims" in r["LogicalResourceId"] and "Policies" not in r["LogicalResourceId"] and "Reviews" not in r["LogicalResourceId"]:
+            if (
+                r["ResourceType"] == "AWS::DynamoDB::Table"
+                and "Claims" in r["LogicalResourceId"]
+                and "Policies" not in r["LogicalResourceId"]
+                and "Reviews" not in r["LogicalResourceId"]
+            ):
                 claims_table_name = r["PhysicalResourceId"]
                 break
     except Exception:

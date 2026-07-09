@@ -110,10 +110,7 @@ def _retry_with_retain(cfn, region: str):
     paginator = cfn.get_paginator("describe_stack_events")
     for page in paginator.paginate(StackName=STACK_NAME):
         for event in page["StackEvents"]:
-            if (
-                event.get("ResourceStatus") == "DELETE_FAILED"
-                and event.get("LogicalResourceId") != STACK_NAME
-            ):
+            if event.get("ResourceStatus") == "DELETE_FAILED" and event.get("LogicalResourceId") != STACK_NAME:
                 failed.add(event["LogicalResourceId"])
 
     if failed:
@@ -150,7 +147,12 @@ def cleanup_agentcore_resources(region: str):
             continue
         gw_id = gw["gatewayId"]
         for t in _list_safe(client, "list_gateway_targets", "targets", gatewayIdentifier=gw_id):
-            _delete_safe(client, "delete_gateway_target", gatewayIdentifier=gw_id, targetId=t["targetId"])
+            _delete_safe(
+                client,
+                "delete_gateway_target",
+                gatewayIdentifier=gw_id,
+                targetId=t["targetId"],
+            )
         time.sleep(1)
         _delete_safe(client, "delete_gateway", gatewayIdentifier=gw_id)
         print(f"   Deleted gateway: {gw.get('name')}")
@@ -171,9 +173,19 @@ def cleanup_agentcore_resources(region: str):
         if not matches_project(rt.get("name", "")):
             continue
         rt_id = rt["agentRuntimeId"]
-        for ep in _list_safe(client, "list_agent_runtime_endpoints", "agentRuntimeEndpointSummaries", agentRuntimeId=rt_id):
+        for ep in _list_safe(
+            client,
+            "list_agent_runtime_endpoints",
+            "agentRuntimeEndpointSummaries",
+            agentRuntimeId=rt_id,
+        ):
             if ep.get("name") != "DEFAULT":
-                _delete_safe(client, "delete_agent_runtime_endpoint", agentRuntimeId=rt_id, endpointName=ep["name"])
+                _delete_safe(
+                    client,
+                    "delete_agent_runtime_endpoint",
+                    agentRuntimeId=rt_id,
+                    endpointName=ep["name"],
+                )
         _delete_safe(client, "delete_agent_runtime", agentRuntimeId=rt_id)
         print(f"   Deleted runtime: {rt.get('name')}")
 

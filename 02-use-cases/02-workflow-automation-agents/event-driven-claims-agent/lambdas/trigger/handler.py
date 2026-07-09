@@ -149,9 +149,11 @@ def handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "message": "Claim submitted for processing",
-            "source": f"s3://{bucket}/{key}",
-            "runtime_status": status,
-        }),
+        "body": json.dumps(
+            {
+                "message": "Claim submitted for processing",
+                "source": f"s3://{bucket}/{key}",
+                "runtime_status": status,
+            }
+        ),
     }
