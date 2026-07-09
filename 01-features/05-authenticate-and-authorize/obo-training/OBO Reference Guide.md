@@ -480,14 +480,14 @@ For providers not listed above, use `CustomOauth2` with the appropriate grant ty
 
 ## Runnable Examples
 
-The shapes above are easier to internalize when you can run them. End-to-end working examples live under `3-examples/` in the [awslabs/agentcore-samples](https://github.com/awslabs/agentcore-samples/tree/main/01-features/05-authenticate-and-authorize/obo-training/3-examples) repo:
+The shapes above are easier to internalize when you can run them. The repo includes end-to-end working examples under [`examples/`](./examples/):
 
 | Use Case | What it demonstrates | Path |
 |---|---|---|
-| **UC1 — agent → downstream** | A single OBO hop **inside agent code**. Agent receives a user JWT, calls AgentCore Identity, gets a downstream token, calls the downstream API directly. | [`3-examples/01-agent-to-downstream/`](https://github.com/awslabs/agentcore-samples/tree/main/01-features/05-authenticate-and-authorize/obo-training/3-examples/01-agent-to-downstream) — Entra + Okta, both `local/` and `real-world/` |
-| **UC2 — agent → Gateway → API** | **Two OBO hops in one chain**: OBO #1 in agent code, OBO #2 inside AgentCore Gateway. User identity preserved across all three tokens (`oid` on Entra, `sub`+`uid` on Okta). | [`3-examples/02-agent-via-gateway/`](https://github.com/awslabs/agentcore-samples/tree/main/01-features/05-authenticate-and-authorize/obo-training/3-examples/02-agent-via-gateway) — Entra + Okta, `real-world/` only |
+| **UC1 — agent → downstream** | A single OBO hop **inside agent code**. Agent receives a user JWT, calls AgentCore Identity, gets a downstream token, calls the downstream API directly. | [`examples/01-agent-to-downstream/`](./examples/01-agent-to-downstream/) (Entra + Okta, both `local/` and `real-world/`) |
+| **UC2 — agent → Gateway → API** | **Two OBO hops in one chain**: OBO #1 in agent code, OBO #2 inside AgentCore Gateway. User identity (`oid`) preserved across all three tokens. | [`examples/02-agent-via-gateway/entra/real-world/`](./examples/02-agent-via-gateway/entra/real-world/) (Entra; Okta planned) |
 
-UC2's `ARCHITECTURE.md` walks through how the same OBO primitive applies at two different layers (code vs infrastructure) and decodes the three tokens (T_user → T_gateway → T_downstream) so you can see the actor rotating (`azp`/`appid` on Entra, `cid` on Okta) while the user identity stays constant. On Entra the audience also rotates per hop; on Okta the audience stays constant at the auth server's audience and scope is what narrows. Read that for the cleanest illustration of why OBO chains are valuable.
+UC2's `ARCHITECTURE.md` walks through how the same OBO primitive applies at two different layers (code vs infrastructure) and decodes the three tokens (T_user → T_gateway → T_graph) so you can see the audience rotating while the user identity stays constant. Read that for the cleanest illustration of why OBO chains are valuable.
 
 ---
 

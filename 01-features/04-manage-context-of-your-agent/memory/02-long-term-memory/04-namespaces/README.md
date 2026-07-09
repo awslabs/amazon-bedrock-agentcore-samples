@@ -4,93 +4,93 @@ Namespaces are hierarchical paths that scope long-term memory records. They driv
 
 ## Templates
 
-Namespace templates substitute the runtime variables from the event:
+Namespace templates substitute runtime variables from the event: `{actorId}`, `{sessionId}`, and `{memoryStrategyId}`. This sample uses one template:
 
-| Variable | Source | Example expanded |
-|---|---|---|
-| `{actorId}` | `actorId` on `CreateEvent` | `alice` |
-| `{sessionId}` | `sessionId` on `CreateEvent` | `sess-2025-09-04-01` |
-| `{memoryStrategyId}` | the strategy that produced the record | `strategy-abc123` |
+```
+/facts/{actorId}/
+```
 
-## Granularity choices
+## Multi-tenancy: put the tenant in the actorId
 
-| Goal | Pattern |
+`actorId` is just a string — it may contain `/`. The sample writes events for both shapes under the same template:
+
+| actorId | Resolved namespace |
 |---|---|
-| One record-set per session per strategy | `/strategy/{memoryStrategyId}/actor/{actorId}/session/{sessionId}/` |
-| One record-set per user across sessions | `/strategy/{memoryStrategyId}/actor/{actorId}/` |
-| One record-set per strategy across users | `/strategy/{memoryStrategyId}/` |
-| Global | `/` |
+| `user1` | `/facts/user1/` |
+| `user2` | `/facts/user2/` |
+| `tenantA/user1` | `/facts/tenantA/user1/` |
+| `tenantA/user2` | `/facts/tenantA/user2/` |
 
-## Trailing slash matters
+Because the tenant becomes a path segment, `namespacePath` filters at every level:
 
-`/users/alice` is a *prefix* of both `/users/alice/` and `/users/alice2/`. Always end namespace templates with `/` so prefix-style retrieval (`namespacePath=`) and IAM `namespacePath` conditions don't accidentally match a sibling actor.
-
-## Retrieval modes
-
-| Parameter | Behaviour |
+| Query | Returns |
 |---|---|
-| `namespace=` | Exact namespace match |
-| `namespacePath=` | Hierarchical match — every record whose namespace starts with the path |
+| `namespace="/facts/user1/"` | one user (exact match) |
+| `namespacePath="/facts/tenantA/"` | every user under tenantA, nobody else |
+| `namespacePath="/facts/"` | everything — plain users and all tenants |
+
+For hard isolation, scope each tenant's runtime role with a `namespacePath` IAM condition — see [`../../05-security/01-iam-scoped-access/`](../../05-security/01-iam-scoped-access/).
+
+## Always start *and* end every namespace with `/`
+
+Every template and every retrieval argument must be `/segment/.../` — leading and trailing slash. A retrieval without a trailing slash is rejected, and the trailing slash is what keeps `/facts/user1/` from also matching `user10`. Mixing `facts/user1/` and `/facts/user1/` creates two namespaces that never match each other.
 
 ## Run
 
 ```bash
-pip install boto3 bedrock-agentcore
+pip install boto3 "bedrock-agentcore>=1.14"
 python namespaces-and-organization.py boto3   # default — direct service calls
-python namespaces-and-organization.py sdk     # AgentCore MemoryClient helpers
+python namespaces-and-organization.py sdk     # AgentCore MemorySessionManager
 ```
 
-## Best practices
-
-- **Pick the actor-stable form first.** `/users/{actorId}/...` should be your baseline — it lets you query a user across sessions.
-- **Always end with `/`** in templates and queries, to avoid `alice` vs `alice2` collisions.
-- **Reuse templates across strategies** when the same scoping makes sense (`/users/{actorId}/facts/`, `/users/{actorId}/preferences/`).
-- **Pair with IAM.** Once your namespace shape is fixed, scope runtime roles with `bedrock-agentcore:namespace` / `namespacePath` conditions — see [`../../05-security/01-iam-scoped-access/`](../../05-security/01-iam-scoped-access/).
+Both paths create the memory, write events for the four actors above, and run the three queries (exact user, one tenant, everything). Add `--cleanup` to delete the memory at the end.
 
 ## AWS CLI walkthrough
 
-The same flow expressed with the AWS CLI:
-
 ```bash
-# 1. Create memory with two strategies on different namespace shapes.
+# 1. Create memory
 aws bedrock-agentcore-control create-memory \
   --region "$AWS_REGION" --name "NamespacesCli-$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
-  --memory-strategies '[
-    {"semanticMemoryStrategy": {
-      "name":"Facts",
-      "namespaces":["/users/{actorId}/facts/"]
-    }},
-    {"summaryMemoryStrategy": {
-      "name":"Summaries",
-      "namespaces":["/users/{actorId}/sessions/{sessionId}/summary/"]
-    }}
-  ]'
+  --memory-strategies '[{"semanticMemoryStrategy":{"name":"Facts","namespaceTemplates":["/facts/{actorId}/"]}}]'
 export MEMORY_ID=<id>
 
-# 2. Drive turns for two actors
-for actor in alice bob; do
+# 2. Events — plain and tenant-qualified actorIds
+for actor in user1 user2 tenantA/user1 tenantA/user2; do
   aws bedrock-agentcore create-event \
     --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
-    --actor-id "$actor" --session-id "${actor}-sess" \
+    --actor-id "$actor" --session-id "sess-${actor//\//-}" \
     --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --payload "[{\"conversational\":{\"role\":\"USER\",\"content\":{\"text\":\"hi from $actor\"}}}]"
 done
 sleep 60
 
-# 3. Exact-namespace query: only Alice's facts
+# 3. Exact: one user
 aws bedrock-agentcore retrieve-memory-records \
   --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
-  --namespace "/users/alice/facts/" \
-  --search-criteria '{"searchQuery":"alice","topK":5}'
+  --namespace "/facts/user1/" \
+  --search-criteria '{"searchQuery":"user1","topK":5}'
 
-# 4. Hierarchical query: everything under /users/*
+# 4. Hierarchical: one tenant only
 aws bedrock-agentcore retrieve-memory-records \
   --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
-  --namespace-path "/users/" \
+  --namespace-path "/facts/tenantA/" \
+  --search-criteria '{"searchQuery":"tenantA users","topK":20}'
+
+# 5. Hierarchical: everything
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace-path "/facts/" \
   --search-criteria '{"searchQuery":"all users","topK":20}'
 
-# 5. Teardown
+# 6. Teardown
 aws bedrock-agentcore-control delete-memory \
   --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
 ```
+
+## Best practices
+
+- **Lead with the data type, then actor** — `/facts/{actorId}/` keeps one queryable tree whether actorIds are flat or tenant-qualified.
+- **For multi-tenancy, encode the tenant in the actorId** (`tenantA/user1`) — no schema change needed, and `namespacePath` gives you per-tenant queries for free.
+- **Always start and end with `/`** in templates, `namespace=`, `namespacePath=`, and IAM conditions alike.
+- **Pair with IAM.** Once the shape is fixed, scope runtime roles with `bedrock-agentcore:namespace` / `namespacePath` conditions.
