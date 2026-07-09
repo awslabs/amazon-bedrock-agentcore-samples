@@ -103,9 +103,7 @@ def _proxy_to_gateway(event):
         # gateway_url scheme is validated to be https above; it is a trusted SSM value
         with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
-            resp_headers = {
-                "Content-Type": resp.headers.get("Content-Type", "application/json")
-            }
+            resp_headers = {"Content-Type": resp.headers.get("Content-Type", "application/json")}
 
             session_id = resp.headers.get("Mcp-Session-Id")
             if session_id:
@@ -127,20 +125,20 @@ def _proxy_to_gateway(event):
         error_body = e.read().decode()
         www_auth = None
         if e.code == 401:
-            print('replacing resource metadata')
-            www_auth = e.headers.get('WWW-Authenticate')
+            print("replacing resource metadata")
+            www_auth = e.headers.get("WWW-Authenticate")
             if www_auth:
-                parts = www_auth.split(', ')
+                parts = www_auth.split(", ")
                 for p in parts:
-                    if p.startswith('resource_metadata'):
-                        server = p.split('=')[1]
-                        elements = server.split('/')
+                    if p.startswith("resource_metadata"):
+                        server = p.split("=")[1]
+                        elements = server.split("/")
                         elements[2] = _get_callback_url().rstrip("/")
-                        server = '/'.join(elements[2:])
-                        res_metadata = 'resource_metadata=' + server
-                        parts = [p for p in parts if not p.startswith('resource_metadata')]
+                        server = "/".join(elements[2:])
+                        res_metadata = "resource_metadata=" + server
+                        parts = [p for p in parts if not p.startswith("resource_metadata")]
                         parts.append(res_metadata)
-                        www_auth = ', '.join(parts)
+                        www_auth = ", ".join(parts)
         try:
             error_data = json.loads(error_body)
             if "error" in error_data and error_data["error"].get("code") == -32042:
@@ -158,9 +156,7 @@ def _proxy_to_gateway(event):
         }
     except Exception as e:
         print(f"proxy_to_gateway error: {e}")
-        return _json_response(
-            502, {"error": {"code": -32603, "message": "Gateway request failed"}}
-        )
+        return _json_response(502, {"error": {"code": -32603, "message": "Gateway request failed"}})
 
 
 def _rewrite_elicitation_urls(error_data, auth):

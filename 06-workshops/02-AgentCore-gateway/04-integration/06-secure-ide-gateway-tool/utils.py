@@ -48,9 +48,7 @@ def setup_cognito_user_pool(pool_name="MCPServerPool"):
         refresh_token = auth_response["AuthenticationResult"]["RefreshToken"]
         # Output the required values
         print(f"Pool id: {pool_id}")
-        print(
-            f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
-        )
+        print(f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration")
         print(f"Client ID: {client_id}")
         print(f"Bearer Token: {bearer_token}")
         print(f"Refresh Token: {refresh_token}")
@@ -116,9 +114,7 @@ def create_agentcore_role(agent_name):
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -152,9 +148,7 @@ def create_agentcore_role(agent_name):
                 "Effect": "Allow",
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "GetAgentAccessToken",
@@ -181,9 +175,7 @@ def create_agentcore_role(agent_name):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": f"{account_id}"},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -202,14 +194,10 @@ def create_agentcore_role(agent_name):
         time.sleep(10)
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
-        policies = iam_client.list_role_policies(
-            RoleName=agentcore_role_name, MaxItems=100
-        )
+        policies = iam_client.list_role_policies(RoleName=agentcore_role_name, MaxItems=100)
         print("policies:", policies)
         for policy_name in policies["PolicyNames"]:
-            iam_client.delete_role_policy(
-                RoleName=agentcore_role_name, PolicyName=policy_name
-            )
+            iam_client.delete_role_policy(RoleName=agentcore_role_name, PolicyName=policy_name)
         print(f"deleting {agentcore_role_name}")
         iam_client.delete_role(RoleName=agentcore_role_name)
         print(f"recreating {agentcore_role_name}")
@@ -248,34 +236,24 @@ def get_or_create_user_pool(cognito_client, pool_name):
                 return pool["Id"]
 
     # Create new pool
-    response = cognito_client.create_user_pool(
-        PoolName=pool_name, Policies={"PasswordPolicy": {"MinimumLength": 8}}
-    )
+    response = cognito_client.create_user_pool(PoolName=pool_name, Policies={"PasswordPolicy": {"MinimumLength": 8}})
     return response["UserPool"]["Id"]
 
 
-def get_or_create_resource_server(
-    cognito_client, user_pool_id, identifier, name, scopes
-):
+def get_or_create_resource_server(cognito_client, user_pool_id, identifier, name, scopes):
     """
     Get existing resource server or create a new one.
     """
     try:
-        cognito_client.describe_resource_server(
-            UserPoolId=user_pool_id, Identifier=identifier
-        )
+        cognito_client.describe_resource_server(UserPoolId=user_pool_id, Identifier=identifier)
         return  # Already exists
     except cognito_client.exceptions.ResourceNotFoundException:
         pass
 
-    cognito_client.create_resource_server(
-        UserPoolId=user_pool_id, Identifier=identifier, Name=name, Scopes=scopes
-    )
+    cognito_client.create_resource_server(UserPoolId=user_pool_id, Identifier=identifier, Name=name, Scopes=scopes)
 
 
-def get_or_create_m2m_client(
-    cognito_client, user_pool_id, client_name, resource_server_id, scope_names
-):
+def get_or_create_m2m_client(cognito_client, user_pool_id, client_name, resource_server_id, scope_names):
     """
     Get existing M2M client or create a new one.
     Returns (client_id, client_secret).
@@ -286,12 +264,8 @@ def get_or_create_m2m_client(
         for client in page["UserPoolClients"]:
             if client["ClientName"] == client_name:
                 # Get client details including secret
-                details = cognito_client.describe_user_pool_client(
-                    UserPoolId=user_pool_id, ClientId=client["ClientId"]
-                )
-                return details["UserPoolClient"]["ClientId"], details[
-                    "UserPoolClient"
-                ].get("ClientSecret")
+                details = cognito_client.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client["ClientId"])
+                return details["UserPoolClient"]["ClientId"], details["UserPoolClient"].get("ClientSecret")
 
     # Create new client
     response = cognito_client.create_user_pool_client(
@@ -302,9 +276,7 @@ def get_or_create_m2m_client(
         AllowedOAuthScopes=scope_names,
         AllowedOAuthFlowsUserPoolClient=True,
     )
-    return response["UserPoolClient"]["ClientId"], response["UserPoolClient"][
-        "ClientSecret"
-    ]
+    return response["UserPoolClient"]["ClientId"], response["UserPoolClient"]["ClientSecret"]
 
 
 def get_token(user_pool_id, client_id, client_secret, scope_string, REGION):
@@ -361,9 +333,7 @@ def delete_gateway(gateway_client, gatewayId):
         targets = gateway_client.list_gateway_targets(gatewayIdentifier=gatewayId)
         for target in targets.get("items", []):
             print(f"  Deleting target: {target['targetId']}")
-            gateway_client.delete_gateway_target(
-                gatewayIdentifier=gatewayId, targetIdentifier=target["targetId"]
-            )
+            gateway_client.delete_gateway_target(gatewayIdentifier=gatewayId, targetIdentifier=target["targetId"])
             time.sleep(2)
     except Exception as e:
         print(f"  Warning listing/deleting targets: {e}")

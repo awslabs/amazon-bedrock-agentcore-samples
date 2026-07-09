@@ -156,20 +156,26 @@ def handle_authorize(event):
 
     # Validate client_id
     if not client_id_param or client_id_param != _get_client_id():
-        return _json_response(400, {
-            "error": "invalid_client",
-            "error_description": "Unknown or missing client_id",
-        })
+        return _json_response(
+            400,
+            {
+                "error": "invalid_client",
+                "error_description": "Unknown or missing client_id",
+            },
+        )
 
     # Validate redirect_uri against the managed allowlist (RFC 6749 §3.1.2.2 / §4.1.2.1).
     # Without this check an attacker could send a victim a crafted /authorize link
     # with an off-site redirect_uri; the victim logs in on the genuine page and their
     # authorization code is delivered to the attacker's server instead.
     if not _is_allowed_redirect_uri(redirect_uri):
-        return _json_response(400, {
-            "error": "invalid_request",
-            "error_description": "redirect_uri is not in the allowlist",
-        })
+        return _json_response(
+            400,
+            {
+                "error": "invalid_request",
+                "error_description": "redirect_uri is not in the allowlist",
+            },
+        )
 
     # --- Check for existing session via cookies ---
     cookies = _parse_cookies(event)
@@ -295,9 +301,7 @@ def _handle_force_change_password(data):
     code_challenge_method = data.get("code_challenge_method", "S256")
 
     if not session or not email or not new_password:
-        return _json_response(
-            400, {"error": "Missing required fields for password change"}
-        )
+        return _json_response(400, {"error": "Missing required fields for password change"})
 
     try:
         response = cognito_client.respond_to_auth_challenge(
@@ -331,10 +335,13 @@ def _store_auth_code_and_redirect(
     # redirect_uri directly from the POST body, so this is a second choke point
     # in case a caller reaches this function without going through /authorize.
     if not _is_allowed_redirect_uri(redirect_uri):
-        return _json_response(400, {
-            "error": "invalid_request",
-            "error_description": "redirect_uri is not in the allowlist",
-        })
+        return _json_response(
+            400,
+            {
+                "error": "invalid_request",
+                "error_description": "redirect_uri is not in the allowlist",
+            },
+        )
 
     auth_code = str(uuid.uuid4())
 
@@ -526,9 +533,7 @@ def _handle_token_refresh(params):
         return _json_response(200, token_data)
     except Exception as e:
         print(f"refresh_token error: {e}")
-        return _json_response(
-            400, {"error": "invalid_grant", "error_description": "Token refresh failed"}
-        )
+        return _json_response(400, {"error": "invalid_grant", "error_description": "Token refresh failed"})
 
 
 def handle_dcr(event):
@@ -644,12 +649,7 @@ def _get_api_origin():
 
 
 def _escape_html(s):
-    return (
-        s.replace("&", "&amp;")
-        .replace('"', "&quot;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _json_response(status_code, body):

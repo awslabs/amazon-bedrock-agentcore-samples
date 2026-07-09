@@ -92,9 +92,9 @@ def _get_access_token_from_cookies(event):
     refresh_token = ""
     for cookie in event.get("cookies", []):
         if cookie.startswith("access_token="):
-            access_token = cookie[len("access_token="):]
+            access_token = cookie[len("access_token=") :]
         elif cookie.startswith("refresh_token="):
-            refresh_token = cookie[len("refresh_token="):]
+            refresh_token = cookie[len("refresh_token=") :]
 
     if access_token:
         payload = _verify_cognito_jwt(access_token)
@@ -207,16 +207,11 @@ def handle_oauth_callback(event):
         )
 
     # Build response with optional refreshed cookie
-    resp = _result_page(
-        "Tools Connected!", "You can close this window now.", success=True
-    )
+    resp = _result_page("Tools Connected!", "You can close this window now.", success=True)
     if refreshed_token:
         exp = cookie_payload.get("exp", 0)
         max_age = max(int(exp - time.time()), 0)
-        resp["cookies"] = [
-            f"access_token={refreshed_token}; Path=/; Max-Age={max_age}; "
-            f"HttpOnly; Secure; SameSite=Lax"
-        ]
+        resp["cookies"] = [f"access_token={refreshed_token}; Path=/; Max-Age={max_age}; HttpOnly; Secure; SameSite=Lax"]
     return resp
 
 
