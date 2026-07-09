@@ -312,3 +312,8 @@ plan/
 01-features/03-connect-your-agent-to-anything/02-browser/TEST_REPORT_CARD.md
 02-use-cases/use-case-assessment.md
 **/lambda_config.json
+02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/scripts/perf_baseline_results.json
+02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/scripts/perf_baseline_results.md
+02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/scripts/perf_baseline.py
+02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/docs/DESIGN_SYSTEM.md
+02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/agentcore/agentcore.json.deployed.bak

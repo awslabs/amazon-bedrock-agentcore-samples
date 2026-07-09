@@ -72,7 +72,7 @@
     {
       "authorizerType": "OAuthCredentialProvider",
       "name": "cognito-gateway-m2m",
-      "discoveryUrl": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_HkofyYYfv/.well-known/openid-configuration",
+      "discoveryUrl": "https://cognito-idp.us-west-2.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
       "scopes": [
         "agentcore/invoke"
       ],
@@ -198,6 +198,7 @@
         }
       },
       "enableSemanticSearch": true,
+      "exceptionLevel": "NONE",
       "policyEngineConfiguration": {
         "policyEngineName": "ClaimsPolicyEngine",
         "mode": "ENFORCE"
@@ -207,7 +208,7 @@
   "policyEngines": [
     {
       "name": "ClaimsPolicyEngine",
-      "description": "Cedar policy engine for claims processing authorization \u2014 AllowAll + BlockExcessiveClaims ($100k threshold)",
+      "description": "Cedar policy engine for claims processing authorization — AllowAll + BlockExcessiveClaims ($100k threshold)",
       "policies": [
         {
           "name": "ClaimsAllowAllTools",
@@ -217,7 +218,7 @@
         },
         {
           "name": "ClaimsBlockExcessiveAmount",
-          "description": "Forbid creating claims with estimated amount >= $100,000 \u2014 routes to human review",
+          "description": "Forbid creating claims with estimated amount >= $100,000 — routes to human review",
           "statement": "forbid(principal, action, resource is AgentCore::Gateway) when { context has \"toolName\" && context.toolName == \"create-claim\" && context has \"input\" && context.input has \"estimated_amount\" && context.input.estimated_amount >= 100000 };",
           "validationMode": "IGNORE_ALL_FINDINGS"
         }

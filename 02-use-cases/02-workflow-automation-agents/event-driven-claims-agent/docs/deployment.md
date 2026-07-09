@@ -368,6 +368,36 @@ No container rebuild needed during local dev — only when deploying to the clou
 
 ## Troubleshooting
 
+### agentcore validate — schema errors after CLI upgrade
+
+If `agentcore validate` reports errors like:
+- `memories[0].type: expected "AgentCoreMemory"`
+- `credentials[0].type: invalid "type" value`
+
+This means the CLI version has been upgraded and expects new schema fields. Common fixes:
+
+1. **Memories** — add `"type": "AgentCoreMemory"` to each memory object in `agentcore.json`
+2. **Credentials** — remove the `credentials` array entirely (credentials are managed via `agentcore add credential` CLI command, not the JSON file)
+
+After fixing:
+```bash
+agentcore validate   # Should print "Valid"
+```
+
+### Deploy fails: "No agents or gateways defined"
+
+CLI v0.3.0+ expects `agents` (not `runtimes`) as the top-level key. However, `agentcore validate` still accepts `runtimes`. If you encounter this discrepancy, rename `runtimes` → `agents` and add `"type": "AgentCoreRuntime"` to each entry. Also add `"runtimeVersion": "PYTHON_3_12"` if not present.
+
+### Stack in REVIEW_IN_PROGRESS state
+
+If a previous deploy failed during CloudFormation changeset review, the stack may be stuck:
+
+```bash
+aws cloudformation delete-stack --stack-name AgentCore-ClaimsAgent-dev --region us-west-2
+aws cloudformation wait stack-delete-complete --stack-name AgentCore-ClaimsAgent-dev --region us-west-2
+./deploy.sh us-west-2
+```
+
 ### CDK Bootstrap Failed
 
 If `cdk bootstrap` fails with "Stack already exists":
@@ -409,6 +439,72 @@ If tools fail with "Function not found", verify IAM permissions on Lambda ARNs i
 agentcore deploy --target dev --yes
 ```
 
+### Agent reports a Gateway tool is unavailable (e.g. "lookup_policy is not available")
+
+**Symptom:** The agent responds that it can't access a Gateway tool (`lookup_policy`, `create_claim`, etc.) and rejects/flags the claim for manual review. Runtime logs show, on every invocation:
+
+```
+Failed to build MCP client (Identity auth): GetResourceOauth2Token:
+Failed to fetch discovery document from:
+https://cognito-idp.<region>.amazonaws.com/<pool-id>/.well-known/openid-configuration
+```
+
+**Cause:** The `cognito-gateway-m2m` credential provider in AgentCore Identity has a discovery URL pointing at a Cognito pool that no longer exists or is in a different region than the deployment. This commonly happens after redeploying to a **new region**: `setup_cognito.sh` creates a fresh pool and updates `.env`, but `agentcore add credential` is **idempotent** — since the provider already exists, the `add` is a no-op and the stale discovery URL is never updated. The Runtime can't fetch a Gateway token, so `get_mcp_client()` returns `None` and no Gateway tools load (the co-located `submit_decision` tool still works, so the agent runs but can't verify policies).
+
+**Diagnose:**
+```bash
+# Check the provider's current discovery URL vs. the deployed region
+aws bedrock-agentcore-control get-oauth2-credential-provider \
+  --name cognito-gateway-m2m --region <region> \
+  --query "oauth2ProviderConfigOutput.customOauth2ProviderConfig.oauthDiscovery.discoveryUrl" \
+  --output text
+# Compare against COGNITO_DISCOVERY_URL in .env
+grep COGNITO_DISCOVERY_URL .env
+```
+
+**Fix:** Reconcile the credential provider with the current `.env` values (secret is sourced in-shell, never printed):
+```bash
+./scripts/fix_credential_region.sh <region>
+```
+
+Then invoke with a **fresh session** — the Runtime caches the MCP client as a module-level singleton, so a warm session keeps the old failure; a new cold session picks up the corrected token.
+
+### `agentcore deploy` fails: Gateway `DiscoveryUrl: failed validation` / PLACEHOLDER in synth
+
+**Symptom:** Running `agentcore deploy` directly (not via `deploy.sh`) fails with:
+```
+Properties validation failed ... #/AuthorizerConfiguration/CustomJWTAuthorizer/DiscoveryUrl:
+failed validation constraint for keyword [pattern]
+```
+and the synthesized template shows `DiscoveryUrl: PLACEHOLDER_DISCOVERY_URL`.
+
+**Cause:** The CDK stack reads `COGNITO_DISCOVERY_URL` and `AGENTCORE_GATEWAY_CLIENT_ID` from the environment at synth time. `deploy.sh` sources `.env` first; a bare `agentcore deploy` does not, so the placeholders never get patched.
+
+**Fix:** Export the env before deploying (or just use `./deploy.sh <region>`):
+```bash
+set -a && source .env && set +a
+export AWS_REGION=<region> CDK_DEFAULT_REGION=<region>
+agentcore deploy --target dev --yes
+```
+
+### Event-driven (email/S3) claim never appears in DynamoDB
+
+**Symptom:** You upload an email to `s3://claims-inbox-.../claims-inbox/` but no claim shows up.
+
+**Cause / expected behavior:** The Trigger Lambda is **fire-and-forget** — it invokes the Runtime and returns in a few seconds without waiting for the full dual-agent pipeline (~60–90s). Results are written to DynamoDB by the agent's tool calls *after* the Lambda returns.
+
+**Diagnose:**
+```bash
+# 1. Confirm the Trigger Lambda fired
+aws logs tail /aws/lambda/ClaimsAgent-Trigger --region <region> --since 5m
+
+# 2. Wait ~90s, then check the Claims table
+aws dynamodb scan --table-name ClaimsAgent-dev-Claims --region <region> \
+  --filter-expression "policy_number = :p" \
+  --expression-attribute-values '{":p":{"S":"POL-67890"}}'
+```
+If the Lambda log shows `Runtime accepted claim ... (HTTP 200)` but nothing lands in DynamoDB, check the Runtime logs for the "tool unavailable" issue above (a failed Gateway connection means `create_claim` never runs).
+
 ### SES Email Not Sending
 
 In SES sandbox mode, verify sender and recipient emails:
@@ -445,3 +541,9 @@ agentcore deploy --target dev --yes
 ```
 
 **Note:** Ensure the Bedrock model (`global.anthropic.claude-sonnet-4-6`) is available in your target region. The global inference profile automatically routes to the nearest available region.
+
+**⚠️ Credential provider region caveat:** The `cognito-gateway-m2m` credential provider is created once and `agentcore add credential` is idempotent. When you deploy to a **different region** than a previous run, the provider keeps its old discovery URL and the agent will fail to load Gateway tools (see [Agent reports a Gateway tool is unavailable](#agent-reports-a-gateway-tool-is-unavailable-eg-lookup_policy-is-not-available)). After a cross-region redeploy, run:
+
+```bash
+./scripts/fix_credential_region.sh <new-region>
+```
