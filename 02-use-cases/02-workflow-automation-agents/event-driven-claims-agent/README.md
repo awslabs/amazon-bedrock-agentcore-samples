@@ -126,7 +126,9 @@ python3 scripts/test_auth.py --region us-west-2
 
 ## Demo
 
-![Demo](demo.gif)
+<p align="center">
+  <img src="docs/demo.gif" alt="Event-Driven Claims Agent demo: a claim is auto-approved with an email notification, a $150k claim is blocked by the Cedar policy, and a claim flows through the S3 to EventBridge to Agent pipeline" width="800" />
+</p>
 
 The demo shows: (1) auto-approved claim with email notification, (2) Cedar policy blocking a $150k claim, (3) event-driven S3 → EventBridge → Agent flow.
 
