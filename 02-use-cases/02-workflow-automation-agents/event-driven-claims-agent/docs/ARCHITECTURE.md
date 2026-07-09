@@ -15,7 +15,7 @@ This document explains:
 
 ### High-Level Architecture
 
-![High-Level Architecture](diagrams/high-level-architecture.png)
+![High-Level Architecture](../architecture.png)
 
 ### Event-Driven Ingress Flow
 

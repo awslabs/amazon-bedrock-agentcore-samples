@@ -29,7 +29,7 @@ This sample teaches you how to build a production-realistic agent system on Agen
 
 ## Architecture
 
-![High-Level Architecture](./docs/diagrams/high-level-architecture.png)
+![High-Level Architecture](./architecture.png)
 
 <details>
 <summary>Text description (for accessibility)</summary>
@@ -126,7 +126,7 @@ python3 scripts/test_auth.py --region us-west-2
 
 ## Demo
 
-> A demo video showing the full claim processing flow is available here: [demo.mp4](demo.mp4).
+![Demo](demo.gif)
 
 The demo shows: (1) auto-approved claim with email notification, (2) Cedar policy blocking a $150k claim, (3) event-driven S3 → EventBridge → Agent flow.
 
