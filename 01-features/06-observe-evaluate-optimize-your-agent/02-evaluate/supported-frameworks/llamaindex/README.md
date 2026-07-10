@@ -4,6 +4,34 @@ Evaluate a [LlamaIndex](https://docs.llamaindex.ai/) agent with Amazon Bedrock A
 
 The HR Assistant, its 5 tools, mock data, and system prompt are identical to the Strands version in [`../../utils/`](../../utils/), so ground-truth and expected responses stay consistent across the framework samples.
 
+## What you'll learn
+
+| Concept                       | Description                                                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Framework instrumentation** | Make a LlamaIndex agent evaluable by adding one OpenTelemetry package — no instrumentation code             |
+| **Agent workflow structure**  | Build with `FunctionAgent` so the workflow/inference/tool span tree the evaluation service needs is emitted |
+| **AgentCore Memory**          | Persist multi-turn conversation history in the AgentCore Memory service, across microVM restarts            |
+| **On-demand evaluation**      | Score a recorded session with built-in + custom LLM-as-a-judge evaluators via `EvaluationClient`            |
+| **Online evaluation**         | Continuously score live traffic with an online evaluation config                                            |
+| **CLI evaluation**            | Re-evaluate any session from the terminal with the AgentCore CLI                                            |
+
+```
+┌───────────────┐  invoke_agent_runtime()  ┌────────────────────────────────┐
+│  evaluate.py  │ ────────────────────────▶│  AgentCore Runtime             │
+│               │◀──────────────────────── │  HR Assistant (LlamaIndex)     │
+│               │        responses         │   │            │               │
+│               │                          │   │ Converse   │ history       │
+│               │                          │   ▼ API        ▼               │
+│               │                          │ Bedrock      AgentCore         │
+│               │                          │ (Nova Lite)  Memory            │
+│               │                          └───────┬────────────────────────┘
+│               │                                  │ OTel spans + events
+│               │   Evaluate API           ┌───────▼────────────────────────┐
+│ EvaluationClient ───────────────────────▶│  CloudWatch                    │
+│               │◀──────────────────────── │  (spans, event records)        │
+└───────────────┘        scores            └────────────────────────────────┘
+```
+
 ## How it works
 
 The agent is instrumented for evaluation with the **OpenTelemetry** LlamaIndex library (`opentelemetry-instrumentation-llamaindex`, scope `opentelemetry.instrumentation.llamaindex`). On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the library at startup — no explicit instrumentation code is needed. The agent's spans and event records flow to CloudWatch, and AgentCore Evaluations reads them from there.
@@ -74,6 +102,54 @@ The script:
 2. Invokes the deployed agent for a 3-turn session and waits ~90s for CloudWatch span ingestion.
 3. Runs on-demand evaluation with `EvaluationClient` (built-in + custom evaluators, with `ReferenceInputs` ground truth). Scores are saved to `results/on_demand_results.json`.
 4. Creates an online evaluation config that continuously scores live traffic with built-in evaluators. Details are saved to `results/online_eval_config.json`.
+
+## Expected output
+
+```
+[1/4] Creating custom LLM-as-a-judge evaluators ...
+  Creating HRResponseQuality (TRACE) ...
+  Creating HRSessionCompleteness (SESSION) ...
+
+[2/4] Invoking HR Assistant to generate a session ...
+  Turn 1: What is the PTO balance for employee EMP-001?
+         -> The PTO balance for employee EMP-001 is as follows: Total days: 15 ...
+  Turn 2: Please submit a PTO request for EMP-001 from 2026-07-14 to 2026-07-18.
+         -> The PTO request for employee EMP-001 has been submitted and approved ...
+  Turn 3: What is the company remote work policy?
+         -> Employees may work remotely up to 3 days per week ...
+
+[3/4] Running on-demand evaluation (EvaluationClient) ...
+  Evaluator                                     Value    Label
+  --------------------------------------------------------------------------------
+  Builtin.GoalSuccessRate                       1.0      Yes
+  Builtin.Correctness                           1.0      Perfectly Correct
+  Builtin.Helpfulness                           0.83     Very Helpful
+  HRResponseQuality                             1.0      excellent
+  HRSessionCompleteness                         1.0      complete
+
+[4/4] Creating online evaluation configuration ...
+  Online evaluation config created: hr_llamaindex_eval_<suffix>-XXXXXXXXXX
+```
+
+TRACE-level evaluators (`Correctness`, `Helpfulness`, `HRResponseQuality`) return one score per turn, so the full run prints 11 results. Online evaluation results appear a few minutes later in CloudWatch at `/aws/bedrock-agentcore/evaluations/results/<config-id>`, one record per evaluator per sampled turn with `gen_ai.evaluation.score.value` and `gen_ai.evaluation.explanation` attributes.
+
+## Evaluate from the CLI
+
+Once sessions exist in CloudWatch, you can re-evaluate them from the terminal with the [AgentCore CLI](https://www.npmjs.com/package/@aws/agentcore) — no Python needed. Because this sample deploys with a plain `deploy.py` (not an `agentcore` project), use the standalone flags:
+
+```bash
+npm install -g @aws/agentcore
+
+AGENT_ARN=$(jq -r .agent_arn agent_config.json)
+agentcore run eval \
+  --runtime-arn "$AGENT_ARN" \
+  --evaluator-arn Builtin.Helpfulness Builtin.Correctness \
+  --region us-west-2 \
+  --session-id <session-id-from-evaluate-py-output> \
+  --days 1
+```
+
+Ground truth can be supplied inline with `--assertion`, `--expected-trajectory`, and `--expected-response`. Omit `--session-id` to evaluate every session in the lookback window.
 
 ## Troubleshooting ARM64 wheels
 
