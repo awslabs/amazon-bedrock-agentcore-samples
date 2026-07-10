@@ -43,19 +43,16 @@ from agents import Agent, OpenAIResponsesModel
 from openai import AsyncOpenAI
 from aws_bedrock_token_generator import provide_token
 
-# Bedrock API key: BEDROCK_API_KEY env var (long-term key) if set,
-# otherwise a short-term key minted from the runtime's IAM role
-api_key = os.environ.get("BEDROCK_API_KEY") or provide_token(region=MODEL_REGION)
+# Short-term Bedrock API key minted from the runtime's IAM role — a local
+# SigV4 presign, no network call, nothing stored in code or config
+api_key = provide_token(region=MODEL_REGION)
 client = AsyncOpenAI(base_url=f"https://bedrock-mantle.{MODEL_REGION}.api.aws/openai/v1", api_key=api_key)
 model = OpenAIResponsesModel(model="openai.gpt-5.5", openai_client=client)
 
 agent = Agent(name="HRAssistant", instructions=SYSTEM_PROMPT, model=model, tools=[...])
 ```
 
-Both [Bedrock API key types](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-how.html) work here:
-
-- **Short-term key (default, recommended for production).** `aws-bedrock-token-generator` mints one from the runtime's IAM role credentials on every invocation (a local SigV4 presign, no network call, valid up to 12h). Nothing is stored in code or config.
-- **Long-term key (exploration).** Generate one from the Bedrock console (**API keys** → **Generate long-term API key**) or via `aws iam create-service-specific-credential --service-name bedrock.amazonaws.com`, then set it as the `BEDROCK_API_KEY` environment variable on the runtime. Long-term keys are tied to an auto-created IAM user with `AmazonBedrockLimitedAccess`.
+`provide_token()` returns a [short-term Bedrock API key](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-how.html) (a `bedrock-api-key-...` string) with the same permissions as the runtime's IAM role, valid up to 12 hours — the secure kind AWS recommends for production. The agent is rebuilt on every invocation so a long-lived runtime never reuses an expired key. For exploration you can instead generate a long-term key (Bedrock console → **API keys**, or `aws iam create-service-specific-credential --service-name bedrock.amazonaws.com`) and pass it as the `api_key`; store it in AWS Secrets Manager rather than in code.
 
 Three implementation details matter for evaluation:
 
@@ -81,7 +78,7 @@ python deploy.py --region us-west-2
 
 This builds an ARM64 deployment package, creates an AgentCore Memory resource (conversation history store, injected as `AGENTCORE_MEMORY_ID`), creates the AgentCore Runtime, and writes `agent_config.json` in this directory (read by `evaluate.py`).
 
-The runtime's IAM role is granted `bedrock-mantle:CreateInference` and `bedrock-mantle:CallWithBearerToken` for the mantle Responses API, plus `bedrock:InvokeModel*` and `bedrock:CallWithBearerToken` (the latter pair covers the `bedrock-runtime/openai/v1` Chat Completions endpoint, should you switch `BEDROCK_OPENAI_BASE_URL` to it). The bearer-token actions are required because the OpenAI-compatible endpoints authenticate with a Bedrock API key rather than SigV4. To use a long-term API key instead of the role-derived short-term key, add `environmentVariables={"BEDROCK_API_KEY": "<your-key>", ...}` to the `create_agent_runtime` call in `deploy.py` (for real workloads, prefer fetching it from AWS Secrets Manager instead of a plain environment variable).
+The runtime's IAM role is granted `bedrock-mantle:CreateInference` and `bedrock-mantle:CallWithBearerToken` for the mantle Responses API, plus `bedrock:InvokeModel*` and `bedrock:CallWithBearerToken` (the latter pair covers the `bedrock-runtime/openai/v1` Chat Completions endpoint, should you switch `BEDROCK_OPENAI_BASE_URL` to it). The bearer-token actions are required because `provide_token()`'s short-term API key authenticates against these endpoints with `bedrock:CallWithBearerToken` rather than SigV4.
 
 ## Run the evaluation
 

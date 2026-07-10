@@ -8,9 +8,9 @@ responses stay consistent across framework samples.
 
 The LLM is OpenAI GPT-5.5 on Amazon Bedrock, reached through the Bedrock mantle
 endpoint's OpenAI-compatible Responses API and authenticated with a Bedrock API
-key. By default a short-term API key (the secure, recommended kind) is minted
-from the runtime's IAM role on every invocation; set the BEDROCK_API_KEY
-environment variable to use a long-term key instead.
+key. aws_bedrock_token_generator.provide_token() mints a short-term Bedrock API
+key from the runtime's IAM role on every invocation — the secure, recommended
+kind, so no key is stored in code or config.
 
 The Responses API (OpenAIResponsesModel) is used rather than Chat Completions:
 the OpenTelemetry instrumentation extracts the agent's response text from
@@ -333,31 +333,18 @@ _TOOLS = [
 ]
 
 
-def _get_api_key() -> str:
-    """
-    Return a Bedrock API key for the OpenAI-compatible endpoint.
-
-    If BEDROCK_API_KEY is set (a long-term Bedrock API key generated from the
-    console or via iam create-service-specific-credential), it is used as-is.
-    Otherwise a short-term API key is minted from the runtime's IAM role
-    credentials (a local SigV4 presign, no network call) — the secure default
-    AWS recommends for production.
-    """
-    long_term_key = os.environ.get("BEDROCK_API_KEY")
-    if long_term_key:
-        return long_term_key
-    return provide_token(region=MODEL_REGION)
-
-
 def _build_agent() -> Agent:
     """
     Build the HR Assistant agent.
 
-    The agent is rebuilt on every invocation rather than cached for the
-    microVM's lifetime, so a long-lived runtime never keeps using an expired
-    short-term API key.
+    provide_token() returns a short-term Bedrock API key (a bedrock-api-key-...
+    string) minted from the runtime's IAM role credentials — a local SigV4
+    presign with no network call. The agent is rebuilt on every invocation
+    rather than cached for the microVM's lifetime, so a long-lived runtime never
+    keeps using an expired key.
     """
-    client = AsyncOpenAI(base_url=BASE_URL, api_key=_get_api_key())
+    api_key = provide_token(region=MODEL_REGION)
+    client = AsyncOpenAI(base_url=BASE_URL, api_key=api_key)
     model = OpenAIResponsesModel(model=MODEL_ID, openai_client=client)
     return Agent(name="HRAssistant", instructions=SYSTEM_PROMPT, model=model, tools=_TOOLS)
 
