@@ -6,10 +6,11 @@ with the OpenAI Agents SDK so it can be evaluated with AgentCore Evaluations. Th
 tools, mock data, and system prompt are identical, so ground-truth and expected
 responses stay consistent across framework samples.
 
-The LLM is a Bedrock-native OpenAI model (gpt-oss) reached through the Bedrock
-mantle endpoint's OpenAI-compatible Responses API. The OpenAI Agents SDK talks to
-it via an AsyncOpenAI client pointed at that endpoint; a short-term Bedrock bearer
-token is minted from the runtime's IAM role, so no API key is stored in code.
+The LLM is OpenAI GPT-5.5 on Amazon Bedrock, reached through the Bedrock mantle
+endpoint's OpenAI-compatible Responses API and authenticated with a Bedrock API
+key. By default a short-term API key (the secure, recommended kind) is minted
+from the runtime's IAM role on every invocation; set the BEDROCK_API_KEY
+environment variable to use a long-term key instead.
 
 The Responses API (OpenAIResponsesModel) is used rather than Chat Completions:
 the OpenTelemetry instrumentation extracts the agent's response text from
@@ -56,16 +57,19 @@ logger = logging.getLogger(__name__)
 app = BedrockAgentCoreApp()
 
 # ---------------------------------------------------------------------------
-# Model configuration (Bedrock-native OpenAI model via the mantle endpoint)
+# Model configuration (OpenAI GPT-5.5 on Bedrock via the mantle endpoint)
 # ---------------------------------------------------------------------------
 #
-# The mantle endpoint serves the OpenAI Responses API at /v1/responses. The
-# runtime role needs bedrock:CallWithBearerToken plus bedrock-mantle:CreateInference
-# and bedrock-mantle:CallWithBearerToken (granted by deploy.py).
+# GPT-5.5 is served on the mantle endpoint's openai/v1 path (a different path
+# from the /v1 used by gpt-oss). It is available in us-east-1 / us-east-2, so
+# MODEL_REGION may differ from the region the runtime is deployed in. The
+# runtime role needs bedrock-mantle:CreateInference and
+# bedrock-mantle:CallWithBearerToken (granted by deploy.py).
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
-BASE_URL = os.environ.get("BEDROCK_OPENAI_BASE_URL", f"https://bedrock-mantle.{REGION}.api.aws/v1")
-MODEL_ID = os.environ.get("BEDROCK_OPENAI_MODEL_ID", "openai.gpt-oss-120b")
+MODEL_REGION = os.environ.get("BEDROCK_OPENAI_MODEL_REGION", "us-east-1")
+BASE_URL = os.environ.get("BEDROCK_OPENAI_BASE_URL", f"https://bedrock-mantle.{MODEL_REGION}.api.aws/openai/v1")
+MODEL_ID = os.environ.get("BEDROCK_OPENAI_MODEL_ID", "openai.gpt-5.5")
 
 # AgentCore Memory holds the conversation history across turns (and across
 # microVM restarts). The memory resource is created by deploy.py and its id is
@@ -329,17 +333,31 @@ _TOOLS = [
 ]
 
 
+def _get_api_key() -> str:
+    """
+    Return a Bedrock API key for the OpenAI-compatible endpoint.
+
+    If BEDROCK_API_KEY is set (a long-term Bedrock API key generated from the
+    console or via iam create-service-specific-credential), it is used as-is.
+    Otherwise a short-term API key is minted from the runtime's IAM role
+    credentials (a local SigV4 presign, no network call) — the secure default
+    AWS recommends for production.
+    """
+    long_term_key = os.environ.get("BEDROCK_API_KEY")
+    if long_term_key:
+        return long_term_key
+    return provide_token(region=MODEL_REGION)
+
+
 def _build_agent() -> Agent:
     """
     Build the HR Assistant agent.
 
-    The bearer token is minted per build from the runtime's IAM role credentials
-    (a local SigV4 presign, no network call). We rebuild the agent on every
-    invocation rather than caching it for the microVM's lifetime, so a long-lived
-    runtime never keeps using an expired token.
+    The agent is rebuilt on every invocation rather than cached for the
+    microVM's lifetime, so a long-lived runtime never keeps using an expired
+    short-term API key.
     """
-    token = provide_token(region=REGION)
-    client = AsyncOpenAI(base_url=BASE_URL, api_key=token)
+    client = AsyncOpenAI(base_url=BASE_URL, api_key=_get_api_key())
     model = OpenAIResponsesModel(model=MODEL_ID, openai_client=client)
     return Agent(name="HRAssistant", instructions=SYSTEM_PROMPT, model=model, tools=_TOOLS)
 
@@ -350,7 +368,7 @@ def _build_agent() -> Agent:
 #
 # The SDK's SQLiteSession is not used here for two reasons: it is local to one
 # microVM (history is lost when the runtime scales or restarts), and it replays
-# full Responses API output items (including gpt-oss "reasoning" items) as the
+# full Responses API output items (including model "reasoning" items) as the
 # next turn's input, which the Bedrock mantle endpoint rejects with an empty
 # output. Plain role/content text history from Memory round-trips reliably.
 
@@ -417,8 +435,8 @@ async def invoke(payload, context):
     finally:
         _flush_telemetry()
     response = str(result.final_output)
-    # gpt-oss can emit inline <reasoning>...</reasoning> blocks; strip them so
-    # spans contain only the final answer
+    # Some OpenAI models (e.g. gpt-oss) emit inline <reasoning>...</reasoning>
+    # blocks; strip them so spans contain only the final answer
     response = re.sub(r"<reasoning>.*?</reasoning>", "", response, flags=re.DOTALL).strip()
     _save_turn(session_id, prompt, response)
     return response

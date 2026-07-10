@@ -8,7 +8,7 @@ Each sample deploys the same **HR Assistant** — the agent used across the sibl
 
 | Framework         | Instrumentation (OpenTelemetry)               | LLM                                           | Sample                             |
 | :---------------- | :-------------------------------------------- | :-------------------------------------------- | :--------------------------------- |
-| OpenAI Agents SDK | `opentelemetry-instrumentation-openai-agents` | Bedrock-native OpenAI (`openai.gpt-oss-120b`) | [`openai-agents/`](openai-agents/) |
+| OpenAI Agents SDK | `opentelemetry-instrumentation-openai-agents` | OpenAI GPT-5.5 on Bedrock (`openai.gpt-5.5`) | [`openai-agents/`](openai-agents/) |
 | LlamaIndex        | `opentelemetry-instrumentation-llamaindex`    | Amazon Bedrock (`us.amazon.nova-lite-v1:0`)   | [`llamaindex/`](llamaindex/)       |
 
 All samples use **OpenTelemetry** instrumentation. On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the instrumentation library at startup from the deployment dependencies — no explicit instrumentation code is needed in the agent. See [Supported agent frameworks](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks.html) for the full framework and library matrix (OpenInference is also supported as an alternative for these frameworks).

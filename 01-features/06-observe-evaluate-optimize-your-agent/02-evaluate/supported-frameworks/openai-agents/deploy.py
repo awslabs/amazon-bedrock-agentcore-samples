@@ -20,11 +20,14 @@ Deployment steps:
   6. Poll until READY
   7. Write agent_config.json
 
-The runtime uses a Bedrock-native OpenAI model (gpt-oss) via the Bedrock mantle
-endpoint's OpenAI Responses API, authenticated with a short-term bearer token.
+The runtime uses OpenAI GPT-5.5 on Bedrock via the mantle endpoint's OpenAI
+Responses API, authenticated with a Bedrock API key (short-term by default,
+minted from the runtime role; long-term via the BEDROCK_API_KEY env var).
 The role policy below grants the required bedrock-mantle:CreateInference and
 bedrock-mantle:CallWithBearerToken actions (plus bedrock:CallWithBearerToken for
-the bedrock-runtime /openai/v1 Chat Completions alternative).
+the bedrock-runtime /openai/v1 Chat Completions alternative). GPT-5.5 is served
+from us-east-1/us-east-2; the agent calls it cross-region from wherever the
+runtime is deployed.
 
 See https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/getting-started-custom.html
 """
