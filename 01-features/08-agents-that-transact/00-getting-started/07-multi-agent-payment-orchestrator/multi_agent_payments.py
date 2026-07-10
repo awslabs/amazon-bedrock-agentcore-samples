@@ -62,7 +62,7 @@ PRIVY = config["instruments"]["stripe_privy"]
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 
 # Per-agent budgets (USD). Each specialist gets its own budgeted session, created in-code below.
-RESEARCH_BUDGET = "0.50"   # research agent (Coinbase wallet)
+RESEARCH_BUDGET = "0.50"  # research agent (Coinbase wallet)
 DISCOVERY_BUDGET = "0.20"  # discovery agent (Privy wallet)
 FAILOVER_BUDGET = "0.0005"  # deliberately tiny — Demo 2 uses this to trigger a budget-exhaustion failover
 
