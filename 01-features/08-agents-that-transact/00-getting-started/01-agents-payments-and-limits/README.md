@@ -1,22 +1,44 @@
-# Tutorial 01 — Enable Payment Limits on an Agent
+# Tutorial 01 — Agents, Payments, and Limits
 
 | Information         | Details                                                            |
 |:--------------------|:-------------------------------------------------------------------|
 | Tutorial type       | Conversational                                                     |
-| Agent type          | Single                                                             |
-| Agentic Frameworks  | Strands Agents, LangGraph                                          |
-| LLM model           | Anthropic Claude Sonnet 4.6                                        |
-| Tutorial components | PaymentManager, AgentCorePaymentsPlugin, x402 endpoints, sessions  |
-| Example complexity  | Easy                                                               |
+| Agent type          | Single, payment-enabled                                            |
+| Frameworks          | Strands Agents, LangGraph                                          |
+| LLM model           | Anthropic Claude Sonnet 4.6 (`us.anthropic.claude-sonnet-4-6`)     |
+| Components          | `PaymentManager`, `AgentCorePaymentsPlugin`, x402 endpoints, sessions |
+| Complexity          | Easy                                                               |
+
+> **Reads** the shared `.env` from Tutorial 00 (`PAYMENT_MANAGER_ARN`, `USER_ID`, `INSTRUMENT_ID`;
+> `NETWORK` optional). **Does** run two local agents that each create a per-run spending session
+> in-code with the SDK and pay x402 endpoints automatically under a budget — nothing new is deployed.
+> → [How the pieces fit together](../README.md#cli-vs-sdk)
 
 ## Overview
 
-This tutorial shows how to build payment-enabled AI agents using the AgentCore payments SDK. Two agent frameworks are demonstrated:
+The shared payment stack — payment manager, connector, IAM roles, and a funded wallet (instrument) —
+is already provisioned from [Tutorial 00](../00-setup-agentcore-payments/). Here your agent code
+uses the AgentCore SDK to open a **spending session** (a per-request budget you set per user) and pay
+each HTTP 402 automatically. You run two agents that both call x402-protected endpoints under a
+`maxSpendAmount` budget:
 
-- **Strands** — Uses `AgentCorePaymentsPlugin` that intercepts 402 responses and pays automatically. Zero payment logic in agent code.
-- **LangGraph** — Uses a `wrap_with_auto_402()` function that wraps any HTTP tool to detect 402 responses, calls `PaymentManager.generate_payment_header()`, and retries. The LLM never sees the 402.
+- **Strands** — `AgentCorePaymentsPlugin` intercepts 402 responses from the `http_request` tool and
+  pays automatically. Zero payment logic in the agent code.
+- **LangGraph** — a `wrap_with_auto_402()` wrapper detects a 402, calls
+  `PaymentManager.generate_payment_header()`, and retries with the proof header. The LLM never sees
+  the 402.
 
-Both approaches work with either wallet provider (Coinbase CDP or Stripe/Privy) and either network (Ethereum Base Sepolia or Solana Devnet) — the only difference is the instrument ID from Tutorial 00.
+Both scripts read the same `PaymentManager` ARN and instrument from `.env`, and work with either
+wallet provider (Coinbase CDP or Stripe/Privy) and either network (Ethereum Base Sepolia or Solana
+Devnet) — the only thing that changes is the instrument ID from Tutorial 00.
+
+> **Billable resources.** Each successful x402 call spends testnet USDC from your funded wallet and
+> is metered by AgentCore payments. See [AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/).
+
+> **Testnet only.** Use Base Sepolia (network `ETHEREUM`) or Solana Devnet (network `SOLANA`) with
+> free USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
+
+> **Supported regions:** `us-east-1`, `us-west-2`, `eu-central-1`, `ap-southeast-2`.
 
 ## Architecture
 
@@ -42,8 +64,6 @@ Agent (Strands + http_request tool)
   └─► Agent summarizes results for the user
 ```
 
-![Strands Agent Payment Flow](images/strands_agent_payment_flow.png)
-
 ### LangGraph
 
 ![LangGraph Payment Flow](images/langgraph_payment_flow.png)
@@ -57,101 +77,190 @@ LangGraph ReAct Agent
         └── Returns content to agent (LLM never sees the 402)
 ```
 
-![LangGraph Agent Payment Flow](images/langgraph_agent_payment_flow.png)
-
-## What You'll Learn
-
-- How `AgentCorePaymentsPlugin` auto-handles x402 in a Strands agent (Strands)
-- How to wrap any LangGraph tool with auto-402 payment handling (LangGraph)
-- How to create sessions with `maxSpendAmount` budgets
-- How budget enforcement works at the infrastructure level
-- How to check remaining spend with `get_payment_session`
-- How the plugin's built-in tools (`get_payment_session`, `get_payment_instrument`, `list_payment_instruments`) let the agent reason about its own budget
-
-## Payment Limits Patterns
-
-| Pattern | Budget | Expiry | Use Case |
-|---------|--------|--------|----------|
-| Quick lookup | $0.10 | 5 min | Single API call, price check |
-| Research task | $1.00 | 60 min | Multi-endpoint research session |
-| Deep analysis | $5.00 | 480 min | Extended multi-tool workflow |
-| No budget cap | omit `limits` | 60 min | Trusted internal agents (use with caution) |
-
-### How limits are enforced
-
-| Dimension | How It Works |
-|-----------|-------------|
-| **Cumulative tracking** | Service sums ALL ProcessPayment calls in the session — not per-call |
-| **Rejection** | When cumulative spend + next payment would exceed `maxSpendAmount`, ProcessPayment returns an error |
-| **Time expiry** | After `expiryTimeInMinutes`, ProcessPayment fails even if budget remains |
-| **IAM enforcement** | Agent role (ProcessPaymentRole) cannot create sessions, modify budgets, or extend expiry |
-| **Per-user isolation** | Sessions scoped to `userId` — different users have independent budgets |
-| **Budget optional** | Omit `limits` for uncapped sessions — spend tracked via `availableLimits.availableSpendAmount` |
-
 ## Prerequisites
 
-- Tutorial 00 completed (`.env` has manager ARN, connector, instrument, session)
-- Wallet funded with testnet USDC from [faucet.circle.com](https://faucet.circle.com/)
-- Python 3.10+
+- **Tutorial 00 completed** — the shared `.env` (one directory up, at
+  [`00-getting-started/.env`](../)) must contain `PAYMENT_MANAGER_ARN`, `USER_ID`, and
+  `INSTRUMENT_ID` (`NETWORK` is optional and defaults to `ETHEREUM`). The scripts read these via
+  `utils.load_tutorial_env()`.
+- **Funded wallet with delegated signing granted** — the instrument's wallet must hold testnet USDC
+  ([faucet.circle.com](https://faucet.circle.com/)) and have delegated signing enabled (done in
+  Tutorial 00). Without it, the 402 payment step fails.
+- **Python 3.10+** and AWS credentials configured (`aws sts get-caller-identity`).
+- **Python deps:**
+  ```bash
+  pip install -r requirements.txt
+  ```
+- **AgentCore CLI (optional)** — only needed for the inspect step below
+  (`agentcore status --type payment`). Install with `npm install -g @aws/agentcore` (Node.js 20+).
+  Everything the agents do in this tutorial is pure SDK.
 
-## Running the Python Scripts
+## Walkthrough
+
+### Step 1 — Confirm Tutorial 00 populated the shared `.env`
+
+The agents load their configuration from the shared `.env` one directory up. Confirm the keys they
+read are present:
 
 ```bash
-pip install -r requirements.txt
+grep -E 'PAYMENT_MANAGER_ARN|INSTRUMENT_ID|USER_ID|NETWORK' ../.env
 ```
 
-```bash
-# Strands agent with AgentCorePaymentsPlugin
-python strands_payment_agent.py
+If any of `PAYMENT_MANAGER_ARN`, `INSTRUMENT_ID`, or `USER_ID` is missing, re-run Tutorial 00
+([`../00-setup-agentcore-payments/`](../00-setup-agentcore-payments/)) to write the resource IDs
+before continuing. (`NETWORK` is optional.)
 
-# LangGraph agent with wrap_with_auto_402()
+### Step 2 — Run the Strands agent
+
+```bash
+python strands_payment_agent.py
+```
+
+The script loads the manager ARN and instrument from `.env`, creates a per-run spending session
+in-code with the SDK (`manager.create_payment_session(...)`, budget set by the `SESSION_BUDGET`
+constant near the top of the script), wires up `AgentCorePaymentsPlugin`, and asks the agent to fetch
+the paid weather endpoint — the plugin settles each HTTP 402 automatically within the session budget.
+(This is the flow in the **Strands Payment Flow** diagram under [Architecture](#architecture) above.)
+
+### Step 3 — Run the LangGraph agent
+
+```bash
 python langgraph_payment_agent.py
 ```
 
-## Key Concepts
+Same `.env` and instrument; it creates its own in-code session the same way. The script builds the
+`wrap_with_auto_402()` wrapper around
+a `requests`-based `http_request` tool and runs a streaming ReAct agent against the x402 endpoint
+`/api/market-news`. On each 402 it calls
+`manager.generate_payment_header()` to sign the proof and retries.
+(This is the flow in the **LangGraph Payment Flow** diagram under [Architecture](#architecture) above.)
 
-**AgentCorePaymentsPlugin (Strands)** — A Strands plugin that intercepts 402 responses from any tool, calls `ProcessPayment` via AgentCore to sign the transaction and generate a proof, then retries the original request with the payment proof. The developer writes zero payment logic.
+## Try different budgets (payment limits)
 
-**generate_payment_header() (LangGraph)** — A `PaymentManager` method that takes a 402 response and returns an HTTP header containing the payment proof. Used to build `wrap_with_auto_402()` for any LangGraph tool.
+Budget enforcement lives on the session, which each agent creates in-code with the SDK. Change the
+budget by editing the `SESSION_BUDGET` constant near the top of the script, then re-run the agent.
+For example, set a tiny budget smaller than the API cost:
 
-**Session budget** — Created by the app backend (ManagementRole). The agent (ProcessPaymentRole) can only spend within the session budget. The session budget is always the tighter constraint — if your wallet has 10 USDC but the session budget is $0.50, the agent can only spend $0.50.
+```python
+# strands_payment_agent.py / langgraph_payment_agent.py — near the top
+SESSION_BUDGET = {"maxSpendAmount": {"value": "0.0001", "currency": "USD"}}
+```
 
-**CAIP-2 network preferences** — Chain identifiers like `eip155:84532` (Base Sepolia) or `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` (Solana Devnet) passed to the plugin via `network_preferences_config`. Tells the plugin which chain to prefer when a merchant supports multiple chains.
+Re-run `python strands_payment_agent.py` — the payment is rejected because the $0.0001 budget is
+smaller than the API cost. Enforcement is structural (service-level), not agent logic.
+
+To compare two budgets in one run, create a second session in-code with a tiny budget:
+
+```python
+tiny = manager.create_payment_session(
+    user_id=USER_ID,
+    limits={"maxSpendAmount": {"value": "0.0001", "currency": "USD"}},
+    expiry_time_in_minutes=60,
+)
+```
+
+Pass `tiny["paymentSessionId"]` to the plugin (or the wrapper) instead of the $1.00 session and
+re-run. Omit `limits` entirely from `create_payment_session` for an uncapped session (spend tracked
+but not capped). Read a session's remaining budget in-code with the SDK:
+
+```python
+sess = manager.get_payment_session(user_id=USER_ID, payment_session_id=SESSION_ID)
+print(sess["availableLimits"]["availableSpendAmount"])
+```
+
+This is the workshop's division of labor: infrastructure is provisioned once with the agentcore CLI,
+each per-user session is created in-code with the SDK, and the agent's `AgentCorePaymentsPlugin` /
+`generate_payment_header()` handles the pay-and-retry at request time.
+
+## What the agents do
+
+Each script's default run does the **happy path** — one paid call under a $1.00 session. Strands calls
+the weather endpoint; LangGraph calls `/api/market-news`. The remaining scenarios below are exercised
+by changing `SESSION_BUDGET` (or creating a second session) and re-running, as described in
+[Try different budgets](#try-different-budgets-payment-limits) above:
+
+| Scenario | How to run it | What it shows |
+|----------|---------------|---------------|
+| Happy path | Default run ($1.00 session) | The 402 → sign → retry → 200 flow, fully automatic |
+| Budget session | Set `SESSION_BUDGET` to `$0.50`, re-run | Remaining spend after a paid call (`get_payment_session`) |
+| Budget exceeded | Set `SESSION_BUDGET` to `$0.0001` (below API cost), re-run | ProcessPayment rejects the payment at the infra level |
+| Built-in tools (Strands) | Default run — agent answers "how much budget is left?" | Plugin tools `get_payment_session` / `get_payment_instrument` / `list_payment_instruments` |
+| Uncapped session | Create a session with no `limits` | Spend tracked but not capped — for trusted agents only |
+
+Budget enforcement is cumulative and server-side: the service sums all `ProcessPayment` calls in a
+session and rejects the next payment once `maxSpendAmount` would be exceeded, or once the session
+expires. The agent role cannot raise its own budget.
+
+## Inspect / verify
+
+```bash
+# Live view of managers, connectors, and payment status (requires the AgentCore CLI).
+# `status --type payment` reads a scaffolded project's config — run it from the Tutorial 00 project dir:
+cd ../00-setup-agentcore-payments/PaymentSetup && agentcore status --type payment
+
+# Confirm the keys the scripts read are present
+grep -E 'PAYMENT_MANAGER_ARN|PAYMENT_CONNECTOR_ID|INSTRUMENT_ID|USER_ID|NETWORK' ../.env
+```
+
+The scripts read a specific session's remaining spend in-code with the SDK
+(`manager.get_payment_session(...)`). Do the same from a quick Python one-liner:
+
+```python
+from bedrock_agentcore.payments import PaymentManager
+
+manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
+sess = manager.get_payment_session(user_id=USER_ID, payment_session_id=SESSION_ID)
+print(sess["availableLimits"]["availableSpendAmount"])   # remaining spend
+```
+
+Check the funded wallet's balance with the SDK (`chain` and `token` are required; map `NETWORK` to the
+chain):
+
+```python
+from bedrock_agentcore.payments import PaymentManager
+
+manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
+chain = "BASE_SEPOLIA" if NETWORK == "ETHEREUM" else "SOLANA_DEVNET"
+bal = manager.get_payment_instrument_balance(
+    payment_connector_id=PAYMENT_CONNECTOR_ID,
+    payment_instrument_id=INSTRUMENT_ID,
+    chain=chain,
+    token="USDC",
+    user_id=USER_ID,
+)
+print(bal["tokenBalance"]["amount"] / 1_000_000, "USDC")   # micro-USDC → USDC
+```
 
 ## Troubleshooting
 
-### Agent gets 402 but payment fails
+| Symptom | Cause | Fix |
+|---|---|---|
+| `load_tutorial_env()` raises `FileNotFoundError`, or `PaymentManager` fails on a `None` ARN | Tutorial 00 didn't finish — `../.env` is missing or has no resource IDs | Re-run Tutorial 00 to write the resource IDs to `../.env` |
+| Agent gets 402 but payment fails | Delegated signing not granted for the wallet | Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies. Stripe/Privy: open the Privy reference frontend at `http://localhost:3000`, log in as `LINKED_EMAIL`, choose **Connect agent** |
+| Budget exceeded immediately | Session budget below API cost, or wallet has insufficient USDC | Expected for the $0.0001 demo; otherwise fund the wallet at [faucet.circle.com](https://faucet.circle.com/) |
+| `invalid_exact_evm_transaction_failed` / settlement failure | Transient on-chain failure (e.g. back-to-back payments) | Retry — funds are not debited on a failed attempt |
+| `agentcore: command not found` | CLI not installed (only needed for the inspect step) | `npm install -g @aws/agentcore` |
 
-Delegated signing is not configured. For Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies. For Stripe/Privy: open the Privy reference frontend at `http://localhost:3000`, log in as `LINKED_EMAIL`, and choose **Connect agent**.
+## Clean Up
 
-### Session budget exceeded immediately
+This tutorial provisions nothing durable — payment **sessions expire automatically** at
+`expiryTimeInMinutes`, so there is nothing to tear down here. The shared manager/connector/instrument
+and any deployed runtimes are cleaned up in their owning tutorials. To remove the shared stack from
+Tutorial 00 (delete the per-user instrument with the SDK first — see Tutorial 00's Clean Up):
 
-The wallet may have insufficient USDC. Check the balance with `GetPaymentInstrumentBalance` (Tutorial 00 Step 7c). Fund the wallet at [faucet.circle.com](https://faucet.circle.com/).
+```bash
+cd ../00-setup-agentcore-payments/PaymentSetup
+agentcore remove payment-connector --manager MyPaymentManager --name MyCoinbaseConnector -y
+agentcore remove payment-manager --name MyPaymentManager -y
+agentcore deploy -y        # applies the removal in AWS
+agentcore remove all -y    # removes the scaffolded runtime project
+```
 
-### load_tutorial_env() raises KeyError
+## Next steps
 
-Tutorial 00 did not complete successfully or `.env` is missing. Re-run `setup_agentcore_payments.py` to create all required resources and write their IDs to `.env`.
-
-## Wallet-Agnostic, Network-Agnostic Design
-
-The agent code in this tutorial does not change based on:
-- **Which wallet provider** — Coinbase CDP or Stripe (Privy)
-- **Which blockchain network** — Ethereum (Base Sepolia) or Solana (Solana Devnet)
-
-The only thing that changes is the `INSTRUMENT_ID` and `PAYMENT_CONNECTOR_ID` in `.env` — set by Tutorial 00.
-
-| Layer | Network-aware? | What it knows |
-|-------|---------------|---------------|
-| PaymentManager | No | Authorization policy only |
-| PaymentConnector | No | Which provider (Coinbase/Privy), not which chain |
-| PaymentInstrument | **Yes** | `network: ETHEREUM` or `network: SOLANA` — set at creation |
-| ProcessPayment | **Yes** | Merchant's 402 payload specifies the chain |
-| Agent code | **No** | Passes the instrument ID to the plugin |
-
-The control plane (manager, connector, credentials) is set up once and works across all networks. To switch networks, create a new instrument — one data plane API call, no control plane changes.
-
-## Next Steps
-
-- **Tutorial 02** — Deploy this agent to AgentCore runtime with proper role separation using the AgentCore CLI
-- **Tutorial 03** — Wallet operations: delegation, funding, balance checks, multi-session patterns
-- **Tutorial 04** — Discover and call paid MCP tools on Coinbase Bazaar through AgentCore gateway
+- **[Tutorial 02](../02-deploy-to-agentcore-runtime/)** — deploy this agent to AgentCore Runtime with
+  role separation using the AgentCore CLI.
+- **[Tutorial 03](../03-user-onboarding-wallet-funding/)** — per-user wallet onboarding, funding,
+  delegation, and balance checks.
+- **[Tutorial 04](../04-agent-with-coinbase-bazaar-via-gateway/)** — discover and call paid MCP tools
+  on Coinbase Bazaar through an AgentCore Gateway.

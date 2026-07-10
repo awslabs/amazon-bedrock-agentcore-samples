@@ -42,7 +42,7 @@ print("""
 ║         Provider Setup: Stripe (Privy)                                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-MANUAL STEPS (complete in your browser before running the credential cells):
+MANUAL STEPS (complete in your browser before running the credential prompts):
 
 Step 1 — Create a Privy App
 ────────────────────────────
@@ -193,7 +193,7 @@ print("""
   3. Enter http://localhost:3000
   4. Choose Save.
 
-  PRODUCTION NOTE: Use HTTPS for production origins. Never reuse dev apps for prod.
+  NOTE: For a deployed app, use HTTPS origins and a separate Privy app from your dev one.
 
 3e. Log in to verify the Privy reference frontend works:
 ─────────────────────────────────────────────────────────

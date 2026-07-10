@@ -13,6 +13,11 @@ Payment flow:
             ├── Retries with proof header
             └── Returns content to agent (LLM never sees the 402)
 
+The spending session is created in-code with the AgentCore SDK
+(`PaymentManager.create_payment_session`) — one session per agent role, budgeted with
+`maxSpendAmount`. To try a different budget, change SESSION_BUDGET below or create a second
+session with a tiny budget and re-run (see the README).
+
 Usage:
     python langgraph_payment_agent.py
 
@@ -36,7 +41,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_tutorial_env
+from utils import client_token, load_tutorial_env
 
 # ── Load config from Tutorial 00 .env ────────────────────────────────────────
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
@@ -52,13 +57,16 @@ PAYMENT_MANAGER_ARN = config["payment_manager_arn"]
 REGION = config["region"]
 USER_ID = config["user_id"]
 
-if config.get("multi_provider"):
-    INSTRUMENT_ID = config["instruments"][list(config["instruments"].keys())[0]]["instrument_id"]
-else:
-    INSTRUMENT_ID = config["instrument_id"]
+# load_tutorial_env resolves instrument_id to the configured provider
+# (CREDENTIAL_PROVIDER_TYPE), so single- and multi-provider .env files both work.
+INSTRUMENT_ID = config["instrument_id"]
 
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 NETWORK = os.environ.get("NETWORK", "ETHEREUM")
+
+# Per-run spending budget for this agent's session. Change this value (or create a second
+# session with a tiny budget) to watch server-side enforcement — see the README.
+SESSION_BUDGET = {"maxSpendAmount": {"value": "1.00", "currency": "USD"}}
 
 # CAIP-2 chain identifiers for network preference
 NETWORK_PREFS = (
@@ -69,7 +77,11 @@ print(f"Manager: {PAYMENT_MANAGER_ARN}")
 print(f"Instrument: {INSTRUMENT_ID}")
 print(f"Network: {NETWORK}")
 
-# ── Step 2: Create PaymentManager and Session ─────────────────────────────────
+# ── Step 2: Create the payment session; PaymentManager signs each 402 ─────────
+# A spending session is the per-user budget the agent spends within. Create one in-code with
+# the AgentCore SDK (PaymentManager.create_payment_session). The same PaymentManager then signs
+# the x402 proof header for each 402 the agent hits (manager.generate_payment_header). Omit
+# `limits` for an uncapped session (spend tracked but not capped).
 from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 payment_manager = PaymentManager(
@@ -77,15 +89,14 @@ payment_manager = PaymentManager(
     region_name=REGION,
 )
 
-# Create a fresh session — $1.00 budget, 60 minutes
-session_response = payment_manager.create_payment_session(
+sess = payment_manager.create_payment_session(
     user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "1.00", "currency": "USD"}},
+    limits=SESSION_BUDGET,
     expiry_time_in_minutes=60,
+    client_token=client_token(),
 )
-SESSION_ID = session_response["paymentSessionId"]
-print("PaymentManager ready")
-print(f"Session created: {SESSION_ID} ($1.00 USD, 60 min)")
+SESSION_ID = sess["paymentSessionId"]
+print(f"Created payment session: {SESSION_ID} (budget {SESSION_BUDGET['maxSpendAmount']['value']} USD)")
 
 # ── Step 3: Build the Auto-402 Tool Wrapper ───────────────────────────────────
 
@@ -211,7 +222,7 @@ for chunk, metadata in agent.stream(
         "messages": [
             (
                 "user",
-                "Access this paid weather API and tell me what data you get back: "
+                "Access this paid market-news API and tell me what data you get back: "
                 "https://x402-test.genesisblock.ai/api/market-news "
                 "Report the data and how much it cost.",
             )
@@ -244,97 +255,8 @@ for i, resp in enumerate(collected_tool_responses):
         print(f"Response #{i + 1}: {str(resp)[:500]}")
 
 # ── Step 6: Payment Limits ────────────────────────────────────────────────────
-print("\n── Step 6a: Budget session ($0.50) ──")
-budget_session = payment_manager.create_payment_session(
-    user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "0.50", "currency": "USD"}},
-    expiry_time_in_minutes=60,
-)
-budget_session_id = budget_session["paymentSessionId"]
-print(f"Budget session: {budget_session_id} ($0.50 USD, 60 min)")
-
-budget_http = wrap_with_auto_402(http_tool, payment_manager, USER_ID, INSTRUMENT_ID, budget_session_id, NETWORK_PREFS)
-budget_agent = create_agent(model, [budget_http], system_prompt=SYSTEM_PROMPT)
-
-for chunk, metadata in budget_agent.stream(
-    {
-        "messages": [
-            (
-                "user",
-                "Access this CDP discovery endpoint, pull one result and show the content: "
-                "https://api.cdp.coinbase.com/platform/v2/x402/discovery/search?query=market-news&network=base-sepolia",
-            )
-        ]
-    },
-    stream_mode="messages",
-):
-    if chunk.type == "AIMessageChunk":
-        if isinstance(chunk.content, list):
-            for block in chunk.content:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    print(block["text"], end="", flush=True)
-        elif isinstance(chunk.content, str) and chunk.content:
-            print(chunk.content, end="", flush=True)
-print()
-
-# Check remaining budget
-session_info = payment_manager.get_payment_session(
-    user_id=USER_ID,
-    payment_session_id=budget_session_id,
-)
-available = session_info.get("availableLimits", {}).get("availableSpendAmount", {})
-limit = session_info.get("limits", {}).get("maxSpendAmount", {})
-print(f"Budget:    ${limit.get('value', 'N/A')} {limit.get('currency', '')}")
-print(f"Remaining: ${available.get('value', 'N/A')} {available.get('currency', '')}")
-
-print("\n── Step 6b: Budget exceeded demo ($0.0001 — less than API cost) ──")
-tiny_session = payment_manager.create_payment_session(
-    user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "0.0001", "currency": "USD"}},
-    expiry_time_in_minutes=60,
-)
-tiny_session_id = tiny_session["paymentSessionId"]
-print(f"Tiny session: {tiny_session_id} (budget: $0.0001 USD)")
-
-tiny_http = wrap_with_auto_402(http_tool, payment_manager, USER_ID, INSTRUMENT_ID, tiny_session_id, NETWORK_PREFS)
-tiny_agent = create_agent(model, [tiny_http], system_prompt=SYSTEM_PROMPT)
-
-try:
-    for chunk, metadata in tiny_agent.stream(
-        {
-            "messages": [
-                (
-                    "user",
-                    "Access this CDP discovery search, pull one result and show the content: "
-                    "https://api.cdp.coinbase.com/platform/v2/x402/discovery/search?query=market-news&network=base-sepolia",
-                )
-            ]
-        },
-        stream_mode="messages",
-    ):
-        if chunk.type == "AIMessageChunk":
-            if isinstance(chunk.content, list):
-                for block in chunk.content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        print(block["text"], end="", flush=True)
-            elif isinstance(chunk.content, str) and chunk.content:
-                print(chunk.content, end="", flush=True)
-    print()
-except Exception as e:
-    print("\nBudget exceeded — payment rejected by the service:")
-    print(f"  {e}")
-    print("\n  Expected: budget ($0.0001) is smaller than API cost.")
-    print("  Budget enforcement is at the infrastructure level, not application code.")
-
-print("\n── Step 6c: Uncapped session (no spending limit) ──")
-uncapped_session = payment_manager.create_payment_session(
-    user_id=USER_ID,
-    expiry_time_in_minutes=60,
-    # No limits — spend is tracked but not capped
-)
-uncapped_id = uncapped_session["paymentSessionId"]
-print(f"Uncapped session: {uncapped_id}")
-print("No budget limit — spend tracked but not enforced")
-print("Use with caution — only for trusted internal agents")
-
-print("\nDone. Next: python ../02-deploy-to-agentcore-runtime/deploy_payment_agent.py")
+# To try smaller/uncapped budgets and watch server-side enforcement, edit SESSION_BUDGET above —
+# see the README "Try different budgets" section.
+print("\nDone. Change SESSION_BUDGET (see the README's limits exercise) to watch budget")
+print("enforcement, or continue: follow ../02-deploy-to-agentcore-runtime/README.md to deploy")
+print("payment_agent.py to AgentCore Runtime with the AgentCore CLI.")

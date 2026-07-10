@@ -57,31 +57,12 @@ print(f"Authenticated as: {identity['Arn']}")
 print(f"Account: {identity['Account']}")
 print(f"Region: {session.region_name}")
 
-# ── Step 1: Gateway Setup (manual) ───────────────────────────────────────────
+# ── Step 1: Gateway must already exist ───────────────────────────────────────
 print("""
-── Step 1: Create AgentCore Gateway with Bazaar Target (manual) ──
-
-Option A: AgentCore Console (recommended)
-  1. Open https://console.aws.amazon.com/bedrock-agentcore/
-  2. Navigate to Gateway → Create Gateway → Add Target
-  3. Target type: Integrations
-  4. Select: Coinbase x402 Bazaar
-  5. No outbound auth needed
-
-Option B: AgentCore CLI
-  agentcore create --name BazaarAgent --defaults
-  agentcore add gateway --name BazaarGateway
-  agentcore add gateway-target \\
-    --name CoinbaseBazaar \\
-    --type mcp-server \\
-    --endpoint https://api.cdp.coinbase.com/platform/v2/x402/discovery/mcp \\
-    --gateway BazaarGateway
-  agentcore deploy -y
-  agentcore fetch access --name BazaarGateway --type gateway
-
-Save the Gateway URL to .env:
-  GATEWAY_URL=https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.com/mcp
-  (Optional, for CUSTOM_JWT auth: CLIENT_ID, CLIENT_SECRET, TOKEN_URL)
+── Step 1: Confirm your Gateway is set up ──
+This script expects GATEWAY_URL in the shared .env. If you have not created the
+Gateway yet, follow Step 1 of this tutorial's README (it provisions the Gateway and
+Coinbase x402 Bazaar target with the agentcore CLI), then re-run this script.
 """)
 
 # ── Step 2: Load Payment Config ───────────────────────────────────────────────
@@ -90,12 +71,10 @@ PAYMENT_MANAGER_ARN = config["payment_manager_arn"]
 REGION = config["region"]
 USER_ID = config["user_id"]
 
-if config.get("multi_provider"):
-    PROVIDER = list(config["instruments"].keys())[0]
-    INSTRUMENT_ID = config["instruments"][PROVIDER]["instrument_id"]
-else:
-    INSTRUMENT_ID = config["instrument_id"]
-    PROVIDER = config.get("provider_type", "unknown")
+# load_tutorial_env resolves instrument_id to the configured provider
+# (CREDENTIAL_PROVIDER_TYPE), so single- and multi-provider .env files both work.
+INSTRUMENT_ID = config["instrument_id"]
+PROVIDER = config.get("active_provider") or config.get("provider_type", "unknown")
 
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "")
 if not GATEWAY_URL:
@@ -121,15 +100,20 @@ print_summary(
     gateway_url=GATEWAY_URL,
 )
 
-# ── Step 3: Create Payment Session ────────────────────────────────────────────
+# ── Step 3: Create the payment session ────────────────────────────────────────
+# The spending session is the per-request budget the agent draws down on each
+# Bazaar payment. The agentcore CLI provisions the shared Gateway; the SDK is the
+# application backend that mints each session — so the script creates it in-code
+# via the PaymentManager it already has (matches the AWS devguide SDK path).
 print("\n── Step 3: Create Payment Session ──")
-sess_resp = manager.create_payment_session(
+SESSION_BUDGET = {"maxSpendAmount": {"value": "1.00", "currency": "USD"}}
+payment_session = manager.create_payment_session(
     user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "1.00", "currency": "USD"}},
+    limits=SESSION_BUDGET,
     expiry_time_in_minutes=60,
 )
-SESSION_ID = sess_resp["paymentSessionId"]
-print(f"Session: {SESSION_ID} (budget: $1.00)")
+SESSION_ID = payment_session["paymentSessionId"]
+print(f"Created payment session: {SESSION_ID} (budget ${SESSION_BUDGET['maxSpendAmount']['value']} / 60 min)")
 
 # ── Step 4: Connect to Gateway and Create Agent ───────────────────────────────
 print("\n── Step 4: Connect to Gateway and Create Agent ──")
@@ -187,6 +171,15 @@ When asked to find information:
 - First search for relevant tools on the Bazaar
 - Then call the most relevant tool
 - Report what you found and what it cost
+
+Handling failures — stop instead of looping:
+- If search_resources or proxy_tool_call returns a transport/infrastructure error
+  (for example "duplicate key: Set-Cookie", a 5xx, or a connection error), retry the
+  SAME call at most ONCE. If it fails again, treat it as a temporary Bazaar-side outage:
+  stop retrying, report the error and which step failed, and move on. Do NOT keep calling
+  the same tool over and over — a persistent transport error will not clear by retrying.
+- A tool priced above the session budget, or a payment rejection, is final: report it and
+  stop; do not attempt workarounds or alternative endpoints.
 
 Always be transparent about payments."""
 

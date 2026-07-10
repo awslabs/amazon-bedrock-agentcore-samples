@@ -42,7 +42,7 @@ print("""
 ║         Provider Setup: Coinbase Developer Platform (CDP)                  ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-MANUAL STEPS (complete in your browser before running the credential cells):
+MANUAL STEPS (complete in your browser before running the credential prompts):
 
 Step 1 — Create a Coinbase Account (skip if you have one)
 ──────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ Step 3b — Get the Wallet Secret
   → Gives you: Wallet Secret  →  COINBASE_WALLET_SECRET
   ⚠️  The Wallet Secret is shown only ONCE. Save it immediately.
 
-Step 6 — Enable Delegated Signing (REQUIRED before Tutorial 00)
+Step 3c — Enable Delegated Signing (REQUIRED before Tutorial 00)
 ────────────────────────────────────────────────────────────────
   1. In CDP Portal → Wallets → Embedded Wallet → Policies tab.
   2. Enable Delegated Signing.
