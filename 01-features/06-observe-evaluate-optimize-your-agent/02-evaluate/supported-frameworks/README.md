@@ -6,12 +6,16 @@ Each sample deploys the same **HR Assistant** — the agent used across the sibl
 
 ## Samples
 
-| Framework         | Instrumentation (OpenTelemetry)               | LLM                                           | Sample                             |
-| :---------------- | :-------------------------------------------- | :-------------------------------------------- | :--------------------------------- |
+| Framework         | Instrumentation (OpenTelemetry)               | LLM                                          | Sample                             |
+| :---------------- | :-------------------------------------------- | :------------------------------------------- | :--------------------------------- |
 | OpenAI Agents SDK | `opentelemetry-instrumentation-openai-agents` | OpenAI GPT-5.5 on Bedrock (`openai.gpt-5.5`) | [`openai-agents/`](openai-agents/) |
-| LlamaIndex        | `opentelemetry-instrumentation-llamaindex`    | Amazon Bedrock (`us.amazon.nova-lite-v1:0`)   | [`llamaindex/`](llamaindex/)       |
+| LlamaIndex        | `opentelemetry-instrumentation-llamaindex`    | Amazon Bedrock (`us.amazon.nova-lite-v1:0`)  | [`llamaindex/`](llamaindex/)       |
 
 All samples use **OpenTelemetry** instrumentation. On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the instrumentation library at startup from the deployment dependencies — no explicit instrumentation code is needed in the agent. See [Supported agent frameworks](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks.html) for the full framework and library matrix (OpenInference is also supported as an alternative for these frameworks).
+
+## The shared HR Assistant scenario
+
+Every sample re-implements the same agent: an HR assistant with 5 tools that return deterministic mock data (PTO balances, HR policies, benefits, pay stubs). Reusing one agent domain keeps the focus on the framework integration rather than the agent itself, and because the data is deterministic, the same evaluation ground truth (`expected_response`, `expected_trajectory`, `assertions`) is valid for every framework — evaluation scores reflect the framework's behavior rather than differences in the agent's task.
 
 ## Making any framework agent evaluable
 
@@ -23,10 +27,6 @@ The recipe these samples follow generalizes to every supported framework:
 4. **Verify the spans, then evaluate.** After invoking the agent, confirm records with your framework's scope name appear in CloudWatch (`aws/spans` and the runtime log group). If `Evaluate` returns "no spans with supported scope", the instrumentation is not active — evaluation cannot fix missing telemetry.
 
 Steps 1–3 are framework-specific; everything from step 4 on (evaluators, `EvaluationClient`, online configs, the CLI) is identical for every framework — compare the two `evaluate.py` files to see they differ only in names.
-
-## Why the same HR Assistant?
-
-Reusing one agent domain keeps the focus on the framework integration rather than the agent itself. The tools return deterministic mock data (PTO balances, HR policies, benefits, pay stubs), so the same evaluation ground truth (`expected_response`, `expected_trajectory`, `assertions`) is valid for every framework, and evaluation scores reflect the framework's behavior rather than differences in the agent's task.
 
 ## Structure
 
