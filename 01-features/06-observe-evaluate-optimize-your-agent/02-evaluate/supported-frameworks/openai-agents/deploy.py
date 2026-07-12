@@ -202,6 +202,10 @@ subprocess.run(
         "--only-binary=:all:",
         "--python-version",
         "3.13",
+        # This is an isolated --target install; suppress pip's dependency check
+        # against the ambient environment (false positives) and version notice.
+        "--no-warn-conflicts",
+        "--disable-pip-version-check",
         "--quiet",
     ],
     check=True,
