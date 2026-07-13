@@ -640,7 +640,6 @@ The `like` operator supports wildcards for flexible substring matching:
 - [AgentCore gateway — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html)
 - [Supported Cedar policy Examples](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/example-policies.html)
 - [Amazon Cognito Pre-Token-Generation Trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html)
-- [`02-guardrails-in-policy/`](./02-guardrails-in-policy/): guardrails in policy — content safety enforcement at the gateway layer
 
 ## Files
 
