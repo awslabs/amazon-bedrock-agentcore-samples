@@ -304,7 +304,7 @@ _online_resp = cp_client.create_online_evaluation_config(
 ONLINE_CONFIG_ID = _online_resp["onlineEvaluationConfigId"]
 print(f"\n  Online config created: {ONLINE_CONFIG_NAME}")
 print(f"  Config ID: {ONLINE_CONFIG_ID}")
-print(f"  Status: ENABLED (scoring all future sessions)")
+print("  Status: ENABLED (scoring all future sessions)")
 
 _online_path = _RESULTS_DIR / "online_eval_config.json"
 _online_path.write_text(json.dumps({

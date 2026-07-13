@@ -80,7 +80,7 @@ class TestGetBenefitsSummary:
         text = BENEFITS.get(key)
         if text:
             return {"benefit_type": benefit_type, "summary": text}
-        return {"benefit_type": benefit_type, "error": f"Benefit not found."}
+        return {"benefit_type": benefit_type, "error": "Benefit not found."}
 
     def test_known_benefit(self):
         result = self._call("health")
