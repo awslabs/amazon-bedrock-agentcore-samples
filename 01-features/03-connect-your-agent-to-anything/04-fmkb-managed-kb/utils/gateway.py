@@ -1,4 +1,5 @@
 """Helpers to create / tear down an AgentCore Gateway with an FMKB target."""
+
 from __future__ import annotations
 
 import time
@@ -10,7 +11,10 @@ import boto3
 def create_gateway(name: str, role_arn: str, region: str) -> dict:
     control = boto3.client("bedrock-agentcore-control", region_name=region)
     g = control.create_gateway(
-        name=name, roleArn=role_arn, protocolType="MCP", authorizerType="AWS_IAM",
+        name=name,
+        roleArn=role_arn,
+        protocolType="MCP",
+        authorizerType="AWS_IAM",
     )
     gw_id = g["gatewayId"]
     for _ in range(60):
@@ -23,8 +27,7 @@ def create_gateway(name: str, role_arn: str, region: str) -> dict:
     raise RuntimeError(f"gateway {gw_id} did not reach READY in time")
 
 
-def create_kb_target(gateway_id: str, kb_id: str, name: str, region: str,
-                     num_results: int = 5) -> dict:
+def create_kb_target(gateway_id: str, kb_id: str, name: str, region: str, num_results: int = 5) -> dict:
     """Create the bedrock-knowledge-bases connector target on the gateway.
 
     Requires botocore >= 1.43.32 — earlier versions don't model
@@ -35,24 +38,28 @@ def create_kb_target(gateway_id: str, kb_id: str, name: str, region: str,
         "mcp": {
             "connector": {
                 "source": {"connectorId": "bedrock-knowledge-bases"},
-                "configurations": [{
-                    "name": "Retrieve",
-                    "description": "Search the knowledge base for relevant documents.",
-                    "parameterValues": {
-                        "knowledgeBaseId": kb_id,
-                        "retrievalConfiguration": {
-                            "managedSearchConfiguration": {"numberOfResults": num_results}
+                "configurations": [
+                    {
+                        "name": "Retrieve",
+                        "description": "Search the knowledge base for relevant documents.",
+                        "parameterValues": {
+                            "knowledgeBaseId": kb_id,
+                            "retrievalConfiguration": {"managedSearchConfiguration": {"numberOfResults": num_results}},
                         },
-                    },
-                    "parameterOverrides": [
-                        {"path": "$.retrievalQuery.text",
-                         "description": "Search query for the knowledge base.",
-                         "visible": True},
-                        {"path": "$.retrievalConfiguration.managedSearchConfiguration.numberOfResults",
-                         "description": "Number of results to retrieve (1-100).",
-                         "visible": True},
-                    ],
-                }],
+                        "parameterOverrides": [
+                            {
+                                "path": "$.retrievalQuery.text",
+                                "description": "Search query for the knowledge base.",
+                                "visible": True,
+                            },
+                            {
+                                "path": "$.retrievalConfiguration.managedSearchConfiguration.numberOfResults",
+                                "description": "Number of results to retrieve (1-100).",
+                                "visible": True,
+                            },
+                        ],
+                    }
+                ],
             }
         }
     }
@@ -60,9 +67,7 @@ def create_kb_target(gateway_id: str, kb_id: str, name: str, region: str,
         gatewayIdentifier=gateway_id,
         name=name,
         description=f"FMKB Retrieve target for {kb_id}",
-        credentialProviderConfigurations=[
-            {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-        ],
+        credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         targetConfiguration=target_config,
     )
     target_id = created["targetId"]
@@ -78,34 +83,36 @@ def create_kb_target(gateway_id: str, kb_id: str, name: str, region: str,
 
 
 def delete_target(gateway_id: str, target_id: str, region: str) -> None:
-    boto3.client("bedrock-agentcore-control", region_name=region) \
-        .delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
+    boto3.client("bedrock-agentcore-control", region_name=region).delete_gateway_target(
+        gatewayIdentifier=gateway_id, targetId=target_id
+    )
 
 
 def delete_gateway(gateway_id: str, region: str) -> None:
-    boto3.client("bedrock-agentcore-control", region_name=region) \
-        .delete_gateway(gatewayIdentifier=gateway_id)
+    boto3.client("bedrock-agentcore-control", region_name=region).delete_gateway(gatewayIdentifier=gateway_id)
 
 
 def gateway_role_trust_policy(account_id: str, region: str) -> dict:
     return {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-            "Condition": {
-                "StringEquals": {"aws:SourceAccount": account_id},
-                "ArnLike": {
-                    "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                    "StringEquals": {"aws:SourceAccount": account_id},
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"},
                 },
-            },
-        }],
+            }
+        ],
     }
 
 
 def gateway_role_permission_policy(
-    account_id: str, region: str, kb_id: Optional[str] = None,
+    account_id: str,
+    region: str,
+    kb_id: Optional[str] = None,
 ) -> dict:
     """Least-privilege policy for the gateway execution role.
 
@@ -115,17 +122,20 @@ def gateway_role_permission_policy(
     """
     kb_arn = (
         f"arn:aws:bedrock:{region}:{account_id}:knowledge-base/{kb_id}"
-        if kb_id else f"arn:aws:bedrock:{region}:{account_id}:knowledge-base/*"
+        if kb_id
+        else f"arn:aws:bedrock:{region}:{account_id}:knowledge-base/*"
     )
     return {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Sid": "RetrieveAndDescribe",
-            "Effect": "Allow",
-            "Action": [
-                "bedrock:Retrieve",
-                "bedrock:GetKnowledgeBase",
-            ],
-            "Resource": kb_arn,
-        }],
+        "Statement": [
+            {
+                "Sid": "RetrieveAndDescribe",
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock:Retrieve",
+                    "bedrock:GetKnowledgeBase",
+                ],
+                "Resource": kb_arn,
+            }
+        ],
     }

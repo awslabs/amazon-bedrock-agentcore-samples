@@ -4,6 +4,7 @@ This file does NOT create a KB — that belongs to bedrock-samples /
 managed-knowledge-bases / 01-getting-started. It just describes/validates
 what the user passes in.
 """
+
 from __future__ import annotations
 
 import boto3
@@ -23,7 +24,6 @@ def assert_kb_active(kb_id: str, region: str) -> dict:
         raise SystemExit(f"KB {kb_id} is in status {kb['status']}, expected ACTIVE.")
     if kb["knowledgeBaseConfiguration"]["type"] != "MANAGED":
         raise SystemExit(
-            f"KB {kb_id} is type {kb['knowledgeBaseConfiguration']['type']}; "
-            "this sample requires type=MANAGED."
+            f"KB {kb_id} is type {kb['knowledgeBaseConfiguration']['type']}; this sample requires type=MANAGED."
         )
     return kb

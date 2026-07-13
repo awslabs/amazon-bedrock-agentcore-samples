@@ -2,6 +2,7 @@
 
 Reads ../.env.fmkb-gateway. Does NOT delete the KB.
 """
+
 from __future__ import annotations
 
 import os
@@ -27,7 +28,7 @@ def load_env() -> None:
         if not line or line.startswith("#"):
             continue
         if line.startswith("export "):
-            line = line[len("export "):]
+            line = line[len("export ") :]
         if "=" not in line:
             continue
         k, v = line.split("=", 1)
@@ -55,9 +56,7 @@ def main() -> int:
     # so wait for the target list to drain before retrying.
     for _ in range(12):
         try:
-            remaining = control.list_gateway_targets(
-                gatewayIdentifier=gateway_id
-            ).get("items", [])
+            remaining = control.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
         except ClientError:
             remaining = []
         if not remaining:

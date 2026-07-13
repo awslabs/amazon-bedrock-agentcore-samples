@@ -2,6 +2,7 @@
 
 No agent in the loop. Useful as a smoke test before deploying anything to Runtime.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,9 +29,7 @@ async def run(prompt: str, gateway_url: str, region: str, target_name: str) -> i
             if tool_name not in names:
                 print(f"tool {tool_name!r} not found. Available: {names}", file=sys.stderr)
                 return 2
-            result = await session.call_tool(
-                tool_name, {"retrievalQuery": {"text": prompt}}
-            )
+            result = await session.call_tool(tool_name, {"retrievalQuery": {"text": prompt}})
             for c in result.content:
                 if hasattr(c, "text"):
                     try:
@@ -46,7 +45,7 @@ async def run(prompt: str, gateway_url: str, region: str, target_name: str) -> i
                         if content.get("type") == "TEXT" or "text" in content:
                             text = (content.get("text") or "")[:300].replace("\n", " ")
                         else:
-                            text = f"<{content.get('type','UNKNOWN')} chunk; not previewable>"
+                            text = f"<{content.get('type', 'UNKNOWN')} chunk; not previewable>"
                         loc = hit.get("location") or {}
                         print(f"  score={score_str}  {text}…")
                         if loc:
@@ -59,17 +58,18 @@ def main() -> int:
     parser.add_argument("prompt")
     args = parser.parse_args()
 
-    missing = [k for k in ("GATEWAY_URL", "REGION", "TARGET_NAME")
-               if not os.environ.get(k)]
+    missing = [k for k in ("GATEWAY_URL", "REGION", "TARGET_NAME") if not os.environ.get(k)]
     if missing:
         sys.exit(f"missing env vars {missing}; did you `source .env.fmkb-gateway`?")
 
-    return asyncio.run(run(
-        prompt=args.prompt,
-        gateway_url=os.environ["GATEWAY_URL"],
-        region=os.environ["REGION"],
-        target_name=os.environ["TARGET_NAME"],
-    ))
+    return asyncio.run(
+        run(
+            prompt=args.prompt,
+            gateway_url=os.environ["GATEWAY_URL"],
+            region=os.environ["REGION"],
+            target_name=os.environ["TARGET_NAME"],
+        )
+    )
 
 
 if __name__ == "__main__":

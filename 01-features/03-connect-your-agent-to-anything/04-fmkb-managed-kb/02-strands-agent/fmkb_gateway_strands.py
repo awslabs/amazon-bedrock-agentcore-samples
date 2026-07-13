@@ -5,6 +5,7 @@ that talks to the AgentCore Gateway (SigV4-signed when authorizerType=AWS_IAM),
 discovers the KB Retrieve tool, and hands control to a Strands agent that
 streams text deltas back through Runtime's SSE channel.
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,15 +21,13 @@ logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 
 GATEWAY_URL = os.environ["GATEWAY_URL"]
 REGION = os.environ.get("AWS_REGION", "us-west-2")
-MODEL_ID = os.environ.get(
-    "MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-)
+MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 SYSTEM_PROMPT = os.environ.get(
     "SYSTEM_PROMPT",
     "You are a knowledge-base assistant. Answer ONLY using information returned "
     "by the knowledge base tool. For every user question, call the tool first. "
     "If the tool returns no relevant results, reply: \"I don't have that in the "
-    "knowledge base.\" Do not answer from prior model knowledge. Always cite the "
+    'knowledge base." Do not answer from prior model knowledge. Always cite the '
     "source URI(s) from the tool's results when you do answer.",
 )
 

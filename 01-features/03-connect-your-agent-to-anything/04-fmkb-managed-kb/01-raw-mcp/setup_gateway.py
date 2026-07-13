@@ -6,6 +6,7 @@ Idempotency: re-running with the same --name-prefix reuses the existing gateway
 role, gateway, and KB target by exact-name match — no orphans on re-run.
 Names are deterministic (no random suffix) so reuse actually triggers.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,13 +25,10 @@ from utils.managed_kb import assert_kb_active  # noqa: E402
 from utils import gateway as gw  # noqa: E402
 
 
-def get_or_create_gateway_role(name: str, account_id: str, region: str,
-                               kb_id: str) -> str:
+def get_or_create_gateway_role(name: str, account_id: str, region: str, kb_id: str) -> str:
     iam = boto3.client("iam")
     trust = json.dumps(gw.gateway_role_trust_policy(account_id, region))
-    perms = json.dumps(
-        gw.gateway_role_permission_policy(account_id, region, kb_id=kb_id)
-    )
+    perms = json.dumps(gw.gateway_role_permission_policy(account_id, region, kb_id=kb_id))
     try:
         iam.create_role(
             RoleName=name,
@@ -44,7 +42,9 @@ def get_or_create_gateway_role(name: str, account_id: str, region: str,
         iam.update_assume_role_policy(RoleName=name, PolicyDocument=trust)
         print(f"role {name} exists; refreshed trust policy")
     iam.put_role_policy(
-        RoleName=name, PolicyName=f"{name}-inline", PolicyDocument=perms,
+        RoleName=name,
+        PolicyName=f"{name}-inline",
+        PolicyDocument=perms,
     )
     role_arn = iam.get_role(RoleName=name)["Role"]["Arn"]
     # IAM is eventually consistent; AgentCore will reject the role if it tries to
@@ -70,12 +70,13 @@ def get_or_create_target(gateway_id: str, name: str, kb_id: str, region: str) ->
     for it in control.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", []):
         if it["name"] == name and it["status"] == "READY":
             print(f"reusing target {it['targetId']}")
-            return control.get_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=it["targetId"]
-            )
+            return control.get_gateway_target(gatewayIdentifier=gateway_id, targetId=it["targetId"])
     print(f"creating target {name}…")
     return gw.create_kb_target(
-        gateway_id=gateway_id, kb_id=kb_id, name=name, region=region,
+        gateway_id=gateway_id,
+        kb_id=kb_id,
+        name=name,
+        region=region,
     )
 
 
@@ -83,8 +84,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--kb-id", required=True, help="Managed KB id (FMKB)")
     p.add_argument("--region", default="us-west-2")
-    p.add_argument("--name-prefix", default="fmkb-sample",
-                   help="prefix for the gateway role / gateway / target")
+    p.add_argument("--name-prefix", default="fmkb-sample", help="prefix for the gateway role / gateway / target")
     args = p.parse_args()
 
     sts = boto3.client("sts").get_caller_identity()
@@ -101,7 +101,10 @@ def main() -> int:
     target_name = f"{args.name_prefix}-target"
 
     role_arn = get_or_create_gateway_role(
-        role_name, account_id, args.region, kb_id=args.kb_id,
+        role_name,
+        account_id,
+        args.region,
+        kb_id=args.kb_id,
     )
     gw_obj = get_or_create_gateway(gw_name, role_arn, args.region)
     target = get_or_create_target(gw_obj["gatewayId"], target_name, args.kb_id, args.region)
