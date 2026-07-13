@@ -2,18 +2,7 @@
 
 This sample shows how to expose a Bedrock **Managed Knowledge Base (FMKB)** as an MCP tool through **AgentCore Gateway**, then have an agent — running on **AgentCore Runtime** — query that tool. Follows the same shape as the other folders under `01-features/03-connect-your-agent-to-anything`.
 
-```
-        ┌─────────────────────┐    InvokeAgentRuntime     ┌────────────────────────┐
-caller ─►   AgentCore Runtime  ───────────────────────────►   Strands agent         │
-        │   (managed compute)  │                           │   @app.entrypoint      │
-        └──────────┬───────────┘                           └──────────┬─────────────┘
-                   │ SigV4 (mcp-proxy-for-aws)                        │
-                   ▼                                                  ▼
-        ┌──────────────────────┐    Retrieve via            ┌────────────────────┐
-        │  AgentCore Gateway   ├───  bedrock-knowledge-bases─►   FMKB (managed)   │
-        │  MCP target (AWS_IAM)│    connector                │                    │
-        └──────────────────────┘                             └────────────────────┘
-```
+![Architecture: caller → AgentCore Runtime (Strands agent) → SigV4-signed MCP → AgentCore Gateway → bedrock-knowledge-bases connector → FMKB](images/architecture.png)
 
 ## What's in here
 
