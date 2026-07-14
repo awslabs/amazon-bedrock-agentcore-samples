@@ -4,6 +4,14 @@ This sample demonstrates how to evaluate an agent built with the
 [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/overview) using
 Amazon Bedrock AgentCore Evaluations.
 
+## How AgentCore Evaluations supports Claude Agent SDK
+
+AgentCore Evaluations is framework-agnostic. It reads OpenTelemetry spans emitted by your agent and evaluates them regardless of which framework produced them. For Claude Agent SDK, the [`openinference-instrumentation-claude-agent-sdk`](https://pypi.org/project/openinference-instrumentation-claude-agent-sdk/) library auto-instruments the SDK client — just add it to your `requirements.txt` and ADOT discovers it at startup. No code changes to your agent.
+
+The evaluation service reconstructs your agent session from `AGENT` and `TOOL` spans, extracts user prompts and agent responses, and runs evaluators (built-in or custom) against them.
+
+For full documentation, see: [Supported frameworks — Claude Agent SDK](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-claude-agent-sdk.html)
+
 ## What this sample does
 
 1. **Deploys** an HR Assistant agent (Claude Agent SDK) to AgentCore Runtime
@@ -15,20 +23,7 @@ Amazon Bedrock AgentCore Evaluations.
 
 ## Architecture
 
-```
-┌──────────────┐     ┌─────────────────────┐     ┌──────────────────┐
-│  evaluate.py │────▶│  AgentCore Runtime   │────▶│  CloudWatch Logs │
-│  (invoke +   │     │  (Claude Agent SDK)  │     │  (OTel spans)    │
-│   evaluate)  │     │  + ADOT auto-instr.  │     └────────┬─────────┘
-└──────────────┘     └─────────────────────┘              │
-                                                           ▼
-                                              ┌──────────────────────┐
-                                              │  AgentCore Evaluation │
-                                              │  Service              │
-                                              │  - On-demand (API)    │
-                                              │  - Online (config)    │
-                                              └──────────────────────┘
-```
+![Claude Agent SDK Evaluation Architecture](./architecture.png)
 
 ## Telemetry details
 
@@ -39,6 +34,48 @@ Amazon Bedrock AgentCore Evaluations.
 | Invoke agent span | `openinference.span.kind` = `AGENT` |
 | Tool span | `openinference.span.kind` = `TOOL` |
 | Inference span | N/A (model metadata on AGENT span) |
+
+## Example trace
+
+When the agent runs on AgentCore Runtime with the instrumentation library installed, spans like these appear in CloudWatch:
+
+**Invoke agent span (AGENT):**
+```json
+{
+  "traceId": "6a292d74406894815807e2751e61dd49",
+  "spanId": "a63aab3320ed8718",
+  "name": "ClaudeAgentSDK.ClaudeSDKClient.receive_response",
+  "scope": {
+    "name": "openinference.instrumentation.claude_agent_sdk",
+    "version": "0.1.5"
+  },
+  "attributes": {
+    "openinference.span.kind": "AGENT",
+    "llm.system": "anthropic",
+    "llm.model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "session.id": "hr-assistant-eval-session"
+  }
+}
+```
+
+**Tool span (TOOL):**
+```json
+{
+  "traceId": "6a292deb7450b3155895da4f38cb579a",
+  "spanId": "909dcb4eb5f851ae",
+  "name": "get_pto_balance",
+  "scope": {
+    "name": "openinference.instrumentation.claude_agent_sdk"
+  },
+  "attributes": {
+    "openinference.span.kind": "TOOL",
+    "tool.name": "get_pto_balance",
+    "tool.parameters": "{\"employee_id\": \"EMP-001\"}"
+  }
+}
+```
+
+The evaluation service reads these spans, extracts the user prompt and agent response from the correlated event records, and scores them against configured evaluators.
 
 ## Prerequisites
 
