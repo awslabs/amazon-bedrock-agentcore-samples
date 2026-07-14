@@ -38,7 +38,7 @@ import boto3
 from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_tutorial_env, print_summary, update_env_file
+from utils import load_tutorial_env, print_summary, resolve_region, update_env_file
 
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
@@ -46,10 +46,10 @@ load_dotenv(ENV_FILE, override=True)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ── Verify AWS credentials ────────────────────────────────────────────────────
+REGION = resolve_region()
 session = boto3.Session()
 identity = session.client("sts").get_caller_identity()
 account_id = identity["Account"]
-REGION = session.region_name or os.environ.get("AWS_REGION", "us-west-2")
 print(f"Authenticated as: {identity['Arn']}")
 print(f"Account: {account_id}")
 print(f"Region: {REGION}")
@@ -146,6 +146,24 @@ if os.path.exists(lock_file):
 
 print("pyproject.toml updated")
 
+# Fix empty aws-targets.json (CLI <0.19 bug).
+targets_file = os.path.join(project_dir, "agentcore", "aws-targets.json")
+if os.path.exists(targets_file):
+    try:
+        with open(targets_file) as f:
+            targets = json.loads(f.read() or "[]")
+    except json.JSONDecodeError:
+        targets = None
+    if (
+        isinstance(targets, list)
+        and all(isinstance(t, dict) and "name" in t for t in targets)
+        and not any(t["name"] == "default" for t in targets)
+    ):
+        targets.append({"name": "default", "account": account_id, "region": REGION})
+        with open(targets_file, "w") as f:
+            f.write(json.dumps(targets, indent=2))
+        print(f"Added default target to aws-targets.json (account={account_id}, region={REGION})")
+
 # ── Step 7: Deploy to AgentCore Runtime ───────────────────────────────────────
 print("\n── Step 7: Deploy to AgentCore Runtime ──")
 print("This creates billable AWS resources (Lambda, CloudWatch, API Gateway).")
@@ -157,7 +175,8 @@ subprocess.run(["agentcore", "deploy", "-y"], cwd=project_dir, check=True)
 result = subprocess.run(["agentcore", "status"], cwd=project_dir, capture_output=True, text=True)
 print(result.stdout)
 
-# Add payment permissions to the auto-created execution role
+# Attach payment data-plane policy to the CDK-created execution role.
+# AgentEnvSpec doesn't expose executionRoleArn, so we attach inline post-deploy.
 print("Adding payment permissions to execution role...")
 iam = boto3.client("iam")
 roles = iam.list_roles(MaxItems=200)["Roles"]

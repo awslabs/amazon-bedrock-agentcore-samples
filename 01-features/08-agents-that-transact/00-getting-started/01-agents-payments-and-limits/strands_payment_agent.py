@@ -226,11 +226,18 @@ except Exception as e:
 
 # ── Step 5c: Plugin built-in tools ────────────────────────────────────────────
 print("\n── Step 5c: Built-in Payment Tools ──")
-# The plugin registers get_payment_session, get_payment_instrument, list_payment_instruments
-result = budget_agent("How much budget do I have left in my current session?")
+# Fresh agent avoids TypeError from reusing budget_agent after an interrupt.
+introspection_agent = Agent(
+    model=BedrockModel(model_id=MODEL_ID, streaming=True),
+    tools=[http_request],
+    plugins=[budget_plugin],
+    system_prompt=SYSTEM_PROMPT,
+)
+
+result = introspection_agent("How much budget do I have left in my current session?")
 print(result.message)
 
-result = budget_agent("What payment instruments (wallets) do I have available?")
+result = introspection_agent("What payment instruments (wallets) do I have available?")
 print(result.message)
 
 # ── Step 5d: Uncapped session ─────────────────────────────────────────────────

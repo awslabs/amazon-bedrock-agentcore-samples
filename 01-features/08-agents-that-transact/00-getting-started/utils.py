@@ -35,6 +35,15 @@ RESOURCE_RETRIEVAL_ROLE = "AgentCorePaymentsResourceRetrievalRole"
 # ═════════════════════════════════════════════════════════════════
 
 
+def resolve_region(default="us-west-2"):
+    """Sync AWS_REGION into AWS_DEFAULT_REGION for boto3 and return the region."""
+    if "AWS_REGION" in os.environ and "AWS_DEFAULT_REGION" not in os.environ:
+        os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
+    return (
+        os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION") or boto3.Session().region_name or default
+    )
+
+
 def load_payment_env(env_file=".env"):
     """Load .env file and return config dict."""
     load_dotenv(env_file, override=True)
@@ -442,8 +451,7 @@ def setup_cognito_user_pool(pool_name="AgentCorePaymentsPool"):
 
     Returns dict with pool_id, client_id, client_secret, token_url.
     """
-    session = boto3.Session()
-    region = session.region_name
+    region = resolve_region()
     cognito = boto3.client("cognito-idp", region_name=region)
 
     pool_resp = cognito.create_user_pool(

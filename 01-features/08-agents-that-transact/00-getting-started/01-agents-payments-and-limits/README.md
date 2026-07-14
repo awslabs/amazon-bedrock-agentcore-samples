@@ -22,8 +22,6 @@ Both approaches work with either wallet provider (Coinbase CDP or Stripe/Privy) 
 
 ### Strands
 
-![Strands Payment Flow](images/strands_payment_flow.png)
-
 ```
 Agent (Strands + http_request tool)
   │
@@ -45,8 +43,6 @@ Agent (Strands + http_request tool)
 ![Strands Agent Payment Flow](images/strands_agent_payment_flow.png)
 
 ### LangGraph
-
-![LangGraph Payment Flow](images/langgraph_payment_flow.png)
 
 ```
 LangGraph ReAct Agent
@@ -122,7 +118,10 @@ python langgraph_payment_agent.py
 
 ### Agent gets 402 but payment fails
 
-Delegated signing is not configured. For Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies. For Stripe/Privy: open the Privy reference frontend at `http://localhost:3000`, log in as `LINKED_EMAIL`, and choose **Connect agent**.
+Delegated signing requires both project-level and per-wallet grants:
+
+- **Coinbase CDP**: Enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies, then open the WalletHub `redirectUrl` from the `CreatePaymentInstrument` response and grant the per-wallet permission.
+- **Stripe/Privy**: Open `http://localhost:3000`, log in as `LINKED_EMAIL`, and choose **Connect agent**.
 
 ### Session budget exceeded immediately
 
