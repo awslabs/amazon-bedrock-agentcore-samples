@@ -934,11 +934,15 @@ def save_privy_authorization_key(env_path, authorization_id, authorization_priva
     Returns:
         The result of :func:`update_env_file`.
     """
-    prefix = "wallet-auth:"
     key = authorization_private_key.strip()
-    if key.startswith(prefix):
-        key = key[len(prefix) :].strip()
-        print("  ℹ️  Stripped 'wallet-auth:' prefix from the private key.")
+    # Strip known prefixes — Privy displays the key with 'wallet-auth:' but some
+    # clipboard/copy paths produce just 'auth:'. The AWS API rejects both; it wants
+    # either the full 'wallet-auth:' prefix or raw base64.
+    for prefix in ("wallet-auth:", "auth:"):
+        if key.startswith(prefix):
+            key = key[len(prefix):].strip()
+            print(f"  ℹ️  Stripped '{prefix}' prefix from the private key.")
+            break
 
     return update_env_file(
         env_path,

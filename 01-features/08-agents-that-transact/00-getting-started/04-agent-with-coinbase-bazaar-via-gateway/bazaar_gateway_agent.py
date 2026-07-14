@@ -202,6 +202,15 @@ with mcp_client:
     )
     print(result.message)
 
+    # If a payment failed, the plugin raises an interrupt — stop cleanly instead of
+    # crashing the next agent() call with a TypeError.
+    if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
+        print(
+            "\n⚠️  A payment did not settle (likely delegated signing not granted for this wallet)."
+            "\n   Skipping remaining scenarios. Grant delegation and re-run."
+        )
+        sys.exit(1)
+
     # ── Step 5b: Multi-Tool Discovery ────────────────────────────────────────
     print("\n── Step 5b: Multi-Tool Discovery — Compare Prices Across Categories ──")
     result = agent(
@@ -211,6 +220,12 @@ with mcp_client:
         "Then tell me which tool in each category is the cheapest."
     )
     print(result.message)
+
+    if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
+        print(
+            "\n⚠️  A payment did not settle. Skipping remaining scenarios."
+        )
+        sys.exit(1)
 
     # ── Step 5c: Budget-Aware Tool Selection ─────────────────────────────────
     print("\n── Step 5c: Budget-Aware Tool Selection ──")
@@ -229,6 +244,12 @@ with mcp_client:
     )
     print(result.message)
 
+    if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
+        print(
+            "\n⚠️  A payment did not settle. Skipping remaining scenarios."
+        )
+        sys.exit(1)
+
     # ── Step 5d: Multiple Bazaar Calls in One Session ─────────────────────────
     print("\n── Step 5d: Multiple Bazaar Calls in One Session ──")
     result = agent(
@@ -239,6 +260,11 @@ with mcp_client:
         "and the total amount spent across all calls."
     )
     print(result.message)
+
+    if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
+        print(
+            "\n⚠️  A payment did not settle in Step 5d. Continuing to spend report."
+        )
 
 # ── Step 6: Check Session Spend ──────────────────────────────────────────────
 print("\n── Step 6: Check Session Spend ──")

@@ -121,7 +121,7 @@ agentcore create --name PaymentSetup --framework Strands --protocol HTTP --model
 cd PaymentSetup
 
 # 2. Add a payment manager
-agentcore add payment-manager --name MyPaymentManager --auto-payment --default-spend-limit 1.00
+agentcore add payment-manager --name MyPaymentManager --auto-payment true --default-spend-limit 1.00
 ```
 
 Add a payment connector for the provider you chose in Step 1 — run **one** of these:
