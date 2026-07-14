@@ -259,30 +259,12 @@ Dockerfile `USER sandbox` (UID 1000) for non-root execution. Explicit namespace 
 capability dropping, and cgroup memory/CPU limits are **deferred to Phase 2** and should be
 added before any non-experimental use.
 
-## Roadmap
-
-- **Phase 1 (this sample):** supervisor/broker/agent architecture with `ping_domain` as the
-  working egress-controlled operation; runtime-configurable allowlist.
-- **Phase 2 (deferred):** HTTP proxy + `get_secret` broker handlers (stubs exist), broker
-  rate/size limits, explicit namespace/capability/cgroup hardening in the `ctr` args.
-
-## Cost Considerations
-
-- **AgentCore Runtime** — billed while the runtime exists. `python cleanup.py` deletes it;
-  run it when you are done.
-- **ECR** — storage for the three images. `python cleanup.py --delete-ecr` also deletes the
-  three repositories.
-- **IAM role** — no cost, but `python cleanup.py --delete-role` removes it if `deploy.py`
-  created it (a role you supplied via `ROLE_ARN` is left untouched).
-
-For development and testing, tear everything down when not in use.
-
 ## Current status
 
 Only **Phase 1** is implemented: the supervisor/broker/agent architecture with
 `ping_domain` as the working egress-controlled operation. HTTP proxying, secret
 retrieval, rate limiting, and explicit cgroup/namespace hardening are stubbed or deferred
-to Phase 2 — see the [Roadmap](#roadmap) above for the full breakdown.
+to Phase 2.
 
 ## Disclaimer
 
