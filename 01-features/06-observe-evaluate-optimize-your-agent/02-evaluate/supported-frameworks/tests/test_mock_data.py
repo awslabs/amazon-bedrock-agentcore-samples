@@ -1,4 +1,5 @@
 """Tests for shared mock data — ensures consistency across framework samples."""
+
 import sys
 from pathlib import Path
 
@@ -64,8 +65,13 @@ class TestEvalScenarios:
         assert len(ASSERTIONS) >= 3
 
     def test_trajectory_tools_are_valid(self):
-        valid_tools = {"get_pto_balance", "submit_pto_request", "lookup_hr_policy",
-                       "get_benefits_summary", "get_pay_stub"}
+        valid_tools = {
+            "get_pto_balance",
+            "submit_pto_request",
+            "lookup_hr_policy",
+            "get_benefits_summary",
+            "get_pay_stub",
+        }
         for tool in EXPECTED_TRAJECTORY:
             assert tool in valid_tools, f"Unknown tool in trajectory: {tool}"
 

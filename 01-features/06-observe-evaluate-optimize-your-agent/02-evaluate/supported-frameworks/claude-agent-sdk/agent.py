@@ -92,15 +92,19 @@ async def get_pto_balance(params: Any) -> dict[str, Any]:
 async def submit_pto_request(params: Any) -> dict[str, Any]:
     _PTO_REQUEST_COUNTER["n"] += 1
     request_id = f"PTO-2026-{_PTO_REQUEST_COUNTER['n']:03d}"
-    return {"content": json.dumps({
-        "request_id": request_id,
-        "employee_id": params.get("employee_id"),
-        "start_date": params.get("start_date"),
-        "end_date": params.get("end_date"),
-        "reason": params.get("reason", "Personal time off"),
-        "status": "APPROVED",
-        "message": f"PTO request {request_id} approved.",
-    })}
+    return {
+        "content": json.dumps(
+            {
+                "request_id": request_id,
+                "employee_id": params.get("employee_id"),
+                "start_date": params.get("start_date"),
+                "end_date": params.get("end_date"),
+                "reason": params.get("reason", "Personal time off"),
+                "status": "APPROVED",
+                "message": f"PTO request {request_id} approved.",
+            }
+        )
+    }
 
 
 @tool(

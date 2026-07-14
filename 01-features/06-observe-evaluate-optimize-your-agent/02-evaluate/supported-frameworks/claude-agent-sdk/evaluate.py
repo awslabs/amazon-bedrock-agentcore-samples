@@ -139,7 +139,7 @@ def _invoke_turn(prompt: str) -> str:
     parts = []
     for line in raw.splitlines():
         if line.startswith("data: "):
-            chunk = line[len("data: "):]
+            chunk = line[len("data: ") :]
             try:
                 chunk = json.loads(chunk)
             except Exception:
@@ -165,12 +165,14 @@ print("\n[3/4] Running on-demand evaluation (EvaluationClient) ...")
 
 ec = EvaluationClient(region_name=REGION)
 
-ec._evaluator_level_cache.update({
-    "Builtin.GoalSuccessRate": "SESSION",
-    "Builtin.Correctness": "TRACE",
-    "Builtin.Helpfulness": "TRACE",
-    CUSTOM_EVALUATOR_ID: "TRACE",
-})
+ec._evaluator_level_cache.update(
+    {
+        "Builtin.GoalSuccessRate": "SESSION",
+        "Builtin.Correctness": "TRACE",
+        "Builtin.Helpfulness": "TRACE",
+        CUSTOM_EVALUATOR_ID: "TRACE",
+    }
+)
 
 EVALUATOR_IDS = [
     "Builtin.GoalSuccessRate",
@@ -208,13 +210,19 @@ for result in on_demand_results:
     print(f"  {name:<40} {str(value):<8} {str(label)}")
 
 _results_path = _RESULTS_DIR / "on_demand_results.json"
-_results_path.write_text(json.dumps({
-    "framework": "claude-agent-sdk",
-    "session_id": SESSION_ID,
-    "evaluators": EVALUATOR_IDS,
-    "custom_evaluator_id": CUSTOM_EVALUATOR_ID,
-    "results": on_demand_results,
-}, indent=2, default=str))
+_results_path.write_text(
+    json.dumps(
+        {
+            "framework": "claude-agent-sdk",
+            "session_id": SESSION_ID,
+            "evaluators": EVALUATOR_IDS,
+            "custom_evaluator_id": CUSTOM_EVALUATOR_ID,
+            "results": on_demand_results,
+        },
+        indent=2,
+        default=str,
+    )
+)
 print(f"\n  Results saved: {_results_path}")
 
 # ============================================================
@@ -226,39 +234,51 @@ print("\n[4/4] Creating online evaluation configuration ...")
 ONLINE_EVAL_ROLE_NAME = "AgentCoreOnlineEvaluationRole"
 ONLINE_EVAL_ROLE_ARN = f"arn:aws:iam::{ACCOUNT_ID}:role/{ONLINE_EVAL_ROLE_NAME}"
 
-_trust_policy = json.dumps({
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-        "Action": "sts:AssumeRole",
-    }],
-})
+_trust_policy = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
+    }
+)
 
-_inline_policy = json.dumps({
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "CloudWatchLogs",
-            "Effect": "Allow",
-            "Action": [
-                "logs:FilterLogEvents", "logs:GetLogEvents",
-                "logs:DescribeLogGroups", "logs:DescribeLogStreams",
-                "logs:StartQuery", "logs:GetQueryResults", "logs:StopQuery",
-                "logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents",
-            ],
-            "Resource": "*",
-        },
-        {
-            "Sid": "BedrockJudge",
-            "Effect": "Allow",
-            "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-            "Resource": [
-                f"arn:aws:bedrock:{REGION}::foundation-model/us.amazon.nova-lite-v1:0",
-            ],
-        },
-    ],
-})
+_inline_policy = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "CloudWatchLogs",
+                "Effect": "Allow",
+                "Action": [
+                    "logs:FilterLogEvents",
+                    "logs:GetLogEvents",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeLogStreams",
+                    "logs:StartQuery",
+                    "logs:GetQueryResults",
+                    "logs:StopQuery",
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                ],
+                "Resource": "*",
+            },
+            {
+                "Sid": "BedrockJudge",
+                "Effect": "Allow",
+                "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+                "Resource": [
+                    f"arn:aws:bedrock:{REGION}::foundation-model/us.amazon.nova-lite-v1:0",
+                ],
+            },
+        ],
+    }
+)
 
 try:
     iam_client.get_role(RoleName=ONLINE_EVAL_ROLE_NAME)
@@ -307,13 +327,18 @@ print(f"  Config ID: {ONLINE_CONFIG_ID}")
 print("  Status: ENABLED (scoring all future sessions)")
 
 _online_path = _RESULTS_DIR / "online_eval_config.json"
-_online_path.write_text(json.dumps({
-    "framework": "claude-agent-sdk",
-    "config_name": ONLINE_CONFIG_NAME,
-    "config_id": ONLINE_CONFIG_ID,
-    "custom_evaluator_id": CUSTOM_EVALUATOR_ID,
-    "results_log_group": f"/aws/bedrock-agentcore/evaluations/results/{ONLINE_CONFIG_ID}",
-}, indent=2))
+_online_path.write_text(
+    json.dumps(
+        {
+            "framework": "claude-agent-sdk",
+            "config_name": ONLINE_CONFIG_NAME,
+            "config_id": ONLINE_CONFIG_ID,
+            "custom_evaluator_id": CUSTOM_EVALUATOR_ID,
+            "results_log_group": f"/aws/bedrock-agentcore/evaluations/results/{ONLINE_CONFIG_ID}",
+        },
+        indent=2,
+    )
+)
 
 # ============================================================
 # Summary

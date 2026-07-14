@@ -168,9 +168,7 @@ def get_pay_stub(employee_id: str, period: str) -> dict:
 # ---------------------------------------------------------------------------
 
 # Model via Bedrock (no external API key needed):
-BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-)
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 # To use Gemini natively (requires GOOGLE_API_KEY env var):
 # GEMINI_MODEL_ID = "gemini-2.5-flash"

@@ -3,6 +3,7 @@
 These tests import the tool functions directly from agent.py (bypassing the
 framework wrappers) to validate the deterministic mock behavior.
 """
+
 import json
 import sys
 from pathlib import Path
