@@ -222,9 +222,7 @@ with mcp_client:
     print(result.message)
 
     if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
-        print(
-            "\n⚠️  A payment did not settle. Skipping remaining scenarios."
-        )
+        print("\n⚠️  A payment did not settle. Skipping remaining scenarios.")
         sys.exit(1)
 
     # ── Step 5c: Budget-Aware Tool Selection ─────────────────────────────────
@@ -245,9 +243,7 @@ with mcp_client:
     print(result.message)
 
     if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
-        print(
-            "\n⚠️  A payment did not settle. Skipping remaining scenarios."
-        )
+        print("\n⚠️  A payment did not settle. Skipping remaining scenarios.")
         sys.exit(1)
 
     # ── Step 5d: Multiple Bazaar Calls in One Session ─────────────────────────
@@ -262,9 +258,7 @@ with mcp_client:
     print(result.message)
 
     if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
-        print(
-            "\n⚠️  A payment did not settle in Step 5d. Continuing to spend report."
-        )
+        print("\n⚠️  A payment did not settle in Step 5d. Continuing to spend report.")
 
 # ── Step 6: Check Session Spend ──────────────────────────────────────────────
 print("\n── Step 6: Check Session Spend ──")

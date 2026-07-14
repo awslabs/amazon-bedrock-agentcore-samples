@@ -940,7 +940,7 @@ def save_privy_authorization_key(env_path, authorization_id, authorization_priva
     # either the full 'wallet-auth:' prefix or raw base64.
     for prefix in ("wallet-auth:", "auth:"):
         if key.startswith(prefix):
-            key = key[len(prefix):].strip()
+            key = key[len(prefix) :].strip()
             print(f"  ℹ️  Stripped '{prefix}' prefix from the private key.")
             break
 
