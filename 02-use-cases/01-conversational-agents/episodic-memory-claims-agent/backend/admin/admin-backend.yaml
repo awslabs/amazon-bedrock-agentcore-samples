@@ -1,0 +1,450 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Insurance Claims Demo — Admin Backend API (mode toggle, memory inspector, session list)'
+
+Parameters:
+  StackName:
+    Type: String
+    Description: Name for the stack
+
+  CognitoStackName:
+    Type: String
+    Description: Name of the Cognito stack (for User Pool ARN reference)
+    Default: insurance-claims-demo
+
+  SessionTableName:
+    Type: String
+    Description: DynamoDB table name for the session backend
+    Default: insurance-claims-session-backend-sessions
+
+  DecisionModeSsmParam:
+    Type: String
+    Default: /insurance-claims-demo/decision_mode
+
+  MemoryIdSsmParam:
+    Type: String
+    Default: /insurance-claims-demo/memory_id
+
+Resources:
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSMAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${DecisionModeSsmParam}'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${MemoryIdSsmParam}'
+        - PolicyName: DynamoDBReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTableName}'
+        - PolicyName: AgentCoreMemoryAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:ListMemoryRecords
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                  - bedrock-agentcore:GetMemory
+                Resource: '*'
+
+  # Lambda Functions
+  GetModeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-get-mode'
+      Runtime: python3.11
+      Handler: get_mode.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: lambdas/get_mode/
+      Environment:
+        Variables:
+          DECISION_MODE_SSM_PARAM: !Ref DecisionModeSsmParam
+      Timeout: 10
+
+  SetModeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-set-mode'
+      Runtime: python3.11
+      Handler: set_mode.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: lambdas/set_mode/
+      Environment:
+        Variables:
+          DECISION_MODE_SSM_PARAM: !Ref DecisionModeSsmParam
+      Timeout: 10
+
+  GetSessionsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-get-sessions'
+      Runtime: python3.11
+      Handler: get_sessions.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: lambdas/get_sessions/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref SessionTableName
+      Timeout: 30
+
+  GetMemoryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-get-memory'
+      Runtime: python3.11
+      Handler: get_memory.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: lambdas/get_memory/
+      Environment:
+        Variables:
+          MEMORY_ID_SSM_PARAM: !Ref MemoryIdSsmParam
+          DECISION_MODE_SSM_PARAM: !Ref DecisionModeSsmParam
+      Timeout: 30
+
+  SearchMemoryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-search-memory'
+      Runtime: python3.11
+      Handler: search_memory.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code: lambdas/search_memory/
+      Environment:
+        Variables:
+          MEMORY_ID_SSM_PARAM: !Ref MemoryIdSsmParam
+      Timeout: 30
+
+  # API Gateway
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${StackName}-api'
+      Description: Admin API for Insurance Claims Demo
+
+  # Cognito Authorizer
+  ApiAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoAdminAuthorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      RestApiId: !Ref RestApi
+      ProviderARNs:
+        - Fn::ImportValue: !Sub '${CognitoStackName}-pool-arn'
+
+  # Resources: /admin
+  AdminResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: admin
+
+  # /admin/mode
+  ModeResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !Ref AdminResource
+      PathPart: mode
+
+  # /admin/memory
+  MemoryResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !Ref AdminResource
+      PathPart: memory
+
+  # /admin/memory/search
+  MemorySearchResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !Ref MemoryResource
+      PathPart: search
+
+  # /admin/sessions
+  SessionsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !Ref AdminResource
+      PathPart: sessions
+
+  # GET /admin/mode
+  GetModeMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ModeResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetModeFunction.Arn}/invocations'
+
+  # POST /admin/mode
+  SetModeMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ModeResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SetModeFunction.Arn}/invocations'
+
+  # GET /admin/memory
+  GetMemoryMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MemoryResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetMemoryFunction.Arn}/invocations'
+
+  # GET /admin/sessions
+  GetSessionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref SessionsResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetSessionsFunction.Arn}/invocations'
+
+  # GET /admin/memory/search
+  SearchMemoryMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MemorySearchResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchMemoryFunction.Arn}/invocations'
+
+  # CORS OPTIONS methods
+  ModeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ModeResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  MemoryOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MemoryResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  SessionsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref SessionsResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  MemorySearchOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MemorySearchResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # Lambda Permissions
+  GetModePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetModeFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*'
+
+  SetModePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SetModeFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*'
+
+  GetSessionsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetSessionsFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*'
+
+  GetMemoryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetMemoryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*'
+
+  SearchMemoryPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SearchMemoryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*'
+
+  # API Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - GetModeMethod
+      - SetModeMethod
+      - GetMemoryMethod
+      - SearchMemoryMethod
+      - GetSessionsMethod
+      - ModeOptionsMethod
+      - MemoryOptionsMethod
+      - MemorySearchOptionsMethod
+      - SessionsOptionsMethod
+    Properties:
+      RestApiId: !Ref RestApi
+      Description: !Sub 'Deployment ${AWS::StackName}'
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref ApiDeployment
+      StageName: prod
+
+Outputs:
+  ApiUrl:
+    Description: Admin API Gateway URL
+    Value: !Sub 'https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${StackName}-ApiUrl'
