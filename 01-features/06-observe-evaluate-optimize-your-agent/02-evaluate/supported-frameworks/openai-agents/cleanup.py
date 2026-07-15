@@ -108,9 +108,7 @@ def _collect_strings(value: object, destination: set[str], *, exclude_builtins: 
     destination.update(
         candidate
         for candidate in candidates
-        if isinstance(candidate, str)
-        and candidate
-        and (not exclude_builtins or not candidate.startswith("Builtin."))
+        if isinstance(candidate, str) and candidate and (not exclude_builtins or not candidate.startswith("Builtin."))
     )
 
 
@@ -268,7 +266,9 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--results-dir", type=Path, default=_DEFAULT_RESULTS_DIR, help="Evaluation results directory")
     parser.add_argument("--region", default=None, help="Override the region saved by deploy.py")
     parser.add_argument("--profile", default="default", help="AWS profile (default: default)")
-    parser.add_argument("--poll-interval", type=_non_negative_float, default=5.0, help="Seconds between deletion checks")
+    parser.add_argument(
+        "--poll-interval", type=_non_negative_float, default=5.0, help="Seconds between deletion checks"
+    )
     parser.add_argument(
         "--timeout",
         type=_non_negative_float,
@@ -388,13 +388,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         s3_bucket = config.get("s3_bucket")
         s3_key = config.get("s3_key")
-        if (
-            runtime_deleted
-            and isinstance(s3_bucket, str)
-            and s3_bucket
-            and isinstance(s3_key, str)
-            and s3_key
-        ):
+        if runtime_deleted and isinstance(s3_bucket, str) and s3_bucket and isinstance(s3_key, str) and s3_key:
             _run_step(
                 f"S3 object s3://{s3_bucket}/{s3_key}",
                 lambda: s3.delete_object(Bucket=s3_bucket, Key=s3_key),
