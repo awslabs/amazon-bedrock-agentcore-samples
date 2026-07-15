@@ -73,7 +73,7 @@ strip so you can see its inputs and outputs at a glance.
 - **Onboarding real users / managing their wallets?** → 03.
 - **Agent discovers tools at runtime?** → 04 (Gateway).
 - **Paying for web/article content?** → 05 (Browser).
-- **Agent should remember and stop re-paying?** → 06 (Memory).
+- **Personalized agentic payments with memory?** → 06 (Memory).
 - **Several agents with independent budgets?** → 07 (needs multi-provider setup).
 
 ## Shared files
