@@ -1,6 +1,6 @@
 # Evaluate a LlamaIndex agent
 
-Evaluate a [LlamaIndex](https://docs.llamaindex.ai/) agent with Amazon Bedrock AgentCore Evaluations. This sample deploys the shared **HR Assistant** — re-implemented as a LlamaIndex `FunctionAgent` workflow — to AgentCore Runtime, then scores it with built-in and custom LLM-as-a-judge evaluators, both on-demand and online.
+Evaluate a [LlamaIndex](https://docs.llamaindex.ai/) agent with Amazon Bedrock AgentCore Evaluations. This sample deploys the shared HR Assistant, re-implemented as a LlamaIndex `FunctionAgent` workflow, to AgentCore Runtime. It then scores the agent with built-in and custom LLM-as-a-judge evaluators in on-demand and online modes. See [LlamaIndex support in AgentCore Evaluations](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-llamaindex.html) for the supported instrumentation libraries, scope names, span extraction rules, and agent construction best practices.
 
 The HR Assistant, its 5 tools, mock data, and system prompt are identical to the Strands version in [`../../utils/`](../../utils/), so ground-truth and expected responses stay consistent across the framework samples.
 
@@ -8,35 +8,24 @@ The HR Assistant, its 5 tools, mock data, and system prompt are identical to the
 
 | Concept                       | Description                                                                                                 |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Framework instrumentation** | Make a LlamaIndex agent evaluable by adding one OpenTelemetry package — no instrumentation code             |
-| **Agent workflow structure**  | Build with `FunctionAgent` so the workflow/inference/tool span tree the evaluation service needs is emitted |
-| **AgentCore Memory**          | Persist multi-turn conversation history in the AgentCore Memory service, across microVM restarts            |
-| **On-demand evaluation**      | Score a recorded session with built-in + custom LLM-as-a-judge evaluators via `EvaluationClient`            |
-| **Online evaluation**         | Continuously score live traffic with an online evaluation config                                            |
-| **CLI evaluation**            | Re-evaluate any session from the terminal with the AgentCore CLI                                            |
+| Framework instrumentation | Make a LlamaIndex agent evaluable by adding one OpenTelemetry package without instrumentation code          |
+| Agent workflow structure  | Build with `FunctionAgent` so the workflow/inference/tool span tree the evaluation service needs is emitted |
+| AgentCore Memory          | Persist multi-turn conversation history in the AgentCore Memory service, across microVM restarts            |
+| On-demand evaluation      | Score a recorded session with built-in + custom LLM-as-a-judge evaluators via `EvaluationClient`            |
+| Online evaluation         | Continuously score live traffic with an online evaluation config                                            |
+| CLI evaluation            | Re-evaluate any session from the terminal with the AgentCore CLI                                            |
 
-```
-┌───────────────┐  invoke_agent_runtime()  ┌────────────────────────────────┐
-│  evaluate.py  │ ────────────────────────▶│  AgentCore Runtime             │
-│               │◀──────────────────────── │  HR Assistant (LlamaIndex)     │
-│               │        responses         │   │            │               │
-│               │                          │   │ Converse   │ history       │
-│               │                          │   ▼ API        ▼               │
-│               │                          │ Bedrock      AgentCore         │
-│               │                          │ (Nova Lite)  Memory            │
-│               │                          └───────┬────────────────────────┘
-│               │                                  │ OTel spans + events
-│               │   Evaluate API           ┌───────▼────────────────────────┐
-│ EvaluationClient ───────────────────────▶│  CloudWatch                    │
-│               │◀──────────────────────── │  (spans, event records)        │
-└───────────────┘        scores            └────────────────────────────────┘
-```
+## Architecture
+
+![LlamaIndex evaluation flow across AgentCore Runtime, CloudWatch, and Evaluations](images/architecture.png)
+
+The PNG embeds its draw.io XML and can be opened directly in draw.io for editing.
 
 ## How it works
 
-The agent is instrumented for evaluation with the **OpenTelemetry** LlamaIndex library (`opentelemetry-instrumentation-llamaindex`, scope `opentelemetry.instrumentation.llamaindex`). On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the library at startup — no explicit instrumentation code is needed. The agent's spans and event records flow to CloudWatch, and AgentCore Evaluations reads them from there.
+The agent is instrumented for evaluation with the OpenTelemetry LlamaIndex library (`opentelemetry-instrumentation-llamaindex`, scope `opentelemetry.instrumentation.llamaindex`). On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the library at startup, so no explicit instrumentation code is needed. The agent's spans and event records flow to CloudWatch, and AgentCore Evaluations reads them from there.
 
-The agent is built as a LlamaIndex **agent workflow** using `FunctionAgent`, following the [AgentCore best practices for LlamaIndex agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-llamaindex.html):
+The agent is built as a LlamaIndex agent workflow using `FunctionAgent`, following the [AgentCore best practices for LlamaIndex agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-llamaindex.html):
 
 ```python
 from llama_index.core.agent.workflow import FunctionAgent
@@ -63,15 +52,21 @@ memory_client.create_event(                        # persist the new turn
 )
 ```
 
-- **Agent workflow** — `FunctionAgent` emits a top-level workflow span with inference and tool child spans, which is the structure AgentCore Evaluations reconstructs a session from.
-- **FunctionTool** — each tool is registered as a `FunctionTool` so tool spans carry recoverable names, arguments, and results.
-- **Text-serializable results** — the tools return JSON-serializable dicts, which LlamaIndex wraps in a text block for clean capture.
-- **`streaming=False`** — one complete inference span per model call is what the evaluation service reads. It also avoids a `BedrockConverse` streaming parser issue (`TypeError` on split tool-call input deltas).
-- **AgentCore Memory for conversation history** — each turn is stored in the [AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) service via `bedrock_agentcore.memory.MemoryClient` and replayed as `chat_history`, so multi-turn context survives microVM restarts. `deploy.py` creates the memory resource and injects `AGENTCORE_MEMORY_ID`. Only USER/ASSISTANT text turns are stored: replaying stored tool-call messages (as the official `llama-index-memory-bedrock-agentcore` integration does) trips the Bedrock Converse API's toolUse/toolResult pairing validation on the next turn.
+- Agent workflow: `FunctionAgent` emits a top-level workflow span with inference and tool child spans, which is the structure AgentCore Evaluations reconstructs a session from.
+- FunctionTool: each tool is registered as a `FunctionTool` so tool spans carry recoverable names, arguments, and results.
+- Text-serializable results: the tools return JSON-serializable dicts, which LlamaIndex wraps in a text block for clean capture.
+- `streaming=False`: one complete inference span per model call is what the evaluation service reads. It also avoids a `BedrockConverse` streaming parser issue (`TypeError` on split tool-call input deltas).
+- AgentCore Memory for conversation history: each turn is stored in the [AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) service via `bedrock_agentcore.memory.MemoryClient` and replayed as `chat_history`, so multi-turn context survives microVM restarts. `deploy.py` creates the memory resource and injects `AGENTCORE_MEMORY_ID`. Only USER/ASSISTANT text turns are stored. Replaying stored tool-call messages, as the official `llama-index-memory-bedrock-agentcore` integration does, trips the Bedrock Converse API's toolUse/toolResult pairing validation on the next turn.
 
 `FunctionAgent` is used (not `ReActAgent`) because Nova Lite supports native tool calling. If you swap in a model without tool calling, `ReActAgent` is the alternative; AgentCore then extracts the final answer from the standard `Answer:` section of its output.
 
 The LLM is a Bedrock model (Nova Lite via `BedrockConverse`), matching the shared Strands agent so expected responses stay identical.
+
+## Sample trace
+
+![Sanitized LlamaIndex trace showing workflow, inference, tool, and model spans](images/sample-trace.png)
+
+This trace was captured from the deployed sample and sanitized for publication. AgentCore Evaluations identifies `FunctionAgent.workflow` as the agent invocation from `traceloop.span.kind=workflow`. It identifies LlamaIndex inference tasks from `traceloop.span.kind=task`, and recognizes `FunctionTool.task` as a tool span because its `traceloop.entity.name` ends in `Tool.task`. The two chat spans are separate model calls before and after tool execution. The shared scope is `opentelemetry.instrumentation.llamaindex`. Repeated workflow tasks and lower-level transport spans are omitted from the figure for readability. The PNG embeds its draw.io XML and can be opened directly in draw.io for editing.
 
 ## Prerequisites
 
@@ -83,8 +78,7 @@ The LLM is a Bedrock model (Nova Lite via `BedrockConverse`), matching the share
 ## Deploy the agent
 
 ```bash
-pip install boto3
-python deploy.py --region us-west-2
+uv run --frozen --with-requirements requirements.txt python deploy.py --region us-west-2
 ```
 
 This builds an ARM64 deployment package, creates an AgentCore Memory resource (conversation history store, injected as `AGENTCORE_MEMORY_ID`), creates the AgentCore Runtime, and writes `agent_config.json` in this directory (read by `evaluate.py`).
@@ -92,8 +86,7 @@ This builds an ARM64 deployment package, creates an AgentCore Memory resource (c
 ## Run the evaluation
 
 ```bash
-pip install -r requirements.txt
-python evaluate.py --region us-west-2
+uv run --frozen --with-requirements requirements.txt python evaluate.py --region us-west-2
 ```
 
 The script:
@@ -135,7 +128,7 @@ TRACE-level evaluators (`Correctness`, `Helpfulness`, `HRResponseQuality`) retur
 
 ## Evaluate from the CLI
 
-Once sessions exist in CloudWatch, you can re-evaluate them from the terminal with the [AgentCore CLI](https://www.npmjs.com/package/@aws/agentcore) — no Python needed. Because this sample deploys with a plain `deploy.py` (not an `agentcore` project), use the standalone flags:
+Once sessions exist in CloudWatch, you can re-evaluate them from the terminal with the [AgentCore CLI](https://www.npmjs.com/package/@aws/agentcore). No Python is needed. Because this sample deploys with a plain `deploy.py` (not an `agentcore` project), use the standalone flags:
 
 ```bash
 npm install -g @aws/agentcore
@@ -158,27 +151,22 @@ Ground truth can be supplied inline with `--assertion`, `--expected-trajectory`,
 - add `--no-binary=<package>` for the offending pure-Python package, or
 - build the zip on an ARM64 machine or in a `public.ecr.aws/lambda/python:3.13-arm64` container / AWS CodeBuild ARM instead of cross-compiling.
 
-The sample installs the full `llama-index` meta-package (not just `llama-index-core`). This is required: ADOT's auto-instrumentation checks the OpenTelemetry LlamaIndex instrumentation's declared dependency (`llama-index`) at startup and silently skips the instrumentor if only `llama-index-core` is present — the agent then emits no evaluable spans.
+The sample installs the full `llama-index` meta-package (not just `llama-index-core`). This is required: ADOT's auto-instrumentation checks the OpenTelemetry LlamaIndex instrumentation's declared dependency (`llama-index`) at startup and silently skips the instrumentor if only `llama-index-core` is present. The agent then emits no evaluable spans.
 
 ## Clean up
 
-```bash
-# Delete the agent runtime and its memory resource
-AGENT_ID=$(jq -r .agent_id agent_config.json)
-MEMORY_ID=$(jq -r .memory_id agent_config.json)
-REGION=$(jq -r .region agent_config.json)
-aws bedrock-agentcore-control delete-agent-runtime --agent-runtime-id "$AGENT_ID" --region "$REGION"
-aws bedrock-agentcore-control delete-memory --memory-id "$MEMORY_ID" --region "$REGION"
+Run the cleanup script from this directory:
 
-# Disable and delete the online evaluation config (id in results/online_eval_config.json)
-aws bedrock-agentcore-control update-online-evaluation-config \
-    --online-evaluation-config-id <config-id> --execution-status DISABLED --region "$REGION"
-aws bedrock-agentcore-control delete-online-evaluation-config \
-    --online-evaluation-config-id <config-id> --region "$REGION"
+```bash
+uv run --frozen --with-requirements requirements.txt python cleanup.py
 ```
+
+The script uses the `default` AWS profile and the region in `agent_config.json`. It deletes the online evaluation configurations and custom evaluators recorded under `results/`, then removes the AgentCore Runtime, Memory, sample-specific CloudWatch log groups, deployment package, and IAM roles. Asynchronous AgentCore deletions are checked for completion before dependent resources are removed, and the script can be run again if cleanup is interrupted.
+
+The shared `aws/spans` log group is retained. The regional deployment bucket is also retained when it contains objects from other samples. Use `--profile` or `--region` to override the defaults.
 
 ## Additional resources
 
-- [Supported agent frameworks — LlamaIndex](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-llamaindex.html)
+- [Supported agent frameworks: LlamaIndex](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-llamaindex.html)
 - [LlamaIndex documentation](https://docs.llamaindex.ai/)
 - [Amazon Bedrock AgentCore Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/)

@@ -56,6 +56,36 @@ _SCRIPT_DIR = Path(__file__).parent
 _DEFAULT_CONFIG = _SCRIPT_DIR / "agent_config.json"
 _RESULTS_DIR = _SCRIPT_DIR / "results"
 _RESULTS_DIR.mkdir(exist_ok=True)
+_CLEANUP_STATE_PATH = _RESULTS_DIR / "cleanup_state.json"
+
+
+def _load_cleanup_state() -> dict[str, object]:
+    """Load identifiers saved by previous complete or partial runs."""
+    if not _CLEANUP_STATE_PATH.exists():
+        return {}
+    state = json.loads(_CLEANUP_STATE_PATH.read_text())
+    if not isinstance(state, dict):
+        raise ValueError(f"Expected a JSON object in {_CLEANUP_STATE_PATH}")
+    return state
+
+
+_cleanup_state = _load_cleanup_state()
+
+
+def _save_cleanup_state() -> None:
+    """Persist resource identifiers for cleanup after partial or complete runs."""
+    _CLEANUP_STATE_PATH.write_text(json.dumps(_cleanup_state, indent=2))
+
+
+def _remember_cleanup_value(key: str, value: str) -> None:
+    """Append a resource identifier to cleanup state without duplicates."""
+    existing = _cleanup_state.get(key)
+    values = [item for item in existing if isinstance(item, str)] if isinstance(existing, list) else []
+    if value not in values:
+        values.append(value)
+    _cleanup_state[key] = values
+    _save_cleanup_state()
+
 
 parser = argparse.ArgumentParser(description="Evaluate the LlamaIndex HR Assistant")
 parser.add_argument("--region", default=None, help="AWS region")
@@ -160,6 +190,7 @@ _resp_quality = _cp.create_evaluator(
     },
 )
 CUSTOM_RESPONSE_QUALITY_ID = _resp_quality["evaluatorId"]
+_remember_cleanup_value("custom_evaluator_ids", CUSTOM_RESPONSE_QUALITY_ID)
 print(f"    evaluatorId: {CUSTOM_RESPONSE_QUALITY_ID}")
 
 # ---- Session-level: HR session completeness --------------------------
@@ -209,6 +240,7 @@ _session_check = _cp.create_evaluator(
     },
 )
 CUSTOM_SESSION_COMPLETENESS_ID = _session_check["evaluatorId"]
+_remember_cleanup_value("custom_evaluator_ids", CUSTOM_SESSION_COMPLETENESS_ID)
 print(f"    evaluatorId: {CUSTOM_SESSION_COMPLETENESS_ID}")
 
 # ============================================================
@@ -378,7 +410,7 @@ print(f"\n  Results saved: {_results_path}")
 print("\n[4/4] Creating online evaluation configuration ...")
 
 # ---- 4a. IAM role for the evaluation service -------------------------
-ONLINE_EVAL_ROLE_NAME = "AgentCoreOnlineEvaluationRole"
+ONLINE_EVAL_ROLE_NAME = f"AgentCoreOnlineEvalLlamaIndex_{_SUFFIX}"
 ONLINE_EVAL_ROLE_ARN = f"arn:aws:iam::{ACCOUNT_ID}:role/{ONLINE_EVAL_ROLE_NAME}"
 
 _trust_policy = json.dumps(
@@ -430,11 +462,6 @@ _inline_policy = json.dumps(
 
 try:
     iam_client.get_role(RoleName=ONLINE_EVAL_ROLE_NAME)
-    iam_client.put_role_policy(
-        RoleName=ONLINE_EVAL_ROLE_NAME,
-        PolicyName="AgentCoreOnlineEvalPolicy",
-        PolicyDocument=_inline_policy,
-    )
     print(f"  Using existing IAM role: {ONLINE_EVAL_ROLE_ARN}")
 except iam_client.exceptions.NoSuchEntityException:
     iam_client.create_role(
@@ -442,13 +469,14 @@ except iam_client.exceptions.NoSuchEntityException:
         AssumeRolePolicyDocument=_trust_policy,
         Description="Execution role for AgentCore online LLM-as-a-judge evaluation",
     )
-    iam_client.put_role_policy(
-        RoleName=ONLINE_EVAL_ROLE_NAME,
-        PolicyName="AgentCoreOnlineEvalPolicy",
-        PolicyDocument=_inline_policy,
-    )
     print(f"  Created IAM role: {ONLINE_EVAL_ROLE_ARN}")
 
+_remember_cleanup_value("evaluation_role_names", ONLINE_EVAL_ROLE_NAME)
+iam_client.put_role_policy(
+    RoleName=ONLINE_EVAL_ROLE_NAME,
+    PolicyName="AgentCoreOnlineEvalPolicy",
+    PolicyDocument=_inline_policy,
+)
 print("  Waiting 10s for IAM propagation ...")
 time.sleep(10)
 
@@ -490,6 +518,11 @@ _online_resp = _cp.create_online_evaluation_config(
 
 ONLINE_CONFIG_ID = _online_resp["onlineEvaluationConfigId"]
 ONLINE_CONFIG_ARN = _online_resp.get("onlineEvaluationConfigArn", "")
+_remember_cleanup_value("online_evaluation_config_ids", ONLINE_CONFIG_ID)
+_remember_cleanup_value(
+    "results_log_groups",
+    f"/aws/bedrock-agentcore/evaluations/results/{ONLINE_CONFIG_ID}",
+)
 
 print("\n  Online evaluation config created:")
 print(f"    ID  : {ONLINE_CONFIG_ID}")
@@ -534,6 +567,8 @@ _online_path.write_text(
                 "HRResponseQuality": CUSTOM_RESPONSE_QUALITY_ID,
                 "HRSessionCompleteness": CUSTOM_SESSION_COMPLETENESS_ID,
             },
+            "evaluation_role_name": ONLINE_EVAL_ROLE_NAME,
+            "evaluation_role_arn": ONLINE_EVAL_ROLE_ARN,
             "triggered_session_id": _online_session,
             "results_log_group": f"/aws/bedrock-agentcore/evaluations/results/{ONLINE_CONFIG_ID}",
         },

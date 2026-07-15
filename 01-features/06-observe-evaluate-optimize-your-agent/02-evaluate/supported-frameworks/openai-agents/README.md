@@ -1,6 +1,6 @@
 # Evaluate an OpenAI Agents SDK agent
 
-Evaluate an [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) agent with Amazon Bedrock AgentCore Evaluations. This sample deploys the shared **HR Assistant** — re-implemented with the OpenAI Agents SDK — to AgentCore Runtime, then scores it with built-in and custom LLM-as-a-judge evaluators, both on-demand and online.
+Evaluate an [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) agent with Amazon Bedrock AgentCore Evaluations. This sample deploys the shared HR Assistant, re-implemented with the OpenAI Agents SDK, to AgentCore Runtime. It then scores the agent with built-in and custom LLM-as-a-judge evaluators in on-demand and online modes. See [OpenAI Agents support in AgentCore Evaluations](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-openai-agents.html) for the supported instrumentation libraries, scope names, and span extraction rules.
 
 The HR Assistant, its 5 tools, mock data, and system prompt are identical to the Strands version in [`../../utils/`](../../utils/), so ground-truth and expected responses stay consistent across the framework samples.
 
@@ -8,42 +8,31 @@ The HR Assistant, its 5 tools, mock data, and system prompt are identical to the
 
 | Concept                       | Description                                                                                             |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Framework instrumentation** | Make an OpenAI Agents SDK agent evaluable by adding one OpenTelemetry package — no instrumentation code |
-| **OpenAI GPT-5.5 on Bedrock** | Call `openai.gpt-5.5` through Bedrock's OpenAI-compatible Responses API with a Bedrock API key          |
-| **AgentCore Memory**          | Persist multi-turn conversation history in the AgentCore Memory service, across microVM restarts        |
-| **On-demand evaluation**      | Score a recorded session with built-in + custom LLM-as-a-judge evaluators via `EvaluationClient`        |
-| **Online evaluation**         | Continuously score live traffic with an online evaluation config                                        |
-| **CLI evaluation**            | Re-evaluate any session from the terminal with the AgentCore CLI                                        |
+| Framework instrumentation | Make an OpenAI Agents SDK agent evaluable by adding one OpenTelemetry package without instrumentation code |
+| OpenAI GPT-5.5 on Bedrock | Call `openai.gpt-5.5` through Bedrock's OpenAI-compatible Responses API with a Bedrock API key          |
+| AgentCore Memory          | Persist multi-turn conversation history in the AgentCore Memory service, across microVM restarts        |
+| On-demand evaluation      | Score a recorded session with built-in + custom LLM-as-a-judge evaluators via `EvaluationClient`        |
+| Online evaluation         | Continuously score live traffic with an online evaluation config                                        |
+| CLI evaluation            | Re-evaluate any session from the terminal with the AgentCore CLI                                        |
 
-```
-┌───────────────┐  invoke_agent_runtime()  ┌────────────────────────────────┐
-│  evaluate.py  │ ────────────────────────▶│  AgentCore Runtime             │
-│               │◀──────────────────────── │  HR Assistant (OpenAI Agents)  │
-│               │        responses         │   │            │               │
-│               │                          │   │ Responses  │ history       │
-│               │                          │   ▼ API        ▼               │
-│               │                          │ Bedrock      AgentCore         │
-│               │                          │ (GPT-5.5)    Memory            │
-│               │                          └───────┬────────────────────────┘
-│               │                                  │ OTel spans + events
-│               │   Evaluate API           ┌───────▼────────────────────────┐
-│ EvaluationClient ───────────────────────▶│  CloudWatch                    │
-│               │◀──────────────────────── │  (spans, event records)        │
-└───────────────┘        scores            └────────────────────────────────┘
-```
+## Architecture
+
+![OpenAI Agents evaluation flow across AgentCore Runtime, CloudWatch, and Evaluations](images/architecture.png)
+
+The PNG embeds its draw.io XML and can be opened directly in draw.io for editing.
 
 ## How it works
 
-The agent is instrumented for evaluation with the **OpenTelemetry** OpenAI Agents library (`opentelemetry-instrumentation-openai-agents`, scope `opentelemetry.instrumentation.openai_agents`). On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the library at startup — no explicit instrumentation code is needed. The agent's spans and event records flow to CloudWatch, and AgentCore Evaluations reads them from there.
+The agent is instrumented for evaluation with the OpenTelemetry OpenAI Agents library (`opentelemetry-instrumentation-openai-agents`, scope `opentelemetry.instrumentation.openai_agents`). On AgentCore Runtime, AWS Distro for OpenTelemetry (ADOT) auto-discovers the library at startup, so no explicit instrumentation code is needed. The agent's spans and event records flow to CloudWatch, and AgentCore Evaluations reads them from there.
 
-The LLM is **OpenAI GPT-5.5 on Amazon Bedrock** (`openai.gpt-5.5`), reached through the Bedrock mantle endpoint's OpenAI-compatible **Responses API** and authenticated with a [Bedrock API key](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html). The OpenAI Agents SDK talks to it via an `AsyncOpenAI` client:
+The LLM is OpenAI GPT-5.5 on Amazon Bedrock (`openai.gpt-5.5`), reached through the Bedrock mantle endpoint's OpenAI-compatible Responses API and authenticated with a [Bedrock API key](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html). The OpenAI Agents SDK talks to it via an `AsyncOpenAI` client:
 
 ```python
 from agents import Agent, OpenAIResponsesModel
 from openai import AsyncOpenAI
 from aws_bedrock_token_generator import provide_token
 
-# Short-term Bedrock API key minted from the runtime's IAM role — a local
+# Short-term Bedrock API key minted from the runtime's IAM role by a local
 # SigV4 presign, no network call, nothing stored in code or config
 api_key = provide_token(region=MODEL_REGION)
 client = AsyncOpenAI(base_url=f"https://bedrock-mantle.{MODEL_REGION}.api.aws/openai/v1", api_key=api_key)
@@ -52,15 +41,21 @@ model = OpenAIResponsesModel(model="openai.gpt-5.5", openai_client=client)
 agent = Agent(name="HRAssistant", instructions=SYSTEM_PROMPT, model=model, tools=[...])
 ```
 
-`provide_token()` returns a [short-term Bedrock API key](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-how.html) (a `bedrock-api-key-...` string) with the same permissions as the runtime's IAM role, valid up to 12 hours — the secure kind AWS recommends for production. The agent is rebuilt on every invocation so a long-lived runtime never reuses an expired key. For exploration you can instead generate a long-term key (Bedrock console → **API keys**, or `aws iam create-service-specific-credential --service-name bedrock.amazonaws.com`) and pass it as the `api_key`; store it in AWS Secrets Manager rather than in code.
+`provide_token()` returns a [short-term Bedrock API key](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-how.html) (a `bedrock-api-key-...` string) with the same permissions as the runtime's IAM role, valid up to 12 hours. This is the secure kind AWS recommends for production. The agent is rebuilt on every invocation so a long-lived runtime never reuses an expired key. For exploration, you can instead generate a long-term key (Bedrock console → API keys, or `aws iam create-service-specific-credential --service-name bedrock.amazonaws.com`) and pass it as the `api_key`. Store it in AWS Secrets Manager rather than in code.
 
 Three implementation details matter for evaluation:
 
-- **Responses API, not Chat Completions.** The OpenTelemetry instrumentation extracts the agent's response text from Responses API spans (`ResponseSpanData`); with `OpenAIChatCompletionsModel` the response text is not captured on the spans and evaluators score empty responses. GPT-5.5 is served on the mantle endpoint's `openai/v1` path (`https://bedrock-mantle.<region>.api.aws/openai/v1`) — note this differs from the `/v1` path used by gpt-oss models.
-- **Keep SDK tracing enabled.** The instrumentation hooks into the SDK's tracing pipeline, so do not call `set_tracing_disabled(True)` — that would silence the evaluation spans. The SDK's default platform.openai.com exporter is inert without an `OPENAI_API_KEY` and only logs a skip message.
-- **AgentCore Memory for conversation history, not `SQLiteSession`.** The SDK's session classes are local to one microVM (history is lost across restarts) and replay full Responses API output items (including model `reasoning` items) as the next turn's input, which the mantle endpoint rejects with an empty output. Instead, `deploy.py` creates an [AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) resource and the agent persists each turn as a memory event (via `bedrock_agentcore.memory.MemoryClient`), reloading the plain `{"role", "content"}` history at the start of every invocation.
+- Responses API, not Chat Completions. The OpenTelemetry instrumentation extracts the agent's response text from Responses API spans (`ResponseSpanData`); with `OpenAIChatCompletionsModel` the response text is not captured on the spans and evaluators score empty responses. GPT-5.5 is served on the mantle endpoint's `openai/v1` path (`https://bedrock-mantle.<region>.api.aws/openai/v1`). This differs from the `/v1` path used by gpt-oss models.
+- Keep SDK tracing enabled. The instrumentation hooks into the SDK's tracing pipeline, so do not call `set_tracing_disabled(True)`. Doing so would silence the evaluation spans. The SDK's default platform.openai.com exporter is inert without an `OPENAI_API_KEY` and only logs a skip message.
+- AgentCore Memory for conversation history, not `SQLiteSession`. The SDK's session classes are local to one microVM (history is lost across restarts) and replay full Responses API output items (including model `reasoning` items) as the next turn's input, which the mantle endpoint rejects with an empty output. Instead, `deploy.py` creates an [AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) resource and the agent persists each turn as a memory event (via `bedrock_agentcore.memory.MemoryClient`), reloading the plain `{"role", "content"}` history at the start of every invocation.
 
 The agent is rebuilt on every invocation so a long-lived runtime never reuses an expired short-term key.
+
+## Sample trace
+
+![Sanitized OpenAI Agents trace showing agent, model, and tool spans](images/sample-trace.png)
+
+This trace was captured from the deployed sample and sanitized for publication. AgentCore Evaluations identifies `HRAssistant.agent` as the agent invocation from `gen_ai.operation.name=invoke_agent`, the two `openai.response` spans as model calls from `gen_ai.operation.name=chat`, and `get_pto_balance.tool` as the tool call from `gen_ai.operation.name=execute_tool`. The two chat spans are separate model calls before and after tool execution. The shared scope is `opentelemetry.instrumentation.openai_agents`. The PNG embeds its draw.io XML and can be opened directly in draw.io for editing.
 
 ## Prerequisites
 
@@ -72,8 +67,7 @@ The agent is rebuilt on every invocation so a long-lived runtime never reuses an
 ## Deploy the agent
 
 ```bash
-pip install boto3
-python deploy.py --region us-west-2
+uv run --frozen --with-requirements requirements.txt python deploy.py --region us-west-2
 ```
 
 This builds an ARM64 deployment package, creates an AgentCore Memory resource (conversation history store, injected as `AGENTCORE_MEMORY_ID`), creates the AgentCore Runtime, and writes `agent_config.json` in this directory (read by `evaluate.py`).
@@ -83,8 +77,7 @@ The runtime's IAM role is granted `bedrock-mantle:CreateInference` and `bedrock-
 ## Run the evaluation
 
 ```bash
-pip install -r requirements.txt
-python evaluate.py --region us-west-2
+uv run --frozen --with-requirements requirements.txt python evaluate.py --region us-west-2
 ```
 
 The script:
@@ -126,7 +119,7 @@ TRACE-level evaluators (`Correctness`, `Helpfulness`, `HRResponseQuality`) retur
 
 ## Evaluate from the CLI
 
-Once sessions exist in CloudWatch, you can re-evaluate them from the terminal with the [AgentCore CLI](https://www.npmjs.com/package/@aws/agentcore) — no Python needed. Because this sample deploys with a plain `deploy.py` (not an `agentcore` project), use the standalone flags:
+Once sessions exist in CloudWatch, you can re-evaluate them from the terminal with the [AgentCore CLI](https://www.npmjs.com/package/@aws/agentcore). No Python is needed. Because this sample deploys with a plain `deploy.py` (not an `agentcore` project), use the standalone flags:
 
 ```bash
 npm install -g @aws/agentcore
@@ -159,24 +152,19 @@ Ground truth can be supplied inline with `--assertion`, `--expected-trajectory`,
 
 ## Clean up
 
-```bash
-# Delete the agent runtime and its memory resource
-AGENT_ID=$(jq -r .agent_id agent_config.json)
-MEMORY_ID=$(jq -r .memory_id agent_config.json)
-REGION=$(jq -r .region agent_config.json)
-aws bedrock-agentcore-control delete-agent-runtime --agent-runtime-id "$AGENT_ID" --region "$REGION"
-aws bedrock-agentcore-control delete-memory --memory-id "$MEMORY_ID" --region "$REGION"
+Run the cleanup script from this directory:
 
-# Disable and delete the online evaluation config (id in results/online_eval_config.json)
-aws bedrock-agentcore-control update-online-evaluation-config \
-    --online-evaluation-config-id <config-id> --execution-status DISABLED --region "$REGION"
-aws bedrock-agentcore-control delete-online-evaluation-config \
-    --online-evaluation-config-id <config-id> --region "$REGION"
+```bash
+uv run --frozen --with-requirements requirements.txt python cleanup.py
 ```
+
+The script uses the `default` AWS profile and the region in `agent_config.json`. It deletes the online evaluation configurations and custom evaluators recorded under `results/`, then removes the AgentCore Runtime, Memory, sample-specific CloudWatch log groups, deployment package, and IAM roles. Asynchronous AgentCore deletions are checked for completion before dependent resources are removed, and the script can be run again if cleanup is interrupted.
+
+The shared `aws/spans` log group is retained. The regional deployment bucket is also retained when it contains objects from other samples. Use `--profile` or `--region` to override the defaults.
 
 ## Additional resources
 
-- [Supported agent frameworks — OpenAI Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-openai-agents.html)
+- [Supported agent frameworks: OpenAI Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/supported-frameworks-openai-agents.html)
 - [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)
 - [GPT-5.5 model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-55.html)
 - [Amazon Bedrock API keys](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html)
