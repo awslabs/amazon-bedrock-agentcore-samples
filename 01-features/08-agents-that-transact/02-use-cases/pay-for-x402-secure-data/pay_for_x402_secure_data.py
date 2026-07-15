@@ -43,6 +43,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import uuid
@@ -564,7 +565,35 @@ def cleanup(cp_client, mgmt_client) -> None:
     )})
     # nosec B603 — fixed command list (no shell, no untrusted input).
     subprocess.run(["bash", "test/integration/destroy-agent.sh"], cwd=HERE, check=False)  # noqa: S603
+
+    _remove_local_artifacts()
     print("\n✅ Cleanup complete.")
+
+
+def _remove_local_artifacts() -> None:
+    """Remove the local CDK build artifacts (venv, cdk.out, outputs.json, caches).
+
+    Mirrors §10.3 of the workshop notebook. AWS resources are already torn down
+    above; this leaves only the tracked source files in the use-case folder.
+    """
+    targets = [
+        HERE / "agent" / "cdk" / ".venv",
+        HERE / "agent" / "cdk" / "cdk.out",
+        HERE / "agent" / "cdk" / "outputs.json",
+        HERE / "agent" / "cdk" / "__pycache__",
+        HERE / "agent" / "container" / "__pycache__",
+        HERE / "__pycache__",
+    ]
+    print("\n── Local build artifacts ──")
+    for path in targets:
+        if not path.exists():
+            print(f"  ↷ skip (absent): {path.relative_to(HERE)}")
+            continue
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+        print(f"  🗑️  removed: {path.relative_to(HERE)}")
 
 
 def main() -> None:
