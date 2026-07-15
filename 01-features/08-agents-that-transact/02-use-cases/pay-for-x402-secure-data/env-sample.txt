@@ -79,7 +79,8 @@ USER_ID=
 # control: the per-wallet delegated-signing grant is completed by signing
 # in to the Coinbase Wallet Hub with a one-time code sent here. A
 # placeholder like alex@example.com (reserved, non-deliverable) makes the
-# grant impossible. Example: alex@your-domain.com
+# grant impossible. Use a real inbox you control (for example, a personal
+# or corporate email address).
 INSTRUMENT_EMAIL=
 
 # PAYMENT_INSTRUMENT_NETWORK: "ETHEREUM" settles USDC on Base for x402;

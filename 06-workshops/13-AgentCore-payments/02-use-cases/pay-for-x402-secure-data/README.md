@@ -142,7 +142,7 @@ the **Coinbase CDP** provider.
 
 - **AWS account** with Amazon Bedrock AgentCore payments available in your chosen region
 - **Amazon Bedrock access** enabled for **Anthropic Claude Sonnet 4.5** in your chosen region (cross-region inference profile `us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
-- **Python 3.10+** with a Jupyter kernel. If you hit "Running cells requires the ipykernel package", install it once: `python3 -m pip install ipykernel --user`. Any Jupyter frontend works — JupyterLab (4.0+), classic Jupyter Notebook (7.0+), VS Code, or Kiro.
+- **Python 3.10+** with a Jupyter kernel. If you hit "Running cells requires the ipykernel package", install it once: `python3 -m pip install ipykernel==7.3.0 --user`. Any Jupyter frontend works — JupyterLab (4.0+), classic Jupyter Notebook (7.0+), VS Code, or Kiro.
 - **AWS Command Line Interface (AWS CLI) v2** configured with credentials (`aws configure`)
 - **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk@2.1131.0`); used by §8 to deploy the agent runtime
 - **Node.js 18+** — required by CDK
