@@ -145,7 +145,7 @@ sibling `pay-for-api-agent` use case for a two-provider walkthrough).
 
 - **AWS account** with Amazon Bedrock AgentCore payments available in your chosen region
 - **Amazon Bedrock access** enabled for **Anthropic Claude Sonnet 4.5** in your chosen region (cross-region inference profile `us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
-- **Python 3.10+** with a Jupyter kernel. If you hit "Running cells requires the ipykernel package", install it once: `python3 -m pip install ipykernel --user`. Any Jupyter frontend works — JupyterLab (4.0+), classic Jupyter Notebook (7.0+), VS Code, or Kiro.
+- **Python 3.10+** (the macOS system `python3` may be 3.9 — create the venv with an explicit 3.10+ binary)
 - **AWS Command Line Interface (AWS CLI) v2** configured with credentials (`aws configure`)
 - **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk`); used by §8 to deploy the agent runtime
 - **Node.js 18+** — required by CDK
@@ -190,7 +190,7 @@ What AgentCore payments handles for you:
 What you handle locally:
 
 - **Initial credential paste** — Coinbase CDP secrets are pasted into `.env`
-  once, before §4 runs. The notebook reads them only to call
+  once, before §4 runs. The script reads them only to call
   `CreatePaymentCredentialProvider`. After that call returns, the secrets are
   inside the AgentCore Identity-managed vault (Secrets Manager) and the local
   `.env` copies are no longer needed by the agent
@@ -205,7 +205,7 @@ What you handle locally:
 - **A real `INSTRUMENT_EMAIL`** — the embedded wallet links to this identity
   and the per-wallet grant sends a one-time code there. A placeholder like
   `alex@example.com` (a reserved, non-deliverable domain) makes the grant
-  impossible; the notebook rejects `@example.com` addresses
+  impossible; the script rejects `@example.com` addresses
 - **Encryption in transit** — all calls to AgentCore payments, Amazon Bedrock,
   t54 x402-secure, and the target x402 service run over TLS (`https://`). The
   Dockerfile health check is the only HTTP URL and is loopback-only
@@ -246,44 +246,123 @@ production:
 
 ## Running the Use Case
 
-Before opening the notebook, create a Python virtual environment so dependency
-installs and notebook state stay isolated from the global Python.
+This use case ships as a single self-contained Python script,
+`pay_for_x402_secure_data.py`, plus the CDK app for the agent runtime
+(`agent/cdk/`) and idempotent shell scripts under `test/integration/` for IAM
+and environment setup. (A step-by-step notebook companion with the same flow
+lives in the workshop copy under
+`06-workshops/13-AgentCore-payments/02-use-cases/pay-for-x402-secure-data/`.)
 
-**Option 1 — Terminal (cross-platform)**
+**Step 1.** Create a Python virtual environment and install dependencies. The
+script requires Python **3.10+**, so create the venv with an explicit 3.10+
+binary (the macOS system `python3` is 3.9):
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv     # or python3.10 / python3.11; any 3.10+
 source .venv/bin/activate    # On Windows: .venv\Scripts\activate
-python3 -m pip install --upgrade pip ipykernel
-python3 -m ipykernel install --user --name pay-for-x402-secure-data-venv --display-name "Python (pay-for-x402-secure-data-venv)"
+python3 -m pip install -r requirements.txt
 ```
 
-**Option 2 — VS Code / Kiro**
+**Step 2.** Seed `.env` and fill in your Coinbase CDP secrets, a real
+`INSTRUMENT_EMAIL`, and `CONFIRM_AWS_ACCOUNT_ID`:
 
-1. Open `pay-for-x402-secure-data.ipynb`.
-2. Choose the kernel selector in the top-right of the notebook (or the Python
-   version indicator in the bottom status bar).
-3. Choose **Python: Create Environment...**.
-4. Choose **Venv**.
-5. Pick a Python 3.10+ interpreter. The IDE creates `.venv/` and selects it
-   automatically.
-6. When prompted to install kernel dependencies (`ipykernel`), accept.
+```bash
+bash test/integration/setup-env.sh   # copies env-sample.txt → .env, seeds USER_ID
+# edit .env: COINBASE_*, INSTRUMENT_EMAIL, CONFIRM_AWS_ACCOUNT_ID
+```
 
-After the venv is active, open `pay-for-x402-secure-data.ipynb` and run cells
-in order. The notebook handles dependency install, IAM role creation,
-credential prompts, payment provisioning, a no-cost guardrail demo, the live
-trust-gated run, optional runtime deploy, and teardown:
+**Step 3.** Create the four IAM roles (idempotent; writes ARNs into `.env`):
 
-- §1 installs the Python dependencies from `requirements.txt`
-- §2 creates the four IAM roles and interactively prompts for the Coinbase CDP credentials and a real `INSTRUMENT_EMAIL`
-- §3 demonstrates the trust guardrail with **mocks** — no AWS calls and no money — so you can see the approve / low-score-block / scam-block decisions before spending anything
-- §4 provisions a Credential Provider + Manager + Connector for Coinbase CDP
-- §5 creates one `EMBEDDED_CRYPTO_WALLET` instrument and a spending-limit-capped payment session, then prints the delegated-signing + funding steps
-- §6 builds the trust-gated Strands agent — two tools plus the `AgentCorePaymentsPlugin`, wrapped in request-scoped trust state
-- §7 runs the agent **live** against t54 x402-secure and the target service (gated behind an explicit opt-in because it settles real USDC)
-- §8 optionally deploys the agent to AgentCore Runtime via `agent/cdk/` and invokes it remotely with per-invocation payment context
-- §9 inspects the data plane: GetPaymentSession, balance, ListPaymentInstruments, ListPaymentSessions
-- §10 tears everything down: session, agent runtime (if §8 was run), and AgentCore payments resources (optional)
+```bash
+bash test/integration/setup-roles.sh
+```
+
+**Step 4.** Run the script:
+
+```bash
+python pay_for_x402_secure_data.py
+```
+
+The script is **idempotent** — resource IDs are written back into `.env` after
+each provisioning step, so subsequent runs detect them and skip the `Create*`
+calls. It runs through these sections:
+
+- **§1** — handled out of band by `pip install -r requirements.txt`
+- **§2** — loads `.env` and runs an environment check (halts on missing values)
+- **§3** — demonstrates the trust guardrail with **mocks** — no AWS calls and no money — showing the approve / low-score-block / scam-block decisions
+- **§4** — assume IAM roles and create the Credential Provider, Manager, and Connector for Coinbase CDP
+- **§5** — create one `EMBEDDED_CRYPTO_WALLET` instrument and a spending-limit-capped payment session, then print the delegated-signing + funding steps
+- **§6** — build the trust-gated Strands agent (two tools + `AgentCorePaymentsPlugin`, wrapped in request-scoped trust state)
+- **§7** — **prompts** before running the agent live against t54 x402-secure and the target service (settles real USDC). Press Enter to run, `q` to skip
+- **§8** — **prompts** before running `bash test/integration/deploy-agent.sh` to build and deploy the agent to AgentCore Runtime via CodeBuild, then invokes it with per-invocation payment context. Press Enter to deploy, `q` to skip
+- **§9** — inspect the data plane: `GetPaymentSession` (spending limit + remaining), `GetPaymentInstrumentBalance`, `ListPaymentInstruments`, `ListPaymentSessions`
+- **§10** — **prompts** before tearing down the session, instrument, connector, manager, credential provider, and runtime. Press Enter to clean up, `q` to keep resources
+
+### Grant signing delegation in the Coinbase Wallet Hub
+
+When §5 creates the instrument it prints a `redirectUrl` to the **Coinbase
+Wallet Hub**. Delegated signing has **two one-time layers, both required**
+before `ProcessPayment` succeeds — the project policy (CDP Portal → Wallets →
+Non-custodial Wallet → Security, needs your account 2FA) and this per-wallet
+grant. Open the hub and:
+
+1. **Sign in** with the email you set as `INSTRUMENT_EMAIL`. The hub sends a one-time passcode (OTP) to that address.
+
+<div style="text-align:left">
+    <img src="images/cdp_hub_signin.png" alt="Coinbase Wallet Hub sign-in screen" width="60%"/>
+</div>
+
+2. **Enter the OTP** in the hub.
+
+<div style="text-align:left">
+    <img src="images/cdp_hub_otp.png" alt="Coinbase Wallet Hub OTP entry" width="60%"/>
+</div>
+
+3. **Grant signing delegation** to the agent and set the delegation duration. Without this, `ProcessPayment` returns *Delegated signing grant is not active*.
+
+<div style="text-align:left">
+    <img src="images/cdp_hub_delegation.png" alt="Grant delegation with duration" width="60%"/>
+</div>
+
+Then fund the wallet address §5 printed with **USDC on Base** before answering
+`y` to the §7 live-run prompt.
+
+### AgentCore Runtime deploy, invoke, observe
+
+§8 deploys the agent to AgentCore Runtime and invokes it. To see the full trace
+in the console, enable **Transaction Search** once per runtime.
+
+1. Open the **Amazon Bedrock AgentCore** console → **Runtime** and choose **`pay_for_x402_secure_data_runtime`**.
+
+<div style="text-align:left">
+    <img src="images/agentcore_runtime_selected.png" alt="Selecting the agent runtime in the list" width="75%"/>
+</div>
+
+2. Open the **Log deliveries and tracing** tab, enable **Transaction Search**, and choose **Save**.
+
+<div style="text-align:left">
+    <img src="images/agentcore_tracing_enable_section.png" alt="Enable Transaction Search and tracing" width="75%"/>
+</div>
+
+<div style="text-align:left">
+    <img src="images/agentcore_transaction_search_enabled.png" alt="Transaction Search enabled confirmation" width="75%"/>
+</div>
+
+3. After invoking, choose **View dashboard** in the **Observability** section to open the CloudWatch GenAI Observability dashboard.
+
+<div style="text-align:left">
+    <img src="images/agentcore_runtime_observability_section.png" alt="Observability section with View dashboard button" width="75%"/>
+</div>
+
+<div style="text-align:left">
+    <img src="images/agentcore_cloudwatch_genai_observability_dashboard.png" alt="CloudWatch GenAI Observability dashboard, Sessions tab" width="75%"/>
+</div>
+
+4. Choose the most recent **Trace ID** to explore the `POST /invocations` events — the two tool calls, the `402` payment requirements, the `ProcessPayment` spans, and the retries that return `200 OK` (one pair for the trust check, one for the target call).
+
+<div style="text-align:left">
+    <img src="images/agentcore_observability_results.png" alt="Trace exploration showing POST /invocations events" width="75%"/>
+</div>
 
 ---
 
@@ -323,9 +402,9 @@ trust-gated run, optional runtime deploy, and teardown:
 > trust check and once for the target data call. The AgentCore Runtime, Amazon
 > ECR, AWS CodeBuild, and AgentCore payments resources also bill on
 > per-request and per-resource models. Keep `PAYMENT_SESSION_MAX_SPEND_USD`
-> small and run §10 of the notebook to tear everything down when you are done.
+> small and answer `y` to the §10 cleanup prompt when you are done.
 
-§10 of the notebook handles teardown end-to-end:
+§10 of the script handles teardown end-to-end:
 
 | Step | What it does | What it removes |
 |------|--------------|-----------------|
@@ -352,16 +431,16 @@ CloudWatch log groups under `/aws/bedrock-agentcore/` and
 historical traces. Delete them from the CloudWatch console if you want to clear
 historical data.
 
-### Manual cleanup (without the notebook)
+### Manual cleanup (without the script)
 
-If the notebook is unavailable, run the same teardown from a shell:
+If the script is unavailable, run the same teardown from a shell:
 
 ```bash
 # 1. Destroy the agent runtime stack (only if §8 was run)
 bash test/integration/destroy-agent.sh
 
 # 2. AgentCore payments resources require boto3 calls — see §10 of the
-#    notebook for the exact API sequence. Delete the instrument first,
+#    script for the exact API sequence. Delete the instrument first,
 #    then the connector, manager, and credential provider.
 ```
 

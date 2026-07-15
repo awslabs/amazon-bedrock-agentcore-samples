@@ -1,0 +1,9 @@
+# Notebook dependencies for pay-for-x402-secure-data. The agent container
+# pins its own floors in agent/container/requirements.txt; these mirror them
+# so the notebook can build and run the same agent locally.
+bedrock-agentcore[strands-agents]>=1.14.0
+strands-agents>=1.42.0
+boto3>=1.43.24
+botocore>=1.43.24
+requests>=2.32.0
+python-dotenv>=1.0.0
