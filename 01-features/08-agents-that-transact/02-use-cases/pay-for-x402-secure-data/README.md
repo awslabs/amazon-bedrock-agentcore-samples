@@ -127,17 +127,14 @@ deterministically.
 
 ## Payment Protocol Availability
 
-AgentCore payments supports multiple wallet providers. The wire format (x402
-for crypto settlement) is an implementation detail. The agent code in this use
-case does not change based on provider — the service picks the right signer
-from the connector tied to the instrument. This use case wires the Coinbase
-CDP provider; the Stripe-via-Privy provider follows the same shape (see the
-sibling `pay-for-api-agent` use case for a two-provider walkthrough).
+AgentCore payments manages the wallet and signing keys behind a connector, so
+the agent code does not change based on the wallet provider — the service picks
+the right signer from the connector tied to the instrument. This use case wires
+the **Coinbase CDP** provider.
 
 | Wallet Provider | Connector Type | Status | Notes |
 |:----------------|:---------------|:-------|:------|
 | **Coinbase CDP** | `CoinbaseCDP` | ✅ Available | API Key ID, API Key Secret, Wallet Secret. **Enable "Delegated signing"** under Project → Wallet → Embedded Wallets → Policies (project layer), then grant the per-wallet delegation in the Coinbase Wallet Hub (§5) before use. |
-| **Stripe** (via Privy) | `StripePrivy` | ✅ Available | Not wired in this use case. See the sibling `pay-for-api-agent` use case for the Privy setup. |
 
 ---
 
@@ -508,4 +505,4 @@ Public AgentCore payments documentation:
 - [Connect to Bazaar](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-connect-bazaar.html) — make a service discoverable through the AgentCore Registry
 
 Announcement:
-[Agents that transact — Introducing Amazon Bedrock AgentCore payments, built with Coinbase and Stripe](https://aws.amazon.com/blogs/machine-learning/agents-that-transact-introducing-amazon-bedrock-agentcore-payments-built-with-coinbase-and-stripe/)
+[Agents that transact — Introducing Amazon Bedrock AgentCore payments](https://aws.amazon.com/blogs/machine-learning/agents-that-transact-introducing-amazon-bedrock-agentcore-payments-built-with-coinbase-and-stripe/)
