@@ -110,29 +110,25 @@ logger.info("✅ Web search tool ready")
 #
 
 
-from botocore.exceptions import ClientError  # noqa: E402
-
 # Initialize Memory Client
 client = MemoryClient(region_name=REGION)
 memory_name = "PersonalAgentMemory"
 
+# Initialize before the try so the error handler can reference it safely even if
+# creation fails before assignment (otherwise `if memory_id` raises NameError).
+memory_id = None
 try:
-    # Create memory resource without strategies (thus only access to short-term memory)
-    memory = client.create_memory_and_wait(
+    # create_or_get_memory is idempotent: creates the short-term memory (waiting for
+    # ACTIVE) or returns the existing one on a re-run, replacing the manual
+    # create/except/list-and-match fallback.
+    memory = client.create_or_get_memory(
         name=memory_name,
         strategies=[],  # No strategies for short-term memory
         description="Short-term memory for personal agent",
         event_expiry_days=7,  # Retention period for short-term memory. This can be upto 365 days.
     )
     memory_id = memory["id"]
-    logger.info(f"✅ Created memory: {memory_id}")
-except ClientError as e:
-    logger.info(f"❌ ERROR: {e}")
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-        # If memory already exists, retrieve its ID
-        memories = client.list_memories()
-        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
-        logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
+    logger.info(f"✅ Memory ready: {memory_id}")
 except Exception as e:
     # Show any errors during memory creation
     logger.error(f"❌ ERROR: {e}")

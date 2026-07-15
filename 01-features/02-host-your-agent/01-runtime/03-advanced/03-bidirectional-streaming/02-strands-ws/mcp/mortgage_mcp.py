@@ -101,9 +101,7 @@ def calculate_mortgage_payment(
     # Calculate monthly payment using mortgage formula
     if monthly_rate > 0:
         monthly_payment = (
-            principal
-            * (monthly_rate * (1 + monthly_rate) ** num_payments)
-            / ((1 + monthly_rate) ** num_payments - 1)
+            principal * (monthly_rate * (1 + monthly_rate) ** num_payments) / ((1 + monthly_rate) ** num_payments - 1)
         )
     else:
         monthly_payment = principal / num_payments
@@ -116,9 +114,7 @@ def calculate_mortgage_payment(
         "loan_details": {
             "home_price": loan_amount,
             "down_payment": down_payment,
-            "down_payment_percent": (down_payment / loan_amount * 100)
-            if loan_amount > 0
-            else 0,
+            "down_payment_percent": (down_payment / loan_amount * 100) if loan_amount > 0 else 0,
             "loan_amount": principal,
             "interest_rate": interest_rate,
             "loan_term_years": loan_term_years,
@@ -127,9 +123,7 @@ def calculate_mortgage_payment(
             "principal_and_interest": round(monthly_payment, 2),
             "property_tax": round(loan_amount * 0.012 / 12, 2),
             "homeowners_insurance": round(loan_amount * 0.005 / 12, 2),
-            "pmi": round(principal * 0.005 / 12, 2)
-            if down_payment < loan_amount * 0.2
-            else 0,
+            "pmi": round(principal * 0.005 / 12, 2) if down_payment < loan_amount * 0.2 else 0,
             "total_monthly": round(
                 monthly_payment
                 + (loan_amount * 0.012 / 12)
@@ -149,9 +143,7 @@ def calculate_mortgage_payment(
     return json.dumps(response, indent=2)
 
 
-def check_mortgage_eligibility(
-    customer_id: str, annual_income: float, monthly_debts: float, credit_score: int
-) -> str:
+def check_mortgage_eligibility(customer_id: str, annual_income: float, monthly_debts: float, credit_score: int) -> str:
     """
     Check mortgage eligibility and pre-qualification amount.
 
@@ -165,9 +157,7 @@ def check_mortgage_eligibility(
         Mortgage eligibility assessment
     """
     monthly_income = annual_income / 12
-    debt_to_income = (
-        (monthly_debts / monthly_income * 100) if monthly_income > 0 else 100
-    )
+    debt_to_income = (monthly_debts / monthly_income * 100) if monthly_income > 0 else 100
 
     # Determine eligibility
     eligible = credit_score >= 620 and debt_to_income <= 43
@@ -181,11 +171,7 @@ def check_mortgage_eligibility(
         "customer_id": customer_id,
         "eligibility": {
             "eligible": eligible,
-            "confidence": "high"
-            if credit_score >= 740
-            else "medium"
-            if credit_score >= 670
-            else "low",
+            "confidence": "high" if credit_score >= 740 else "medium" if credit_score >= 670 else "low",
             "credit_score": credit_score,
             "credit_tier": "Excellent"
             if credit_score >= 740
@@ -389,9 +375,7 @@ async def main():
     """Run the MCP server"""
     logger.info("Starting Mortgage Tools MCP Server")
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream, write_stream, server.create_initialization_options()
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 if __name__ == "__main__":

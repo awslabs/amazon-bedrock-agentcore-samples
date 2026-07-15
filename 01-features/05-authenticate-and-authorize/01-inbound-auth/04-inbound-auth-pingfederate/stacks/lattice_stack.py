@@ -40,9 +40,7 @@ class LatticeStack(Stack):
             description="VPC Lattice resource gateway security group",
             allow_all_outbound=True,
         )
-        gw_sg.add_ingress_rule(
-            ec2.Peer.ipv4(vpc.vpc_cidr_block), ec2.Port.tcp(443), "HTTPS from VPC"
-        )
+        gw_sg.add_ingress_rule(ec2.Peer.ipv4(vpc.vpc_cidr_block), ec2.Port.tcp(443), "HTTPS from VPC")
 
         # Resource Gateway — place ENIs in the private subnets of the VPC where PingFederate runs.
         private_subnet_ids = [s.subnet_id for s in vpc.private_subnets]

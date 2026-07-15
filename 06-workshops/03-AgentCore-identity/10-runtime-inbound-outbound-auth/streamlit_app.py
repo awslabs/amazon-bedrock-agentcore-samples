@@ -43,13 +43,9 @@ def _find_project_dir() -> str:
     """Find the agentcore project directory (subdirectory containing agentcore/)."""
     for entry in os.listdir(SAMPLE_DIR):
         candidate = os.path.join(SAMPLE_DIR, entry)
-        if os.path.isdir(candidate) and os.path.isdir(
-            os.path.join(candidate, "agentcore")
-        ):
+        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
             return candidate
-    raise FileNotFoundError(
-        "No agentcore project directory found. Run 'agentcore create' first."
-    )
+    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
 def _find_in_json(obj, key):
@@ -77,9 +73,7 @@ def _resolve_agent_arn() -> str:
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError(
-            "No deployed-state.json found. Run 'agentcore deploy -y' first."
-        )
+        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
     with open(state_file) as f:
         state = json.load(f)
     arn = _find_in_json(state, "runtimeArn")
@@ -106,11 +100,7 @@ def _parse_event_stream(response: dict) -> str:
     """Extract text from the boto3 EventStream response."""
     parts: list[str] = []
     for event in response.get("response", []):
-        raw = (
-            event
-            if isinstance(event, bytes)
-            else event.get("chunk", {}).get("bytes", b"")
-        )
+        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -134,9 +124,7 @@ def _parse_event_stream(response: dict) -> str:
     return "\n".join(parts) if parts else "(no response)"
 
 
-def _invoke_agent(
-    agent_arn: str, region: str, prompt: str, bearer_token: str | None = None
-) -> dict:
+def _invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | None = None) -> dict:
     """
     Invoke the agent runtime, optionally with a bearer token.
 
@@ -151,9 +139,7 @@ def _invoke_agent(
             request.headers["Authorization"] = f"Bearer {bearer_token}"
 
         handler = _inject_bearer
-        client.meta.events.register(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", handler
-        )
+        client.meta.events.register("before-send.bedrock-agentcore.InvokeAgentRuntime", handler)
 
     t0 = time.time()
     try:
@@ -179,15 +165,11 @@ def _invoke_agent(
             "text": None,
             "elapsed": elapsed,
             "error": f"{type(exc).__name__}: {exc}",
-            "status_code": getattr(exc, "response", {})
-            .get("ResponseMetadata", {})
-            .get("HTTPStatusCode"),
+            "status_code": getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode"),
         }
     finally:
         if handler:
-            client.meta.events.unregister(
-                "before-send.bedrock-agentcore.InvokeAgentRuntime", handler
-            )
+            client.meta.events.unregister("before-send.bedrock-agentcore.InvokeAgentRuntime", handler)
 
 
 def _format_response(text: str) -> str:
@@ -318,10 +300,7 @@ if not st.session_state.logged_in:
         )
 
         if not config:
-            st.error(
-                "**cognito_config.json not found.** "
-                "Run `python setup_cognito.py` before using this app."
-            )
+            st.error("**cognito_config.json not found.** Run `python setup_cognito.py` before using this app.")
             st.stop()
 
         # Show any previous login error
@@ -481,8 +460,7 @@ if prompt_to_send:
                     st.session_state.agent_arn,
                     st.session_state.region,
                     prompt_to_send,
-                    bearer_token=st.session_state.get("bearer_input", "").strip()
-                    or None,
+                    bearer_token=st.session_state.get("bearer_input", "").strip() or None,
                 )
 
             truncated = st.session_state.jwt_token[:20] + "..."

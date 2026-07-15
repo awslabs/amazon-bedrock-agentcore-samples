@@ -41,13 +41,9 @@ def _find_project_dir() -> str:
     base = os.path.dirname(os.path.abspath(__file__))
     for entry in os.listdir(base):
         candidate = os.path.join(base, entry)
-        if os.path.isdir(candidate) and os.path.isdir(
-            os.path.join(candidate, "agentcore")
-        ):
+        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
             return candidate
-    raise FileNotFoundError(
-        "No agentcore project directory found. Run 'agentcore create' first."
-    )
+    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
 def get_agent_arn(region: str) -> str:
@@ -59,9 +55,7 @@ def get_agent_arn(region: str) -> str:
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError(
-            "No deployed-state.json found. Run 'agentcore deploy -y' first."
-        )
+        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
     with open(state_file) as f:
         state = json.load(f)
 
@@ -84,20 +78,14 @@ def get_agent_arn(region: str) -> str:
     arn = _find_arn(state)
     if arn:
         return arn
-    raise ValueError(
-        "No deployed agent found in deployed-state.json. Run 'agentcore deploy -y' first."
-    )
+    raise ValueError("No deployed agent found in deployed-state.json. Run 'agentcore deploy -y' first.")
 
 
 def parse_event_stream(response: dict) -> str:
     """Extract text from the boto3 EventStream response."""
     parts = []
     for event in response.get("response", []):
-        raw = (
-            event
-            if isinstance(event, bytes)
-            else event.get("chunk", {}).get("bytes", b"")
-        )
+        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -167,18 +155,14 @@ def main():
         def _inject_bearer(request, **kwargs):
             request.headers["Authorization"] = f"Bearer {bearer_token}"
 
-        client.meta.events.register(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
-        )
+        client.meta.events.register("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
         resp = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             runtimeUserId=config["username"],
             qualifier="DEFAULT",
             payload=json.dumps({"prompt": prompt}),
         )
-        client.meta.events.unregister(
-            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
-        )
+        client.meta.events.unregister("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
         result = parse_event_stream(resp)
         print(f"\nAgent response:\n{result}")
     except Exception as exc:

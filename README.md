@@ -65,7 +65,7 @@ Focused examples for individual AgentCore capabilities:
 - **[Gateway](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html)** — Convert APIs, Lambda functions, and services into MCP-compatible tools
 - **[Identity](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html)** — Agent identity and access management across AWS and third-party apps
 - **[Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)** — Managed memory infrastructure for personalized agent experiences
-- **[Tools](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html)** — Built-in Code Interpreter and Browser Tool
+- **[Tools](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html)** — Built-in Code Interpreter, Browser Tool, Web Search Tool
 - **[Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html)** — Trace, debug, and monitor agent performance with OpenTelemetry
 - **[Evaluation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html)** — Built-in and custom evaluators for on-demand and online evaluation
 - **[Policy](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)** — Fine-grained access control with Cedar policies
@@ -159,7 +159,7 @@ agentcore add online-eval      # Enable continuous evaluation
 agentcore deploy               # Sync changes to AWS
 ```
 
-Congratulations! Your agent is now running on Amazon Bedrock AgentCore Runtime.
+Congratulations! Your agent is now running on Amazon Bedrock AgentCore runtime.
 
 For the full CLI reference, see the [AgentCore CLI documentation](https://github.com/aws/agentcore-cli).
 

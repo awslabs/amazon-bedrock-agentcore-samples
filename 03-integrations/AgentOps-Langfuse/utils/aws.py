@@ -115,9 +115,7 @@ def get_ssm_parameters_by_path(
         paginator = ssm_client.get_paginator("get_parameters_by_path")
 
         # Paginate through all parameters
-        for page in paginator.paginate(
-            Path=parameter_path, Recursive=recursive, WithDecryption=decrypt
-        ):
+        for page in paginator.paginate(Path=parameter_path, Recursive=recursive, WithDecryption=decrypt):
             for param in page["Parameters"]:
                 parameters[param["Name"]] = param["Value"]
 
@@ -130,9 +128,7 @@ def get_ssm_parameters_by_path(
         print("AWS credentials not found. Please configure your credentials.")
         raise
     except Exception as e:
-        print(
-            f"Unexpected error retrieving parameters from path '{parameter_path}': {e}"
-        )
+        print(f"Unexpected error retrieving parameters from path '{parameter_path}': {e}")
         return {}
 
 

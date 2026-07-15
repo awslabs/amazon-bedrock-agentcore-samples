@@ -57,9 +57,7 @@ def read_file(file_path: str) -> str:
         return ""
 
 
-def call_tool(
-    client: CodeInterpreter, tool_name: str, arguments: Dict[str, Any]
-) -> str:
+def call_tool(client: CodeInterpreter, tool_name: str, arguments: Dict[str, Any]) -> str:
     """Invoke a sandbox tool and return the JSON-encoded result."""
     response = client.invoke(tool_name, arguments)
     for event in response["stream"]:

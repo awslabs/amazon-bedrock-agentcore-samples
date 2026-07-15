@@ -13,9 +13,7 @@ import boto3
 # Configuration - all values can be overridden via environment variables.
 # ---------------------------------------------------------------------------
 REGION = os.environ.get("AWS_REGION", "us-east-1")
-CREDENTIAL_PROVIDER = os.environ.get(
-    "CREDENTIAL_PROVIDER_NAME", "AgentCoreIdentityStandaloneProvider"
-)
+CREDENTIAL_PROVIDER = os.environ.get("CREDENTIAL_PROVIDER_NAME", "AgentCoreIdentityStandaloneProvider")
 USER_ID = os.environ.get("AGENT_USER_ID", "quickstart-user")
 CALLBACK_PORT = int(os.environ.get("CALLBACK_PORT", "8080"))
 CALLBACK_URL = f"http://127.0.0.1:{CALLBACK_PORT}/callback"
@@ -69,8 +67,7 @@ class AppHandler(BaseHTTPRequestHandler):
             )
             self._respond(
                 200,
-                "<h1>Authorization Complete!</h1>"
-                "<p>Token stored in AgentCore Identity. You can close this tab.</p>",
+                "<h1>Authorization Complete!</h1><p>Token stored in AgentCore Identity. You can close this tab.</p>",
             )
             print(f"[INFO]  Session bound for session_id={session_id[:20]}...")
             # Signal the agent's polling loop that authorization is done.
@@ -184,9 +181,7 @@ def run_agent():
 
     access_token = response.get("accessToken")
     if not access_token:
-        print(
-            "[ERROR] No access token received. Re-run and complete browser authorization."
-        )
+        print("[ERROR] No access token received. Re-run and complete browser authorization.")
         sys.exit(1)
 
     # The agent now has an OAuth access token for the user.

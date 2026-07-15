@@ -68,9 +68,7 @@ def convert_currency(amount: float, from_currency: str, to_currency: str) -> str
         results = ddgs_search_with_delay(query, max_results=2)
         if not results:
             return f"Could not find exchange rate for {from_currency} to {to_currency}."
-        formatted_results = [
-            f"Currency conversion: {amount} {from_currency} to {to_currency}\n"
-        ]
+        formatted_results = [f"Currency conversion: {amount} {from_currency} to {to_currency}\n"]
         for i, result in enumerate(results, 1):
             formatted_results.append(
                 f"{i}. {result.get('title', 'No title')}\n"

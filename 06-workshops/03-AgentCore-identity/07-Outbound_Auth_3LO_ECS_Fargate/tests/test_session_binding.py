@@ -20,9 +20,7 @@ class TestSessionBindingEndpoint:
     def test_session_binding_success(self, oauth_client):
         with (
             patch("backend.shared.alb_auth.verify_alb_jwt") as mock_verify,
-            patch(
-                "botocore.client.BaseClient._make_api_call", new=mock_bedrock_api_call
-            ),
+            patch("botocore.client.BaseClient._make_api_call", new=mock_bedrock_api_call),
         ):
             mock_verify.return_value = {
                 "sub": "test-user-id",

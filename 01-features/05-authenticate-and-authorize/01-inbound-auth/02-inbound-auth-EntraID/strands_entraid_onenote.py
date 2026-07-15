@@ -210,9 +210,7 @@ async def agent_task(user_message: str):
         needs_auth = any(kw.lower() in response_text.lower() for kw in auth_keywords)
 
         if needs_auth:
-            await queue.put(
-                f"Authentication required for {tool_name} access. Starting authorization flow..."
-            )
+            await queue.put(f"Authentication required for {tool_name} access. Starting authorization flow...")
             try:
                 entra_access_token = await need_token_3LO_async(access_token=None)
                 await queue.put("Authentication successful! Retrying...")

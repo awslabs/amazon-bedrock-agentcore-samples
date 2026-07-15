@@ -32,12 +32,8 @@ class S2sSessionManager:
         self.region = region
 
         # Audio and output queues with size limits to prevent memory issues
-        self.audio_input_queue = asyncio.Queue(
-            maxsize=100
-        )  # Limit to 100 audio chunks (~2-3 seconds of audio)
-        self.output_queue = asyncio.Queue(
-            maxsize=200
-        )  # Larger output queue for responses
+        self.audio_input_queue = asyncio.Queue(maxsize=100)  # Limit to 100 audio chunks (~2-3 seconds of audio)
+        self.output_queue = asyncio.Queue(maxsize=200)  # Larger output queue for responses
 
         self.response_task = None
         self.stream = None
@@ -116,12 +112,8 @@ class S2sSessionManager:
 
         try:
             # Initialize the stream
-            self.stream = (
-                await self.bedrock_client.invoke_model_with_bidirectional_stream(
-                    InvokeModelWithBidirectionalStreamOperationInput(
-                        model_id=self.model_id
-                    )
-                )
+            self.stream = await self.bedrock_client.invoke_model_with_bidirectional_stream(
+                InvokeModelWithBidirectionalStreamOperationInput(model_id=self.model_id)
             )
             self.is_active = True
 
@@ -185,11 +177,7 @@ class S2sSessionManager:
                 audio_event = S2sEvent.audio_input(
                     prompt_name,
                     content_name,
-                    (
-                        audio_bytes.decode("utf-8")
-                        if isinstance(audio_bytes, bytes)
-                        else audio_bytes
-                    ),
+                    (audio_bytes.decode("utf-8") if isinstance(audio_bytes, bytes) else audio_bytes),
                 )
 
                 # Send the event
@@ -214,9 +202,7 @@ class S2sSessionManager:
         except asyncio.QueueFull:
             # Queue is full - drop this chunk to prevent backpressure
             # This is acceptable for real-time audio streaming
-            logger.warning(
-                "Audio input queue full, dropping audio chunk to prevent backpressure"
-            )
+            logger.warning("Audio input queue full, dropping audio chunk to prevent backpressure")
             pass
 
     async def _process_responses(self):
@@ -231,9 +217,7 @@ class S2sSessionManager:
                     logger.debug(f"Received event: {response_data}")
 
                     json_data = json.loads(response_data)
-                    json_data["timestamp"] = int(
-                        time.time() * 1000
-                    )  # Milliseconds since epoch
+                    json_data["timestamp"] = int(time.time() * 1000)  # Milliseconds since epoch
 
                     event_name = None
                     if "event" in json_data:
@@ -251,18 +235,11 @@ class S2sSessionManager:
                             self.toolUseContent = json_data["event"]["toolUse"]
                             self.toolName = json_data["event"]["toolUse"]["toolName"]
                             self.toolUseId = json_data["event"]["toolUse"]["toolUseId"]
-                            logger.info(
-                                f"Tool use detected: {self.toolName}, ID: {self.toolUseId}"
-                            )
+                            logger.info(f"Tool use detected: {self.toolName}, ID: {self.toolUseId}")
 
                         # Process tool use when content ends
-                        elif (
-                            event_name == "contentEnd"
-                            and json_data["event"][event_name].get("type") == "TOOL"
-                        ):
-                            prompt_name = json_data["event"]["contentEnd"].get(
-                                "promptName"
-                            )
+                        elif event_name == "contentEnd" and json_data["event"][event_name].get("type") == "TOOL":
+                            prompt_name = json_data["event"]["contentEnd"].get("promptName")
                             logger.debug("Starting tool processing in background")
                             # Process tool in background task to avoid blocking
                             task = asyncio.create_task(
@@ -283,9 +260,7 @@ class S2sSessionManager:
                     except asyncio.QueueFull:
                         # Queue is full - log warning but don't break the stream
                         # This can happen during high-throughput audio responses
-                        logger.warning(
-                            "Output queue full, dropping response to prevent backpressure"
-                        )
+                        logger.warning("Output queue full, dropping response to prevent backpressure")
                         # Continue processing instead of breaking the stream
 
             except json.JSONDecodeError as ex:
@@ -303,18 +278,10 @@ class S2sSessionManager:
                 if "ValidationException" in error_str:
                     logger.error(f"Bedrock validation error: {error_str}")
                     # Send error to client but don't break the stream
-                    await self.output_queue.put(
-                        {
-                            "event": {
-                                "error": {"message": f"Validation error: {error_str}"}
-                            }
-                        }
-                    )
+                    await self.output_queue.put({"event": {"error": {"message": f"Validation error: {error_str}"}}})
                     continue
                 else:
-                    logger.error(
-                        f"Error receiving response from Bedrock: {e}", exc_info=True
-                    )
+                    logger.error(f"Error receiving response from Bedrock: {e}", exc_info=True)
                     # Only break on serious errors
                     break
 
@@ -322,22 +289,16 @@ class S2sSessionManager:
         self.is_active = False
         await self.close()
 
-    async def _handle_tool_processing(
-        self, prompt_name, tool_name, tool_use_content, tool_use_id
-    ):
+    async def _handle_tool_processing(self, prompt_name, tool_name, tool_use_content, tool_use_id):
         """Handle tool processing in background without blocking event processing"""
         try:
-            logger.info(
-                f"[Tool Processing] Starting: {tool_name} with ID: {tool_use_id}"
-            )
+            logger.info(f"[Tool Processing] Starting: {tool_name} with ID: {tool_use_id}")
             toolResult = await self.processToolUse(tool_name, tool_use_content)
             logger.info(f"[Tool Processing] Completed: {tool_name}")
 
             # Send tool start event
             toolContent = str(uuid.uuid4())
-            tool_start_event = S2sEvent.content_start_tool(
-                prompt_name, toolContent, tool_use_id
-            )
+            tool_start_event = S2sEvent.content_start_tool(prompt_name, toolContent, tool_use_id)
             await self.send_raw_event(tool_start_event)
 
             # Also send tool start event to WebSocket client
@@ -351,9 +312,7 @@ class S2sSessionManager:
             else:
                 content_json_string = toolResult
 
-            tool_result_event = S2sEvent.text_input_tool(
-                prompt_name, toolContent, content_json_string
-            )
+            tool_result_event = S2sEvent.text_input_tool(prompt_name, toolContent, content_json_string)
             logger.debug(f"Tool result: {tool_result_event}")
             await self.send_raw_event(tool_result_event)
 
@@ -383,19 +342,14 @@ class S2sSessionManager:
         try:
             if toolUseContent.get("content"):
                 # Parse the JSON string in the content field
-                content = toolUseContent.get(
-                    "content"
-                )  # Pass the JSON string directly to the agent
+                content = toolUseContent.get("content")  # Pass the JSON string directly to the agent
                 logger.debug(f"Extracted query: {content}")
 
             # Simple toolUse to get system time in UTC
             if toolName == "getdatetool":
                 from datetime import datetime, timezone
 
-                result = (
-                    datetime.now(timezone.utc).strftime("%A, %Y-%m-%d %H:%M:%S")
-                    + " in UTC"
-                )
+                result = datetime.now(timezone.utc).strftime("%A, %Y-%m-%d %H:%M:%S") + " in UTC"
 
             if not result:
                 result = "no result found"

@@ -44,9 +44,7 @@ def main():
 
         # Step 3: Show features
         console.print("\n[bold green]Viewer Features:[/bold green]")
-        console.print(
-            "• Default display: 1600×900 (configured via displayLayout callback)"
-        )
+        console.print("• Default display: 1600×900 (configured via displayLayout callback)")
         console.print("• Size options: 720p, 900p, 1080p, 1440p")
         console.print("• Real-time display updates")
         console.print("• Take/Release control functionality")

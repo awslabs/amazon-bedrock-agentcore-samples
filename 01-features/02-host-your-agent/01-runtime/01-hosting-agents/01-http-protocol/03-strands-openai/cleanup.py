@@ -25,9 +25,7 @@ def main():
     agent_name = config["agent_name"]
     runtime_id = config["runtime_id"]
     region = config["region"]
-    account_id = (
-        Session(region_name=region).client("sts").get_caller_identity()["Account"]
-    )
+    account_id = Session(region_name=region).client("sts").get_caller_identity()["Account"]
 
     control = boto3.client("bedrock-agentcore-control", region_name=region)
     iam = boto3.client("iam", region_name=region)
@@ -43,9 +41,7 @@ def main():
             if name == "DEFAULT":
                 continue
             print(f"  Deleting endpoint: {name}")
-            control.delete_agent_runtime_endpoint(
-                agentRuntimeId=runtime_id, endpointName=name
-            )
+            control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=name)
         if endpoints.get("runtimeEndpoints"):
             print("  Waiting for endpoint deletion...")
             time.sleep(30)

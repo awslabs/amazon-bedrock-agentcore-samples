@@ -223,10 +223,7 @@ def deploy_runtime(
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     while True:
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
-        if (
-            eps.get("runtimeEndpoints")
-            and eps["runtimeEndpoints"][0]["status"] == "READY"
-        ):
+        if eps.get("runtimeEndpoints") and eps["runtimeEndpoints"][0]["status"] == "READY":
             break
         time.sleep(15)
 

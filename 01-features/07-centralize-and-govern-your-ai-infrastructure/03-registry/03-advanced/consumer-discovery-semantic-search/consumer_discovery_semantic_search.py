@@ -209,9 +209,7 @@ else:
 
 # ── 3.8 Cross-Type Discovery ──────────────────────────────────────────────────
 print("\n=== 3.8 Cross-Type Discovery: Full Fulfillment Workflow ===")
-response = search(
-    "fulfill an e-commerce order end to end — inventory, payment, and shipping"
-)
+response = search("fulfill an e-commerce order end to end — inventory, payment, and shipping")
 records = response.get("registryRecords", [])
 
 by_protocol = {}
@@ -245,14 +243,10 @@ print("\n=== 3.12 Metadata-Filtered Search ===")
 results = search("payment", filters={"descriptorType": {"$eq": "MCP"}})
 
 # $ne — exclude MCP
-results = search(
-    "shipping inventory refund", filters={"descriptorType": {"$ne": "MCP"}}
-)
+results = search("shipping inventory refund", filters={"descriptorType": {"$ne": "MCP"}})
 
 # $in — MCP or A2A
-results = search(
-    "order management", filters={"descriptorType": {"$in": ["MCP", "A2A"]}}
-)
+results = search("order management", filters={"descriptorType": {"$in": ["MCP", "A2A"]}})
 
 # version filter
 results = search("order", filters={"version": {"$eq": "1.0"}})

@@ -217,9 +217,7 @@ class ChatManager:
             messages_to_show = messages_to_show[:-1]
 
         for message in messages_to_show:
-            bubble_class = (
-                "user-bubble" if message["role"] == "user" else "assistant-bubble"
-            )
+            bubble_class = "user-bubble" if message["role"] == "user" else "assistant-bubble"
             emoji = "🧑‍💻" if message["role"] == "user" else "🤖"
 
             with st.chat_message(message["role"]):
@@ -247,9 +245,7 @@ class ChatManager:
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         with st.chat_message("user"):
-            create_safe_markdown_text(
-                f'<span class="user-bubble">🧑‍💻 {prompt}</span>', st
-            )
+            create_safe_markdown_text(f'<span class="user-bubble">🧑‍💻 {prompt}</span>', st)
             st.session_state["pending_assistant"] = True
 
         with st.chat_message("assistant"):
@@ -321,9 +317,7 @@ class ChatManager:
             st.session_state.messages = [{"role": "user", "content": default_prompt}]
 
             with st.chat_message("user"):
-                create_safe_markdown_text(
-                    f'<span class="user-bubble">🧑‍💻 {default_prompt}</span>', st
-                )
+                create_safe_markdown_text(f'<span class="user-bubble">🧑‍💻 {default_prompt}</span>', st)
                 st.session_state["pending_assistant"] = True
 
             with st.chat_message("assistant"):
@@ -357,9 +351,7 @@ class ChatManager:
                         if chunk_count % 3 == 0:
                             accumulated_response += ""
 
-                        clickable_streaming_text = make_urls_clickable(
-                            accumulated_response
-                        )
+                        clickable_streaming_text = make_urls_clickable(accumulated_response)
 
                         create_safe_markdown_text(
                             f'<div class="assistant-bubble streaming typing-cursor">🤖 {clickable_streaming_text}</div>',

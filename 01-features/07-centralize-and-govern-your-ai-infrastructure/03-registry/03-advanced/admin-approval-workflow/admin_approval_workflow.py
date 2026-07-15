@@ -111,9 +111,7 @@ if SKIP_LAYER_BUILD:
 
 cmd += ["--region", AWS_REGION]
 
-process = subprocess.Popen(
-    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-)
+process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
 for line in process.stdout:
     print(line, end="")
 process.wait()
@@ -154,9 +152,7 @@ a2a_resp = cp_client.create_registry_record(
     name="loan_underwriting_agent",
     description="Assesses a loan application and returns an approval decision with risk score and recommended terms.",
     descriptorType="A2A",
-    descriptors={
-        "a2a": {"agentCard": {"schemaVersion": "0.3", "inlineContent": a2a_agent_card}}
-    },
+    descriptors={"a2a": {"agentCard": {"schemaVersion": "0.3", "inlineContent": a2a_agent_card}}},
     recordVersion="1.0",
 )
 
@@ -171,9 +167,7 @@ print(
 
 wait_for_record_draft(cp_client, REGISTRY_ID, A2A_RECORD_ID)
 
-submit_resp = cp_client.submit_registry_record_for_approval(
-    registryId=REGISTRY_ID, recordId=A2A_RECORD_ID
-)
+submit_resp = cp_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=A2A_RECORD_ID)
 metadata = submit_resp.get("ResponseMetadata", {})
 print(
     f"Record submitted for approval "
@@ -240,9 +234,7 @@ print(
 
 wait_for_record_draft(cp_client, REGISTRY_ID, MCP_RECORD_ID)
 
-submit_resp = cp_client.submit_registry_record_for_approval(
-    registryId=REGISTRY_ID, recordId=MCP_RECORD_ID
-)
+submit_resp = cp_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=MCP_RECORD_ID)
 metadata = submit_resp.get("ResponseMetadata", {})
 print(
     f"Record submitted for approval "
@@ -283,9 +275,7 @@ print(
 
 wait_for_record_draft(cp_client, REGISTRY_ID, CUSTOM_RECORD_ID)
 
-submit_resp = cp_client.submit_registry_record_for_approval(
-    registryId=REGISTRY_ID, recordId=CUSTOM_RECORD_ID
-)
+submit_resp = cp_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=CUSTOM_RECORD_ID)
 metadata = submit_resp.get("ResponseMetadata", {})
 print(
     f"Record submitted for approval "
@@ -338,16 +328,10 @@ if process.returncode != 0:
 def cleanup_registry(registry_id):
     try:
         cp_client.get_registry(registryId=registry_id)
-        records_list = cp_client.list_registry_records(registryId=registry_id)[
-            "registryRecords"
-        ]
-        print(
-            f"{len(records_list)} records found in the registry. Deleting all records"
-        )
+        records_list = cp_client.list_registry_records(registryId=registry_id)["registryRecords"]
+        print(f"{len(records_list)} records found in the registry. Deleting all records")
         for record in records_list:
-            cp_client.delete_registry_record(
-                registryId=registry_id, recordId=record["recordId"]
-            )
+            cp_client.delete_registry_record(registryId=registry_id, recordId=record["recordId"])
         print("Deleting Registry")
         cp_client.delete_registry(registryId=registry_id)
     except cp_client.exceptions.ResourceNotFoundException:

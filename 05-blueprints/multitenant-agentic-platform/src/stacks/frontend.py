@@ -48,9 +48,7 @@ class FrontendConstruct(Construct):
         )
 
         # Origin Access Identity for CloudFront
-        oai = cloudfront.OriginAccessIdentity(
-            self, "FrontendOAI", comment="OAI for Bedrock Agent Dashboard"
-        )
+        oai = cloudfront.OriginAccessIdentity(self, "FrontendOAI", comment="OAI for Bedrock Agent Dashboard")
         self.bucket.grant_read(oai)
 
         # CloudFront distribution
@@ -116,9 +114,7 @@ class FrontendConstruct(Construct):
             function_name="frontend-config-injector",
             runtime=lambda_.Runtime.PYTHON_3_10,
             handler="handler.lambda_handler",
-            code=lambda_.Code.from_asset(
-                os.path.join(cdk_app_dir, "lambda_functions/config_injector")
-            ),
+            code=lambda_.Code.from_asset(os.path.join(cdk_app_dir, "lambda_functions/config_injector")),
             timeout=Duration.seconds(60),
             log_group=config_injector_log_group,
             memory_size=256,
@@ -141,9 +137,7 @@ class FrontendConstruct(Construct):
         config_injector.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["cloudfront:CreateInvalidation"],
-                resources=[
-                    f"arn:aws:cloudfront::{account_id}:distribution/{self.distribution.distribution_id}"
-                ],
+                resources=[f"arn:aws:cloudfront::{account_id}:distribution/{self.distribution.distribution_id}"],
             )
         )
 

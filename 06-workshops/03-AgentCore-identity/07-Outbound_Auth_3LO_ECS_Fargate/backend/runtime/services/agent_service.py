@@ -59,13 +59,9 @@ class AgentService:
             workload_access_token=workload_access_token,
         )
 
-        model = BedrockModel(
-            region_name=self.aws_region, model_id=self.inference_profile_id
-        )
+        model = BedrockModel(region_name=self.aws_region, model_id=self.inference_profile_id)
 
-        return agent_factory(
-            session_manager=session_manager, model=model, github_config=github_config
-        )
+        return agent_factory(session_manager=session_manager, model=model, github_config=github_config)
 
     async def stream_response(
         self,

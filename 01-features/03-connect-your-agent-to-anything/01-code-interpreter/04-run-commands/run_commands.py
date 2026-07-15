@@ -125,12 +125,8 @@ def main():
     data_endpoint = endpoints.get_data_plane_endpoint(REGION)
     ctrl_endpoint = endpoints.get_control_plane_endpoint(REGION)
 
-    cp_client = boto3.client(
-        "bedrock-agentcore-control", region_name=REGION, endpoint_url=ctrl_endpoint
-    )
-    dp_client = boto3.client(
-        "bedrock-agentcore", region_name=REGION, endpoint_url=data_endpoint
-    )
+    cp_client = boto3.client("bedrock-agentcore-control", region_name=REGION, endpoint_url=ctrl_endpoint)
+    dp_client = boto3.client("bedrock-agentcore", region_name=REGION, endpoint_url=data_endpoint)
 
     # ── 1. Create Code Interpreter ─────────────────────────────────────────────
     unique_name = f"run_cmds_{int(time.time()) % 100000}"
@@ -251,9 +247,7 @@ def main():
     finally:
         # ── 6. Stop session and delete interpreter ─────────────────────────────
         print("\n[6] Stopping session...")
-        dp_client.stop_code_interpreter_session(
-            codeInterpreterIdentifier=interpreter_id, sessionId=session_id
-        )
+        dp_client.stop_code_interpreter_session(codeInterpreterIdentifier=interpreter_id, sessionId=session_id)
         print("  Session stopped.")
 
         print("  Deleting Code Interpreter...")

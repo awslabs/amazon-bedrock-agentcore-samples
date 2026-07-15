@@ -7,9 +7,7 @@ from dynamo_utils import FinanceDB
 mcp = FastMCP(name="ElicitationMCP")
 
 # AWS_REGION is reliably set in all AgentCore/Lambda containers
-_region = (
-    os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
-)
+_region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 db = FinanceDB(region_name=_region)
 
 
@@ -63,15 +61,11 @@ async def add_expense_interactive(user_alias: str, ctx: Context) -> str:
     if not isinstance(result, AcceptedElicitation) or result.data.confirm != "Yes":
         return "Expense entry cancelled."
 
-    return db.add_transaction(
-        user_alias, "expense", -abs(amount), description, category
-    )
+    return db.add_transaction(user_alias, "expense", -abs(amount), description, category)
 
 
 @mcp.tool()
-def add_expense(
-    user_alias: str, amount: float, description: str, category: str = "other"
-) -> str:
+def add_expense(user_alias: str, amount: float, description: str, category: str = "other") -> str:
     """Add a new expense transaction.
 
     Args:
@@ -80,9 +74,7 @@ def add_expense(
         description: Description of the expense
         category: Expense category (food, transport, bills, entertainment, other)
     """
-    return db.add_transaction(
-        user_alias, "expense", -abs(amount), description, category
-    )
+    return db.add_transaction(user_alias, "expense", -abs(amount), description, category)
 
 
 @mcp.tool()
@@ -97,10 +89,7 @@ async def analyze_spending(user_alias: str, ctx: Context) -> str:
     if not transactions:
         return f"No transactions found for {user_alias}."
 
-    lines = "\n".join(
-        f"- {t['description']} (${abs(float(t['amount'])):.2f}, {t['category']})"
-        for t in transactions
-    )
+    lines = "\n".join(f"- {t['description']} (${abs(float(t['amount'])):.2f}, {t['category']})" for t in transactions)
 
     prompt = (
         f"Here are the recent expenses for a user:\n{lines}\n\n"

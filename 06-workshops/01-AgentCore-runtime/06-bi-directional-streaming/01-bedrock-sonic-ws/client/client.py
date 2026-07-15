@@ -116,9 +116,7 @@ class SonicClientHandler(BaseHTTPRequestHandler):
             # Generate new presigned URL
             base_url = f"wss://bedrock-agentcore.{self.region}.amazonaws.com/runtimes/{self.runtime_arn}/ws?qualifier={self.qualifier}"
 
-            new_url = create_presigned_url(
-                base_url, region=self.region, service=self.service, expires=self.expires
-            )
+            new_url = create_presigned_url(base_url, region=self.region, service=self.service, expires=self.expires)
 
             # Update the class variable
             SonicClientHandler.websocket_url = new_url
@@ -200,17 +198,11 @@ Examples:
         help="URL expiration time in seconds for presigned URLs (default: 3600 = 1 hour)",
     )
 
-    parser.add_argument(
-        "--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)"
-    )
+    parser.add_argument("--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)")
 
-    parser.add_argument(
-        "--port", type=int, default=8000, help="Web server port (default: 8000)"
-    )
+    parser.add_argument("--port", type=int, default=8000, help="Web server port (default: 8000)")
 
-    parser.add_argument(
-        "--no-browser", action="store_true", help="Do not automatically open browser"
-    )
+    parser.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
 
     args = parser.parse_args()
 
@@ -224,18 +216,14 @@ Examples:
     # Validate required parameters for AWS Bedrock connection
     if args.runtime_arn:
         if not args.region:
-            parser.error(
-                "--region or AWS_REGION env var is required when using --runtime-arn"
-            )
+            parser.error("--region or AWS_REGION env var is required when using --runtime-arn")
 
     print("=" * 70)
     print("🎙️ Nova Sonic Client Web Service")
     print("=" * 70)
 
     websocket_url = None
-    session_id = "".join(
-        secrets.choice(string.ascii_letters + string.digits) for _ in range(50)
-    )
+    session_id = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     is_presigned = False
 
     try:
@@ -247,9 +235,7 @@ Examples:
             print(f"🔑 Runtime ARN: {args.runtime_arn}")
             print(f"🌍 Region: {args.region}")
             print(f"🆔 Session ID: {session_id}")
-            print(
-                f"⏰ URL expires in: {args.expires} seconds ({args.expires / 60:.1f} minutes)"
-            )
+            print(f"⏰ URL expires in: {args.expires} seconds ({args.expires / 60:.1f} minutes)")
             print()
             print("🔐 Generating pre-signed URL...")
 

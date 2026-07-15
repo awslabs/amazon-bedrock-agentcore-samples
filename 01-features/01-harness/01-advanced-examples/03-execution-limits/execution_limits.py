@@ -101,9 +101,7 @@ def invoke(prompt: str, **limits) -> str:
             meta = event["metadata"]
             usage = meta.get("usage", {})
             if usage:
-                print(
-                    f"→ usage: input={usage.get('inputTokens', 0)}, output={usage.get('outputTokens', 0)}"
-                )
+                print(f"→ usage: input={usage.get('inputTokens', 0)}, output={usage.get('outputTokens', 0)}")
         elif "internalServerException" in event:
             print(f"\nError: {event['internalServerException']}")
     print()

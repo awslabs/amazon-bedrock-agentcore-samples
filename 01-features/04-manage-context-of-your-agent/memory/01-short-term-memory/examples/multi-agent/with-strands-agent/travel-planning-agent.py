@@ -354,7 +354,7 @@ response = travel_agent("Hello, I would like to book a trip from LA to Madrid. F
 
 
 response = travel_agent(
-    "I would only like to focus on the flight at the moment. direct flimid-range, city center, pool, standard room"
+    "I would only like to focus on the flight at the moment. Direct flights, mid-range price, economy class."
 )
 
 

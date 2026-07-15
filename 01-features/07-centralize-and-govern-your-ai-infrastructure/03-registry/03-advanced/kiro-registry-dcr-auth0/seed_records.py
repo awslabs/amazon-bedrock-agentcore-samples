@@ -271,9 +271,7 @@ def seed(registry_id):
 def delete_registry(registry_id):
     """Delete all records in a registry, then delete the registry itself."""
     cp = _cp_client()
-    records = cp.list_registry_records(registryId=registry_id).get(
-        "registryRecords", []
-    )
+    records = cp.list_registry_records(registryId=registry_id).get("registryRecords", [])
     for rec in records:
         rid = rec["recordId"]
         logger.info("Deleting record %s...", rid)

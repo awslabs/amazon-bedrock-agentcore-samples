@@ -81,18 +81,14 @@ try:
         name=REGISTRY_NAME,
         description=f"Agent Registry for push sync — {REGISTRY_NAME}",
     )
-    REGISTRY_ID = (
-        reg_resp.get("registryId") or reg_resp.get("registryArn", "").split("/")[-1]
-    )
+    REGISTRY_ID = reg_resp.get("registryId") or reg_resp.get("registryArn", "").split("/")[-1]
     print(f"Created registry: {REGISTRY_NAME} → ID: {REGISTRY_ID}")
 except Exception as e:
     if "already exists" in str(e).lower() or "conflict" in str(e).lower():
         regs = registry_cp.list_registries()
         for r in regs.get("registries", []):
             if r.get("name") == REGISTRY_NAME:
-                REGISTRY_ID = (
-                    r.get("registryId") or r.get("registryArn", "").split("/")[-1]
-                )
+                REGISTRY_ID = r.get("registryId") or r.get("registryArn", "").split("/")[-1]
                 break
         print(f"Registry already exists: {REGISTRY_NAME} → ID: {REGISTRY_ID}")
     else:
@@ -116,10 +112,7 @@ print(f"Using REGISTRY_ID: {REGISTRY_ID} (status: {reg_status})")
 print("\n=== 3. Create Registry Record for MCP Server ===")
 
 encoded_arn = MCP_RUNTIME_ARN.replace(":", "%3A").replace("/", "%2F")
-mcp_server_url = (
-    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com"
-    f"/runtimes/{encoded_arn}/invocations"
-)
+mcp_server_url = f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{encoded_arn}/invocations"
 
 server_schema = json.dumps(
     {
@@ -131,9 +124,7 @@ server_schema = json.dumps(
         "packages": [
             {
                 "registryType": "pip",
-                "identifier": MCP_SERVER_NAME.lower()
-                .replace(" ", "-")
-                .replace("_", "-"),
+                "identifier": MCP_SERVER_NAME.lower().replace(" ", "-").replace("_", "-"),
                 "version": "1.0.0",
                 "registryBaseUrl": "https://pypi.org",
                 "runtimeHint": "uvx",
@@ -160,9 +151,7 @@ try:
         },
     )
     RECORD_ID = (
-        rec_resp.get("recordId")
-        or rec_resp.get("registryRecordId")
-        or rec_resp.get("recordArn", "").split("/")[-1]
+        rec_resp.get("recordId") or rec_resp.get("registryRecordId") or rec_resp.get("recordArn", "").split("/")[-1]
     )
     print(f"Created record: {MCP_SERVER_NAME} → ID: {RECORD_ID} (status: DRAFT)")
 except Exception as e:
@@ -191,9 +180,7 @@ while True:
 print(f"Record {RECORD_ID} ({record.get('name', '?')}) — status: {current_status}")
 
 if current_status == "DRAFT":
-    registry_cp.submit_registry_record_for_approval(
-        registryId=REGISTRY_ID, recordId=RECORD_ID
-    )
+    registry_cp.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=RECORD_ID)
     print("Submitted for approval (DRAFT → PENDING_APPROVAL)")
     time.sleep(3)
 
@@ -233,9 +220,7 @@ acps_client = session.client("bedrock-agentcore-control", region_name=AWS_REGION
 
 try:
     wi_resp = acps_client.create_workload_identity(name=WORKLOAD_IDENTITY_NAME)
-    print(
-        f"Created workload identity: {WORKLOAD_IDENTITY_NAME} → {wi_resp.get('workloadIdentityArn', '?')}"
-    )
+    print(f"Created workload identity: {WORKLOAD_IDENTITY_NAME} → {wi_resp.get('workloadIdentityArn', '?')}")
 except Exception as e:
     if "already exists" in str(e).lower() or "conflict" in str(e).lower():
         print(f"Workload identity already exists: {WORKLOAD_IDENTITY_NAME}")
@@ -262,9 +247,7 @@ for provider_name, config in CREDENTIAL_PROVIDERS.items():
                 }
             },
         )
-        print(
-            f"Created credential provider: {provider_name} → {resp.get('credentialProviderArn', '?')}"
-        )
+        print(f"Created credential provider: {provider_name} → {resp.get('credentialProviderArn', '?')}")
     except Exception as e:
         if "already exists" in str(e).lower() or "conflict" in str(e).lower():
             print(f"Credential provider already exists: {provider_name}")
@@ -396,9 +379,7 @@ try:
 except lambda_client.exceptions.ResourceConflictException:
     lambda_client.update_function_code(FunctionName=LAMBDA_NAME, ZipFile=zip_bytes)
     time.sleep(5)
-    lambda_client.update_function_configuration(
-        FunctionName=LAMBDA_NAME, Environment={"Variables": env_vars}
-    )
+    lambda_client.update_function_configuration(FunctionName=LAMBDA_NAME, Environment={"Variables": env_vars})
     LAMBDA_ARN = f"arn:aws:lambda:{AWS_REGION}:{ACCOUNT_ID}:function:{LAMBDA_NAME}"
     print(f"Updated existing Lambda: {LAMBDA_ARN}")
 
@@ -441,12 +422,8 @@ except lambda_client.exceptions.ResourceConflictException:
 
 print("\n=== Deployment Complete ===")
 print("Registry, MCP record, Lambda, IAM role, and EventBridge rule are deployed.")
-print(
-    "When UpdateAgentRuntime CloudTrail events fire, EventBridge will trigger the Lambda."
-)
-print(
-    "The Lambda connects to the MCP server, discovers tools, and updates the registry record."
-)
+print("When UpdateAgentRuntime CloudTrail events fire, EventBridge will trigger the Lambda.")
+print("The Lambda connects to the MCP server, discovers tools, and updates the registry record.")
 
 # ── 8. Cross-Account Setup (Optional) ────────────────────────────────────────
 if CROSS_ACCOUNT_IDS:
@@ -467,9 +444,7 @@ else:
 
 # ── 9. Test Lambda (Optional) ─────────────────────────────────────────────────
 print("\n=== 9. Test Lambda (Manual Invocation) ===")
-print(
-    "To test, set TEST_RUNTIME_ID to a valid runtime ID and uncomment the block below."
-)
+print("To test, set TEST_RUNTIME_ID to a valid runtime ID and uncomment the block below.")
 TEST_RUNTIME_ID = os.environ.get("TEST_RUNTIME_ID", "")
 TEST_ACCOUNT_ID = CROSS_ACCOUNT_IDS[0] if CROSS_ACCOUNT_IDS else ACCOUNT_ID
 
@@ -517,9 +492,7 @@ try:
     )
     if streams["logStreams"]:
         stream_name = streams["logStreams"][0]["logStreamName"]
-        events = logs_client.get_log_events(
-            logGroupName=log_group, logStreamName=stream_name, limit=20
-        )
+        events = logs_client.get_log_events(logGroupName=log_group, logStreamName=stream_name, limit=20)
         for e in events["events"]:
             msg = e["message"].strip()
             if msg and not msg.startswith("REPORT") and not msg.startswith("END"):

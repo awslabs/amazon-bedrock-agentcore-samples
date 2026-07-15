@@ -38,9 +38,7 @@ def create_presigned_url(url, region=None, service="bedrock-agentcore", expires=
     https_url = url.replace("wss://", "https://")
     parsed_url = urlparse(https_url)
 
-    request = AWSRequest(
-        method="GET", url=https_url, headers={"Host": parsed_url.netloc}
-    )
+    request = AWSRequest(method="GET", url=https_url, headers={"Host": parsed_url.netloc})
     SigV4QueryAuth(credentials, service, region, expires=expires).add_auth(request)
 
     return request.url.replace("https://", "wss://")
@@ -63,9 +61,7 @@ def prepare_connection(runtime_arn, auth_type="headers", session_id=None):
     region = os.getenv("AWS_REGION", "us-east-1")
 
     if session_id is None:
-        session_id = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(50)
-        )
+        session_id = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
 
     uri = f"wss://bedrock-agentcore.{region}.amazonaws.com/runtimes/{runtime_arn}/ws?qualifier=DEFAULT"
 

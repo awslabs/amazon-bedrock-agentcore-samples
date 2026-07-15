@@ -50,9 +50,7 @@ def invoke_agent(
     boto3_response = agentcore_client.invoke_agent_runtime(**api_params)
 
     returned_session_id = (
-        boto3_response["ResponseMetadata"]["HTTPHeaders"].get(
-            "x-amzn-bedrock-agentcore-runtime-session-id"
-        )
+        boto3_response["ResponseMetadata"]["HTTPHeaders"].get("x-amzn-bedrock-agentcore-runtime-session-id")
         or boto3_response.get("runtimeSessionId")
         or session_id
     )
@@ -223,12 +221,8 @@ def invoke_and_evaluate(
     time.sleep(delay)
 
     if evaluators is None:
-        if not all(
-            [flexible_evaluators, session_only_evaluators, span_only_evaluators]
-        ):
-            raise ValueError(
-                "Must provide evaluator lists for comprehensive evaluation"
-            )
+        if not all([flexible_evaluators, session_only_evaluators, span_only_evaluators]):
+            raise ValueError("Must provide evaluator lists for comprehensive evaluation")
 
         results = evaluate_session_comprehensive(
             eval_client=eval_client,

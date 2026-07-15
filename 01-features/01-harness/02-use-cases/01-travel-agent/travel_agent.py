@@ -39,15 +39,9 @@ from utils.iam import create_harness_role, delete_harness_role
 from utils.client import get_agentcore_control_client, get_agentcore_client
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
-parser = argparse.ArgumentParser(
-    description="Travel Guide Agent — Harness use case demo"
-)
-parser.add_argument(
-    "--skip-memory", action="store_true", help="Skip memory provisioning"
-)
-parser.add_argument(
-    "--skip-cleanup", action="store_true", help="Keep resources after demo"
-)
+parser = argparse.ArgumentParser(description="Travel Guide Agent — Harness use case demo")
+parser.add_argument("--skip-memory", action="store_true", help="Skip memory provisioning")
+parser.add_argument("--skip-cleanup", action="store_true", help="Keep resources after demo")
 args = parser.parse_args()
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -215,9 +209,7 @@ try:
         if memory_id:
             for i in range(30):
                 resp = control.get_memory(memoryId=memory_id)
-                status = resp.get(
-                    "status", resp.get("memory", {}).get("status", "UNKNOWN")
-                )
+                status = resp.get("status", resp.get("memory", {}).get("status", "UNKNOWN"))
                 print(f"  [{i + 1}] {status}")
                 if status in ("ACTIVE", "READY"):
                     print("✅ Memory ready")
@@ -227,11 +219,7 @@ try:
             memory_arn = resp.get("memory", {}).get("arn") or resp.get("arn")
             control.update_harness(
                 harnessId=harness_id,
-                memory={
-                    "optionalValue": {
-                        "agentCoreMemoryConfiguration": {"arn": memory_arn}
-                    }
-                },
+                memory={"optionalValue": {"agentCoreMemoryConfiguration": {"arn": memory_arn}}},
             )
             print(f"Memory ARN: {memory_arn}")
             print("Waiting for harness to update with memory...")
@@ -257,8 +245,7 @@ try:
             stream_response(
                 harness_arn,
                 memory_session_id,
-                "What's my name and what kind of music do I like? "
-                "Recommend a place in Amsterdam where I can enjoy it.",
+                "What's my name and what kind of music do I like? Recommend a place in Amsterdam where I can enjoy it.",
             )
         else:
             print("⚠️  Could not create or find TravelGuideMemory — skipping")
@@ -332,9 +319,7 @@ try:
     resp = client.invoke_agent_runtime_command(
         agentRuntimeArn=harness_arn,
         runtimeSessionId=research_session,
-        body={
-            "command": "base64 /tmp/amsterdam_tourism.png 2>/dev/null || echo 'NO_CHART'"
-        },
+        body={"command": "base64 /tmp/amsterdam_tourism.png 2>/dev/null || echo 'NO_CHART'"},
     )
     for event in resp["stream"]:
         if "chunk" in event:

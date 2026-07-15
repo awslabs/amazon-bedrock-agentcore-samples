@@ -71,12 +71,8 @@ def extract_form_structure(pdf_path):
                             "top": round(float(rect["top"]), 1),
                             "x1": round(float(rect["x1"]), 1),
                             "bottom": round(float(rect["bottom"]), 1),
-                            "center_x": round(
-                                (float(rect["x0"]) + float(rect["x1"])) / 2, 1
-                            ),
-                            "center_y": round(
-                                (float(rect["top"]) + float(rect["bottom"])) / 2, 1
-                            ),
+                            "center_x": round((float(rect["x0"]) + float(rect["x1"])) / 2, 1),
+                            "center_y": round((float(rect["top"]) + float(rect["bottom"])) / 2, 1),
                         }
                     )
 

@@ -33,23 +33,17 @@ def pp(response):
     print(json.dumps(data, indent=2, default=str))
 
 
-def wait_for_record_ready(
-    publisher_cp_client, registry_id, record_id, interval=5, timeout=120
-):
+def wait_for_record_ready(publisher_cp_client, registry_id, record_id, interval=5, timeout=120):
     """Poll GetRegistryRecord until the record exits CREATING/UPDATING status."""
     deadline = time.time() + timeout
     while True:
-        resp = publisher_cp_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        resp = publisher_cp_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = resp["status"]
         print(f"  Record {record_id} status: {status}")
         if status not in ("CREATING", "UPDATING"):
             return resp
         if time.time() >= deadline:
-            raise TimeoutError(
-                f"Record {record_id} still in {status} after {timeout}s."
-            )
+            raise TimeoutError(f"Record {record_id} still in {status} after {timeout}s.")
         time.sleep(interval)
 
 
@@ -116,9 +110,7 @@ def get_or_select_registry(cp_client, registry_id=None, AWS_REGION="us-west-2"):
             if not match:
                 raise ValueError(f"Registry {registry_id} not found.")
             if match[0]["status"] != "READY":
-                raise ValueError(
-                    f"Registry {registry_id} is {match[0]['status']}, not READY."
-                )
+                raise ValueError(f"Registry {registry_id} is {match[0]['status']}, not READY.")
             rid, rarn = match[0]["registryId"], match[0]["registryArn"]
             print(f"\n✅ Using specified registry: {rid}")
         elif ready:
@@ -138,9 +130,7 @@ def get_or_select_registry(cp_client, registry_id=None, AWS_REGION="us-west-2"):
         code = e.response["Error"]["Code"]
         print(f"❌ Error listing registries: {code} — {e}")
         if code == "AccessDeniedException":
-            print(
-                "   Verify admin_persona has bedrock-agentcore:ListRegistries permission."
-            )
+            print("   Verify admin_persona has bedrock-agentcore:ListRegistries permission.")
         raise
 
 
@@ -177,9 +167,7 @@ def build_permissions_policy(actions):
     }
 
 
-def create_or_update_persona_role(
-    iam_client, role_name, policy_name, actions, trust_policy, ACCOUNT_ID
-):
+def create_or_update_persona_role(iam_client, role_name, policy_name, actions, trust_policy, ACCOUNT_ID):
     """Create an IAM role or update it if it already exists."""
     try:
         resp = iam_client.create_role(

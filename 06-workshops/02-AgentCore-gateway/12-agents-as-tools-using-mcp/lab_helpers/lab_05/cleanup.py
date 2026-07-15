@@ -22,9 +22,7 @@ from .iam_setup import delete_supervisor_runtime_iam_role
 logger = logging.getLogger(__name__)
 
 
-def delete_supervisor_runtime(
-    runtime_name: str, region: str = AWS_REGION, verbose: bool = True
-) -> bool:
+def delete_supervisor_runtime(runtime_name: str, region: str = AWS_REGION, verbose: bool = True) -> bool:
     """
     Delete supervisor agent runtime.
 
@@ -76,9 +74,7 @@ def delete_supervisor_runtime(
         return False
 
 
-def delete_supervisor_gateway(
-    gateway_name: str, region: str = AWS_REGION, verbose: bool = True
-) -> bool:
+def delete_supervisor_gateway(gateway_name: str, region: str = AWS_REGION, verbose: bool = True) -> bool:
     """
     Delete supervisor gateway.
 
@@ -173,9 +169,7 @@ def delete_ecr_repository(
         return False
 
 
-def delete_supervisor_files(
-    file_names: List[str] = None, verbose: bool = True
-) -> Dict[str, bool]:
+def delete_supervisor_files(file_names: List[str] = None, verbose: bool = True) -> Dict[str, bool]:
     """
     Delete supervisor-related files from project root.
 
@@ -190,9 +184,7 @@ def delete_supervisor_files(
         file_names = ["agent-supervisor.py", "Dockerfile", ".bedrock_agentcore.yaml"]
 
     # Get the project root directory (3 levels up from lab_helpers/lab_05/cleanup.py)
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     deletion_status = {}
 
@@ -220,9 +212,7 @@ def delete_supervisor_files(
     return deletion_status
 
 
-def cleanup_lab_05(
-    region_name: str = AWS_REGION, verbose: bool = True, delete_ecr: bool = True
-) -> Dict[str, bool]:
+def cleanup_lab_05(region_name: str = AWS_REGION, verbose: bool = True, delete_ecr: bool = True) -> Dict[str, bool]:
     """
     Clean up all Lab 05 resources.
 
@@ -279,9 +269,7 @@ def cleanup_lab_05(
         logger.info("✅ Lab-05 Cleanup Summary:")
         for resource, status in cleanup_status.items():
             status_icon = "✓" if status else "✗"
-            logger.info(
-                f"   {status_icon} {resource.upper()}: {'SUCCESS' if status else 'FAILED'}"
-            )
+            logger.info(f"   {status_icon} {resource.upper()}: {'SUCCESS' if status else 'FAILED'}")
 
         logger.info("\n💡 All Lab-05 supervisor resources have been cleaned up!")
         logger.info("=" * 70)

@@ -4,6 +4,20 @@
 line-length = 120
 
 [tool.ruff.lint]
-# E402: Module level import not at top of file — common in tutorial scripts
-#        that configure environment (os.environ, dotenv) before importing modules
-ignore = ["E402"]
+ignore = [
+    # E402: Module level import not at top of file — common in tutorial scripts
+    #        that configure environment (os.environ, dotenv) before importing modules
+    "E402",
+    # E722: Bare except clause — acceptable in demo/sample scripts where broad
+    #        exception handling improves readability for tutorial purposes
+    "E722",
+    # F401: Imported but unused — samples often import modules to show usage patterns
+    #        or for optional features without using them in every code path
+    "F401",
+    # F811: Redefinition of unused variable — common in tutorial scripts that
+    #        demonstrate multiple approaches or allow re-running cells independently
+    "F811",
+    # F841: Local variable assigned but never used — common in demos that assign
+    #        results to named variables for clarity even when not subsequently used
+    "F841",
+]

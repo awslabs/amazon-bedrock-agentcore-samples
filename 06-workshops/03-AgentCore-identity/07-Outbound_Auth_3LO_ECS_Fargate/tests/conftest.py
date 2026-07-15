@@ -21,9 +21,7 @@ TEST_USER_SUB = "user-123"
 def make_oidc_jwt(sub: str = TEST_USER_SUB, email: str = TEST_USER_EMAIL) -> str:
     """Create a mock ALB OIDC JWT for testing."""
     header = base64.urlsafe_b64encode(b'{"alg":"ES256"}').decode().rstrip("=")
-    payload = (
-        base64.urlsafe_b64encode(json.dumps({"sub": sub}).encode()).decode().rstrip("=")
-    )
+    payload = base64.urlsafe_b64encode(json.dumps({"sub": sub}).encode()).decode().rstrip("=")
     return f"{header}.{payload}.fake-signature"
 
 
@@ -75,9 +73,7 @@ def mock_bedrock_api_call(self, operation_name, kwarg):
 
     if operation_name == "InvokeModelWithResponseStream":
         return {
-            "body": iter(
-                [b'{"type":"content_block_delta","delta":{"text":"test response"}}']
-            ),
+            "body": iter([b'{"type":"content_block_delta","delta":{"text":"test response"}}']),
             "contentType": "application/json",
         }
 
@@ -107,9 +103,7 @@ def env_vars(monkeypatch):
     monkeypatch.setenv("AWS_REGION", TEST_AWS_REGION)
     monkeypatch.setenv("IDENTITY_AWS_REGION", TEST_AWS_REGION)
     monkeypatch.setenv("INFERENCE_PROFILE_ID", "test-profile")
-    monkeypatch.setenv(
-        "SESSION_BINDING_URL", "http://localhost:8080/oauth2/session-binding"
-    )
+    monkeypatch.setenv("SESSION_BINDING_URL", "http://localhost:8080/oauth2/session-binding")
     monkeypatch.setenv("WORKLOAD_IDENTITY_NAME", "test-workload")
     monkeypatch.setenv("S3_BUCKET_NAME", TEST_BUCKET_NAME)
     get_settings.cache_clear()

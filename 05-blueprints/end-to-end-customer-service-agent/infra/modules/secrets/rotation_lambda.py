@@ -38,22 +38,16 @@ def create_secret(service_client, arn, token):
     service_client.get_secret_value(SecretId=arn, VersionStage="AWSCURRENT")
 
     try:
-        service_client.get_secret_value(
-            SecretId=arn, VersionId=token, VersionStage="AWSPENDING"
-        )
+        service_client.get_secret_value(SecretId=arn, VersionId=token, VersionStage="AWSPENDING")
     except service_client.exceptions.ResourceNotFoundException:
-        current_secret = service_client.get_secret_value(
-            SecretId=arn, VersionStage="AWSCURRENT"
-        )
+        current_secret = service_client.get_secret_value(SecretId=arn, VersionStage="AWSCURRENT")
         current_data = json.loads(current_secret["SecretString"])
 
         # Generate new API key/token (simplified - in real scenario, call external API)
         if "api_key" in current_data:
             current_data["api_key"] = "new-" + current_data["api_key"]
         if "zendesk_api_token" in current_data:
-            current_data["zendesk_api_token"] = (
-                "new-" + current_data["zendesk_api_token"]
-            )
+            current_data["zendesk_api_token"] = "new-" + current_data["zendesk_api_token"]
 
         service_client.put_secret_value(
             SecretId=arn,

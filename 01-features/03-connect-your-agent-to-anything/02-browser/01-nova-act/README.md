@@ -4,31 +4,6 @@
 
 This demo shows how to connect the Amazon Nova Act SDK to an AgentCore Browser session. Nova Act is Amazon's native browser automation agent — you give it a natural language prompt and a starting URL, and it navigates the page, interacts with UI elements, and returns a structured result.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  getting_started.py                                                 │
-│                                                                     │
-│  with browser_session(region) as client:                            │
-│      ws_url, headers = client.generate_ws_headers()                 │
-│             │                                                       │
-│             ▼                                                       │
-│  ┌────────────────────────────────────────────┐                    │
-│  │  NovaAct(                                  │                    │
-│  │    cdp_endpoint_url=ws_url,                │                    │
-│  │    cdp_headers=headers,                    │                    │
-│  │    starting_page="https://amazon.com/",    │                    │
-│  │  )                                         │                    │
-│  │    .act("Search for macbooks …")           │                    │
-│  │         │                                  │                    │
-│  │         ▼                                  │                    │
-│  │  ┌──────────────────────────────────────┐  │                    │
-│  │  │  AgentCore Browser Session           │  │                    │
-│  │  │  (managed Chromium sandbox)          │  │                    │
-│  │  └──────────────────────────────────────┘  │                    │
-│  └────────────────────────────────────────────┘                    │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
 ## Architecture
 
 ![Browser Tool Architecture](images/browser-tool.png)

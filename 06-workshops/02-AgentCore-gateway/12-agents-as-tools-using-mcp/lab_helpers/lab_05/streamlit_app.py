@@ -68,11 +68,7 @@ def create_mcp_client(gateway_url, access_token):
     Returns:
         MCPClient: Configured MCP client
     """
-    return MCPClient(
-        lambda: streamablehttp_client(
-            gateway_url, headers={"Authorization": f"Bearer {access_token}"}
-        )
-    )
+    return MCPClient(lambda: streamablehttp_client(gateway_url, headers={"Authorization": f"Bearer {access_token}"}))
 
 
 def get_all_tools(mcp_client):
@@ -253,9 +249,7 @@ def initialize_agent():
                     payload += "=" * (4 - len(payload) % 4)
                     decoded = base64.b64decode(payload)
                     token_data = json.loads(decoded)
-                    st.session_state.user_email = token_data.get(
-                        "email", token_data.get("username", "Unknown")
-                    )
+                    st.session_state.user_email = token_data.get("email", token_data.get("username", "Unknown"))
                 except Exception:
                     st.session_state.user_email = config["client_info"]["username"]
 
@@ -271,9 +265,7 @@ def initialize_agent():
                     tools = get_all_tools(mcp_client)
                     st.session_state.tools = tools
                 except Exception as mcp_error:
-                    raise Exception(
-                        f"MCP client initialization failed: {str(mcp_error)}"
-                    )
+                    raise Exception(f"MCP client initialization failed: {str(mcp_error)}")
 
                 # Create agent
                 model_id = "anthropic.claude-3-7-sonnet-20250219-v1:0"
@@ -285,14 +277,14 @@ def initialize_agent():
 
             except FileNotFoundError:
                 st.session_state.agent_initialized = False
-                st.session_state.initialization_error = "gateway_config.json not found. Please run Section 9.1 in the notebook first."
+                st.session_state.initialization_error = (
+                    "gateway_config.json not found. Please run Section 9.1 in the notebook first."
+                )
             except Exception as e:
                 st.session_state.agent_initialized = False
                 import traceback
 
-                st.session_state.initialization_error = (
-                    f"{str(e)}\n\nDetails:\n{traceback.format_exc()}"
-                )
+                st.session_state.initialization_error = f"{str(e)}\n\nDetails:\n{traceback.format_exc()}"
 
 
 def stream_agent_response(prompt: str, message_placeholder) -> str:
@@ -327,9 +319,7 @@ def stream_agent_response(prompt: str, message_placeholder) -> str:
             if data.strip().startswith("{") or data.strip().startswith('"'):
                 response_data["in_tool_construction"] = True
                 return  # Skip JSON construction
-            elif response_data["in_tool_construction"] and not data.strip().endswith(
-                "}"
-            ):
+            elif response_data["in_tool_construction"] and not data.strip().endswith("}"):
                 return  # Still in JSON construction
             else:
                 response_data["in_tool_construction"] = False
@@ -361,9 +351,7 @@ def stream_agent_response(prompt: str, message_placeholder) -> str:
                     if isinstance(item, dict) and item.get("type") == "tool_result":
                         tool_id = item.get("tool_use_id")
                         if tool_id in response_data["tool_start_times"]:
-                            elapsed = (
-                                time.time() - response_data["tool_start_times"][tool_id]
-                            )
+                            elapsed = time.time() - response_data["tool_start_times"][tool_id]
                             timing_text = f"⏱️ *Completed in {elapsed:.2f}s*\n\n"
                             response_data["text"] += timing_text
                             response_data["last_update"] = time.time()
@@ -374,9 +362,7 @@ def stream_agent_response(prompt: str, message_placeholder) -> str:
         import threading
 
         # Start agent in background thread
-        agent_thread = threading.Thread(
-            target=lambda: agent(prompt, callback_handler=streaming_callback)
-        )
+        agent_thread = threading.Thread(target=lambda: agent(prompt, callback_handler=streaming_callback))
         agent_thread.start()
 
         # Update UI from main thread while agent runs
@@ -405,9 +391,7 @@ def main():
     """Main application function"""
 
     # Header
-    st.markdown(
-        '<div class="main-header">🤖 SRE AI Agent</div>', unsafe_allow_html=True
-    )
+    st.markdown('<div class="main-header">🤖 SRE AI Agent</div>', unsafe_allow_html=True)
     st.markdown("---")
 
     # Initialize agent
@@ -458,9 +442,7 @@ def main():
             )
 
             if "gateway_config.json not found" in error:
-                st.info(
-                    "💡 Run `python setup_gateway.py` to create the Gateway infrastructure."
-                )
+                st.info("💡 Run `python setup_gateway.py` to create the Gateway infrastructure.")
 
         st.markdown("---")
 
@@ -499,14 +481,10 @@ def main():
                     full_response = stream_agent_response(prompt, message_placeholder)
 
             # Add assistant response to chat history
-            st.session_state.messages.append(
-                {"role": "assistant", "content": full_response}
-            )
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
     else:
         st.error("⚠️ Agent not initialized. Please check the sidebar for details.")
-        st.info(
-            "Make sure you have run `python setup_gateway.py` to set up the Gateway infrastructure."
-        )
+        st.info("Make sure you have run `python setup_gateway.py` to set up the Gateway infrastructure.")
 
 
 if __name__ == "__main__":

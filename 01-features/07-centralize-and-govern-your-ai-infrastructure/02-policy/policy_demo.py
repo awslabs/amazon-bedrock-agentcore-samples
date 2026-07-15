@@ -98,9 +98,7 @@ def show_token_claims(config: dict) -> dict:
 # ── Gateway Request Helper ────────────────────────────────────────────────────
 
 
-def make_gateway_request(
-    config: dict, token: str, tool_name: str, arguments: dict
-) -> dict:
+def make_gateway_request(config: dict, token: str, tool_name: str, arguments: dict) -> dict:
     """Send a JSON-RPC tools/call request to the Gateway."""
     resp = requests.post(  # nosec B113
         config["gateway"]["gateway_url"],
@@ -124,9 +122,7 @@ def analyze_response(result: dict) -> str:
     """Return 'ALLOWED', 'DENIED', or 'ERROR' based on the Gateway response."""
     if "error" in result:
         msg = result["error"].get("message", "").lower()
-        if any(
-            p in msg for p in ["not allowed", "denied", "forbidden", "unauthorized"]
-        ):
+        if any(p in msg for p in ["not allowed", "denied", "forbidden", "unauthorized"]):
             return "DENIED"
         return "ERROR"
     if "result" in result:
@@ -152,9 +148,7 @@ def assert_outcome(expected: str, actual: str, description: str) -> bool:
 # ── Policy CRUD Helpers ───────────────────────────────────────────────────────
 
 
-def create_cedar_policy(
-    control_client, engine_id: str, name: str, statement: str, description: str = ""
-) -> str | None:
+def create_cedar_policy(control_client, engine_id: str, name: str, statement: str, description: str = "") -> str | None:
     """Create a Cedar policy. Returns policy ID, or None on failure."""
     print(f"  Creating policy: {name}")
     print("  Cedar statement:")
@@ -172,9 +166,7 @@ def create_cedar_policy(
         policy_id = resp["policyId"]
         # Wait for ACTIVE
         for _ in range(20):
-            status = control_client.get_policy(
-                policyEngineId=engine_id, policyId=policy_id
-            ).get("status")
+            status = control_client.get_policy(policyEngineId=engine_id, policyId=policy_id).get("status")
             if status == "ACTIVE":
                 break
             if status in ("CREATE_FAILED", "UPDATE_FAILED"):
@@ -198,9 +190,7 @@ def delete_policy(control_client, engine_id: str, policy_id: str) -> None:
 def delete_all_policies(control_client, engine_id: str) -> None:
     """Delete all policies in the engine (clean slate between scenarios)."""
     try:
-        policies = control_client.list_policies(policyEngineId=engine_id).get(
-            "policies", []
-        )
+        policies = control_client.list_policies(policyEngineId=engine_id).get("policies", [])
         for p in policies:
             delete_policy(control_client, engine_id, p["policyId"])
         if policies:
@@ -306,9 +296,7 @@ def part_a_nl2cedar(config: dict):
         fetch_assets=True,
     )
 
-    _print_and_create_nl_policies(
-        policy_client, control_client, engine_id, result, "nl_simple"
-    )
+    _print_and_create_nl_policies(policy_client, control_client, engine_id, result, "nl_simple")
 
     # ── A2: Multi-statement (generates multiple Cedar policies) ───────────────
     print("\n[A2] Multi-line statement → multiple Cedar policies")
@@ -327,17 +315,13 @@ def part_a_nl2cedar(config: dict):
         content={"rawText": nl_multi},
         fetch_assets=True,
     )
-    _print_and_create_nl_policies(
-        policy_client, control_client, engine_id, result, "nl_multi"
-    )
+    _print_and_create_nl_policies(policy_client, control_client, engine_id, result, "nl_multi")
 
     # ── A3: Principal-scoped statements ──────────────────────────────────────
     print("\n[A3] Principal-scoped statements")
     print("─" * 65)
     print("  These show how NL2Cedar handles JWT claim references.")
-    print(
-        "  Tip: wrap IdP claim names in <idp_claims>['tag']</idp_claims> for precision.\n"
-    )
+    print("  Tip: wrap IdP claim names in <idp_claims>['tag']</idp_claims> for precision.\n")
 
     principal_statements = [
         (
@@ -367,19 +351,13 @@ def part_a_nl2cedar(config: dict):
             content={"rawText": nl_input},
             fetch_assets=True,
         )
-        _print_and_create_nl_policies(
-            policy_client, control_client, engine_id, result, "nl_principal"
-        )
+        _print_and_create_nl_policies(policy_client, control_client, engine_id, result, "nl_principal")
         print()
 
     print("\n[A Summary] Key NL2Cedar patterns demonstrated:")
-    print(
-        "  • context.input.<param> <= value    — numeric constraint on tool parameters"
-    )
+    print("  • context.input.<param> <= value    — numeric constraint on tool parameters")
     print("  • context.input.<param> == 'value'  — exact match on tool parameter")
-    print(
-        "  • principal.hasTag('claim')          — checks claim presence before getTag"
-    )
+    print("  • principal.hasTag('claim')          — checks claim presence before getTag")
     print("  • principal.getTag('claim') == '...' — exact JWT claim match")
     print("  • principal.getTag('claim') like '*value*' — wildcard match on claim")
     print("  • action in [AgentCore::Action::...]  — multi-tool restriction")
@@ -399,9 +377,7 @@ def _print_and_create_nl_policies(
 
     for i, gen_policy in enumerate(result["generatedPolicies"]):
         findings = gen_policy.get("findings", [])
-        cedar_stmt = (
-            gen_policy.get("definition", {}).get("cedar", {}).get("statement", "")
-        )
+        cedar_stmt = gen_policy.get("definition", {}).get("cedar", {}).get("statement", "")
         if not cedar_stmt:
             print(f"  ⚠  Policy {i + 1}: no Cedar statement in generated asset")
             continue
@@ -416,13 +392,9 @@ def _print_and_create_nl_policies(
         invalid = [f for f in findings if f.get("type") == "INVALID"]
         warnings = [f for f in findings if f.get("type") == "WARNING"]
         if invalid:
-            print(
-                f"  ⚠  INVALID findings ({len(invalid)}): {[f.get('description') for f in invalid]}"
-            )
+            print(f"  ⚠  INVALID findings ({len(invalid)}): {[f.get('description') for f in invalid]}")
         if warnings:
-            print(
-                f"  ⚠  WARNING findings ({len(warnings)}): {[f.get('description') for f in warnings]}"
-            )
+            print(f"  ⚠  WARNING findings ({len(warnings)}): {[f.get('description') for f in warnings]}")
 
         # Create the policy
         policy_name = f"{name_prefix}_{i}_{int(time.time()) % 10000}"
@@ -436,9 +408,7 @@ def _print_and_create_nl_policies(
             print(f"  ✓ Policy created: {policy.get('policyId')}")
             created.append(policy.get("policyId"))
         except Exception as exc:
-            print(
-                f"  ⚠  Policy creation failed ({exc}). Retrying with IGNORE_ALL_FINDINGS..."
-            )
+            print(f"  ⚠  Policy creation failed ({exc}). Retrying with IGNORE_ALL_FINDINGS...")
             try:
                 policy = policy_client.create_or_get_policy(
                     policy_engine_id=engine_id,
@@ -447,9 +417,7 @@ def _print_and_create_nl_policies(
                     definition={"cedar": {"statement": cedar_stmt}},
                     validation_mode="IGNORE_ALL_FINDINGS",
                 )
-                print(
-                    f"  ✓ Policy created (IGNORE_ALL_FINDINGS): {policy.get('policyId')}"
-                )
+                print(f"  ✓ Policy created (IGNORE_ALL_FINDINGS): {policy.get('policyId')}")
                 created.append(policy.get("policyId"))
             except Exception as exc2:
                 print(f"  ✗ Could not create policy: {exc2}")
@@ -539,9 +507,7 @@ def part_b_fine_grained_abac(config: dict):
         "ApplicationToolTarget___create_application",
         {"applicant_region": "US", "coverage_amount": 500000},
     )
-    assert_outcome(
-        "ALLOWED", analyze_response(result), "Finance dept should be ALLOWED"
-    )
+    assert_outcome("ALLOWED", analyze_response(result), "Finance dept should be ALLOWED")
 
     # Test DENY: engineering department
     print("\n  Test B1b — engineering dept → EXPECTED: DENIED")
@@ -562,9 +528,7 @@ def part_b_fine_grained_abac(config: dict):
         "ApplicationToolTarget___create_application",
         {"applicant_region": "US", "coverage_amount": 500000},
     )
-    assert_outcome(
-        "DENIED", analyze_response(result), "Engineering dept should be DENIED"
-    )
+    assert_outcome("DENIED", analyze_response(result), "Engineering dept should be DENIED")
 
     delete_policy(control_client, engine_id, policy_id)
 
@@ -616,9 +580,7 @@ def part_b_fine_grained_abac(config: dict):
     )
 
     # Test DENY: user without admins
-    print(
-        "\n  Test B2b — groups=['developers','team-alpha'] (no admins) → EXPECTED: DENIED"
-    )
+    print("\n  Test B2b — groups=['developers','team-alpha'] (no admins) → EXPECTED: DENIED")
     update_jwt_claims(
         config,
         {
@@ -679,12 +641,8 @@ def part_b_fine_grained_abac(config: dict):
         "RiskModelToolTarget___invoke_risk_model",
         {"API_classification": "internal", "data_governance_approval": True},
     )
-    assert_outcome(
-        "ALLOWED", analyze_response(result), "Matching sub should be ALLOWED"
-    )
-    print(
-        "  Note: To test DENY, use a different Cognito app client with a different client_id."
-    )
+    assert_outcome("ALLOWED", analyze_response(result), "Matching sub should be ALLOWED")
+    print("  Note: To test DENY, use a different Cognito app client with a different client_id.")
 
     delete_policy(control_client, engine_id, policy_id)
 
@@ -713,9 +671,7 @@ def part_b_fine_grained_abac(config: dict):
     )
 
     print("\n  Test B4a — finance + $500K → EXPECTED: ALLOWED (both conditions met)")
-    update_jwt_claims(
-        config, {"department_name": "finance", "employee_level": "senior"}
-    )
+    update_jwt_claims(config, {"department_name": "finance", "employee_level": "senior"})
     token = get_bearer_token(config)
     result = make_gateway_request(
         config,
@@ -723,9 +679,7 @@ def part_b_fine_grained_abac(config: dict):
         "ApplicationToolTarget___create_application",
         {"applicant_region": "US", "coverage_amount": 500000},
     )
-    assert_outcome(
-        "ALLOWED", analyze_response(result), "Finance + $500K should be ALLOWED"
-    )
+    assert_outcome("ALLOWED", analyze_response(result), "Finance + $500K should be ALLOWED")
 
     print("\n  Test B4b — finance + $2M → EXPECTED: DENIED (amount exceeds $1M)")
     token = get_bearer_token(config)
@@ -742,9 +696,7 @@ def part_b_fine_grained_abac(config: dict):
     )
 
     print("\n  Test B4c — engineering + $500K → EXPECTED: DENIED (wrong dept)")
-    update_jwt_claims(
-        config, {"department_name": "engineering", "employee_level": "senior"}
-    )
+    update_jwt_claims(config, {"department_name": "engineering", "employee_level": "senior"})
     token = get_bearer_token(config)
     result = make_gateway_request(
         config,
@@ -763,9 +715,7 @@ def part_b_fine_grained_abac(config: dict):
     # ── B5: Pattern Matching Reference ───────────────────────────────────────
     print("\n[B5] Pattern Matching with the 'like' Operator (Reference)")
     print("─" * 65)
-    print(
-        "  The 'like' operator supports wildcards (*) for flexible string matching.\n"
-    )
+    print("  The 'like' operator supports wildcards (*) for flexible string matching.\n")
 
     pattern_examples = [
         (
@@ -831,9 +781,7 @@ def part_b_fine_grained_abac(config: dict):
         "ApplicationToolTarget___create_application",
         {"applicant_region": "US", "coverage_amount": 100000},
     )
-    assert_outcome(
-        "ALLOWED", analyze_response(result), "team-finance member should be ALLOWED"
-    )
+    assert_outcome("ALLOWED", analyze_response(result), "team-finance member should be ALLOWED")
 
     delete_policy(control_client, engine_id, policy_id)
 
@@ -898,9 +846,7 @@ def part_c_agent_demo(config: dict):
         },
     )
 
-    print(
-        "\n[C1] Agent with active policy — ALLOW scenario (coverage $750K <= $1M limit)"
-    )
+    print("\n[C1] Agent with active policy — ALLOW scenario (coverage $750K <= $1M limit)")
     print("─" * 65)
     with AgentSession(verbose=False) as session:
         session.invoke("Create an application for US region with $750,000 coverage")

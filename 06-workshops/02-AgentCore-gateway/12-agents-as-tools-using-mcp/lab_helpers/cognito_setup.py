@@ -35,9 +35,7 @@ class CognitoSetup:
         self.region = region
         self.prefix = "aiml301"
         self.test_user_email = f"testuser@{self.prefix}.example.com"
-        self.test_user_password = (
-            "<enter password>"  # Meets policy: uppercase, lowercase, numbers, symbols
-        )
+        self.test_user_password = "<enter password>"  # Meets policy: uppercase, lowercase, numbers, symbols
 
     def create_user_pool(self) -> str:
         """
@@ -67,9 +65,7 @@ class CognitoSetup:
                 UsernameAttributes=["email"],
                 EmailConfiguration={"EmailSendingAccount": "COGNITO_DEFAULT"},
                 MfaConfiguration="OFF",  # Disabled for workshop simplicity
-                AccountRecoverySetting={
-                    "RecoveryMechanisms": [{"Name": "verified_email", "Priority": 1}]
-                },
+                AccountRecoverySetting={"RecoveryMechanisms": [{"Name": "verified_email", "Priority": 1}]},
             )
 
             user_pool_id = response["UserPool"]["Id"]
@@ -201,9 +197,7 @@ class CognitoSetup:
 
             print(f"✅ M2M Client created: {client_id}")
             print("   ⚠️  Client secret: ****")
-            print(
-                "   ⚠️  Store client secret securely (AWS Secrets Manager recommended)"
-            )
+            print("   ⚠️  Store client secret securely (AWS Secrets Manager recommended)")
 
             return client_id, client_secret
 
@@ -271,26 +265,18 @@ class CognitoSetup:
                     Description=group["Description"],
                     Precedence=group["Precedence"],
                 )
-                print(
-                    f"✅ Group created: {group['GroupName']} (Precedence: {group['Precedence']})"
-                )
+                print(f"✅ Group created: {group['GroupName']} (Precedence: {group['Precedence']})")
             except self.cognito.exceptions.GroupExistsException:
                 print(f"ℹ️  Group already exists: {group['GroupName']}")
             except Exception as e:
                 print(f"❌ Error creating group {group['GroupName']}: {e}")
                 raise
 
-    def assign_user_to_group(
-        self, user_pool_id: str, username: str, group_name: str
-    ) -> None:
+    def assign_user_to_group(self, user_pool_id: str, username: str, group_name: str) -> None:
         """Assign user to a Cognito group"""
         try:
-            self.cognito.admin_add_user_to_group(
-                UserPoolId=user_pool_id, Username=username, GroupName=group_name
-            )
-            print(
-                f"✅ User {username} added to group '{group_name}'"
-            )  # codeql[py/clear-text-logging-sensitive-data]
+            self.cognito.admin_add_user_to_group(UserPoolId=user_pool_id, Username=username, GroupName=group_name)
+            print(f"✅ User {username} added to group '{group_name}'")  # codeql[py/clear-text-logging-sensitive-data]
         except Exception as e:
             print(f"❌ Error adding user to group: {e}")
             raise
@@ -365,9 +351,7 @@ class CognitoSetup:
             print(f"❌ Error creating approver user: {e}")
             raise
 
-    def update_user_auth_client_for_oauth(
-        self, user_pool_id: str, client_id: str, resource_server_id: str
-    ) -> None:
+    def update_user_auth_client_for_oauth(self, user_pool_id: str, client_id: str, resource_server_id: str) -> None:
         """
         Update User Auth Client to support OAuth flows and custom scopes.
         This enables ID tokens with rich claims (email, groups, etc.)
@@ -440,9 +424,7 @@ class CognitoSetup:
 
         # Create auth clients
         user_auth_client_id = self.create_user_auth_client(user_pool_id)
-        m2m_client_id, m2m_client_secret = self.create_m2m_client(
-            user_pool_id, resource_server_id
-        )
+        m2m_client_id, m2m_client_secret = self.create_m2m_client(user_pool_id, resource_server_id)
 
         # Create domain
         domain_url = self.create_user_pool_domain(user_pool_id)
@@ -460,9 +442,7 @@ class CognitoSetup:
         self.assign_user_to_group(user_pool_id, approver_user["email"], "approvers")
 
         # Update User Auth Client for OAuth support (enables ID tokens with rich claims)
-        self.update_user_auth_client_for_oauth(
-            user_pool_id, user_auth_client_id, resource_server_id
-        )
+        self.update_user_auth_client_for_oauth(user_pool_id, user_auth_client_id, resource_server_id)
 
         # Build configuration
         cognito_config = {
@@ -543,15 +523,9 @@ class CognitoSetup:
             cognito_config["user_auth_client"]["client_name"],
         )
 
-        put_parameter(
-            params["m2m_client_id"], cognito_config["m2m_client"]["client_id"]
-        )
-        put_parameter(
-            params["m2m_client_secret"], cognito_config["m2m_client"]["client_secret"]
-        )
-        put_parameter(
-            params["m2m_client_name"], cognito_config["m2m_client"]["client_name"]
-        )
+        put_parameter(params["m2m_client_id"], cognito_config["m2m_client"]["client_id"])
+        put_parameter(params["m2m_client_secret"], cognito_config["m2m_client"]["client_secret"])
+        put_parameter(params["m2m_client_name"], cognito_config["m2m_client"]["client_name"])
 
         put_parameter(
             params["resource_server_id"],
@@ -563,14 +537,10 @@ class CognitoSetup:
         )
 
         put_parameter(params["test_user_email"], cognito_config["test_user"]["email"])
-        put_parameter(
-            params["test_user_password"], cognito_config["test_user"]["password"]
-        )
+        put_parameter(params["test_user_password"], cognito_config["test_user"]["password"])
 
         # Save approver user credentials
-        put_parameter(
-            params["approver_user_email"], cognito_config["approver_user"]["email"]
-        )
+        put_parameter(params["approver_user_email"], cognito_config["approver_user"]["email"])
         put_parameter(
             params["approver_user_password"],
             cognito_config["approver_user"]["password"],
@@ -578,9 +548,7 @@ class CognitoSetup:
 
         print("✅ Cognito configuration saved to SSM Parameter Store")
 
-    def save_to_file(
-        self, cognito_config: Dict[str, Any], filename: str = "cognito_config.json"
-    ) -> None:
+    def save_to_file(self, cognito_config: Dict[str, Any], filename: str = "cognito_config.json") -> None:
         """Save Cognito configuration to local JSON file (for reference)"""
         print(f"\nSaving configuration to {filename}...")
 
@@ -612,15 +580,9 @@ def setup_cognito_complete() -> Dict[str, Any]:
     print("✅ COGNITO SETUP COMPLETE")
     print("=" * 70)
     print("\nKey Configuration:")
-    print(
-        f"  User Pool ID: {cognito_config['user_pool_id']}"
-    )  # codeql[py/clear-text-logging-sensitive-data]
-    print(
-        f"  Domain: {cognito_config['domain']}"
-    )  # codeql[py/clear-text-logging-sensitive-data]
-    print(
-        f"  Token Endpoint: {cognito_config['token_endpoint']}"
-    )  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  User Pool ID: {cognito_config['user_pool_id']}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  Domain: {cognito_config['domain']}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  Token Endpoint: {cognito_config['token_endpoint']}")  # codeql[py/clear-text-logging-sensitive-data]
     print("\n  User Auth Client:")
     print(
         f"    • Client ID: {cognito_config['user_auth_client']['client_id']}"
@@ -636,9 +598,7 @@ def setup_cognito_complete() -> Dict[str, Any]:
     print("    • Client Secret: ****")
     print("\n  Groups Created:")
     print("    • sre (Precedence: 10) - Tools: generate_remediation_plan")
-    print(
-        "    • approvers (Precedence: 5) - Tools: execute_remediation_step, validate_remediation_environment"
-    )
+    print("    • approvers (Precedence: 5) - Tools: execute_remediation_step, validate_remediation_environment")
     print("\n  Users Created:")
     print("    • Test User (SRE): **** (password: ****)")
     print("    • Approver User: **** (password: ****)")
@@ -665,7 +625,9 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
             print(f"❌ Could not retrieve User Pool ID from SSM: {e}")
             return
 
-    print(f"Cleaning up Cognito resources for User Pool: {user_pool_id}...")
+    print(
+        f"Cleaning up Cognito resources for User Pool: {user_pool_id}..."
+    )  # codeql[py/clear-text-logging-sensitive-data]
     print("")
 
     try:
@@ -678,9 +640,7 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
             if domain:
                 print(f"  Found domain: {domain}")
                 print("  Deleting domain...")
-                setup.cognito.delete_user_pool_domain(
-                    Domain=domain, UserPoolId=user_pool_id
-                )
+                setup.cognito.delete_user_pool_domain(Domain=domain, UserPoolId=user_pool_id)
                 print(f"  ✅ Domain deleted: {domain}")
             else:
                 print("  No domain configured")

@@ -53,16 +53,12 @@ def print_factuality_summary(results: Dict[str, Any]) -> None:
 
     print(f"Experiment: {experiment_name}")
     print(f"Total items evaluated: {total_items}")
-    print(
-        f"Average Factuality Score: {avg_factuality:.3f} ({avg_factuality * 100:.1f}%)"
-    )
+    print(f"Average Factuality Score: {avg_factuality:.3f} ({avg_factuality * 100:.1f}%)")
 
     # Print individual scores
     print("\nIndividual scores:")
     for i, score_data in enumerate(results["scores"]):
-        print(
-            f"  Item {i + 1}: {score_data['value']:.3f} ({score_data.get('name', 'Unknown')})"
-        )
+        print(f"  Item {i + 1}: {score_data['value']:.3f} ({score_data.get('name', 'Unknown')})")
         if score_data.get("comment"):
             print(f"    Comment: {score_data['comment']}")
 
@@ -83,14 +79,10 @@ def check_factuality_threshold(results: Dict[str, Any], threshold: float = 0.5) 
     print(f"\nThreshold: {threshold * 100:.0f}%")
 
     if avg_factuality >= threshold:
-        print(
-            f"✓ PASSED: Factuality score {avg_factuality * 100:.1f}% is above {threshold * 100:.0f}%"
-        )
+        print(f"✓ PASSED: Factuality score {avg_factuality * 100:.1f}% is above {threshold * 100:.0f}%")
         return True
     else:
-        print(
-            f"✗ FAILED: Factuality score {avg_factuality * 100:.1f}% is below {threshold * 100:.0f}%"
-        )
+        print(f"✗ FAILED: Factuality score {avg_factuality * 100:.1f}% is below {threshold * 100:.0f}%")
         return False
 
 
@@ -121,9 +113,7 @@ if __name__ == "__main__":
     # Parse command line arguments
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Check factuality results from evaluation"
-    )
+    parser = argparse.ArgumentParser(description="Check factuality results from evaluation")
     parser.add_argument(
         "--results-file",
         "-f",

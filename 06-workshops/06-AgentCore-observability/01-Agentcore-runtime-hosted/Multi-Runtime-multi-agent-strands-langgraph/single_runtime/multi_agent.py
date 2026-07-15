@@ -34,9 +34,7 @@ def get_weather(location: str) -> str:
         "tokyo": "68°F, Clear",
         "paris": "65°F, Overcast",
     }
-    return weather_data.get(
-        location.lower(), f"Weather data for {location}: 70°F, Clear skies"
-    )
+    return weather_data.get(location.lower(), f"Weather data for {location}: 70°F, Clear skies")
 
 
 # --- Sub-Agents ---

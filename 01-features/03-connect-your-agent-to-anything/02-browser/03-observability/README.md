@@ -4,34 +4,6 @@
 
 AgentCore Browser Tool can record everything that happens in a browser session — every page navigation, click, network request, and console message — and store the recording in Amazon S3. You can replay sessions in the AWS console, debug automation failures, audit agent behavior, and build monitoring pipelines on top of the recorded data.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  browser_observability.py                                           │
-│                                                                     │
-│  1. Create S3 bucket for recordings                                 │
-│  2. Create IAM execution role                                       │
-│  3. cp_client.create_browser(                                       │
-│       executionRoleArn=role_arn,                                     │
-│       recording={"enabled": True,                                   │
-│                  "s3Location": {"bucket": bucket}})                 │
-│              │                                                      │
-│              ▼                                                      │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  Custom Browser Resource (recording enabled)                │   │
-│  │                                                             │   │
-│  │  Session runs ──▶ Nova Act task                             │   │
-│  │       │                                                     │   │
-│  │       ├── S3: session recording (video + events)           │   │
-│  │       ├── S3: console logs                                  │   │
-│  │       ├── S3: network logs                                  │   │
-│  │       └── S3: CDP command trace                             │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│              │                                                      │
-│              ▼                                                      │
-│  AWS Console → AgentCore → Browser use tools → View recording      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
 ## How It Works
 
 ### Creating a Browser Resource with Recording
@@ -159,6 +131,11 @@ The console shows:
 - **Console logs** (JavaScript errors, warnings, info)
 - **Network logs** (all HTTP requests and responses)
 - **CDP command trace** (exact DevTools Protocol commands sent)
+- **Actions tab** — lists every agent action taken during the session; click **View** on any action to jump to that exact moment in the replay
+- **DOM details** — inspect the page structure at any point in the session
+- **Download** — each log category (console, network, CDP) can be downloaded individually for offline debugging
+
+> **Tip**: Click **View** on any **Click** action type and notice the red circle on the browser — this marks the exact pixel coordinates where the click happened.
 
 ### Cleanup
 

@@ -33,9 +33,7 @@ def python_exec(code: str, working_dir: str = "") -> str:
             os.makedirs(working_dir, exist_ok=True)
 
         # Write code to a temp file and execute in a subprocess
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", delete=False, dir=cwd
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir=cwd) as tmp:
             tmp.write(code)
             tmp_path = tmp.name
 

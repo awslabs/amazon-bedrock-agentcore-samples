@@ -95,9 +95,7 @@ def get_credentials_from_imds():
             timeout=2,
         )
         if role_resp.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
-            )
+            result["error"] = f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
             return result
 
         role_name = role_resp.text.strip()
@@ -109,9 +107,7 @@ def get_credentials_from_imds():
             timeout=2,
         )
         if creds_resp.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
-            )
+            result["error"] = f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
             return result
 
         creds = creds_resp.json()
@@ -163,9 +159,7 @@ SYSTEM_INSTRUCTION = (
 
 async def get_account_balance(params: FunctionCallParams):
     account_id = params.arguments.get("account_id", "unknown")
-    await params.result_callback(
-        {"account_id": account_id, "balance": "$4,231.56", "currency": "USD"}
-    )
+    await params.result_callback({"account_id": account_id, "balance": "$4,231.56", "currency": "USD"})
 
 
 async def get_recent_transactions(params: FunctionCallParams):
@@ -264,9 +258,7 @@ async def lifespan(app_instance):
         os.environ["AWS_SECRET_ACCESS_KEY"] = creds["secret_key"]
         os.environ["AWS_SESSION_TOKEN"] = creds["token"]
         logger.info(f"Initial credentials loaded via {result['method_used']}")
-        _credential_refresh_task = asyncio.create_task(
-            refresh_credentials_periodically()
-        )
+        _credential_refresh_task = asyncio.create_task(refresh_credentials_periodically())
     else:
         logger.info("IMDS not available — using environment variable credentials")
     yield
@@ -341,17 +333,13 @@ async def websocket_endpoint(websocket: WebSocket):
             ),
         )
 
-        llm.register_function(
-            "get_account_balance", get_account_balance, cancel_on_interruption=False
-        )
+        llm.register_function("get_account_balance", get_account_balance, cancel_on_interruption=False)
         llm.register_function(
             "get_recent_transactions",
             get_recent_transactions,
             cancel_on_interruption=False,
         )
-        llm.register_function(
-            "get_mortgage_rates", get_mortgage_rates, cancel_on_interruption=False
-        )
+        llm.register_function("get_mortgage_rates", get_mortgage_rates, cancel_on_interruption=False)
 
         context = LLMContext(tools=tools)
         user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -394,16 +382,12 @@ async def websocket_endpoint(websocket: WebSocket):
             await task.cancel()
 
         @user_aggregator.event_handler("on_user_turn_stopped")
-        async def on_user_turn_stopped(
-            aggregator, strategy, message: UserTurnStoppedMessage
-        ):
+        async def on_user_turn_stopped(aggregator, strategy, message: UserTurnStoppedMessage):
             timestamp = f"[{message.timestamp}] " if message.timestamp else ""
             logger.info(f"Transcript: {timestamp}user: {message.content}")
 
         @assistant_aggregator.event_handler("on_assistant_turn_stopped")
-        async def on_assistant_turn_stopped(
-            aggregator, message: AssistantTurnStoppedMessage
-        ):
+        async def on_assistant_turn_stopped(aggregator, message: AssistantTurnStoppedMessage):
             timestamp = f"[{message.timestamp}] " if message.timestamp else ""
             logger.info(f"Transcript: {timestamp}assistant: {message.content}")
 

@@ -44,9 +44,7 @@ def fill_pdf_fields(input_pdf_path: str, fields_json_path: str, output_pdf_path:
 
     writer = PdfWriter(clone_from=reader)
     for page, field_values in fields_by_page.items():
-        writer.update_page_form_field_values(
-            writer.pages[page - 1], field_values, auto_regenerate=False
-        )
+        writer.update_page_form_field_values(writer.pages[page - 1], field_values, auto_regenerate=False)
 
     writer.set_need_appearances_writer(True)
 
@@ -69,7 +67,9 @@ def validation_error_for_field_value(field_info, field_value):
     elif field_type == "choice":
         choice_values = [opt["value"] for opt in field_info["choice_options"]]
         if field_value not in choice_values:
-            return f'ERROR: Invalid value "{field_value}" for choice field "{field_id}". Valid values are: {choice_values}'
+            return (
+                f'ERROR: Invalid value "{field_value}" for choice field "{field_id}". Valid values are: {choice_values}'
+            )
     return None
 
 
@@ -82,9 +82,7 @@ def monkeypatch_pydpf_method():
     def patched_get_inherited(self, key: str, default=None):
         result = original_get_inherited(self, key, default)
         if key == FieldDictionaryAttributes.Opt:
-            if isinstance(result, list) and all(
-                isinstance(v, list) and len(v) == 2 for v in result
-            ):
+            if isinstance(result, list) and all(isinstance(v, list) and len(v) == 2 for v in result):
                 result = [r[0] for r in result]
         return result
 
@@ -93,9 +91,7 @@ def monkeypatch_pydpf_method():
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print(
-            "Usage: fill_fillable_fields.py [input pdf] [field_values.json] [output pdf]"
-        )
+        print("Usage: fill_fillable_fields.py [input pdf] [field_values.json] [output pdf]")
         sys.exit(1)
     monkeypatch_pydpf_method()
     input_pdf = sys.argv[1]

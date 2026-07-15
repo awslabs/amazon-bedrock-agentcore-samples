@@ -67,10 +67,7 @@ def database_query(sql: str, database: str = "default") -> str:
 
         # Add column headers
         if column_metadata:
-            headers = [
-                col.get("label", col.get("name", f"col_{i}"))
-                for i, col in enumerate(column_metadata)
-            ]
+            headers = [col.get("label", col.get("name", f"col_{i}")) for i, col in enumerate(column_metadata)]
             result_text += " | ".join(headers) + "\n"
             result_text += "-" * (len(" | ".join(headers))) + "\n"
 
@@ -102,8 +99,6 @@ def database_query(sql: str, database: str = "default") -> str:
     except rds_client.exceptions.BadRequestException as e:
         return f"Invalid SQL query: {str(e)}"
     except rds_client.exceptions.StatementTimeoutException:
-        return (
-            "Query timed out. Try simplifying your query or adding appropriate indexes."
-        )
+        return "Query timed out. Try simplifying your query or adding appropriate indexes."
     except Exception as e:
         return f"Error executing database query: {str(e)}"

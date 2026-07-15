@@ -395,7 +395,7 @@ def test_user_memory_isolation_with_federated_identity():
         testuser1_token,
     )
     print(f'User 1 prompt: "{user1_prompt1}"')
-    print(f'User 1 response: "{response1["response"]}"')
+    print(f'User 1 response: "{response1}"')
 
     # Wait for session to terminate (75 seconds)
     print("\nWaiting 75 seconds for session to terminate...")
@@ -413,7 +413,7 @@ def test_user_memory_isolation_with_federated_identity():
         testuser1_token,
     )
     print(f'User 1 prompt: "{user1_prompt2}"')
-    print(f'User 1 response: "{response2["response"]}"')
+    print(f'User 1 response: "{response2}"')
 
     # PHASE 2: Test user2 memory isolation
     print("\n" + "=" * 50)
@@ -432,7 +432,7 @@ def test_user_memory_isolation_with_federated_identity():
         testuser2_token,
     )
     print(f'User 2 prompt: "{user2_prompt1}"')
-    print(f'User 2 response: "{response3["response"]}"')
+    print(f'User 2 response: "{response3}"')
 
     # Wait for session to terminate
     print("\nWaiting 75 seconds for session to terminate...")
@@ -450,7 +450,7 @@ def test_user_memory_isolation_with_federated_identity():
         testuser2_token,
     )
     print(f'User 2 prompt: "{user2_prompt2}"')
-    print(f'User 2 response: "{response4["response"]}"')
+    print(f'User 2 response: "{response4}"')
     print("\n✅ Each user should only see their own information, demonstrating memory isolation")
 
 

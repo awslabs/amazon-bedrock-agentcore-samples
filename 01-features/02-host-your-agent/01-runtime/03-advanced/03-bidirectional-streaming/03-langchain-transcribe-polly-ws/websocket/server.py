@@ -86,9 +86,7 @@ def get_credentials_from_imds():
             timeout=2,
         )
         if role_resp.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
-            )
+            result["error"] = f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
             return result
 
         role_name = role_resp.text.strip()
@@ -100,9 +98,7 @@ def get_credentials_from_imds():
             timeout=2,
         )
         if creds_resp.status_code != 200:
-            result["error"] = (
-                f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
-            )
+            result["error"] = f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
             return result
 
         creds = creds_resp.json()
@@ -131,13 +127,9 @@ async def refresh_credentials_from_imds():
                 os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
                 logger.info(f"✅ Credentials refreshed ({imds_result['method_used']})")
                 try:
-                    expiration = datetime.fromisoformat(
-                        creds["Expiration"].replace("Z", "+00:00")
-                    )
+                    expiration = datetime.fromisoformat(creds["Expiration"].replace("Z", "+00:00"))
                     now = datetime.now(expiration.tzinfo)
-                    refresh_interval = min(
-                        max((expiration - now).total_seconds() - 300, 60), 3600
-                    )
+                    refresh_interval = min(max((expiration - now).total_seconds() - 300, 60), 3600)
                 except Exception:
                     refresh_interval = 3600
                 await asyncio.sleep(refresh_interval)
@@ -191,9 +183,7 @@ async def startup_event():
             os.environ["AWS_SECRET_ACCESS_KEY"] = creds["SecretAccessKey"]
             os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
             logger.info(f"✅ Credentials loaded ({imds_result['method_used']})")
-            _credential_refresh_task = asyncio.create_task(
-                refresh_credentials_from_imds()
-            )
+            _credential_refresh_task = asyncio.create_task(refresh_credentials_from_imds())
             logger.info("🔄 Credential refresh task started")
         else:
             logger.error(f"❌ Failed to fetch credentials: {imds_result['error']}")
