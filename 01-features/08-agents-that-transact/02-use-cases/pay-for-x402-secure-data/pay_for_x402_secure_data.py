@@ -526,20 +526,43 @@ def main() -> None:
     mgmt_client = mgmt_session.client("bedrock-agentcore")
     setup_instrument_and_session(mgmt_client)
 
-    # §7 — live paid run. Gated on RUN_LIVE in .env (default off). Set
-    # RUN_LIVE=1 only after both delegated-signing layers are granted and the
-    # wallet is funded — each approved run settles REAL USDC twice (the t54
-    # x402-secure trust check and the target service call).
-    if _env_flag("RUN_LIVE"):
+    # §6 — one-time onboarding gate. A live run cannot settle a payment until
+    # BOTH delegated-signing layers are granted AND the wallet is funded, so
+    # pause here (when a live run is requested) and wait for explicit
+    # confirmation. This prevents ProcessPayment from failing on an unfunded /
+    # undelegated wallet immediately after the session is created.
+    onboarding_confirmed = False
+    if _env_flag("RUN_LIVE") or _env_flag("RUN_LIVE_RUNTIME"):
+        onboarding_confirmed = _confirm_section(
+            "§6. One-time onboarding — complete before any live paid run",
+            [
+                "  A live run settles REAL USDC. Before continuing you MUST have:",
+                "    1. Granted delegated signing at BOTH layers (project policy +",
+                "       the per-wallet Wallet Hub grant printed above).",
+                f"    2. Funded the wallet with USDC on {PAYMENT_INSTRUMENT_NETWORK} (Base):",
+                f"         {WALLET_ADDRESS or '(see the address printed above)'}",
+                "  Verify the wallet balance is non-zero before you continue.",
+            ],
+            "confirm delegation is granted and the wallet is funded, and continue",
+        )
+        if not onboarding_confirmed:
+            print("\n↷ Onboarding not confirmed — skipping the live run and deploy.")
+            print("   Grant delegation, fund the wallet, then re-run.")
+
+    # §7 — live paid run. Gated on RUN_LIVE in .env (default off) AND on the
+    # onboarding confirmation above. Each approved run settles REAL USDC twice
+    # (the t54 x402-secure trust check and the target service call).
+    if _env_flag("RUN_LIVE") and onboarding_confirmed:
         run_agent_live()
-    else:
+    elif not _env_flag("RUN_LIVE"):
         print("\n↷ §7 skipped — RUN_LIVE is not set in .env. Set RUN_LIVE=1 to run the")
         print("   live trust-gated flow (spends real USDC) after delegation + funding.")
 
-    # §8 — deploy to runtime + live invoke. Gated on RUN_LIVE_RUNTIME in .env.
-    if _env_flag("RUN_LIVE_RUNTIME"):
+    # §8 — deploy to runtime + live invoke. Gated on RUN_LIVE_RUNTIME in .env
+    # AND the onboarding confirmation (the deployed runtime also spends real USDC).
+    if _env_flag("RUN_LIVE_RUNTIME") and onboarding_confirmed:
         deploy_and_invoke_runtime()
-    else:
+    elif not _env_flag("RUN_LIVE_RUNTIME"):
         print("\n↷ §8 skipped — RUN_LIVE_RUNTIME is not set in .env. Set RUN_LIVE_RUNTIME=1")
         print("   to build + deploy the AgentCore Runtime and invoke it live.")
 

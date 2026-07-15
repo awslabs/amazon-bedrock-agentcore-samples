@@ -268,6 +268,13 @@ bash test/integration/setup-env.sh   # copies env-sample.txt → .env, seeds USE
 # edit .env: COINBASE_*, INSTRUMENT_EMAIL, CONFIRM_AWS_ACCOUNT_ID
 ```
 
+The live paid steps are gated by `RUN_LIVE` (§7) and `RUN_LIVE_RUNTIME` (§8) in
+`.env`, both `0` by default. Leave them at `0` for a dry run — the script still
+provisions the payment resources, runs the no-cost guardrail demo (§3), and
+inspects the data plane (§9), but makes **no paid calls**. Set them to `1` only
+when you intend to spend real USDC; the script then **pauses at §6** so you can
+grant delegated signing and fund the wallet before it proceeds.
+
 **Step 3.** Create the four IAM roles (idempotent; writes ARNs into `.env`):
 
 ```bash
@@ -289,9 +296,9 @@ calls. It runs through these sections:
 - **§3** — demonstrates the trust guardrail with **mocks** — no AWS calls and no money — showing the approve / low-score-block / scam-block decisions
 - **§4** — assume IAM roles and create the Credential Provider, Manager, and Connector for Coinbase CDP
 - **§5** — create one `EMBEDDED_CRYPTO_WALLET` instrument and a spending-limit-capped payment session, then print the delegated-signing + funding steps
-- **§6** — build the trust-gated Strands agent (two tools + `AgentCorePaymentsPlugin`, wrapped in request-scoped trust state)
-- **§7** — **prompts** before running the agent live against t54 x402-secure and the target service (settles real USDC). Press Enter to run, `q` to skip
-- **§8** — **prompts** before running `bash test/integration/deploy-agent.sh` to build and deploy the agent to AgentCore Runtime via CodeBuild, then invokes it with per-invocation payment context. Press Enter to deploy, `q` to skip
+- **§6** — one-time onboarding gate: when a live run is requested (`RUN_LIVE` or `RUN_LIVE_RUNTIME` = `1`), the script **pauses** and asks you to confirm that delegated signing is granted at both layers **and** the wallet is funded, before any payment. Press Enter to continue once ready, or `q` to skip the live steps
+- **§7** — live trust-gated run against t54 x402-secure and the target service. Runs only when `RUN_LIVE=1` **and** the §6 onboarding is confirmed; each approved call settles real USDC twice
+- **§8** — build and deploy the agent to AgentCore Runtime via CodeBuild, then invoke it with per-invocation payment context. Runs only when `RUN_LIVE_RUNTIME=1` **and** the §6 onboarding is confirmed
 - **§9** — inspect the data plane: `GetPaymentSession` (spending limit + remaining), `GetPaymentInstrumentBalance`, `ListPaymentInstruments`, `ListPaymentSessions`
 - **§10** — **prompts** before tearing down the session, instrument, connector, manager, credential provider, and runtime. Press Enter to clean up, `q` to keep resources
 
