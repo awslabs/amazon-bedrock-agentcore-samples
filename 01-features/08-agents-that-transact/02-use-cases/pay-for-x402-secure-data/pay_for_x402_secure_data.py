@@ -279,6 +279,18 @@ def setup_instrument_and_session(mgmt_client) -> None:
 
     if PAYMENT_INSTRUMENT_ID:
         print("↷ PAYMENT_INSTRUMENT_ID already set, skipping instrument create")
+        # Re-fetch the instrument so the onboarding block below can still show
+        # the actual (clickable) Wallet Hub link and wallet address on a re-run.
+        try:
+            crypto = mgmt_client.get_payment_instrument(
+                paymentManagerArn=MANAGER_ARN,
+                paymentInstrumentId=PAYMENT_INSTRUMENT_ID,
+                userId=USER_ID,
+            )["paymentInstrument"]["paymentInstrumentDetails"]["embeddedCryptoWallet"]
+            WALLET_ADDRESS = crypto.get("walletAddress", WALLET_ADDRESS)
+            redirect_url = crypto.get("redirectUrl")
+        except botocore.exceptions.ClientError as exc:
+            print(f"   (could not re-fetch Wallet Hub link: {exc.response['Error']['Code']})")
     else:
         resp = mgmt_client.create_payment_instrument(
             paymentManagerArn=MANAGER_ARN,
