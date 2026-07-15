@@ -105,13 +105,23 @@ def _env_flag(name: str) -> bool:
     return os.environ.get(name, "0").strip().lower() in ("1", "true", "yes")
 
 
-def _confirm_section(title: str, body_lines: list[str], action_label: str) -> bool:
-    """Show a framed banner + body, then prompt: Enter to run, q + Enter to skip."""
+def _confirm_section(
+    title: str, body_lines: list[str], action_label: str, require_yes: bool = False
+) -> bool:
+    """Show a framed banner + body, then prompt for confirmation.
+
+    Default: Enter runs the step, q + Enter skips it. When require_yes is set
+    (used for destructive steps like cleanup), the default flips to skip — the
+    user must type 'yes' to proceed, and anything else is treated as skip.
+    """
     print("\n" + "=" * 72)
     print(f"  {title}")
     print("=" * 72)
     for line in body_lines:
         print(line)
+    if require_yes:
+        print(f"\n  ▶▶ Type 'yes' + Enter to {action_label}. Anything else skips.")
+        return input("     [type 'yes' to confirm | Enter to skip] ").strip().lower() in ("yes", "y")
     print(f"\n  ▶▶ Press Enter to {action_label}, or press q + Enter to skip.")
     return input("     [Enter to continue | q to skip] ").strip().lower() not in ("q", "quit", "skip", "n", "no")
 
@@ -634,12 +644,14 @@ def main() -> None:
     except botocore.exceptions.ClientError as exc:
         print(f"⚠️  Data-plane inspection skipped: {exc.response['Error']['Code']}")
 
-    # §10 — cleanup (gated).
+    # §10 — cleanup (gated, destructive: defaults to skip, requires 'yes').
     if _confirm_section(
         "§10. Cleanup",
         ["  Revokes the session and deletes the instrument, connector, manager,",
-         "  credential provider, and the agent runtime stack."],
+         "  credential provider, and the agent runtime stack.",
+         "  This is destructive and cannot be undone."],
         "tear everything down",
+        require_yes=True,
     ):
         cleanup(cp_client, mgmt_client)
     else:
