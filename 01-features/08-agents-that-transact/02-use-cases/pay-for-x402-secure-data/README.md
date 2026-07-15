@@ -144,7 +144,7 @@ the **Coinbase CDP** provider.
 - **Amazon Bedrock access** enabled for **Anthropic Claude Sonnet 4.5** in your chosen region (cross-region inference profile `us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
 - **Python 3.10+** (the macOS system `python3` may be 3.9 — create the venv with an explicit 3.10+ binary)
 - **AWS Command Line Interface (AWS CLI) v2** configured with credentials (`aws configure`)
-- **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk`); used by §8 to deploy the agent runtime
+- **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk@2.1131.0`); used by §8 to deploy the agent runtime
 - **Node.js 18+** — required by CDK
 - **`jq`** — used by the IAM role setup script
 - **AgentCore payments botocore service definitions** available to your boto3 install (so boto3 knows how to call the service). If your account is in the AgentCore payments preview, install the current control- and data-plane service models into `~/.aws/models`. An outdated model still exposes the operations but fails later on the `EMBEDDED_CRYPTO_WALLET` instrument type the live API requires. Verify with `aws bedrock-agentcore-control help` (should list `create-payment-manager`).

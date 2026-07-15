@@ -13,7 +13,7 @@
 #
 # Prerequisites:
 #   - AWS CLI v2 configured (aws configure)
-#   - AWS CDK v2 installed (npm install -g aws-cdk)
+#   - AWS CDK v2 installed (npm install -g aws-cdk@2.1131.0)
 #   - Python 3.10+ with pip (for the CDK Python dependencies)
 #   - §4 of the notebook has created a PaymentManager + Connector (so
 #     MANAGER_ARN / PAYMENT_CONNECTOR_ID are set in .env)
@@ -83,7 +83,7 @@ fi
 source "${CDK_DIR}/.venv/bin/activate"
 
 echo "Installing CDK Python dependencies..."
-pip install --quiet --upgrade pip
+pip install --quiet pip==26.1.2
 pip install --quiet -r "${CDK_DIR}/requirements.txt"
 
 # ── CDK CLI ──
@@ -93,7 +93,7 @@ pip install --quiet -r "${CDK_DIR}/requirements.txt"
 # Run the CLI via npx so it stays compatible with the installed library
 # without requiring a global upgrade. Override with CDK_CLI in the environment
 # (for example CDK_CLI="cdk") to use a pinned/global CLI instead.
-CDK_CLI_CMD="${CDK_CLI:-npx --yes aws-cdk@latest}"
+CDK_CLI_CMD="${CDK_CLI:-npx --yes aws-cdk@2.1131.0}"
 echo "Using CDK CLI: ${CDK_CLI_CMD}"
 
 # ── 2. Bootstrap (idempotent) ──

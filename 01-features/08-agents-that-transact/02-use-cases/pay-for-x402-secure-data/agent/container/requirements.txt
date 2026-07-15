@@ -1,10 +1,11 @@
-# Floors verified against the live AgentCore payments API + AgentCorePaymentsPlugin 402
-# handler. Older releases parse the x402 402 response (and CreatePaymentSession) differently.
-bedrock-agentcore[strands-agents]>=1.14.0
-strands-agents>=1.42.0
-requests>=2.32.0
-python-dotenv>=1.0.0
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-aws-opentelemetry-distro>=0.10.1
-boto3>=1.43.24
+# Pinned to the versions validated against the live AgentCore payments API +
+# AgentCorePaymentsPlugin 402 handler. Older releases parse the x402 402
+# response (and CreatePaymentSession) differently. Bump deliberately and re-test.
+bedrock-agentcore[strands-agents]==1.18.0
+strands-agents==1.47.0
+requests==2.34.2
+python-dotenv==1.2.2
+fastapi==0.139.0
+uvicorn[standard]==0.51.0
+aws-opentelemetry-distro==0.18.0
+boto3==1.43.48

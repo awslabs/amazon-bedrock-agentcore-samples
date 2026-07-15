@@ -25,7 +25,7 @@ prerequisites in [`../README.md`](../README.md). Specifically:
 
 - AWS account with Amazon Bedrock AgentCore payments enabled in the target region
 - Amazon Bedrock model access for `us.anthropic.claude-sonnet-4-5-20250929-v1:0`
-- AWS CDK v2 (`npm install -g aws-cdk`) and Node.js 18+
+- AWS CDK v2 (`npm install -g aws-cdk@2.1131.0`) and Node.js 18+
 - Python 3.10+ with the use-case venv active
 - Completed §4–§5 of the parent notebook (so a `PaymentManager`,
   `PaymentInstrument`, and `PaymentSession` exist for the runtime to sign

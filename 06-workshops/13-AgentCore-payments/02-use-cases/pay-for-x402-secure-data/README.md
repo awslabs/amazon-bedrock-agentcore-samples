@@ -144,7 +144,7 @@ the **Coinbase CDP** provider.
 - **Amazon Bedrock access** enabled for **Anthropic Claude Sonnet 4.5** in your chosen region (cross-region inference profile `us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
 - **Python 3.10+** with a Jupyter kernel. If you hit "Running cells requires the ipykernel package", install it once: `python3 -m pip install ipykernel --user`. Any Jupyter frontend works — JupyterLab (4.0+), classic Jupyter Notebook (7.0+), VS Code, or Kiro.
 - **AWS Command Line Interface (AWS CLI) v2** configured with credentials (`aws configure`)
-- **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk`); used by §8 to deploy the agent runtime
+- **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk@2.1131.0`); used by §8 to deploy the agent runtime
 - **Node.js 18+** — required by CDK
 - **`jq`** — used by the IAM role setup script
 - **AgentCore payments botocore service definitions** available to your boto3 install (so boto3 knows how to call the service). If your account is in the AgentCore payments preview, install the current control- and data-plane service models into `~/.aws/models`. An outdated model still exposes the operations but fails later on the `EMBEDDED_CRYPTO_WALLET` instrument type the live API requires. Verify with `aws bedrock-agentcore-control help` (should list `create-payment-manager`).
@@ -251,7 +251,7 @@ installs and notebook state stay isolated from the global Python.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate    # On Windows: .venv\Scripts\activate
-python3 -m pip install --upgrade pip ipykernel
+python3 -m pip install pip==26.1.2 ipykernel==7.3.0
 python3 -m ipykernel install --user --name pay-for-x402-secure-data-venv --display-name "Python (pay-for-x402-secure-data-venv)"
 ```
 
