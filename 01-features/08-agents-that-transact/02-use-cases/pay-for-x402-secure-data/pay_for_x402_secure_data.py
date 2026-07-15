@@ -404,7 +404,42 @@ def deploy_and_invoke_runtime() -> None:
     )
     body = resp["response"]
     data = b"".join(body.iter_chunks()) if hasattr(body, "iter_chunks") else body.read()
-    print(json.loads(data))
+    parsed = json.loads(data)
+    _print_runtime_result(parsed)
+
+
+def _print_runtime_result(parsed: dict) -> None:
+    """Render the runtime invoke response and flag whether the agent finished.
+
+    The container returns the agent's final message under output.message. A
+    completed turn ends on assistant text (the answer). If the final message
+    still ends on a toolUse block, the agent stopped mid-loop (the tool was
+    requested but the result/answer never came back) — surface that clearly
+    rather than printing a raw dict that looks truncated.
+    """
+    message = parsed.get("output", {}).get("message", parsed)
+    content = message.get("content", []) if isinstance(message, dict) else []
+
+    texts = [b["text"] for b in content if isinstance(b, dict) and b.get("text")]
+    tool_uses = [b["toolUse"] for b in content if isinstance(b, dict) and b.get("toolUse")]
+
+    print("\n── Runtime invoke result ──")
+    for text in texts:
+        print(text)
+
+    if tool_uses and not texts:
+        tool_names = ", ".join(t.get("name", "?") for t in tool_uses)
+        print(
+            "⚠️  The agent's final message ended on a tool request "
+            f"({tool_names}) with no answer text.\n"
+            "   The runtime returns the agent's last message only, so the tool\n"
+            "   result did not make it into a final answer. Check the runtime's\n"
+            "   CloudWatch logs / observability dashboard for the tool outcome\n"
+            "   (a ProcessPayment error or a blocked-trust result will show there)."
+        )
+    elif not texts and not tool_uses:
+        # Unexpected shape — fall back to the raw payload so nothing is hidden.
+        print(json.dumps(parsed, indent=2, default=str))
 
 
 # ── §9. Inspect the data plane ───────────────────────────────────────────────
@@ -572,8 +607,23 @@ def main() -> None:
 
     # §8 — deploy to runtime + live invoke. Gated on RUN_LIVE_RUNTIME in .env
     # AND the onboarding confirmation (the deployed runtime also spends real USDC).
+    # A second interactive gate here gives a deliberate pause before the deploy:
+    # this step provisions infrastructure (CodeBuild + CDK) and the invoke
+    # settles REAL USDC, and it must not run straight into §10 cleanup.
     if _env_flag("RUN_LIVE_RUNTIME") and onboarding_confirmed:
-        deploy_and_invoke_runtime()
+        if _confirm_section(
+            "§8. Deploy to AgentCore Runtime + live invoke",
+            [
+                "  This builds the container, deploys the CDK runtime stack, and",
+                "  invokes the runtime with a real prompt. The invoke settles REAL",
+                "  USDC (trust check + target service call), and the deploy provisions",
+                "  billable infrastructure that remains until §10 cleanup.",
+            ],
+            "deploy the runtime and invoke it live",
+        ):
+            deploy_and_invoke_runtime()
+        else:
+            print("\n↷ §8 skipped — runtime deploy/invoke not confirmed.")
     elif not _env_flag("RUN_LIVE_RUNTIME"):
         print("\n↷ §8 skipped — RUN_LIVE_RUNTIME is not set in .env. Set RUN_LIVE_RUNTIME=1")
         print("   to build + deploy the AgentCore Runtime and invoke it live.")
