@@ -24,9 +24,7 @@ logger.setLevel(os.getenv("AGENT_RUNTIME_LOG_LEVEL", "INFO").upper())
 # Must be configured BEFORE any other OTel imports.
 
 auth_token = os.environ.get("DASH0_AUTH_TOKEN", "")
-otlp_base = os.environ.get(
-    "DASH0_OTLP_ENDPOINT", "https://ingress.us-west-2.aws.dash0.com"
-).rstrip("/")
+otlp_base = os.environ.get("DASH0_OTLP_ENDPOINT", "https://ingress.us-west-2.aws.dash0.com").rstrip("/")
 dataset = os.environ.get("DASH0_DATASET", "default")
 service_name = os.environ.get("OTEL_SERVICE_NAME", "agentcore-travel-agent")
 
@@ -51,9 +49,7 @@ if auth_token:
     # Traces
     trace_provider = TracerProvider(resource=resource)
     trace_provider.add_span_processor(
-        SimpleSpanProcessor(
-            OTLPSpanExporter(endpoint=f"{otlp_base}/v1/traces", headers=headers)
-        )
+        SimpleSpanProcessor(OTLPSpanExporter(endpoint=f"{otlp_base}/v1/traces", headers=headers))
     )
     trace.set_tracer_provider(trace_provider)
 
@@ -62,9 +58,7 @@ if auth_token:
         MeterProvider(
             resource=resource,
             metric_readers=[
-                PeriodicExportingMetricReader(
-                    OTLPMetricExporter(endpoint=f"{otlp_base}/v1/metrics", headers=headers)
-                )
+                PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{otlp_base}/v1/metrics", headers=headers))
             ],
         )
     )
@@ -72,14 +66,10 @@ if auth_token:
     # Logs
     log_provider = LoggerProvider(resource=resource)
     log_provider.add_log_record_processor(
-        BatchLogRecordProcessor(
-            OTLPLogExporter(endpoint=f"{otlp_base}/v1/logs", headers=headers)
-        )
+        BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{otlp_base}/v1/logs", headers=headers))
     )
     set_logger_provider(log_provider)
-    logging.getLogger().addHandler(
-        LoggingHandler(level=logging.NOTSET, logger_provider=log_provider)
-    )
+    logging.getLogger().addHandler(LoggingHandler(level=logging.NOTSET, logger_provider=log_provider))
 
     logger.info(
         "Dash0 OTel configured (service: %s, dataset: %s, endpoint: %s)",
@@ -119,13 +109,9 @@ def web_search(query: str) -> str:
 
 
 def create_agent():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     return Agent(
         model=model,
         system_prompt=(

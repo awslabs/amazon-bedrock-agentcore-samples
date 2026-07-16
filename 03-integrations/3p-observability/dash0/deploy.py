@@ -27,9 +27,7 @@ AGENT_FILES = ["utils/travel_agent.py"]
 
 PLATFORM_ENV_VARS = {
     "DASH0_AUTH_TOKEN": os.getenv("DASH0_AUTH_TOKEN", ""),
-    "DASH0_OTLP_ENDPOINT": os.getenv(
-        "DASH0_OTLP_ENDPOINT", "https://ingress.us-west-2.aws.dash0.com"
-    ),
+    "DASH0_OTLP_ENDPOINT": os.getenv("DASH0_OTLP_ENDPOINT", "https://ingress.us-west-2.aws.dash0.com"),
     "DASH0_DATASET": os.getenv("DASH0_DATASET", "default"),
     "OTEL_SERVICE_NAME": os.getenv("OTEL_SERVICE_NAME", "agentcore-travel-agent"),
     "DISABLE_ADOT_OBSERVABILITY": "true",
@@ -65,9 +63,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -156,9 +152,7 @@ def build_and_upload_package():
         capture_output=True,
     )
     for src_file in AGENT_FILES:
-        subprocess.run(
-            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
-        )
+        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
     s3.upload_file(zip_file, S3_BUCKET, S3_PREFIX)
     shutil.rmtree(pkg_dir)
     os.remove(zip_file)
@@ -200,9 +194,7 @@ def create_endpoint(runtime_id: str):
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     while True:
-        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get(
-            "runtimeEndpoints", []
-        ):
+        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
             if ep["name"] == "default":
                 print(f"    Status: {ep['status']}")
                 if ep["status"] == "READY":
@@ -214,9 +206,7 @@ def create_endpoint(runtime_id: str):
 
 def main():
     if not PLATFORM_ENV_VARS.get("DASH0_AUTH_TOKEN"):
-        print(
-            "ERROR: DASH0_AUTH_TOKEN not set. Copy .env.example → .env and fill in your credentials."
-        )
+        print("ERROR: DASH0_AUTH_TOKEN not set. Copy .env.example → .env and fill in your credentials.")
         sys.exit(1)
     print("=" * 60)
     print("Deploying Travel Agent with Dash0 Observability")
