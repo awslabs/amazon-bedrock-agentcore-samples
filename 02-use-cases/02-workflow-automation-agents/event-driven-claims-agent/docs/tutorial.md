@@ -30,7 +30,7 @@ The Gateway enforces Cedar policies before each tool call. If `create_claim` rec
 
 ## Experiment 1: Change the Confidence Threshold
 
-The simplest modification — change when claims are auto-approved vs. sent to human review.
+The simplest modification — change when claims are auto-approved vs. sent to human review. The threshold is a runtime configuration variable, so **no code change is needed**.
 
 **Current behavior:** Claims with confidence ≥ 80 are auto-approved.
 
@@ -38,33 +38,32 @@ The simplest modification — change when claims are auto-approved vs. sent to h
 
 ### Steps
 
-1. Open `app/claimsagent/main.py`
-2. Find this line (around line 175):
-   ```python
-   elif confidence >= 80:
-       routing = "AUTO_APPROVE"
+1. Set the new threshold in your `.env` file or as an environment variable:
+   ```bash
+   export AUTO_APPROVE_THRESHOLD=90
    ```
-3. Change `80` to `90`:
-   ```python
-   elif confidence >= 90:
-       routing = "AUTO_APPROVE"
-   ```
-4. Also update `VALIDATOR_PROMPT` to match (find "If CONFIDENCE >= 80"):
+
+2. Also update `VALIDATOR_PROMPT` in `app/claimsagent/main.py` to match (find "If CONFIDENCE >= 80"):
    ```python
    - If CONFIDENCE >= 90: set ROUTING to AUTO_APPROVE
    - If CONFIDENCE < 90: set ROUTING to HUMAN_REVIEW
    ```
-5. Redeploy:
+   > **Why both?** The env var controls the hard threshold in code (`routing.py`). The prompt guides the LLM's own scoring logic. They should stay in sync for consistent behavior.
+
+3. Redeploy:
    ```bash
    agentcore deploy --target dev --yes
    ```
-6. Test — a claim that was previously auto-approved may now route to human review:
+
+4. Test — with the stricter threshold, borderline claims route to human review:
    ```bash
    python3 scripts/test_invoke.py --region us-west-2 \
      --prompt 'Policy POL-12345. Minor scratch on bumper. $500 repair.'
    ```
 
-**What you learned:** Agent routing logic is in Python code (`main.py`). The validator's prompt guides its scoring, but the hard threshold lives in the routing code. Both should stay in sync.
+**What you learned:** The routing threshold is externalized to `AUTO_APPROVE_THRESHOLD` in `config.py` (read from environment). This means you can tune it per-deployment without modifying code. For production, you might set `AUTO_APPROVE_THRESHOLD=95` to be extra cautious.
+
+**How it works under the hood:** `config.py` → `routing.py` reads `AUTO_APPROVE_THRESHOLD` → `resolve_routing()` enforces the threshold when the validator assigns routing.
 
 ---
 
@@ -270,18 +269,37 @@ The insurance domain is just one example. Here's how to adapt this sample to a d
 | Tool: `human_review` | Escalates to claims adjuster | Escalates to loan officer |
 | Tool: `notification` | Emails claimant | Emails applicant |
 | Cedar policy | Blocks claims ≥$100k | Blocks loans ≥$500k or poor credit |
+| `AUTO_APPROVE_THRESHOLD` | 80 | 95 (loans need higher confidence) |
+
+### Configuration-first customization
+
+Before touching any code, review what's configurable via environment variables alone. These changes require only a redeploy, not a code edit:
+
+| Variable | Effect |
+|----------|--------|
+| `AGENT_MODEL_ID` | Switch the primary reasoning model |
+| `AUTO_APPROVE_THRESHOLD` | Tune how conservative the auto-approval is |
+| `MEMORY_RETRIEVAL_TOP_K` | Retrieve more/fewer prior interactions |
+| `MEMORY_RETRIEVAL_RELEVANCE` | Raise/lower the relevance bar for memory recall |
+| `LAMBDA_TIMEOUT_SECONDS` | Give tools more time for complex operations |
+| `S3_INBOX_PREFIX` | Change which S3 prefix triggers processing |
+| `SNS_TOPIC_NAME` | Use a different notification topic |
+| `DESTROY_ON_DELETE` | Set `false` for production (preserves data on stack delete) |
+| `SENDER_EMAIL` | Change the notification sender address |
 
 ### Steps
 
-1. **Update agent prompts** in `app/claimsagent/main.py` — rewrite `PROCESSOR_PROMPT` and `VALIDATOR_PROMPT` for your domain. Keep the same output format (DECISION/CONFIDENCE/ROUTING) so the routing logic still works.
+1. **Tune configuration first** — set `AUTO_APPROVE_THRESHOLD`, model IDs, and memory tuning in `.env` for your domain's needs.
 
-2. **Update DynamoDB tables** in `agentcore/cdk/lib/infra-construct.ts` — change table names, partition keys, and sort keys for your data model.
+2. **Update agent prompts** in `app/claimsagent/main.py` — rewrite `PROCESSOR_PROMPT` and `VALIDATOR_PROMPT` for your domain. Keep the same output format (DECISION/CONFIDENCE/ROUTING) so the routing logic still works.
 
-3. **Rewrite Lambda handlers** in `lambdas/` — each tool becomes domain-specific. Keep the same interface pattern (receive JSON params, return `json.dumps({...})`).
+3. **Update DynamoDB tables** in `agentcore/cdk/lib/infra-construct.ts` — change table names, partition keys, and sort keys for your data model.
 
-4. **Update tool schemas** in `lambdas/schemas/` — change property names, descriptions, and required fields.
+4. **Rewrite Lambda handlers** in `lambdas/` — each tool becomes domain-specific. Keep the same interface pattern (receive JSON params, return `json.dumps({...})`).
 
-5. **Update Cedar policies** — use `agentcore add policy` to add domain-specific authorization rules:
+5. **Update tool schemas** in `lambdas/schemas/` — change property names, descriptions, and required fields.
+
+6. **Update Cedar policies** — use `agentcore add policy` to add domain-specific authorization rules:
    ```bash
    agentcore add policy \
      --name BlockHighRiskLoans \
@@ -290,11 +308,11 @@ The insurance domain is just one example. Here's how to adapt this sample to a d
      --validation-mode IGNORE_ALL_FINDINGS
    ```
 
-6. **Update seed data** in `scripts/seed_dynamodb.py` — populate with test records for your domain.
+7. **Update seed data** in `scripts/seed_dynamodb.py` — populate with test records for your domain.
 
-7. **Update tests** in `scripts/test_e2e.py` — write scenarios that exercise your domain's routing paths.
+8. **Update tests** in `scripts/test_e2e.py` — write scenarios that exercise your domain's routing paths.
 
-**What you learned:** The architecture is domain-agnostic. The dual-agent pattern, event-driven trigger, Gateway + Cedar enforcement, and confidence-based routing all transfer directly. Only the prompts, data schemas, and business rules are domain-specific.
+**What you learned:** The architecture is domain-agnostic. The dual-agent pattern, event-driven trigger, Gateway + Cedar enforcement, cost routing, and confidence-based routing all transfer directly. Start with configuration (env vars), then modify prompts, then tools and schemas. Only the domain-specific logic needs rewriting.
 
 ---
 
@@ -335,6 +353,7 @@ You don't need to redeploy for every code change. Here's how to iterate locally:
    ```bash
    cp .env.example .env
    # Fill in AGENTCORE_GATEWAY_URL, CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT
+   # Optionally tune: AUTO_APPROVE_THRESHOLD, FAST_MODEL_ID, MEMORY_RETRIEVAL_TOP_K
    ```
 
 4. Run locally:
@@ -370,5 +389,6 @@ No container rebuild needed during local dev — only when you deploy.
 
 - Read [docs/ARCHITECTURE.md](ARCHITECTURE.md) for the full component breakdown and data flow diagrams
 - Browse the [decision records](decisions/README.md) to understand why each architectural choice was made
-- Check [docs/CONFIGURATION.md](CONFIGURATION.md) for every configurable parameter
+- Check [docs/CONFIGURATION.md](CONFIGURATION.md) for every configurable parameter — start here before modifying code
 - Look at `app/claimsagent/main.py` — the entire agent logic is in one file (~200 lines of orchestration code)
+- Review `app/claimsagent/config.py` — the single source of truth for all environment-driven configuration

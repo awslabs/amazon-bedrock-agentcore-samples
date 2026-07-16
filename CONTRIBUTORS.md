@@ -121,4 +121,7 @@
 - Visakh Madathil (vmmadathil)
 - JobRamos (jobdram)
 - Will Matos (wilmatos)
+- Senthil Mohan (skmohan)
+- Fabio Balancin (balancin)
+- Varun Gunda (vvargu)
 - tsubasakong

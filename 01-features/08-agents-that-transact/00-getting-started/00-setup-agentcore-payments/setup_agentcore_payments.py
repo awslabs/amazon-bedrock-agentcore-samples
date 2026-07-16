@@ -1,5 +1,5 @@
 """
-Set Up Amazon Bedrock AgentCore Payments
+Set Up Amazon Bedrock AgentCore payments
 
 Creates the complete payment stack that all downstream tutorials depend on:
   IAM roles → CredentialProvider → PaymentManager → PaymentConnector
@@ -243,6 +243,10 @@ resp = idempotent_create(
 if resp:
     CREDENTIAL_PROVIDER_ARN = resp["credentialProviderArn"]
     print(f"  credentialProviderArn: {CREDENTIAL_PROVIDER_ARN}")
+else:
+    # Re-run: the credential provider already exists, so reuse the ARN from .env.
+    CREDENTIAL_PROVIDER_ARN = os.environ["CREDENTIAL_PROVIDER_ARN"]
+    print(f"  Reusing existing credential provider: {CREDENTIAL_PROVIDER_ARN}")
 
 # Security best practice: After setup, lock down the credential provider secrets
 # in Secrets Manager so only the ResourceRetrievalRole can read them.
@@ -284,6 +288,11 @@ if resp:
             "NETWORK": NETWORK,
         },
     )
+else:
+    # Re-run: the manager already exists, so reuse the IDs a prior run wrote to .env.
+    MANAGER_ARN = os.environ["PAYMENT_MANAGER_ARN"]
+    MANAGER_ID = os.environ.get("PAYMENT_MANAGER_ID", MANAGER_ARN.split("/")[-1])
+    print(f"  Reusing existing PaymentManager: {MANAGER_ID}")
 
 # ── Step 6 — Create Payment Connector ─────────────────────────────────────────
 # Links the Manager to the Credential Provider.
@@ -314,6 +323,10 @@ if resp:
     )
     print("  ✅ PaymentConnector is READY")
     update_env_file(ENV_FILE, {"PAYMENT_CONNECTOR_ID": CONNECTOR_ID})
+else:
+    # Re-run: the connector already exists, so reuse the id a prior run wrote to .env.
+    CONNECTOR_ID = os.environ["PAYMENT_CONNECTOR_ID"]
+    print(f"  Reusing existing PaymentConnector: {CONNECTOR_ID}")
 
 # ── Step 7 — Create Payment Instrument (Embedded Wallet) ──────────────────────
 # Provisions an embedded USDC wallet linked to a user identity.

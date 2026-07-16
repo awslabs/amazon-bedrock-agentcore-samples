@@ -8,7 +8,9 @@
  * - Trigger Lambda (EventBridge → Runtime invocation)
  * - EventBridge rule (S3 PutObject → Trigger)
  * - SNS topic (human review notifications)
- * - Cognito User Pool + App Client (M2M auth for external callers)
+ *
+ * Cognito is managed externally (scripts/setup_cognito.sh) and its values
+ * are passed via environment variables at synth time.
  *
  * Exposes `lambdaArnMap` for the parent stack to patch placeholder ARNs in agentcore.json.
  */
@@ -22,7 +24,7 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as eventsTargets from 'aws-cdk-lib/aws-events-targets';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -36,14 +38,10 @@ export class InfraConstruct extends Construct {
   public readonly lambdaArnMap: Record<string, string>;
   /** Trigger Lambda function (needs Runtime ARN injected after creation) */
   public readonly triggerFn: lambda_.Function;
-  /** Cognito token endpoint for M2M auth */
-  public readonly cognitoTokenEndpoint: string;
-  /** Cognito app client ID */
-  public readonly cognitoClientId: string;
-  /** Cognito app client secret (M2M client_credentials) */
-  public readonly cognitoClientSecret: string;
-  /** Cognito OIDC discovery URL — used as the Gateway CUSTOM_JWT authorizer discovery endpoint */
+  /** Cognito OIDC discovery URL — read from env, used for Gateway CUSTOM_JWT authorizer */
   public readonly cognitoDiscoveryUrl: string;
+  /** Cognito app client ID — read from env, used for Gateway allowedClients */
+  public readonly cognitoClientId: string;
 
   constructor(scope: Construct, id: string, props: InfraConstructProps = {}) {
     super(scope, id);
@@ -58,24 +56,39 @@ export class InfraConstruct extends Construct {
     // ─── DynamoDB Tables ───────────────────────────────────────────
 
     const policiesTable = new dynamodb.Table(this, 'PoliciesTable', {
-      tableName: 'ClaimsAgent-Policies',
+      tableName: `ClaimsAgent-${stack.stackName.split('-').pop() || 'dev'}-Policies`,
       partitionKey: { name: 'policy_number', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy,
     });
 
     const claimsTable = new dynamodb.Table(this, 'ClaimsTable', {
-      tableName: 'ClaimsAgent-Claims',
+      tableName: `ClaimsAgent-${stack.stackName.split('-').pop() || 'dev'}-Claims`,
       partitionKey: { name: 'claim_id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy,
     });
 
+    // Add GSI for listing claims by status (avoids full table scan)
+    claimsTable.addGlobalSecondaryIndex({
+      indexName: 'status-index',
+      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'created_at', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     const reviewsTable = new dynamodb.Table(this, 'ReviewsTable', {
-      tableName: 'ClaimsAgent-Reviews',
+      tableName: `ClaimsAgent-${stack.stackName.split('-').pop() || 'dev'}-Reviews`,
       partitionKey: { name: 'review_id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy,
+    });
+
+    // Add GSI for finding reviews by claim_id (avoids full table scan)
+    reviewsTable.addGlobalSecondaryIndex({
+      indexName: 'claim-id-index',
+      partitionKey: { name: 'claim_id', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // ─── SNS Topic (human review alerts) ──────────────────────────
@@ -93,43 +106,11 @@ export class InfraConstruct extends Construct {
       eventBridgeEnabled: true,
     });
 
-    // ─── Cognito User Pool (external caller auth) ─────────────────
-
-    const userPool = new cognito.UserPool(this, 'ClaimsUserPool', {
-      userPoolName: 'ClaimsAgent-UserPool',
-      removalPolicy,
-    });
-
-    const resourceServer = userPool.addResourceServer('AgentCoreRS', {
-      identifier: 'agentcore',
-      scopes: [{ scopeName: 'invoke', scopeDescription: 'Invoke agent' }],
-    });
-
-    const appClient = userPool.addClient('M2MClient', {
-      userPoolClientName: 'ClaimsAgent-M2M',
-      generateSecret: true,
-      oAuth: {
-        flows: { clientCredentials: true },
-        scopes: [
-          cognito.OAuthScope.resourceServer(
-            resourceServer,
-            { scopeName: 'invoke', scopeDescription: 'Invoke agent' }
-          ),
-        ],
-      },
-    });
-
-    const domain = userPool.addDomain('CognitoDomain', {
-      cognitoDomain: { domainPrefix: `claims-agent-${stack.account}` },
-    });
-
-    this.cognitoTokenEndpoint = `https://${domain.domainName}.auth.${stack.region}.amazoncognito.com/oauth2/token`;
-    this.cognitoClientId = appClient.userPoolClientId;
-    // The sample injects the Cognito secret straight into the Runtime to stay focused on AgentCore.
-    // For production, read it from AWS Secrets Manager instead (see ADR-0010).
-    this.cognitoClientSecret = appClient.userPoolClientSecret.unsafeUnwrap();
-    // Cognito OIDC discovery endpoint for the Gateway CUSTOM_JWT authorizer
-    this.cognitoDiscoveryUrl = `https://cognito-idp.${stack.region}.amazonaws.com/${userPool.userPoolId}/.well-known/openid-configuration`;
+    // ─── Cognito values (externally managed — read from env) ──────
+    // Cognito is created by scripts/setup_cognito.sh BEFORE deploy.
+    // These values are passed via environment variables at synth time.
+    this.cognitoDiscoveryUrl = process.env.COGNITO_DISCOVERY_URL || 'PLACEHOLDER_DISCOVERY_URL';
+    this.cognitoClientId = process.env.AGENTCORE_GATEWAY_CLIENT_ID || 'PLACEHOLDER_CLIENT_ID';
 
     // ─── Lambda Tool Functions ─────────────────────────────────────
 
@@ -227,6 +208,18 @@ export class InfraConstruct extends Construct {
       encryption: sqs.QueueEncryption.SQS_MANAGED,
     });
 
+    // Alarm when failed claims land in the DLQ — ensures ops visibility
+    new cloudwatch.Alarm(this, 'TriggerDLQAlarm', {
+      alarmName: 'ClaimsAgent-FailedClaims',
+      alarmDescription: 'Claims trigger DLQ has messages — failed claim processing needs attention',
+      metric: triggerDlq.metricApproximateNumberOfMessagesVisible({
+        period: cdk.Duration.minutes(1),
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
     // ─── Trigger Lambda (EventBridge → Runtime) ───────────────────
 
     this.triggerFn = new lambda_.Function(this, 'TriggerFn', {
@@ -235,13 +228,10 @@ export class InfraConstruct extends Construct {
       handler: 'handler.handler',
       code: lambda_.Code.fromAsset(path.join(lambdasPath, 'trigger')),
       environment: {
-        COGNITO_USER_POOL_ID: userPool.userPoolId,
-        COGNITO_CLIENT_ID: appClient.userPoolClientId,
-        COGNITO_TOKEN_ENDPOINT: this.cognitoTokenEndpoint,
         // AGENTCORE_RUNTIME_ARN injected by parent stack after Runtime is created
         AGENTCORE_RUNTIME_ARN: 'PENDING',
       },
-      timeout: cdk.Duration.seconds(60),
+      timeout: cdk.Duration.seconds(90),
       deadLetterQueue: triggerDlq,
       retryAttempts: 2,
     });
@@ -264,8 +254,6 @@ export class InfraConstruct extends Construct {
 
     // ─── Outputs ──────────────────────────────────────────────────
 
-    new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
-    new cdk.CfnOutput(this, 'UserPoolClientId', { value: appClient.userPoolClientId });
     new cdk.CfnOutput(this, 'InboxBucketName', { value: inboxBucket.bucketName });
     new cdk.CfnOutput(this, 'ReviewTopicArn', { value: reviewTopic.topicArn });
     new cdk.CfnOutput(this, 'TriggerDLQUrl', { value: triggerDlq.queueUrl });
