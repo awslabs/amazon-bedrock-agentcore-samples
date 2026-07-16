@@ -282,6 +282,14 @@ trust-gated run, optional runtime deploy, and teardown:
 - §9 inspects the data plane: GetPaymentSession, balance, ListPaymentInstruments, ListPaymentSessions
 - §10 tears everything down: session, agent runtime (if §8 was run), and AgentCore payments resources (optional)
 
+> ⚠️ **Network mode (read before §8).** The §8 CDK stack deploys the AgentCore
+> Runtime with `networkMode=PUBLIC` so the container can reach the t54
+> x402-secure API and the target x402 endpoints over the internet. This is the
+> tutorial default and is **not** hardened for production. Before deploying to a
+> production environment, switch the Runtime to **VPC mode** with private
+> subnets, VPC endpoints for AWS APIs, a NAT Gateway, and an egress allow-list
+> restricted to the external x402 hosts (see [Production hardening](#production-hardening)).
+
 ---
 
 ## Key Notes
