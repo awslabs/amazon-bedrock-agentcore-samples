@@ -121,10 +121,13 @@ control_plane_policy() {
         # AgentCore payments stores (and rotates/deletes) the wallet-provider
         # credentials in AWS Secrets Manager on behalf of this role when a
         # credential provider is created / updated / deleted. The secret name
-        # is service-chosen, so the resource is scoped to this account rather
-        # than a specific secret ARN. (Not listed in the published IAM
-        # reference, which only covers the runtime read path.) Production
-        # hardening: scope to the specific secret ARN prefix once known.
+        # is service-chosen at create time, so the resource cannot be pinned to
+        # a specific secret ARN here; instead it is scoped to this account and
+        # constrained by an aws:ResourceAccount condition. (Not listed in the
+        # published IAM reference, which only covers the runtime read path.)
+        # Production hardening: once the service secret-name prefix is known,
+        # replace the "secret:*" wildcard with that prefix, or add a
+        # secretsmanager:ResourceTag condition matching the service tag.
         Sid: "AllowCredentialProviderSecretStorage",
         Effect: "Allow",
         Action: [
@@ -136,7 +139,8 @@ control_plane_policy() {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DeleteSecret"
         ],
-        Resource: [("arn:aws:secretsmanager:*:" + $accountId + ":secret:*")]
+        Resource: [("arn:aws:secretsmanager:*:" + $accountId + ":secret:*")],
+        Condition: {StringEquals: {"aws:ResourceAccount": $accountId}}
       }
     ]
   }'
@@ -249,14 +253,24 @@ runtime_execution_policy() {
     Version: "2012-10-17",
     Statement: [
       {
-        Sid: "RuntimeECRAccess",
+        # ecr:GetAuthorizationToken must be granted on "*" — the API does not
+        # support resource-level permissions for it.
+        Sid: "RuntimeECRAuth",
+        Effect: "Allow",
+        Action: ["ecr:GetAuthorizationToken"],
+        Resource: "*"
+      },
+      {
+        # Image-pull actions scoped to the exact repository the CDK stack
+        # creates (agent_stack.py -> repository_name
+        # "pay-for-x402-secure-data-agent"), following least privilege.
+        Sid: "RuntimeECRImagePull",
         Effect: "Allow",
         Action: [
           "ecr:BatchGetImage",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:GetAuthorizationToken"
+          "ecr:GetDownloadUrlForLayer"
         ],
-        Resource: "*"
+        Resource: [("arn:aws:ecr:" + $region + ":" + $accountId + ":repository/pay-for-x402-secure-data-agent")]
       },
       {
         Sid: "RuntimeCloudWatchLogs",

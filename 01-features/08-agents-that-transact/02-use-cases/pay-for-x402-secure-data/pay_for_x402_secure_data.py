@@ -35,6 +35,16 @@ CreatePaymentCredentialProvider runs in §4. The agent runtime calls
 GetResourcePaymentToken at signing time and never receives the raw secret. Every
 target x402 payment is gated in code by TrustedX402ServiceGateway behind a paid
 t54 x402-secure trust check.
+
+Compliance note: this sample settles real cryptocurrency (USDC) payments.
+Processing payments can carry regulatory obligations — for example
+financial-services regulations, AML/KYC requirements for cryptocurrency
+transactions, sanctions screening, and PCI-DSS where card data is involved —
+that vary by jurisdiction and use case. You are responsible for determining and
+meeting the requirements that apply to you. Review the AWS Shared Responsibility
+Model (https://aws.amazon.com/compliance/shared-responsibility-model/) and AWS
+Compliance Programs (https://aws.amazon.com/compliance/programs/), and consult
+your own legal and compliance advisors before processing payments in production.
 """
 
 from __future__ import annotations
@@ -383,9 +393,9 @@ def run_agent_live() -> None:
 
 # ── §8. Deploy + invoke the runtime ──────────────────────────────────────────
 def deploy_and_invoke_runtime() -> None:
-    # nosec B603 — fixed command list (no shell, no untrusted input); runs the
-    # sample's own vendored deploy script from a known relative path.
-    proc = subprocess.run(["bash", "test/integration/deploy-agent.sh"], cwd=HERE)  # noqa: S603
+    # Fixed command list (no shell, no untrusted input); runs the sample's own
+    # vendored deploy script from a known relative path.
+    proc = subprocess.run(["bash", "test/integration/deploy-agent.sh"], cwd=HERE)  # noqa: S603  # nosec B603
     if proc.returncode != 0:
         sys.exit(f"deploy-agent.sh exited {proc.returncode}")
     outputs = json.loads((HERE / "agent" / "cdk" / "outputs.json").read_text())[
@@ -481,7 +491,7 @@ def inspect_data_plane(mgmt_client) -> None:
             paymentInstrumentId=PAYMENT_INSTRUMENT_ID,
             userId=_payment_user_id(),
             chain=chain,
-            token="USDC",
+            token="USDC",  # nosec B106 — public token symbol, not a credential
         )
         bal = bal_resp.get("tokenBalance", {})
         amount = int(bal.get("amount", "0")) / (10 ** int(bal.get("decimals", 6)))
@@ -563,8 +573,8 @@ def cleanup(cp_client, mgmt_client) -> None:
         "MANAGER_ARN", "PAYMENT_CONNECTOR_ID", "CREDENTIAL_PROVIDER_ARN",
         "PAYMENT_INSTRUMENT_ID", "PAYMENT_SESSION_ID", "WALLET_ADDRESS",
     )})
-    # nosec B603 — fixed command list (no shell, no untrusted input).
-    subprocess.run(["bash", "test/integration/destroy-agent.sh"], cwd=HERE, check=False)  # noqa: S603
+    # Fixed command list (no shell, no untrusted input).
+    subprocess.run(["bash", "test/integration/destroy-agent.sh"], cwd=HERE, check=False)  # noqa: S603  # nosec B603
 
     _remove_local_artifacts()
     print("\n✅ Cleanup complete.")

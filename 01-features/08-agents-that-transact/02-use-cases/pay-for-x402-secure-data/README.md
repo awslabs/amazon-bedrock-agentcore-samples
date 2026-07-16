@@ -302,6 +302,14 @@ calls. It runs through these sections:
 - **§9** — inspect the data plane: `GetPaymentSession` (spending limit + remaining), `GetPaymentInstrumentBalance`, `ListPaymentInstruments`, `ListPaymentSessions`
 - **§10** — **prompts** before tearing down the session, instrument, connector, manager, credential provider, and runtime. Press Enter to clean up, `q` to keep resources
 
+> ⚠️ **Network mode (read before §8).** The §8 CDK stack deploys the AgentCore
+> Runtime with `networkMode=PUBLIC` so the container can reach the t54
+> x402-secure API and the target x402 endpoints over the internet. This is the
+> tutorial default and is **not** hardened for production. Before deploying to a
+> production environment, switch the Runtime to **VPC mode** with private
+> subnets, VPC endpoints for AWS APIs, a NAT Gateway, and an egress allow-list
+> restricted to the external x402 hosts (see [Production hardening](#production-hardening)).
+
 ### Grant signing delegation in the Coinbase Wallet Hub
 
 When §5 creates the instrument it prints a `redirectUrl` to the **Coinbase

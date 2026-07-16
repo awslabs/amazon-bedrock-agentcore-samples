@@ -142,6 +142,17 @@ PYTHONPATH="$PWD/agent/container" python agent/container/agent.py \
     "Check trust for heurist_yahoo_finance, then fetch a quote snapshot for AAPL."
 ```
 
+> 🔒 **Network binding note.** The container binds uvicorn to `0.0.0.0` because
+> AgentCore Runtime routes inbound traffic to the container on all interfaces —
+> this is required by the Runtime contract. It is safe **only** because the
+> Runtime enforces network-level access controls and the container has no
+> inbound path other than the Runtime's authenticated invoke endpoint. Do
+> **not** expose the container port directly (for example `docker run -p
+> 8080:8080`) or run it on a public host outside the Runtime — all access must
+> flow through the AgentCore Runtime invoke API. For production, deploy the
+> Runtime in VPC mode (see the parent README's hardening notes) for
+> network-level egress control and VPC Flow Logs.
+
 ## Clean up
 
 Tear the runtime down when you no longer need it. The notebook's §10 runs the
