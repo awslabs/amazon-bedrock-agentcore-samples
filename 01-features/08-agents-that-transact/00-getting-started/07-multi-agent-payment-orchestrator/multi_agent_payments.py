@@ -61,6 +61,11 @@ PRIVY = config["instruments"]["stripe_privy"]
 
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 
+# Per-agent budgets (USD). Each specialist gets its own budgeted session, created in-code below.
+RESEARCH_BUDGET = "0.50"  # research agent (Coinbase wallet)
+DISCOVERY_BUDGET = "0.20"  # discovery agent (Privy wallet)
+FAILOVER_BUDGET = "0.0005"  # deliberately tiny — Demo 2 uses this to trigger a budget-exhaustion failover
+
 print_summary(
     "Multi-Provider Config",
     manager_arn=PAYMENT_MANAGER_ARN,
@@ -82,27 +87,23 @@ for label, instr_id in [
     assert status == "ACTIVE", f"{label} instrument {instr_id} is {status} — fund and delegate first"
     print(f"  {label} instrument {instr_id} is {status}")
 
-# Session A: Research Agent — larger budget, Coinbase wallet
-sess_a = manager.create_payment_session(
+# Each agent gets its own budgeted session, created in-code via the SDK
+# (manager.create_payment_session). One session per agent, each capped to its own budget.
+SESSION_A_ID = manager.create_payment_session(
     user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "0.50", "currency": "USD"}},
+    limits={"maxSpendAmount": {"value": RESEARCH_BUDGET, "currency": "USD"}},
     expiry_time_in_minutes=60,
-)
-SESSION_A_ID = sess_a["paymentSessionId"]
-
-# Session B: Discovery Agent — smaller budget, Privy wallet
-sess_b = manager.create_payment_session(
+)["paymentSessionId"]
+SESSION_B_ID = manager.create_payment_session(
     user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "0.20", "currency": "USD"}},
+    limits={"maxSpendAmount": {"value": DISCOVERY_BUDGET, "currency": "USD"}},
     expiry_time_in_minutes=60,
-)
-SESSION_B_ID = sess_b["paymentSessionId"]
+)["paymentSessionId"]
 
 print_summary(
     "Per-Agent Sessions",
-    session_a=f"{SESSION_A_ID} ($0.50, Coinbase)",
-    session_b=f"{SESSION_B_ID} ($0.20, Privy)",
-    total_allocated="$0.70",
+    session_a=f"{SESSION_A_ID} (Coinbase)",
+    session_b=f"{SESSION_B_ID} (Privy)",
 )
 
 # ── Step 4: Create Plugins and Agents ─────────────────────────────────────────
@@ -258,14 +259,15 @@ print("Demo 2 — Budget Exhaustion + Failover")
 print("=" * 60)
 print("Tiny research budget ($0.0005) → payment rejected → reroute to discovery agent")
 
-tiny_sess = manager.create_payment_session(
+# This demo needs a deliberately tiny research session so the paid call is rejected. Create it
+# in-code via the SDK, capped to the tiny FAILOVER_BUDGET.
+TINY_SESSION_ID = manager.create_payment_session(
     user_id=USER_ID,
-    limits={"maxSpendAmount": {"value": "0.0005", "currency": "USD"}},
+    limits={"maxSpendAmount": {"value": FAILOVER_BUDGET, "currency": "USD"}},
     expiry_time_in_minutes=60,
-)
-TINY_SESSION_ID = tiny_sess["paymentSessionId"]
-print(f"  Tiny research session: {TINY_SESSION_ID} (budget: $0.0005)")
-print(f"  Discovery session: {SESSION_B_ID} (budget: $0.20)")
+)["paymentSessionId"]
+print(f"  Tiny research session: {TINY_SESSION_ID} (budget: ${FAILOVER_BUDGET})")
+print(f"  Discovery session: {SESSION_B_ID}")
 
 tiny_research_plugin = AgentCorePaymentsPlugin(
     config=AgentCorePaymentsPluginConfig(
@@ -370,11 +372,9 @@ print("Demo 3 — Structural Safety (Orchestrator Cannot Spend)")
 print("=" * 60)
 print("Orchestrator gets http_request but NO plugin → 402 is a dead end")
 
-from strands_tools import http_request as http_tool  # noqa: E402
-
 unsafe_orchestrator = Agent(
     model=model,
-    tools=[http_tool],  # Has http_request but NO payment plugin
+    tools=[http_request],  # Has http_request but NO payment plugin
     system_prompt=(
         "You have http_request available. Try to access this paid endpoint: "
         "GET https://x402-test.genesisblock.ai/api/weather. "
