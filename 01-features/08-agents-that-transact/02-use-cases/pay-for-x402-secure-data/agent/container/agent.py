@@ -204,7 +204,26 @@ def create_agent() -> Agent:
 
 
 def main() -> None:
-    """Run the agent as an interactive CLI, or one-shot when a prompt is passed via argv."""
+    """Run the agent as an interactive CLI, or one-shot when a prompt is passed via argv.
+
+    Development/testing helper only. This entry point prints raw agent output
+    (prompt text + model responses) to stdout, so it is gated behind an
+    explicit opt-in: set ``X402_ALLOW_DEV_CLI=1`` to run it. It refuses to run
+    otherwise, which prevents it from ever executing in a deployed / production
+    context (the AgentCore Runtime container runs ``main.py``, not this
+    function, and never sets that variable).
+    """
+    if os.environ.get("X402_ALLOW_DEV_CLI") != "1":
+        sys.exit(
+            "Refusing to start the development CLI/REPL.\n"
+            "This helper prints raw agent output (prompt + model text) to stdout and is\n"
+            "intended for local development with SYNTHETIC prompts only — never\n"
+            "production or third-party user data.\n"
+            "To run it explicitly, set X402_ALLOW_DEV_CLI=1, e.g.:\n"
+            '  X402_ALLOW_DEV_CLI=1 PYTHONPATH="$PWD/agent/container" \\\n'
+            '      python agent/container/agent.py "<your synthetic test prompt>"'
+        )
+
     print("=" * 60)
     print("  Pay for Secure Data (x402) Agent")
     print("=" * 60)

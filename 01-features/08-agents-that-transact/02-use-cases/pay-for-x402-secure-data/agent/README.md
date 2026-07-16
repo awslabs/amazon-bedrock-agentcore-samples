@@ -135,10 +135,13 @@ curl http://localhost:8080/ping
 ```
 
 Or run the agent directly as a one-shot CLI (fastest way to demo the paid
-flow — settles real USDC when the target is approved):
+flow — settles real USDC when the target is approved). This is a
+development/testing helper that prints raw agent output, so it is gated behind
+an explicit `X402_ALLOW_DEV_CLI=1` opt-in and must only be used with synthetic
+prompts, never production or third-party user data:
 
 ```bash
-PYTHONPATH="$PWD/agent/container" python agent/container/agent.py \
+X402_ALLOW_DEV_CLI=1 PYTHONPATH="$PWD/agent/container" python agent/container/agent.py \
     "Check trust for heurist_yahoo_finance, then fetch a quote snapshot for AAPL."
 ```
 
