@@ -6,7 +6,7 @@ automated evaluation, and AI-driven optimization with A/B testing.
 
 ## Overview
 
-![Agent development to production loops](AGENT-LOOPS.png)
+![Agent development to production loops](AGENT-LOOPS.PNG)
 
 ## Before You Start — Enable observability Infrastructure
 
