@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Strands agent definition: x402-secure trust tools and AgentCore payments plugin wiring."""
+"""Strands agent definition: x402-secure trust tools and AgentCore payments plugin wiring.
+
+The ``main()`` one-shot CLI and interactive REPL at the bottom of this module
+are **development/testing helpers only** — meant for exercising the agent with
+your own synthetic prompts. They print the raw agent result to the console,
+which can include prompt text and model output, so they must not be used with
+production or third-party user data. Production traffic runs through the
+AgentCore Runtime container (``main.py`` / ``http_app.py``), which returns
+structured responses rather than printing to stdout.
+"""
 
 from __future__ import annotations
 
@@ -216,6 +225,8 @@ def main() -> None:
             result = agent(prompt)
         print(f"\n{'=' * 60}")
         print("Agent response:")
+        # Dev/testing CLI only — prints the raw result for synthetic prompts.
+        # Do not use with production user data (see module docstring).
         print(result)
         return
 
@@ -232,6 +243,8 @@ def main() -> None:
             continue
         with use_request_trust_state():
             result = agent(prompt)
+        # Dev/testing REPL only — prints the raw result for synthetic prompts.
+        # Do not use with production user data (see module docstring).
         print(f"\nAgent: {result}\n")
 
 
