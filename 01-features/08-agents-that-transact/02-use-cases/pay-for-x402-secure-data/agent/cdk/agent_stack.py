@@ -54,6 +54,10 @@ from constructs import Construct
 # absolute path once so the S3 asset + docker build share the same context.
 CONTAINER_DIR = str(Path(__file__).resolve().parent.parent / "container")
 
+# The CodeBuild trigger custom-resource handler lives in its own folder (loaded
+# via Code.from_asset) so it is covered by linting and static analysis.
+BUILD_TRIGGER_DIR = str(Path(__file__).resolve().parent / "build_trigger")
+
 # Claude Sonnet 4.5 cross-region inference profile (US). Overridable via the
 # BEDROCK_MODEL_ID env var at deploy time to match the notebook.
 DEFAULT_MODEL_ID = os.environ.get(
@@ -179,68 +183,9 @@ class AgentCorePaymentsX402SecureDataAgentStack(Stack):
             role=build_trigger_role,
             timeout=Duration.minutes(15),
             memory_size=128,
-            code=aws_lambda.Code.from_inline(
-                r"""
-import json
-import time
-import urllib.request
-
-import boto3
-
-
-def handler(event, context):
-    props = event.get("ResourceProperties", {})
-    project_name = props.get("ProjectName", "")
-
-    # No rebuild on stack delete — ECR contents are torn down by the
-    # repository's lifecycle.
-    if event["RequestType"] == "Delete":
-        return _respond(event, context, "SUCCESS", {"ImageBuilt": "skipped"})
-
-    cb = boto3.client("codebuild")
-    try:
-        build = cb.start_build(projectName=project_name)
-        build_id = build["build"]["id"]
-        print(f"Started CodeBuild: {build_id}")
-
-        # Poll every 30 seconds for up to ~14 minutes.
-        for _ in range(28):
-            time.sleep(30)
-            result = cb.batch_get_builds(ids=[build_id])
-            status = result["builds"][0]["buildStatus"]
-            print(f"Build status: {status}")
-            if status == "SUCCEEDED":
-                return _respond(event, context, "SUCCESS", {"BuildId": build_id})
-            if status in ("FAILED", "FAULT", "STOPPED", "TIMED_OUT"):
-                return _respond(
-                    event, context, "FAILED",
-                    {"Error": f"CodeBuild {status}"},
-                )
-        return _respond(event, context, "FAILED", {"Error": "Build timed out"})
-    except Exception as exc:  # noqa: BLE001
-        print(f"Error: {exc}")
-        return _respond(event, context, "FAILED", {"Error": str(exc)})
-
-
-def _respond(event, context, status, data):
-    body = json.dumps({
-        "Status": status,
-        "Reason": json.dumps(data),
-        "PhysicalResourceId": context.log_stream_name,
-        "StackId": event["StackId"],
-        "RequestId": event["RequestId"],
-        "LogicalResourceId": event["LogicalResourceId"],
-        "Data": data,
-    })
-    req = urllib.request.Request(
-        event["ResponseURL"],
-        data=body.encode(),
-        method="PUT",
-        headers={"Content-Type": ""},
-    )
-    urllib.request.urlopen(req)
-"""
-            ),
+            # Handler lives in build_trigger/index.py so it is covered by
+            # linting and static analysis (see build_trigger/index.py).
+            code=aws_lambda.Code.from_asset(BUILD_TRIGGER_DIR),
         )
 
         trigger_build = CustomResource(
