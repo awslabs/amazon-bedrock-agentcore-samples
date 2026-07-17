@@ -24,7 +24,7 @@ each HTTP 402 automatically. You run two agents that both call x402-protected en
 
 - **Strands** — `AgentCorePaymentsPlugin` intercepts 402 responses from the `http_request` tool and
   pays automatically. Zero payment logic in the agent code.
-- **LangGraph** — a `wrap_with_auto_402()` wrapper detects a 402, calls
+- **LangGraph** — `AgentCorePaymentsMiddleware` intercepts a 402, calls
   `PaymentManager.generate_payment_header()`, and retries with the proof header. The LLM never sees
   the 402.
 
@@ -66,16 +66,12 @@ Agent (Strands + http_request tool)
 
 ### LangGraph
 
-![LangGraph Payment Flow](images/langgraph_payment_flow.png)
+`AgentCorePaymentsMiddleware` sits between the agent and the tool: it auto-registers a payment-aware
+`http_request` tool, catches the 402 the endpoint returns, buys a payment proof from AgentCore
+Payments, and retries the request with the `X-PAYMENT` header — so the agent (and the LLM) only ever
+sees the final `200`.
 
-```
-LangGraph ReAct Agent
-  └── wrapped http_request tool
-        ├── Makes HTTP request
-        ├── Gets 402? → PaymentManager.generate_payment_header()
-        ├── Retries with proof header
-        └── Returns content to agent (LLM never sees the 402)
-```
+![LangGraph Payment Flow](images/langgraph_payment_flow.png)
 
 ## Prerequisites
 
@@ -128,64 +124,65 @@ the paid weather endpoint — the plugin settles each HTTP 402 automatically wit
 python langgraph_payment_agent.py
 ```
 
-Same `.env` and instrument; it creates its own in-code session the same way. The script builds the
-`wrap_with_auto_402()` wrapper around
-a `requests`-based `http_request` tool and runs a streaming ReAct agent against the x402 endpoint
-`/api/market-news`. On each 402 it calls
-`manager.generate_payment_header()` to sign the proof and retries.
+Same `.env` and instrument, but this script shows the **minimal** setup: it never calls
+`create_payment_session`. Instead it sets `auto_session=True` on the `AgentCorePaymentsMiddleware`,
+so the session is created lazily on the first 402, capped at `auto_session_budget` (the
+`SESSION_BUDGET_USD` constant near the top). The middleware auto-registers a payment-aware
+`http_request` tool and runs a streaming agent against the x402 endpoint `/api/market-news`,
+settling each 402 automatically.
 (This is the flow in the **LangGraph Payment Flow** diagram under [Architecture](#architecture) above.)
 
 ## Try different budgets (payment limits)
 
-Budget enforcement lives on the session, which each agent creates in-code with the SDK. Change the
-budget by editing the `SESSION_BUDGET` constant near the top of the script, then re-run the agent.
-For example, set a tiny budget smaller than the API cost:
+Budget enforcement lives on the session. Change the budget by editing the constant near the top of
+the script, then re-run the agent. For example, set a tiny budget smaller than the API cost:
 
 ```python
-# strands_payment_agent.py / langgraph_payment_agent.py — near the top
+# strands_payment_agent.py — creates the session in-code
 SESSION_BUDGET = {"maxSpendAmount": {"value": "0.0001", "currency": "USD"}}
+
+# langgraph_payment_agent.py — session is auto-created by the middleware
+SESSION_BUDGET_USD = "0.0001"
 ```
 
-Re-run `python strands_payment_agent.py` — the payment is rejected because the $0.0001 budget is
-smaller than the API cost. Enforcement is structural (service-level), not agent logic.
+Re-run the agent — the payment is rejected because the $0.0001 budget is smaller than the API cost.
+Enforcement is structural (service-level), not agent logic.
 
-To compare two budgets in one run, create a second session in-code with a tiny budget:
+The two scripts show the two ways to set the budget. **LangGraph** takes the minimal path: the
+middleware creates the session on the first 402 (`auto_session=True`), so `auto_session_budget` — fed
+from `SESSION_BUDGET_USD` — is the only budget knob, and there is no session ID to manage. **Strands**
+opens the session in-code with the SDK, which gives you the session handle to inspect or reuse:
 
 ```python
-tiny = manager.create_payment_session(
+sess = manager.create_payment_session(
     user_id=USER_ID,
     limits={"maxSpendAmount": {"value": "0.0001", "currency": "USD"}},
     expiry_time_in_minutes=60,
 )
-```
-
-Pass `tiny["paymentSessionId"]` to the plugin (or the wrapper) instead of the $1.00 session and
-re-run. Omit `limits` entirely from `create_payment_session` for an uncapped session (spend tracked
-but not capped). Read a session's remaining budget in-code with the SDK:
-
-```python
+# Omit `limits` entirely for an uncapped session (spend tracked but not capped).
+# Read a session's remaining budget in-code with the SDK:
 sess = manager.get_payment_session(user_id=USER_ID, payment_session_id=SESSION_ID)
 print(sess["availableLimits"]["availableSpendAmount"])
 ```
 
 This is the workshop's division of labor: infrastructure is provisioned once with the agentcore CLI,
-each per-user session is created in-code with the SDK, and the agent's `AgentCorePaymentsPlugin` /
-`generate_payment_header()` handles the pay-and-retry at request time.
+the per-user session is created either in-code with the SDK or automatically by the middleware, and
+the agent's `AgentCorePaymentsPlugin` / middleware handles the pay-and-retry at request time.
 
 ## What the agents do
 
 Each script's default run does the **happy path** — one paid call under a $1.00 session. Strands calls
 the weather endpoint; LangGraph calls `/api/market-news`. The remaining scenarios below are exercised
-by changing `SESSION_BUDGET` (or creating a second session) and re-running, as described in
-[Try different budgets](#try-different-budgets-payment-limits) above:
+by changing the budget constant (`SESSION_BUDGET` in Strands, `SESSION_BUDGET_USD` in LangGraph) and
+re-running, as described in [Try different budgets](#try-different-budgets-payment-limits) above:
 
 | Scenario | How to run it | What it shows |
 |----------|---------------|---------------|
 | Happy path | Default run ($1.00 session) | The 402 → sign → retry → 200 flow, fully automatic |
-| Budget session | Set `SESSION_BUDGET` to `$0.50`, re-run | Remaining spend after a paid call (`get_payment_session`) |
-| Budget exceeded | Set `SESSION_BUDGET` to `$0.0001` (below API cost), re-run | ProcessPayment rejects the payment at the infra level |
+| Budget session | Set the budget to `$0.50`, re-run | Remaining spend after a paid call (`get_payment_session`) |
+| Budget exceeded | Set the budget to `$0.0001` (below API cost), re-run | ProcessPayment rejects the payment at the infra level |
 | Built-in tools (Strands) | Default run — agent answers "how much budget is left?" | Plugin tools `get_payment_session` / `get_payment_instrument` / `list_payment_instruments` |
-| Uncapped session | Create a session with no `limits` | Spend tracked but not capped — for trusted agents only |
+| Uncapped session (Strands) | Create a session with no `limits` | Spend tracked but not capped — for trusted agents only |
 
 Budget enforcement is cumulative and server-side: the service sums all `ProcessPayment` calls in a
 session and rejects the next payment once `maxSpendAmount` would be exceeded, or once the session
