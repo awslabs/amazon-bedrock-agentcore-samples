@@ -14,11 +14,12 @@ Payment flow:
             ├── injects the payment header + retries the tool
             └── returns the 200 content to the agent (LLM never sees the 402)
 
-The spending session is created in-code with the AgentCore SDK
-(`PaymentManager.create_payment_session`) — one session per agent role, budgeted with
-`maxSpendAmount`. The middleware settles each 402 within this budget. To try a different
-budget, change SESSION_BUDGET below or create a second session with a tiny budget and
-re-run (see the README).
+The spending session is created for you: with `auto_session=True` the middleware lazily
+opens a session on the first 402, budgeted with `auto_session_budget`. That's the minimal
+setup — no `create_payment_session` call, no session ID to thread through. The middleware
+settles each 402 within this budget. To try a different budget, change SESSION_BUDGET_USD
+below and re-run (see the README). If you'd rather manage the session yourself, create one
+with `PaymentManager.create_payment_session` and pass its `payment_session_id` to the config.
 
 Usage:
     python langgraph_payment_agent.py
@@ -39,7 +40,7 @@ from langchain.agents import create_agent
 from langchain_aws import ChatBedrockConverse
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import client_token, load_tutorial_env
+from utils import load_tutorial_env
 
 # ── Load config from Tutorial 00 .env ────────────────────────────────────────
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
@@ -62,9 +63,9 @@ INSTRUMENT_ID = config["instrument_id"]
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 NETWORK = os.environ.get("NETWORK", "ETHEREUM")
 
-# Per-run spending budget for this agent's session. Change this value (or create a second
-# session with a tiny budget) to watch server-side enforcement — see the README.
-SESSION_BUDGET = {"maxSpendAmount": {"value": "1.00", "currency": "USD"}}
+# Per-run spending budget (USD) for this agent's auto-created session. Change this value to
+# watch server-side enforcement — see the README.
+SESSION_BUDGET_USD = "1.00"
 
 # CAIP-2 chain identifiers for network preference
 NETWORK_PREFS = (
@@ -75,39 +76,29 @@ print(f"Manager: {PAYMENT_MANAGER_ARN}")
 print(f"Instrument: {INSTRUMENT_ID}")
 print(f"Network: {NETWORK}")
 
-# ── Step 2: Create the payment session and configure the middleware ───────────
-# A spending session is the per-user budget the agent spends within. Create one in-code with
-# the AgentCore SDK (PaymentManager.create_payment_session). The middleware then settles each
-# 402 within this budget. Omit `limits` for an uncapped session (spend tracked but not capped).
-from bedrock_agentcore.payments import PaymentManager  # noqa: E402
+# ── Step 2: Configure the middleware (session created automatically) ──────────
+# A spending session is the per-user budget the agent spends within. Instead of opening one
+# yourself, set `auto_session=True` and the middleware lazily creates a session on the first
+# 402, capped at `auto_session_budget`. This is the minimal setup — no session ID to manage.
+# (To manage the session yourself, drop auto_session and pass payment_session_id instead.)
 from bedrock_agentcore.payments.integrations.langgraph import (  # noqa: E402
     AgentCorePaymentsConfig,
     AgentCorePaymentsMiddleware,
 )
 
-manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
-sess = manager.create_payment_session(
-    user_id=USER_ID,
-    limits=SESSION_BUDGET,
-    expiry_time_in_minutes=60,
-    client_token=client_token(),
-)
-SESSION_ID = sess["paymentSessionId"]
-print(f"Created payment session: {SESSION_ID} (budget {SESSION_BUDGET['maxSpendAmount']['value']} USD)")
-
-# Configure the payments middleware with the in-code session. It auto-registers a
-# payment-aware `http_request` tool and settles every 402 transparently.
 payments = AgentCorePaymentsMiddleware(
     AgentCorePaymentsConfig(
         payment_manager_arn=PAYMENT_MANAGER_ARN,
         user_id=USER_ID,
         payment_instrument_id=INSTRUMENT_ID,
-        payment_session_id=SESSION_ID,
         region=REGION,
         network_preferences_config=NETWORK_PREFS,
+        auto_session=True,
+        auto_session_budget=SESSION_BUDGET_USD,
+        auto_session_expiry_minutes=60,
     )
 )
-print("Payments middleware configured — no per-tool wrapper needed.")
+print(f"Payments middleware configured — session auto-created on first 402 (budget {SESSION_BUDGET_USD} USD)")
 
 # ── Step 3: Create the LangGraph Agent ────────────────────────────────────────
 # tools=[] because the middleware auto-registers a payment-aware `http_request` tool. Add your
@@ -172,8 +163,8 @@ for i, resp in enumerate(collected_tool_responses):
         print(f"Response #{i + 1}: {str(resp)[:500]}")
 
 # ── Step 5: Payment Limits ────────────────────────────────────────────────────
-# To try smaller/uncapped budgets and watch server-side enforcement, edit SESSION_BUDGET above —
+# To try smaller budgets and watch server-side enforcement, edit SESSION_BUDGET_USD above —
 # see the README "Try different budgets" section.
-print("\nDone. Change SESSION_BUDGET (see the README's limits exercise) to watch budget")
+print("\nDone. Change SESSION_BUDGET_USD (see the README's limits exercise) to watch budget")
 print("enforcement, or continue: follow ../02-deploy-to-agentcore-runtime/README.md to deploy")
 print("payment_agent.py to AgentCore Runtime with the AgentCore CLI.")
