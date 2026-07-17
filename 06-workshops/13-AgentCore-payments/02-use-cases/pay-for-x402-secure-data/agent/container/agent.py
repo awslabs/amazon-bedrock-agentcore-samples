@@ -104,7 +104,11 @@ def create_agentcore_payments_plugin() -> AgentCorePaymentsPlugin | None:
             AgentCorePaymentsPluginConfig,
         )
     except ImportError as exc:  # pragma: no cover - exercised when SDK deps are missing
-        raise RuntimeError("bedrock-agentcore[strands-agents] is required for plugin-native x402 payments") from exc
+        raise RuntimeError(
+            "bedrock-agentcore[strands-agents] is required for plugin-native x402 payments. "
+            "Install the pinned dependencies with: pip install -r agent/container/requirements.txt "
+            "(or: pip install 'bedrock-agentcore[strands-agents]')."
+        ) from exc
 
     return AgentCorePaymentsPlugin(
         config=AgentCorePaymentsPluginConfig(
@@ -185,7 +189,11 @@ def create_agent() -> Agent:
     try:
         from strands import Agent
     except ImportError as exc:  # pragma: no cover - exercised in the real runtime, not unit tests
-        raise RuntimeError("strands-agents must be installed before running this agent") from exc
+        raise RuntimeError(
+            "strands-agents must be installed before running this agent. "
+            "Install the pinned dependencies with: pip install -r agent/container/requirements.txt "
+            "(or: pip install strands-agents)."
+        ) from exc
 
     plugins = []
     payments_plugin = create_agentcore_payments_plugin()
