@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -171,7 +172,15 @@ def create_app(agent_factory: Callable[[], Any], model_resolver: Callable[[], st
                 if not isinstance(payload, dict):
                     raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
 
-            return invoke_payload(
+            # Strands Agent.__call__ is fully blocking (multiple Bedrock turns +
+            # the paid x402 calls, ~30s-2min). Run it in a worker thread so the
+            # uvicorn event loop stays free to serve GET /ping — otherwise the
+            # Docker/AgentCore health checks time out and the instance can be
+            # recycled mid-invocation (after USDC settles, before the response).
+            # asyncio.to_thread copies the current context, so the ContextVar-
+            # scoped trust/payment state and the OTel span are preserved.
+            return await asyncio.to_thread(
+                invoke_payload,
                 payload,
                 agent_factory=agent_factory,
                 model_resolver=model_resolver,
