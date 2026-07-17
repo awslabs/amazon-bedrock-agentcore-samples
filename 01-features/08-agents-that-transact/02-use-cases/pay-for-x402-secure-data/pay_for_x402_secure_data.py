@@ -116,9 +116,7 @@ def _env_flag(name: str) -> bool:
     return os.environ.get(name, "0").strip().lower() in ("1", "true", "yes")
 
 
-def _confirm_section(
-    title: str, body_lines: list[str], action_label: str, require_yes: bool = False
-) -> bool:
+def _confirm_section(title: str, body_lines: list[str], action_label: str, require_yes: bool = False) -> bool:
     """Show a framed banner + body, then prompt for confirmation.
 
     Default: Enter runs the step, q + Enter skips it. When require_yes is set
@@ -137,27 +135,42 @@ def _confirm_section(
     return input("     [Enter to continue | q to skip] ").strip().lower() not in ("q", "quit", "skip", "n", "no")
 
 
+def _is_set(value: str) -> bool:
+    return bool(value) and not value.startswith("<")
+
+
 def _run_env_check() -> None:
-    required = {
+    # Non-secret values are safe to echo. Secret values are kept in a separate
+    # map and are ONLY ever checked for presence — their values never flow into
+    # a printed string, so nothing sensitive is logged in clear text.
+    visible = {
         "AWS_REGION": AWS_REGION,
         "CONTROL_PLANE_ROLE_ARN": CONTROL_PLANE_ROLE_ARN,
         "MANAGEMENT_ROLE_ARN": MANAGEMENT_ROLE_ARN,
         "PROCESS_PAYMENT_ROLE_ARN": PROCESS_PAYMENT_ROLE_ARN,
         "RESOURCE_RETRIEVAL_ROLE_ARN": RESOURCE_RETRIEVAL_ROLE_ARN,
-        "COINBASE_API_KEY_ID": COINBASE_API_KEY_ID,
-        "COINBASE_API_KEY_SECRET": COINBASE_API_KEY_SECRET,
-        "COINBASE_WALLET_SECRET": COINBASE_WALLET_SECRET,
         "INSTRUMENT_EMAIL": INSTRUMENT_EMAIL,
     }
-    secrets = {"COINBASE_API_KEY_ID", "COINBASE_API_KEY_SECRET", "COINBASE_WALLET_SECRET"}
+    secret_names = ("COINBASE_API_KEY_ID", "COINBASE_API_KEY_SECRET", "COINBASE_WALLET_SECRET")
+    secret_present = {
+        "COINBASE_API_KEY_ID": _is_set(COINBASE_API_KEY_ID),
+        "COINBASE_API_KEY_SECRET": _is_set(COINBASE_API_KEY_SECRET),
+        "COINBASE_WALLET_SECRET": _is_set(COINBASE_WALLET_SECRET),
+    }
+
     print("=== Environment check ===")
     missing = []
-    for key, value in required.items():
-        ok = bool(value) and not value.startswith("<")
-        shown = "[redacted]" if key in secrets and value else value
-        print(f"  {'✅' if ok else '❌ MISSING'}  {key}: {shown}")
+    for key, value in visible.items():
+        ok = _is_set(value)
+        print(f"  {'✅' if ok else '❌ MISSING'}  {key}: {value if ok else '(missing)'}")
         if not ok:
             missing.append(key)
+    for key in secret_names:
+        ok = secret_present[key]
+        print(f"  {'✅' if ok else '❌ MISSING'}  {key}: {'[redacted]' if ok else '(missing)'}")
+        if not ok:
+            missing.append(key)
+
     if INSTRUMENT_EMAIL.lower().endswith("@example.com"):
         sys.exit("INSTRUMENT_EMAIL must be a REAL, deliverable address — not an @example.com placeholder.")
     if missing:
@@ -220,8 +233,10 @@ def guardrail_demo() -> None:
 
 # ── §4. Set up AgentCore payments (credential provider, manager, connector) ──
 def build_control_client() -> "boto3.client":
-    for name, val in (("CONTROL_PLANE_ROLE_ARN", CONTROL_PLANE_ROLE_ARN),
-                      ("RESOURCE_RETRIEVAL_ROLE_ARN", RESOURCE_RETRIEVAL_ROLE_ARN)):
+    for name, val in (
+        ("CONTROL_PLANE_ROLE_ARN", CONTROL_PLANE_ROLE_ARN),
+        ("RESOURCE_RETRIEVAL_ROLE_ARN", RESOURCE_RETRIEVAL_ROLE_ARN),
+    ):
         if not val:
             sys.exit(f"Missing {name}. Run bash test/integration/setup-roles.sh.")
     print("Assuming ControlPlaneRole...")
@@ -347,9 +362,13 @@ def setup_instrument_and_session(mgmt_client) -> None:
     print("\n  ONE-TIME ONBOARDING (both delegated-signing layers are required):")
     print("   1. Project policy: CDP Portal → Wallets → Non-custodial Wallet → Security → Delegated signing (2FA).")
     if redirect_url:
-        print(f"   2. Per-wallet grant: sign in to the Wallet Hub with INSTRUMENT_EMAIL and grant delegation:\n      {redirect_url}")
+        print(
+            f"   2. Per-wallet grant: sign in to the Wallet Hub with INSTRUMENT_EMAIL and grant delegation:\n      {redirect_url}"
+        )
     else:
-        print("   2. Per-wallet grant: open the Wallet Hub redirectUrl, sign in with INSTRUMENT_EMAIL, grant delegation.")
+        print(
+            "   2. Per-wallet grant: open the Wallet Hub redirectUrl, sign in with INSTRUMENT_EMAIL, grant delegation."
+        )
     print(f"   3. Fund the wallet with USDC on {PAYMENT_INSTRUMENT_NETWORK} (Base): {WALLET_ADDRESS or '(pending)'}")
 
     if PAYMENT_SESSION_ID:
@@ -364,7 +383,9 @@ def setup_instrument_and_session(mgmt_client) -> None:
         )
         PAYMENT_SESSION_ID = resp["paymentSession"]["paymentSessionId"]
         write_env_updates({"PAYMENT_SESSION_ID": PAYMENT_SESSION_ID})
-        print(f"✅ Session created (spending limit ${PAYMENT_SESSION_MAX_SPEND_USD} USD, expiry {PAYMENT_SESSION_EXPIRY_MINUTES} min)")
+        print(
+            f"✅ Session created (spending limit ${PAYMENT_SESSION_MAX_SPEND_USD} USD, expiry {PAYMENT_SESSION_EXPIRY_MINUTES} min)"
+        )
 
 
 # ── §7. Live trust-gated run ─────────────────────────────────────────────────
@@ -553,26 +574,56 @@ def cleanup(cp_client, mgmt_client) -> None:
         pass
 
     if PAYMENT_SESSION_ID:
-        _safe_delete(mgmt_client.delete_payment_session, f"Session {PAYMENT_SESSION_ID}",
-                     paymentManagerArn=MANAGER_ARN, paymentSessionId=PAYMENT_SESSION_ID, userId=payment_user_id)
+        _safe_delete(
+            mgmt_client.delete_payment_session,
+            f"Session {PAYMENT_SESSION_ID}",
+            paymentManagerArn=MANAGER_ARN,
+            paymentSessionId=PAYMENT_SESSION_ID,
+            userId=payment_user_id,
+        )
     if PAYMENT_INSTRUMENT_ID and PAYMENT_CONNECTOR_ID:
-        _safe_delete(mgmt_client.delete_payment_instrument, f"Instrument {PAYMENT_INSTRUMENT_ID}",
-                     paymentManagerArn=MANAGER_ARN, paymentConnectorId=PAYMENT_CONNECTOR_ID,
-                     paymentInstrumentId=PAYMENT_INSTRUMENT_ID, userId=payment_user_id)
+        _safe_delete(
+            mgmt_client.delete_payment_instrument,
+            f"Instrument {PAYMENT_INSTRUMENT_ID}",
+            paymentManagerArn=MANAGER_ARN,
+            paymentConnectorId=PAYMENT_CONNECTOR_ID,
+            paymentInstrumentId=PAYMENT_INSTRUMENT_ID,
+            userId=payment_user_id,
+        )
     if PAYMENT_CONNECTOR_ID:
-        _safe_delete(cp_client.delete_payment_connector, f"Connector {PAYMENT_CONNECTOR_ID}",
-                     paymentManagerId=MANAGER_ID, paymentConnectorId=PAYMENT_CONNECTOR_ID, clientToken=_client_token())
-    _safe_delete(cp_client.delete_payment_manager, f"Manager {MANAGER_ID}",
-                 paymentManagerId=MANAGER_ID, clientToken=_client_token())
+        _safe_delete(
+            cp_client.delete_payment_connector,
+            f"Connector {PAYMENT_CONNECTOR_ID}",
+            paymentManagerId=MANAGER_ID,
+            paymentConnectorId=PAYMENT_CONNECTOR_ID,
+            clientToken=_client_token(),
+        )
+    _safe_delete(
+        cp_client.delete_payment_manager,
+        f"Manager {MANAGER_ID}",
+        paymentManagerId=MANAGER_ID,
+        clientToken=_client_token(),
+    )
     if CREDENTIAL_PROVIDER_ARN:
-        _safe_delete(cp_client.delete_payment_credential_provider,
-                     f"Credential provider {CREDENTIAL_PROVIDER_ARN.rsplit('/', 1)[-1]}",
-                     name=CREDENTIAL_PROVIDER_ARN.rsplit("/", 1)[-1])
+        _safe_delete(
+            cp_client.delete_payment_credential_provider,
+            f"Credential provider {CREDENTIAL_PROVIDER_ARN.rsplit('/', 1)[-1]}",
+            name=CREDENTIAL_PROVIDER_ARN.rsplit("/", 1)[-1],
+        )
 
-    write_env_updates({k: "" for k in (
-        "MANAGER_ARN", "PAYMENT_CONNECTOR_ID", "CREDENTIAL_PROVIDER_ARN",
-        "PAYMENT_INSTRUMENT_ID", "PAYMENT_SESSION_ID", "WALLET_ADDRESS",
-    )})
+    write_env_updates(
+        {
+            k: ""
+            for k in (
+                "MANAGER_ARN",
+                "PAYMENT_CONNECTOR_ID",
+                "CREDENTIAL_PROVIDER_ARN",
+                "PAYMENT_INSTRUMENT_ID",
+                "PAYMENT_SESSION_ID",
+                "WALLET_ADDRESS",
+            )
+        }
+    )
     # Fixed command list (no shell, no untrusted input).
     subprocess.run(["bash", "test/integration/destroy-agent.sh"], cwd=HERE, check=False)  # noqa: S603  # nosec B603
 
@@ -686,9 +737,11 @@ def main() -> None:
     # §10 — cleanup (gated, destructive: defaults to skip, requires 'yes').
     if _confirm_section(
         "§10. Cleanup",
-        ["  Revokes the session and deletes the instrument, connector, manager,",
-         "  credential provider, and the agent runtime stack.",
-         "  This is destructive and cannot be undone."],
+        [
+            "  Revokes the session and deletes the instrument, connector, manager,",
+            "  credential provider, and the agent runtime stack.",
+            "  This is destructive and cannot be undone.",
+        ],
         "tear everything down",
         require_yes=True,
     ):
