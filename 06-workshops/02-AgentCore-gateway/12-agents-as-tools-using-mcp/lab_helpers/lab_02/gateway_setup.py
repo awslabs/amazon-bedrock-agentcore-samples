@@ -48,9 +48,7 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region_name}:{account_id}:gateway/*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region_name}:{account_id}:gateway/*"},
                 },
             }
         ],

@@ -5,9 +5,7 @@ import re
 
 
 @tool
-def send_email(
-    to: str, subject: str, body: str, from_email: str = "noreply@example.com"
-) -> str:
+def send_email(to: str, subject: str, body: str, from_email: str = "noreply@example.com") -> str:
     """
     Send an email using AWS SES (Simple Email Service).
 

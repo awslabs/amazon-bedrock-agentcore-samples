@@ -32,17 +32,13 @@ def web_crawler(
     """
     try:
         # Run the async crawler
-        result = asyncio.run(
-            _crawl_website(url, extract_links, extract_images, word_count_threshold)
-        )
+        result = asyncio.run(_crawl_website(url, extract_links, extract_images, word_count_threshold))
         return result
     except Exception as e:
         return f"Error crawling website: {str(e)}"
 
 
-async def _crawl_website(
-    url: str, extract_links: bool, extract_images: bool, word_count_threshold: int
-) -> str:
+async def _crawl_website(url: str, extract_links: bool, extract_images: bool, word_count_threshold: int) -> str:
     """Async helper function to perform the actual crawling."""
 
     # Configure browser settings

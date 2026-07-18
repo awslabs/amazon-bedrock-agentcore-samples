@@ -18,9 +18,9 @@ the window varies run to run). This is expected for directly-written records.
 The real-world pattern — shown below — is to RETRY the dependent operation until
 the record has propagated, rather than assume it is available right after create.
 
-Two surfaces:
-    python batch-create-update-delete.py boto3
-    python batch-create-update-delete.py sdk
+Two ways to run it:
+    python batch-create-update-delete.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python batch-create-update-delete.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -51,6 +51,10 @@ def _retry_until_propagated(op, *, max_wait: int = 150, poll: int = 10):
     ResourceNotFoundException until propagation completes. We retry ONLY that
     transient error, with a deadline, and re-raise anything else immediately.
     Returns op()'s result; raises the last ResourceNotFoundException on timeout.
+
+    This retries the ACTUAL dependent op, not a List probe: "shows up in List"
+    and "is updatable" are not the same moment, so polling List first can still
+    leave the update racing ahead of propagation.
     """
     deadline = time.time() + max_wait
     last = None
@@ -149,27 +153,38 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
+# MemoryClient owns the control plane (create/delete the resource);
+# MemorySessionManager is data-plane only. The three batch_* calls are forwarded
+# by MemorySessionManager via __getattr__ (data-plane allowlist), so we can run
+# the whole create/update/delete cycle through the session manager. The nested
+# record dicts stay camelCase: snake_case conversion only rewrites top-level
+# kwargs (records=, memory_id=), never the dict values.
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
 
     client = MemoryClient(region_name=REGION)
     memory = client.create_memory_and_wait(
-        name=f"BatchCRUDSdk_{int(time.time())}",
-        description="Batch APIs tutorial (SDK)",
+        name=f"BatchCRUDSession_{int(time.time())}",
+        description="Batch APIs tutorial (SDK session API)",
         strategies=[],
         event_expiry_days=30,
     )
     memory_id = memory["id"]
     print(f"[sdk] Created memory {memory_id}")
 
-    create_resp = client.batch_create_memory_records(
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+
+    # batch_* are forwarded to boto3 by MemorySessionManager as thin passthroughs:
+    # memoryId is NOT injected from the manager's binding, so pass it explicitly.
+    # Each batch accepts up to 100 records; keep this demo well under the cap.
+    create_resp = manager.batch_create_memory_records(
         memoryId=memory_id,
         records=[
             {
                 "requestIdentifier": "note-lang",
                 "namespaces": [NAMESPACE],
-                # timestamp is a datetime-typed field — pass a real datetime, not a string.
+                # timestamp is a datetime-typed field; pass a real datetime, not a string.
                 "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python over Java."},
             },
@@ -195,7 +210,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     # update/delete until they propagate (BatchUpdateMemoryRecords requires
     # memoryRecordId AND timestamp).
     update_resp = _retry_until_propagated(
-        lambda: client.batch_update_memory_records(
+        lambda: manager.batch_update_memory_records(
             memoryId=memory_id,
             records=[
                 {
@@ -209,14 +224,16 @@ def run_with_sdk(cleanup: bool = False) -> None:
     print(f"[sdk] Updated {len(update_resp.get('successfulRecords', []))}")
 
     delete_resp = _retry_until_propagated(
-        lambda: client.batch_delete_memory_records(
+        lambda: manager.batch_delete_memory_records(
             memoryId=memory_id,
             records=[{"memoryRecordId": record_ids["note-allergy"]}],
         )
     )
     print(f"[sdk] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
-    remaining = client.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"]
+    # list_long_term_memory_records is a first-class MemorySessionManager method
+    # (returns a list of MemoryRecord directly, not a {"memoryRecordSummaries": ...} dict).
+    remaining = manager.list_long_term_memory_records(namespace=NAMESPACE)
     print(f"\n[sdk] Remaining ({len(remaining)}):")
     for r in remaining:
         print(f"  - {r['content']['text']}")
@@ -231,13 +248,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

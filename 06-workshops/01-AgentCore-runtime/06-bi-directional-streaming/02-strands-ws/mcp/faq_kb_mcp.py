@@ -48,9 +48,7 @@ def get_bedrock_client():
     """Lazy initialization of Bedrock client"""
     global bedrock_agent_runtime
     if bedrock_agent_runtime is None:
-        bedrock_agent_runtime = boto3.client(
-            "bedrock-agent-runtime", region_name=AWS_REGION
-        )
+        bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=AWS_REGION)
     return bedrock_agent_runtime
 
 
@@ -115,9 +113,7 @@ def retrieve_from_knowledge_base(
 
             # Extract S3 location if available
             s3_location = location.get("s3Location", {})
-            uri = s3_location.get("uri") or metadata.get(
-                "x-amz-bedrock-kb-source-uri", ""
-            )
+            uri = s3_location.get("uri") or metadata.get("x-amz-bedrock-kb-source-uri", "")
 
             # Extract page number if available
             page_number = metadata.get("x-amz-bedrock-kb-document-page-number")
@@ -152,9 +148,7 @@ def retrieve_from_knowledge_base(
 
     except Exception as e:
         logger.error(f"Error retrieving from knowledge base: {e}")
-        return json.dumps(
-            {"status": "error", "query": query, "message": str(e)}, indent=2
-        )
+        return json.dumps({"status": "error", "query": query, "message": str(e)}, indent=2)
 
 
 def retrieve_and_generate(
@@ -219,9 +213,7 @@ def retrieve_and_generate(
 
                 # Extract S3 location
                 s3_location = location.get("s3Location", {})
-                uri = s3_location.get("uri") or metadata.get(
-                    "x-amz-bedrock-kb-source-uri", ""
-                )
+                uri = s3_location.get("uri") or metadata.get("x-amz-bedrock-kb-source-uri", "")
 
                 # Extract page number
                 page_number = metadata.get("x-amz-bedrock-kb-document-page-number")
@@ -254,9 +246,7 @@ def retrieve_and_generate(
 
     except Exception as e:
         logger.error(f"Error in retrieve and generate: {e}")
-        return json.dumps(
-            {"status": "error", "query": query, "message": str(e)}, indent=2
-        )
+        return json.dumps({"status": "error", "query": query, "message": str(e)}, indent=2)
 
 
 # ============================================================================
@@ -387,9 +377,7 @@ async def main():
     if KNOWLEDGE_BASE_ID:
         logger.info(f"Knowledge Base ID: {KNOWLEDGE_BASE_ID}")
     else:
-        logger.warning(
-            "⚠️  KNOWLEDGE_BASE_ID not set - must provide knowledge_base_id in tool calls"
-        )
+        logger.warning("⚠️  KNOWLEDGE_BASE_ID not set - must provide knowledge_base_id in tool calls")
 
     logger.info(f"Default Model ARN: {DEFAULT_MODEL_ARN}")
     logger.info("=" * 70)
@@ -409,9 +397,7 @@ async def main():
     logger.info("=" * 70)
 
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream, write_stream, server.create_initialization_options()
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 if __name__ == "__main__":

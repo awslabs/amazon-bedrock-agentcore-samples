@@ -25,11 +25,7 @@ def main():
     config = load_config()
     client = boto3.client("bedrock-agentcore", region_name=config["region"])
 
-    prompts = (
-        [" ".join(sys.argv[1:])]
-        if len(sys.argv) > 1
-        else ["What is the weather in Tokyo?", "What time is it?"]
-    )
+    prompts = [" ".join(sys.argv[1:])] if len(sys.argv) > 1 else ["What is the weather in Tokyo?", "What time is it?"]
 
     for prompt in prompts:
         print(f"─── Prompt: {prompt}")

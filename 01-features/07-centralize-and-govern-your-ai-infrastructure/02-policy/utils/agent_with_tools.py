@@ -20,15 +20,11 @@ def load_config(config_path: str = "policy_config.json") -> dict:
     """Load policy configuration from policy_config.json."""
     path = Path(config_path)
     if not path.exists():
-        raise FileNotFoundError(
-            f"Configuration file not found: {path}\nPlease run deploy.py first."
-        )
+        raise FileNotFoundError(f"Configuration file not found: {path}\nPlease run deploy.py first.")
     with open(path, "r", encoding="utf-8") as f:
         config = json.load(f)
     if "gateway" not in config:
-        raise ValueError(
-            "Gateway configuration missing from policy_config.json. Run deploy.py first."
-        )
+        raise ValueError("Gateway configuration missing from policy_config.json. Run deploy.py first.")
     return config
 
 
@@ -49,9 +45,7 @@ def list_available_tools(gateway_url: str, access_token: str) -> list:
     """List tools currently visible through the Gateway (policy-filtered)."""
     try:
         mcp_client = MCPClient(
-            lambda: streamablehttp_client(
-                gateway_url, headers={"Authorization": f"Bearer {access_token}"}
-            )
+            lambda: streamablehttp_client(gateway_url, headers={"Authorization": f"Bearer {access_token}"})
         )
         with mcp_client:
             tools_list = mcp_client.list_tools_sync()
@@ -73,9 +67,7 @@ class AgentSession:
             response = session.invoke("Create application for US region with $500K coverage")
     """
 
-    def __init__(
-        self, model_id: str = "us.amazon.nova-lite-v1:0", verbose: bool = True
-    ):
+    def __init__(self, model_id: str = "us.amazon.nova-lite-v1:0", verbose: bool = True):
         self.model_id = model_id
         self.verbose = verbose
         self.mcp_client = None
@@ -123,9 +115,7 @@ class AgentSession:
             "request parameters. Use only the tools provided — do not fabricate data. "
             "When a tool call is denied by policy, explain the denial to the user."
         )
-        self.agent = Agent(
-            model=bedrock_model, tools=tools, system_prompt=system_prompt
-        )
+        self.agent = Agent(model=bedrock_model, tools=tools, system_prompt=system_prompt)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -140,11 +130,7 @@ class AgentSession:
         print(f"\n  Prompt: {prompt}")
         try:
             response = self.agent(prompt)
-            content = (
-                response.message.get("content", str(response))
-                if hasattr(response, "message")
-                else str(response)
-            )
+            content = response.message.get("content", str(response)) if hasattr(response, "message") else str(response)
             print(f"  Response: {content}")
             return content
         except Exception as exc:

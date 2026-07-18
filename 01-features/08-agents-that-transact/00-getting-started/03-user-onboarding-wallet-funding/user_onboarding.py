@@ -34,7 +34,6 @@ Prerequisites:
 import os
 import sys
 
-import boto3
 from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,9 +41,7 @@ from utils import client_token, load_tutorial_env, print_summary, wait_for_statu
 
 from bedrock_agentcore.payments import PaymentManager
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -54,21 +51,14 @@ REGION = config["region"]
 USER_ID = config["user_id"]
 NETWORK = os.environ.get("NETWORK", "ETHEREUM")
 
-# SDK client for instrument + session operations
+# SDK client for all payment data-plane operations (instruments, balances, sessions)
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
 
-# boto3 client for GetPaymentInstrumentBalance (not in SDK)
-dp_client = boto3.client("bedrock-agentcore", region_name=REGION)
-
-# Get connector ID
-if config.get("multi_provider"):
-    PROVIDER = list(config["instruments"].keys())[0]
-    CONNECTOR_ID = config["instruments"][PROVIDER]["connector_id"]
-    INSTRUMENT_ID = config["instruments"][PROVIDER]["instrument_id"]
-else:
-    CONNECTOR_ID = config.get("connector_id")
-    INSTRUMENT_ID = config.get("instrument_id")
-    PROVIDER = config.get("provider_type", "unknown")
+# load_tutorial_env resolves connector_id / instrument_id to the provider you
+# configured (CREDENTIAL_PROVIDER_TYPE), so single- and multi-provider .env files both work.
+CONNECTOR_ID = config.get("connector_id")
+INSTRUMENT_ID = config.get("instrument_id")
+PROVIDER = config.get("active_provider") or config.get("provider_type", "unknown")
 
 print_summary("Config", provider=PROVIDER, instrument=INSTRUMENT_ID)
 
@@ -84,7 +74,7 @@ print("\n── Section 1: Create Embedded Wallet ──")
 print("Backend operation: provision wallet for a new user")
 
 # For this tutorial, reuse the developer's LINKED_EMAIL as the end-user identity.
-# In production, pass each user's real email here.
+# In your own application, pass each user's own email here.
 NEW_USER_ID = "tutorial-03-user"
 NEW_EMAIL = os.environ.get("LINKED_EMAIL", "tutorial03@example.com")
 
@@ -106,12 +96,10 @@ NEW_WALLET = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"]["walletAdd
 if inst.get("status") != "ACTIVE":
     print("Waiting for instrument to become ACTIVE...")
     wait_for_status(
-        dp_client.get_payment_instrument,
+        manager.get_payment_instrument,
         "ACTIVE",
-        paymentManagerArn=PAYMENT_MANAGER_ARN,
-        paymentConnectorId=CONNECTOR_ID,
-        paymentInstrumentId=NEW_INSTRUMENT_ID,
-        userId=NEW_USER_ID,
+        user_id=NEW_USER_ID,
+        payment_instrument_id=NEW_INSTRUMENT_ID,
     )
 
 print_summary(
@@ -122,14 +110,10 @@ print_summary(
     status="ACTIVE",
 )
 
-redirect_url = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"].get(
-    "redirectUrl"
-)
+redirect_url = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"].get("redirectUrl")
 if redirect_url:
     print(f"\n  WalletHub: {redirect_url}")
-    print(
-        "  Share this URL with the end user to fund the wallet and grant signing permission."
-    )
+    print("  Share this URL with the end user to fund the wallet and grant signing permission.")
 
 # ── Section 2: Fund the Wallet ────────────────────────────────────────────────
 print("\n── Section 2: Fund the Wallet ──")
@@ -144,16 +128,12 @@ print("  4. Request 20 USDC (covers all tutorials)")
 if NETWORK == "ETHEREUM":
     print(f"  5. Verify: https://sepolia.basescan.org/address/{NEW_WALLET}")
 else:
-    print(
-        f"  5. Verify: https://explorer.solana.com/address/{NEW_WALLET}?cluster=devnet"
-    )
+    print(f"  5. Verify: https://explorer.solana.com/address/{NEW_WALLET}?cluster=devnet")
 print()
 print("Funding options by provider:")
 print("  Coinbase: WalletHub URL above → fund + delegate in one UI (Coinbase managed)")
 print("  Privy: Privy reference frontend at http://localhost:3000 → Add funds →")
-print(
-    "         Pay with card (Stripe onramp), Transfer from wallet, or Receive funds (QR)"
-)
+print("         Pay with card (Stripe onramp), Transfer from wallet, or Receive funds (QR)")
 print()
 print("ACTION REQUIRED: Fund the wallet before continuing.")
 
@@ -164,14 +144,10 @@ print()
 print("Provider-specific steps:")
 print()
 print("  Coinbase CDP:")
-print(
-    "    1. Open the WalletHub URL (printed above, or from Setup Tutorial 00 Step 7a)"
-)
+print("    1. Open the WalletHub URL (printed above, or from Setup Tutorial 00 Step 3)")
 print("    2. Log in with LINKED_EMAIL")
 print("    3. Consent to delegated signing")
-print(
-    "    (Or: CDP Portal → Wallets → Embedded Wallet → Policies → Enable Delegated Signing)"
-)
+print("    (Or: CDP Portal → Wallets → Embedded Wallet → Policies → Enable Delegated Signing)")
 print()
 print("  Stripe (Privy):")
 print("    1. Open http://localhost:3000 in your browser")
@@ -198,13 +174,12 @@ for label, inst_id, user_id in [
     ("New instrument", NEW_INSTRUMENT_ID, NEW_USER_ID),
 ]:
     try:
-        resp = dp_client.get_payment_instrument_balance(
-            paymentManagerArn=PAYMENT_MANAGER_ARN,
-            paymentConnectorId=CONNECTOR_ID,
-            paymentInstrumentId=inst_id,
-            userId=user_id,
+        resp = manager.get_payment_instrument_balance(
+            payment_connector_id=CONNECTOR_ID,
+            payment_instrument_id=inst_id,
             chain=chain,
             token="USDC",
+            user_id=user_id,
         )
         balance = resp.get("tokenBalance", {})
         amount = int(balance.get("amount", "0")) / 1_000_000
@@ -299,14 +274,8 @@ for label, created in [
     available = sess.get("availableLimits", {}).get("availableSpendAmount", {})
     print(f"\n  {label} — {sid}")
     print(f"    Budget:    {budget.get('value', 'N/A')} {budget.get('currency', '')}")
-    print(
-        f"    Available: {available.get('value', 'N/A')} {available.get('currency', '')}"
-    )
+    print(f"    Available: {available.get('value', 'N/A')} {available.get('currency', '')}")
     print(f"    Expiry:    {sess.get('expiryTimeInMinutes', 'N/A')} minutes")
 
-print(
-    "\nDone. Sessions expire automatically. Instrument cleanup: run Tutorial 00 cleanup."
-)
-print(
-    "Next: python ../04-agent-with-coinbase-bazaar-via-gateway/bazaar_gateway_agent.py"
-)
+print("\nDone. Sessions expire automatically. Instrument cleanup: run Tutorial 00 cleanup.")
+print("Next: python ../04-agent-with-coinbase-bazaar-via-gateway/bazaar_gateway_agent.py")

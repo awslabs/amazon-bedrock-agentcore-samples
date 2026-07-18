@@ -56,20 +56,12 @@ def get_stack_resources(region_name: str, profile_name: str = None) -> Dict[str,
         # Get EC2 instance role name (needed for IAM operations)
         if resources.get("app_instance_id"):
             try:
-                instance_info = ec2.describe_instances(
-                    InstanceIds=[resources["app_instance_id"]]
-                )
-                instance_profile = instance_info["Reservations"][0]["Instances"][0].get(
-                    "IamInstanceProfile"
-                )
+                instance_info = ec2.describe_instances(InstanceIds=[resources["app_instance_id"]])
+                instance_profile = instance_info["Reservations"][0]["Instances"][0].get("IamInstanceProfile")
                 if instance_profile:
                     profile_name = instance_profile["Arn"].split("/")[-1]
-                    profile_info = iam.get_instance_profile(
-                        InstanceProfileName=profile_name
-                    )
-                    resources["ec2_role_name"] = profile_info["InstanceProfile"][
-                        "Roles"
-                    ][0]["RoleName"]
+                    profile_info = iam.get_instance_profile(InstanceProfileName=profile_name)
+                    resources["ec2_role_name"] = profile_info["InstanceProfile"]["Roles"][0]["RoleName"]
             except Exception as e:
                 print(f"  ⚠️  Could not retrieve EC2 role name: {e}")
 

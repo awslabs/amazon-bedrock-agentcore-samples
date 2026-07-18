@@ -82,25 +82,17 @@ def delete_memory(memory_hook):
 class CustomerSupportMemoryHooks(HookProvider):
     """Memory hooks for customer support agent"""
 
-    def __init__(
-        self, memory_id: str, client: MemoryClient, actor_id: str, session_id: str
-    ):
+    def __init__(self, memory_id: str, client: MemoryClient, actor_id: str, session_id: str):
         self.memory_id = memory_id
         self.client = client
         self.actor_id = actor_id
         self.session_id = session_id
-        self.namespaces = {
-            i["type"]: i["namespaces"][0]
-            for i in self.client.get_memory_strategies(self.memory_id)
-        }
+        self.namespaces = {i["type"]: i["namespaces"][0] for i in self.client.get_memory_strategies(self.memory_id)}
 
     def retrieve_customer_context(self, event: MessageAddedEvent):
         """Retrieve customer context before processing support query"""
         messages = event.agent.messages
-        if (
-            messages[-1]["role"] == "user"
-            and "toolResult" not in messages[-1]["content"][0]
-        ):
+        if messages[-1]["role"] == "user" and "toolResult" not in messages[-1]["content"][0]:
             user_query = messages[-1]["content"][0]["text"]
 
             try:
@@ -121,17 +113,13 @@ class CustomerSupportMemoryHooks(HookProvider):
                             if isinstance(content, dict):
                                 text = content.get("text", "").strip()
                                 if text:
-                                    all_context.append(
-                                        f"[{context_type.upper()}] {text}"
-                                    )
+                                    all_context.append(f"[{context_type.upper()}] {text}")
 
                 # Inject customer context into the query
                 if all_context:
                     context_text = "\n".join(all_context)
                     original_text = messages[-1]["content"][0]["text"]
-                    messages[-1]["content"][0]["text"] = (
-                        f"Customer Context:\n{context_text}\n\n{original_text}"
-                    )
+                    messages[-1]["content"][0]["text"] = f"Customer Context:\n{context_text}\n\n{original_text}"
                     logger.info(f"Retrieved {len(all_context)} customer context items")
 
             except Exception as e:
@@ -149,11 +137,7 @@ class CustomerSupportMemoryHooks(HookProvider):
                 for msg in reversed(messages):
                     if msg["role"] == "assistant" and not agent_response:
                         agent_response = msg["content"][0]["text"]
-                    elif (
-                        msg["role"] == "user"
-                        and not customer_query
-                        and "toolResult" not in msg["content"][0]
-                    ):
+                    elif msg["role"] == "user" and not customer_query and "toolResult" not in msg["content"][0]:
                         customer_query = msg["content"][0]["text"]
                         break
 

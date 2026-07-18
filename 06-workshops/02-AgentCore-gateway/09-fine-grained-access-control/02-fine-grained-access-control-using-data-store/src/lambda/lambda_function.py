@@ -90,15 +90,9 @@ def get_client_permissions(client_id: str) -> List[str]:
         )
 
         # Filter for only allowed tools
-        allowed_tools = [
-            item["ToolName"]
-            for item in response.get("Items", [])
-            if item.get("Allowed", False)
-        ]
+        allowed_tools = [item["ToolName"] for item in response.get("Items", []) if item.get("Allowed", False)]
 
-        print(
-            f"Found {len(allowed_tools)} allowed tools for client {client_id}: {allowed_tools}"
-        )
+        print(f"Found {len(allowed_tools)} allowed tools for client {client_id}: {allowed_tools}")
         return allowed_tools
 
     except ClientError as e:
@@ -128,9 +122,7 @@ def extract_tool_name(gateway_tool_name: str) -> str:
     return gateway_tool_name
 
 
-def filter_tools(
-    tools: List[Dict[str, Any]], allowed_tools: List[str]
-) -> List[Dict[str, Any]]:
+def filter_tools(tools: List[Dict[str, Any]], allowed_tools: List[str]) -> List[Dict[str, Any]]:
     """
     Filter tools list to only include tools the client is allowed to access.
     Handles Gateway's 'target-name___tool_name' naming format.

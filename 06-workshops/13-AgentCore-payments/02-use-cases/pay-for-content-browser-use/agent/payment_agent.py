@@ -143,9 +143,7 @@ def handle_request(payload, context=None):
         requirement = json.loads(requirement_json)
 
         first_accept = requirement["accepts"][0]
-        amount_units = int(
-            first_accept.get("maxAmountRequired") or first_accept.get("amount", 0)
-        )
+        amount_units = int(first_accept.get("maxAmountRequired") or first_accept.get("amount", 0))
         # Token's smallest unit (e.g. 1_000_000 for USDC's 6 decimals) — the
         # value is reported back to the caller for display, not used for
         # routing or settlement.

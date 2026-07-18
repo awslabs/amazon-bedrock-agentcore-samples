@@ -41,9 +41,7 @@ class OrchestratorAgent:
         self.region = get_region()
 
         # Create AgentCore client for calling sub-agents
-        self.agentcore_client = boto3.client(
-            "bedrock-agentcore", region_name=self.region
-        )
+        self.agentcore_client = boto3.client("bedrock-agentcore", region_name=self.region)
 
         # Load sub-agent ARNs from SSM
         self.travel_arn = get_ssm_parameter("/agents/travel_agent_arn")
@@ -127,9 +125,7 @@ def invoke(payload, context):
     prompt = payload.get("prompt", "")
 
     # Get session ID from AgentCore context or generate new one
-    session_id = (
-        context.session_id if hasattr(context, "session_id") else str(uuid.uuid4())
-    )
+    session_id = context.session_id if hasattr(context, "session_id") else str(uuid.uuid4())
 
     # Set session ID in OpenTelemetry baggage for propagation
     baggage.set_baggage("session.id", session_id)
@@ -138,9 +134,7 @@ def invoke(payload, context):
     request_headers = context.request_headers or {}
     user_id = request_headers.get(
         "x-amzn-bedrock-agentcore-runtime-user-id",
-        request_headers.get(
-            "x-amzn-bedrock-agentcore-runtime-custom-actorid", "orchestrator-user"
-        ),
+        request_headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid", "orchestrator-user"),
     )
 
     logger.info(f"Orchestrator received: {prompt}")

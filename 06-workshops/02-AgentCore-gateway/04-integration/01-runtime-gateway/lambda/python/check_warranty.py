@@ -119,16 +119,10 @@ def check_warranty_status(serial_number: str, customer_email: str = None) -> str
         warranty_end_date = warranty_item.get("warranty_end_date", "Unknown")
         warranty_type = warranty_item.get("warranty_type", "Standard")
         customer_name = warranty_item.get("customer_name", "Unknown")
-        coverage_details = warranty_item.get(
-            "coverage_details", "Standard coverage applies"
-        )
+        coverage_details = warranty_item.get("coverage_details", "Standard coverage applies")
 
         # Calculate days remaining
-        days_remaining = (
-            calculate_days_remaining(warranty_end_date)
-            if warranty_end_date != "Unknown"
-            else 0
-        )
+        days_remaining = calculate_days_remaining(warranty_end_date) if warranty_end_date != "Unknown" else 0
         status_text = get_warranty_status_text(days_remaining)
 
         # Format warranty information
@@ -157,9 +151,7 @@ def check_warranty_status(serial_number: str, customer_email: str = None) -> str
 
         # Add recommendations based on status
         if days_remaining > 30:
-            warranty_info.append(
-                "✨ Your warranty is active. Contact support for any issues."
-            )
+            warranty_info.append("✨ Your warranty is active. Contact support for any issues.")
         elif days_remaining > 0:
             warranty_info.extend(
                 [
@@ -181,9 +173,7 @@ def check_warranty_status(serial_number: str, customer_email: str = None) -> str
 
     except ClientError as e:
         logger.error("DynamoDB Error:", e)
-        raise Exception(
-            f"Failed to check warranty status: {e.response['Error']['Message']}"
-        )
+        raise Exception(f"Failed to check warranty status: {e.response['Error']['Message']}")
     except Exception as e:
         logger.error("Unexpected Error:", str(e))
         raise Exception(f"Failed to check warranty status: {str(e)}")

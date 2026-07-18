@@ -67,9 +67,7 @@ def put_ssm(name, value):
 
 
 def get_ssm(name):
-    return ssm_client.get_parameter(Name=name, WithDecryption=True)["Parameter"][
-        "Value"
-    ]
+    return ssm_client.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
 
 
 def delete_ssm(name):
@@ -113,9 +111,7 @@ def _get_return_policy(product_category: str) -> str:
             "warranty": "90-day manufacturer warranty",
         },
     }
-    p = policies.get(
-        product_category.lower(), {"window": "30 days", "warranty": "Standard warranty"}
-    )
+    p = policies.get(product_category.lower(), {"window": "30 days", "warranty": "Standard warranty"})
     return f"Return Policy - {product_category}: Window: {p['window']}, Warranty: {p['warranty']}"
 
 
@@ -134,25 +130,15 @@ def _get_product_info(product_type: str) -> str:
 def _get_technical_support(issue_description: str) -> str:
     """KB retrieval via Bedrock Knowledge Base."""
     try:
-        kb_id = ssm_client.get_parameter(
-            Name=f"/{ACCOUNT_ID}-{REGION}/kb/knowledge-base-id"
-        )["Parameter"]["Value"]
-        bedrock_agent_runtime = boto3.client(
-            "bedrock-agent-runtime", region_name=REGION
-        )
+        kb_id = ssm_client.get_parameter(Name=f"/{ACCOUNT_ID}-{REGION}/kb/knowledge-base-id")["Parameter"]["Value"]
+        bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION)
         response = bedrock_agent_runtime.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": issue_description},
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {"numberOfResults": 3}
-            },
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 3}},
         )
         results = response.get("retrievalResults", [])
-        texts = [
-            r.get("content", {}).get("text", "")
-            for r in results
-            if r.get("score", 0) >= 0.4
-        ]
+        texts = [r.get("content", {}).get("text", "") for r in results if r.get("score", 0) >= 0.4]
         return "\n\n".join(texts) if texts else "No relevant documentation found."
     except Exception as e:
         return f"KB lookup error: {e}"
@@ -309,9 +295,7 @@ def create_eval_gateway():
     targets = gateway_client.list_gateway_targets(gatewayIdentifier=gw_id)
     for t in targets.get("items", []):
         while True:
-            tgt = gateway_client.get_gateway_target(
-                gatewayIdentifier=gw_id, targetId=t["targetId"]
-            )
+            tgt = gateway_client.get_gateway_target(gatewayIdentifier=gw_id, targetId=t["targetId"])
             ts = tgt.get("status", "CREATING")
             if ts == "ACTIVE":
                 break
@@ -347,9 +331,7 @@ def create_eval_execution_role():
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": ACCOUNT_ID},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:*"},
                 },
             }
         ],
@@ -371,9 +353,7 @@ def create_eval_execution_role():
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -401,9 +381,7 @@ def create_eval_execution_role():
                 "Effect": "Allow",
                 "Action": "cloudwatch:PutMetricData",
                 "Resource": "*",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Effect": "Allow",
@@ -453,9 +431,7 @@ def create_eval_execution_role():
                     "bedrock-agentcore:GetGateway",
                     "bedrock-agentcore:InvokeGateway",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:gateway/*"
-                ],
+                "Resource": [f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:gateway/*"],
             },
         ],
     }
@@ -495,9 +471,7 @@ def create_eval_execution_role():
 
 def write_eval_runtime_entrypoint(memory_id, gateway_id):
     """Write the runtime entrypoint file for the eval agent (Strands-based)."""
-    entrypoint_path = os.path.join(
-        os.path.dirname(__file__), "eval_runtime_entrypoint.py"
-    )
+    entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
     code = f'''#!/usr/bin/env python3
 """Eval agent runtime entrypoint — Strands-based, isolated from workshop labs."""
 import os
@@ -712,9 +686,7 @@ def test_single_invocation(agentcore_runtime=None):
         execution_role_arn = get_ssm(f"{EVAL_SSM_PREFIX}/runtime_execution_role_arn")
         client_id = get_ssm("/app/customersupport/agentcore/client_id")
         discovery_url = get_ssm("/app/customersupport/agentcore/discovery_url")
-        entrypoint_path = os.path.join(
-            os.path.dirname(__file__), "eval_runtime_entrypoint.py"
-        )
+        entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
         req_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
         agentcore_runtime.configure(
             entrypoint=entrypoint_path,
@@ -800,9 +772,7 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
         execution_role_arn = get_ssm(f"{EVAL_SSM_PREFIX}/runtime_execution_role_arn")
         client_id = get_ssm("/app/customersupport/agentcore/client_id")
         discovery_url = get_ssm("/app/customersupport/agentcore/discovery_url")
-        entrypoint_path = os.path.join(
-            os.path.dirname(__file__), "eval_runtime_entrypoint.py"
-        )
+        entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
         req_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
         agentcore_runtime.configure(
             entrypoint=entrypoint_path,
@@ -870,9 +840,7 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
     print("\n📊 Data generation complete:")
     print(f"   Total invocations: {invocation_count}")
     print(f"   Errors: {error_count}")
-    print(
-        f"   Success rate: {((invocation_count - error_count) / max(invocation_count, 1)) * 100:.1f}%"
-    )
+    print(f"   Success rate: {((invocation_count - error_count) / max(invocation_count, 1)) * 100:.1f}%")
 
 
 # ---------------------------------------------------------------------------
@@ -901,9 +869,7 @@ def cleanup_eval_resources():
         gw_id = get_ssm(f"{EVAL_SSM_PREFIX}/gateway_id")
         targets = gateway_client.list_gateway_targets(gatewayIdentifier=gw_id)
         for t in targets.get("items", []):
-            gateway_client.delete_gateway_target(
-                gatewayIdentifier=gw_id, targetId=t["targetId"]
-            )
+            gateway_client.delete_gateway_target(gatewayIdentifier=gw_id, targetId=t["targetId"])
             print(f"   Deleted gateway target: {t['targetId']}")
         # Wait for targets to be deleted
         time.sleep(10)
@@ -940,9 +906,7 @@ def cleanup_eval_resources():
         print(f"⚠️  IAM cleanup: {e}")
 
     # 5. Clean up generated entrypoint file
-    entrypoint_path = os.path.join(
-        os.path.dirname(__file__), "eval_runtime_entrypoint.py"
-    )
+    entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
     if os.path.exists(entrypoint_path):
         os.remove(entrypoint_path)
         print("✅ Removed eval_runtime_entrypoint.py")

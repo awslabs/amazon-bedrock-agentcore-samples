@@ -70,9 +70,7 @@ def test_action(desc, fn):
 RECORD_IDS = {}
 RECORD_NAMES = {}
 
-print(
-    f"Session ready | Region: {AWS_REGION} | Account: {ACCOUNT_ID[:4]}****{ACCOUNT_ID[-4:]}"
-)
+print(f"Session ready | Region: {AWS_REGION} | Account: {ACCOUNT_ID[:4]}****{ACCOUNT_ID[-4:]}")
 
 # ── Step 1: Create registry ───────────────────────────────────────────────────
 print("\n── Step 1: Create Registry (autoApproval: false) ──")
@@ -110,9 +108,7 @@ ADMIN_POLICY = {
                 "bedrock-agentcore:UpdateRegistry",
                 "bedrock-agentcore:DeleteRegistry",
             ],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
         {
             "Sid": "AllowCreatingAndListingRegistryRecords",
@@ -121,9 +117,7 @@ ADMIN_POLICY = {
                 "bedrock-agentcore:CreateRegistryRecord",
                 "bedrock-agentcore:ListRegistryRecords",
             ],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
         {
             "Sid": "AllowRecordLevelOperations",
@@ -134,17 +128,13 @@ ADMIN_POLICY = {
                 "bedrock-agentcore:DeleteRegistryRecord",
                 "bedrock-agentcore:SubmitRegistryRecordForApproval",
             ],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*/record/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*/record/*"],
         },
         {
             "Sid": "AllowApproveRejectDeprecateRecords",
             "Effect": "Allow",
             "Action": ["bedrock-agentcore:UpdateRegistryRecordStatus"],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*/record/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*/record/*"],
         },
     ],
 }
@@ -162,9 +152,7 @@ PUBLISHER_POLICY = {
             "Sid": "AllowGetRegistry",
             "Effect": "Allow",
             "Action": ["bedrock-agentcore:GetRegistry"],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
         {
             "Sid": "AllowCreatingAndListingRegistryRecords",
@@ -173,9 +161,7 @@ PUBLISHER_POLICY = {
                 "bedrock-agentcore:CreateRegistryRecord",
                 "bedrock-agentcore:ListRegistryRecords",
             ],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
         {
             "Sid": "AllowRecordLevelOperations",
@@ -186,9 +172,7 @@ PUBLISHER_POLICY = {
                 "bedrock-agentcore:DeleteRegistryRecord",
                 "bedrock-agentcore:SubmitRegistryRecordForApproval",
             ],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*/record/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*/record/*"],
         },
     ],
 }
@@ -206,17 +190,13 @@ CONSUMER_POLICY = {
             "Sid": "AllowGetRegistry",
             "Effect": "Allow",
             "Action": ["bedrock-agentcore:GetRegistry"],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
         {
             "Sid": "AllowSearchingForApprovedRecords",
             "Effect": "Allow",
             "Action": ["bedrock-agentcore:SearchRegistryRecords"],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
         {
             "Sid": "AllowListingAndGettingRecords",
@@ -225,9 +205,7 @@ CONSUMER_POLICY = {
                 "bedrock-agentcore:ListRegistryRecords",
                 "bedrock-agentcore:GetRegistryRecord",
             ],
-            "Resource": [
-                f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"
-            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{AWS_REGION}:{ACCOUNT_ID}:registry/*"],
         },
     ],
 }
@@ -261,12 +239,8 @@ for user_name, policy in USERS.items():
         keys = iam_client.create_access_key(UserName=user_name)
     except ClientError as e:
         if "LimitExceeded" in str(e):
-            for k in iam_client.list_access_keys(UserName=user_name)[
-                "AccessKeyMetadata"
-            ]:
-                iam_client.delete_access_key(
-                    UserName=user_name, AccessKeyId=k["AccessKeyId"]
-                )
+            for k in iam_client.list_access_keys(UserName=user_name)["AccessKeyMetadata"]:
+                iam_client.delete_access_key(UserName=user_name, AccessKeyId=k["AccessKeyId"])
             keys = iam_client.create_access_key(UserName=user_name)
         else:
             raise
@@ -423,9 +397,7 @@ mcp_record_id = RECORD_IDS["mcp"]
 print("\n  5a. Publisher submits MCP record for approval (SHOULD SUCCEED)")
 test_action(
     "SubmitRegistryRecordForApproval",
-    lambda: publisher_cp.submit_registry_record_for_approval(
-        registryId=REGISTRY_ID, recordId=mcp_record_id
-    ),
+    lambda: publisher_cp.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=mcp_record_id),
 )
 
 print("\n  5b. Publisher tries to self-approve (SHOULD FAIL)")
@@ -439,9 +411,7 @@ test_action(
     ),
 )
 rec = admin_cp.get_registry_record(registryId=REGISTRY_ID, recordId=mcp_record_id)
-assert rec["status"] == "PENDING_APPROVAL", (
-    "GOVERNANCE FAILURE: Publisher was able to self-approve!"
-)
+assert rec["status"] == "PENDING_APPROVAL", "GOVERNANCE FAILURE: Publisher was able to self-approve!"
 print("  ✅ Guardrail PASSED — Publisher cannot self-approve")
 
 print("\n  5c. Consumer tries to create a record (SHOULD FAIL)")
@@ -496,9 +466,7 @@ for rtype in ["a2a", "custom"]:
     name = RECORD_NAMES[rtype]
     test_action(
         f"Submit {name}",
-        lambda rid=rid: publisher_cp.submit_registry_record_for_approval(
-            registryId=REGISTRY_ID, recordId=rid
-        ),
+        lambda rid=rid: publisher_cp.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=rid),
     )
 time.sleep(5)
 for rtype in ["a2a", "custom"]:
@@ -530,9 +498,7 @@ queries = [
 ]
 for q in queries:
     try:
-        results = consumer_dp.search_registry_records(
-            registryIds=[REGISTRY_ARN], searchQuery=q, maxResults=5
-        )
+        results = consumer_dp.search_registry_records(registryIds=[REGISTRY_ARN], searchQuery=q, maxResults=5)
         for r in results.get("registryRecords", []):
             print(f"  🔍 '{q}' → [{r.get('descriptorType')}] {r['name']}")
         if not results.get("registryRecords"):

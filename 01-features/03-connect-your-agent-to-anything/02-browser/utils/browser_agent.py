@@ -16,9 +16,7 @@ from strands_tools.browser import AgentCoreBrowser
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 REGION = os.getenv("AWS_DEFAULT_REGION", "us-west-2")
-MODEL_ID = os.getenv(
-    "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
+MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 SYSTEM_PROMPT = """You are an intelligent web analyst that specializes in browsing websites and extracting useful information. When given a URL or a question about a website:
 

@@ -132,9 +132,7 @@ class CognitoM2MTokenProvider:
             if self._verbose:
                 status("Token request", False)
                 print(f"  {RED}{resp.status_code}: {resp.text}{RESET}")
-            raise RuntimeError(
-                f"Cognito token request failed: {resp.status_code} {resp.text}"
-            )
+            raise RuntimeError(f"Cognito token request failed: {resp.status_code} {resp.text}")
 
         token_data = resp.json()
         token = token_data["access_token"]
@@ -225,9 +223,7 @@ def demo_direct_api_call(cfg: dict, access_token: str) -> None:
         rejected,
     )
     if rejected:
-        print(
-            f"  {DIM}The gateway client token was correctly rejected by the API Gateway.{RESET}"
-        )
+        print(f"  {DIM}The gateway client token was correctly rejected by the API Gateway.{RESET}")
     else:
         print(f"  {YELLOW}Unexpected status. Response: {resp.text[:200]}{RESET}")
 
@@ -266,9 +262,7 @@ def demo_downstream_api_call(cfg: dict) -> None:
         accepted,
     )
     if accepted:
-        print(
-            f"  {DIM}The downstream client token was accepted by the API Gateway.{RESET}"
-        )
+        print(f"  {DIM}The downstream client token was accepted by the API Gateway.{RESET}")
         try:
             print(f"  {GREEN}{json.dumps(resp.json(), indent=2)}{RESET}")
         except (json.JSONDecodeError, ValueError):
@@ -323,9 +317,7 @@ def demo_gateway_tools(cfg: dict, token_provider: CognitoM2MTokenProvider) -> No
                 arguments=arguments,
             )
 
-            content_text = (
-                result["content"][0]["text"] if result.get("content") else str(result)
-            )
+            content_text = result["content"][0]["text"] if result.get("content") else str(result)
             status("Tool invocation via gateway", True)
 
             section("Tool response")
@@ -336,18 +328,10 @@ def demo_gateway_tools(cfg: dict, token_provider: CognitoM2MTokenProvider) -> No
                 print(f"  {GREEN}{content_text[:500]}{RESET}")
 
             print()
-            print(
-                f"  {CYAN}The interceptor exchanged the gateway-client token for a{RESET}"
-            )
-            print(
-                f"  {CYAN}downstream-client token before forwarding to the API Gateway.{RESET}"
-            )
-            print(
-                f"  {DIM}Gateway client:    {cfg['cognito_gateway_client_id']}{RESET}"
-            )
-            print(
-                f"  {DIM}Downstream client: {cfg['cognito_downstream_client_id']}{RESET}"
-            )
+            print(f"  {CYAN}The interceptor exchanged the gateway-client token for a{RESET}")
+            print(f"  {CYAN}downstream-client token before forwarding to the API Gateway.{RESET}")
+            print(f"  {DIM}Gateway client:    {cfg['cognito_gateway_client_id']}{RESET}")
+            print(f"  {DIM}Downstream client: {cfg['cognito_downstream_client_id']}{RESET}")
         else:
             print(f"  {YELLOW}No tools available to invoke{RESET}")
 
@@ -385,12 +369,8 @@ def demo_agent(cfg: dict, prompt: str) -> None:
 
     print()
     print(f"  {YELLOW}client_id = {jwt_client_id(access_token)}{RESET}")
-    print(
-        f"  {DIM}This is the GATEWAY client. The API Gateway will NOT accept this token.{RESET}"
-    )
-    print(
-        f"  {DIM}The interceptor will exchange it for a DOWNSTREAM client token.{RESET}"
-    )
+    print(f"  {DIM}This is the GATEWAY client. The API Gateway will NOT accept this token.{RESET}")
+    print(f"  {DIM}The interceptor will exchange it for a DOWNSTREAM client token.{RESET}")
 
     # -- 5c: connect and run agent ------------------------------------------
     section("Connecting agent to gateway")
@@ -402,9 +382,7 @@ def demo_agent(cfg: dict, prompt: str) -> None:
         )
 
     client = MCPClient(create_transport)
-    modelId = bedrock_models.global_model_id(
-        bedrock_models.Models.ANTHROPIC_CLAUDE_SONNET_4_6
-    )
+    modelId = bedrock_models.global_model_id(bedrock_models.Models.ANTHROPIC_CLAUDE_SONNET_4_6)
     model = BedrockModel(model_id=modelId, temperature=0.7)
 
     with client:
@@ -428,9 +406,7 @@ def demo_agent(cfg: dict, prompt: str) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Demo: AgentCore Gateway token exchange at request interceptor"
-    )
+    parser = argparse.ArgumentParser(description="Demo: AgentCore Gateway token exchange at request interceptor")
     parser.add_argument(
         "--tf-dir",
         default="terraform",
@@ -468,25 +444,15 @@ def main():
 
     print()
     print(f"  {YELLOW}client_id = {jwt_client_id(access_token)}{RESET}")
-    print(
-        f"  {DIM}This is the GATEWAY client. The API Gateway will NOT accept this token.{RESET}"
-    )
-    print(
-        f"  {DIM}The interceptor will exchange it for a DOWNSTREAM client token.{RESET}"
-    )
+    print(f"  {DIM}This is the GATEWAY client. The API Gateway will NOT accept this token.{RESET}")
+    print(f"  {DIM}The interceptor will exchange it for a DOWNSTREAM client token.{RESET}")
 
     print()
     print(f"{CYAN}{BOLD}{'- ' * 36}{RESET}")
     print(f"{CYAN}  Two Cognito clients are in play:{RESET}")
-    print(
-        f"{CYAN}    1. Gateway client  - authenticates the caller to AgentCore Gateway{RESET}"
-    )
-    print(
-        f"{CYAN}    2. Downstream client - authenticates the call to the API Gateway{RESET}"
-    )
-    print(
-        f"{CYAN}  The interceptor Lambda exchanges (1) for (2) on every request.{RESET}"
-    )
+    print(f"{CYAN}    1. Gateway client  - authenticates the caller to AgentCore Gateway{RESET}")
+    print(f"{CYAN}    2. Downstream client - authenticates the call to the API Gateway{RESET}")
+    print(f"{CYAN}  The interceptor Lambda exchanges (1) for (2) on every request.{RESET}")
     print(f"{CYAN}{BOLD}{'- ' * 36}{RESET}")
     print()
 

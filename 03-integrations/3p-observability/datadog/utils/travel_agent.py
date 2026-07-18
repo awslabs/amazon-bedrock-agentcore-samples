@@ -45,9 +45,7 @@ if dd_api_key:
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
-    logger.info(
-        "Datadog OTel configured (service: %s, site: %s)", service_name, dd_site
-    )
+    logger.info("Datadog OTel configured (service: %s, site: %s)", service_name, dd_site)
 else:
     logger.warning("DD_API_KEY not set — traces will not be sent to Datadog")
 
@@ -80,13 +78,9 @@ def web_search(query: str) -> str:
 
 
 def create_agent():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     return Agent(
         model=model,
         system_prompt=(

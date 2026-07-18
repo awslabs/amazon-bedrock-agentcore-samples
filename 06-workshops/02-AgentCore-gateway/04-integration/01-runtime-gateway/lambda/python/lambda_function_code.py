@@ -30,9 +30,7 @@ def lambda_handler(event, context):
             }
 
         try:
-            customer_profile = get_customer_profile(
-                customer_id=customer_id, email=email, phone=phone
-            )
+            customer_profile = get_customer_profile(customer_id=customer_id, email=email, phone=phone)
         except Exception as e:
             print(e)
             return {
@@ -56,9 +54,7 @@ def lambda_handler(event, context):
             }
 
         try:
-            warranty_status = check_warranty_status(
-                serial_number=serial_number, customer_email=customer_email
-            )
+            warranty_status = check_warranty_status(serial_number=serial_number, customer_email=customer_email)
         except Exception as e:
             print(e)
             return {

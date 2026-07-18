@@ -1,8 +1,0 @@
-strands-agents
-strands-agents-tools
-bedrock-agentcore
-mcp
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation
-opentelemetry-exporter-otlp

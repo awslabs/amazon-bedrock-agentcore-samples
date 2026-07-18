@@ -38,9 +38,7 @@ def _parse_github_url(url):
 def _fetch_github_contents(owner, repo, path, branch="main"):
     """Fetch directory listing or file content from GitHub API."""
     url = f"{GITHUB_API}/{owner}/{repo}/contents/{path}?ref={branch}"
-    req = urllib.request.Request(
-        url, headers={"Accept": "application/vnd.github.v3+json"}
-    )
+    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.v3+json"})
     if not url.startswith("https://"):  # Validate URL scheme (bandit B310)
         raise ValueError(f"Only HTTPS URLs are allowed, got: {url}")
     with urllib.request.urlopen(req) as resp:  # nosec B310 - URL scheme validated above
@@ -55,9 +53,7 @@ def _download_file(download_url, dest_path):
     urllib.request.urlretrieve(download_url, dest_path)  # nosec B310 - URL scheme validated above
 
 
-def _download_github_tree(
-    owner, repo, branch, remote_path, local_dir, root_remote_path=None
-):
+def _download_github_tree(owner, repo, branch, remote_path, local_dir, root_remote_path=None):
     """Recursively download all files from a GitHub directory.
 
     Args:
@@ -77,9 +73,7 @@ def _download_github_tree(
         local_path = os.path.join(local_dir, rel_path)
 
         if item["type"] == "dir":
-            _download_github_tree(
-                owner, repo, branch, item["path"], local_dir, root_remote_path
-            )
+            _download_github_tree(owner, repo, branch, item["path"], local_dir, root_remote_path)
         else:
             _download_file(item["download_url"], local_path)
             print(f"  Downloaded: {rel_path}")
@@ -164,9 +158,7 @@ def load_skill_from_registry(search_response, record_index=0, base_dir="./skills
 
             if item["type"] == "dir":
                 # Pass remote_path as root so rel paths are relative to skill root
-                _download_github_tree(
-                    owner, repo, branch, item["path"], skill_dir, remote_path
-                )
+                _download_github_tree(owner, repo, branch, item["path"], skill_dir, remote_path)
             else:
                 dest = os.path.join(skill_dir, item["name"])
                 _download_file(item["download_url"], dest)

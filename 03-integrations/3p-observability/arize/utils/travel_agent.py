@@ -50,9 +50,7 @@ if arize_api_key and arize_space_id:
     trace.set_tracer_provider(provider)
     logger.info("Arize OTel configured (project: %s)", arize_project)
 else:
-    logger.warning(
-        "ARIZE_API_KEY or ARIZE_SPACE_ID not set — traces will not be sent to Arize"
-    )
+    logger.warning("ARIZE_API_KEY or ARIZE_SPACE_ID not set — traces will not be sent to Arize")
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
@@ -83,13 +81,9 @@ def web_search(query: str) -> str:
 
 
 def create_agent():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     return Agent(
         model=model,
         system_prompt=(

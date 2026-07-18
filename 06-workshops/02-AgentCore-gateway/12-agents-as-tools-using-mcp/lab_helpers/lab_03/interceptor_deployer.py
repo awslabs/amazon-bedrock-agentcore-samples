@@ -38,9 +38,7 @@ def deploy_interceptor(region: str, prefix: str, gateway_arn: str = None) -> str
     }
 
     try:
-        role_response = iam_client.create_role(
-            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy)
-        )
+        role_response = iam_client.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust_policy))
         role_arn = role_response["Role"]["Arn"]
 
         iam_client.attach_role_policy(
@@ -57,9 +55,7 @@ def deploy_interceptor(region: str, prefix: str, gateway_arn: str = None) -> str
     # Create deployment package
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.write(
-            "lab_helpers/lab_03/interceptor-request.py", "lambda_function.py"
-        )
+        zip_file.write("lab_helpers/lab_03/interceptor-request.py", "lambda_function.py")
 
     zip_buffer.seek(0)
 

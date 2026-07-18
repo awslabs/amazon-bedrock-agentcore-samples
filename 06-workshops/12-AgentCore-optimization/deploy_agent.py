@@ -35,9 +35,7 @@ import boto3
 
 parser = argparse.ArgumentParser(description="Deploy HR Assistant to AgentCore Runtime")
 parser.add_argument("--name", required=True, help="Runtime name (alphanumeric)")
-parser.add_argument(
-    "--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-)
+parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 parser.add_argument(
     "--version",
     default="v1",
@@ -67,9 +65,7 @@ S3_KEY = f"{RUNTIME_NAME}/deployment_package.zip"
 BUILD_DIR = Path(f"/tmp/{RUNTIME_NAME}_build")  # nosec B108
 STATE_FILE = Path(f"agent_state_{RUNTIME_NAME}.json")
 
-print(
-    f"Deploying {RUNTIME_NAME} (version={VERSION}) to {REGION} (account={ACCOUNT_ID})"
-)
+print(f"Deploying {RUNTIME_NAME} (version={VERSION}) to {REGION} (account={ACCOUNT_ID})")
 
 # ---------------------------------------------------------------------------
 # IAM role

@@ -69,9 +69,7 @@ def validate_requirements(build_dir: str) -> bool:
 # ============================================================================
 
 
-def install_dependencies(
-    build_dir: str, requirements_content: str
-) -> Tuple[bool, Dict]:
+def install_dependencies(build_dir: str, requirements_content: str) -> Tuple[bool, Dict]:
     """
     Install dependencies using pip into lib/ directory
 
@@ -127,9 +125,7 @@ def install_dependencies(
         )
 
         # Count packages
-        installed_packages = [
-            d for d in os.listdir(lib_dir) if os.path.isdir(os.path.join(lib_dir, d))
-        ]
+        installed_packages = [d for d in os.listdir(lib_dir) if os.path.isdir(os.path.join(lib_dir, d))]
 
         lib_size = get_dir_size(lib_dir)
 
@@ -153,9 +149,7 @@ def install_dependencies(
         return False, {}
 
 
-def create_lambda_zip(
-    build_dir: str, handler_code: str, output_zip: str
-) -> Tuple[bool, Dict]:
+def create_lambda_zip(build_dir: str, handler_code: str, output_zip: str) -> Tuple[bool, Dict]:
     """
     Create Lambda deployment ZIP with proper structure
 
@@ -316,9 +310,7 @@ def create_deployment_package(
             "size_uncompressed": uncompressed_size,
         }
 
-    print(
-        f"{size_status} Compressed: {format_size(zip_size)} (50 MB direct / 250 MB S3 limit)"
-    )
+    print(f"{size_status} Compressed: {format_size(zip_size)} (50 MB direct / 250 MB S3 limit)")
     print(f"✓ Uncompressed: {format_size(uncompressed_size)} (250 MB limit)")
     print(f"✓ Deployment method: {upload_method}")
 
@@ -376,9 +368,7 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
         if hasattr(e, "response"):
             # Extract error code from ClientError response
             error_code = e.response.get("Error", {}).get("Code", "")
-            http_status = e.response.get("ResponseMetadata", {}).get(
-                "HTTPStatusCode", 0
-            )
+            http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
             is_not_found = error_code == "404" or http_status == 404
 
         if is_not_found:
@@ -399,10 +389,7 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
             except Exception as create_error:
                 # If bucket creation fails (e.g., already exists from concurrent request), continue
                 create_error_str = str(create_error)
-                if any(
-                    err in create_error_str
-                    for err in ["BucketAlreadyExists", "BucketAlreadyOwnedByYou"]
-                ):
+                if any(err in create_error_str for err in ["BucketAlreadyExists", "BucketAlreadyOwnedByYou"]):
                     print(f"✓ S3 bucket exists (concurrent creation): {bucket_name}")
                     bucket_arn = f"arn:aws:s3:::{bucket_name}"
                 else:
@@ -454,9 +441,7 @@ def upload_package_to_s3(
             zip_path,
             s3_bucket,
             s3_key,
-            ExtraArgs={
-                "Metadata": {"creator": "aiml301-lambda-packager", "model-id": MODEL_ID}
-            },
+            ExtraArgs={"Metadata": {"creator": "aiml301-lambda-packager", "model-id": MODEL_ID}},
         )
 
         s3_uri = f"s3://{s3_bucket}/{s3_key}"
@@ -542,9 +527,7 @@ def create_lambda_function_from_zip(
             # Function exists, update it
             print("✓ Function exists, updating...")
 
-            response = lambda_client.update_function_code(
-                FunctionName=function_name, **code_arg
-            )
+            response = lambda_client.update_function_code(FunctionName=function_name, **code_arg)
 
             # Wait for update to complete
             print("  Waiting for update to complete...")
@@ -558,9 +541,7 @@ def create_lambda_function_from_zip(
                 Handler="app.lambda_handler",
                 Timeout=LAMBDA_CONFIG["timeout"],
                 MemorySize=LAMBDA_CONFIG["memory_size"],
-                Environment={
-                    "Variables": {"MODEL_ID": MODEL_ID, "REGION": region_name}
-                },
+                Environment={"Variables": {"MODEL_ID": MODEL_ID, "REGION": region_name}},
             )
 
             print("✓ Configuration updated")
@@ -579,9 +560,7 @@ def create_lambda_function_from_zip(
                 Code=code_arg,
                 Timeout=LAMBDA_CONFIG["timeout"],
                 MemorySize=LAMBDA_CONFIG["memory_size"],
-                Environment={
-                    "Variables": {"MODEL_ID": MODEL_ID, "REGION": region_name}
-                },
+                Environment={"Variables": {"MODEL_ID": MODEL_ID, "REGION": region_name}},
                 Description="AIML301 Workshop - Diagnostics Agent (ZIP-based)",
             )
 
@@ -669,18 +648,14 @@ def setup_lambda_zip_deployment(
         bucket_result = setup_s3_bucket("aiml301-lambda-packages", region_name)
 
         # Step 3: Upload to S3
-        s3_result = upload_package_to_s3(
-            zip_path, bucket_result["bucket_name"], region_name=region_name
-        )
+        s3_result = upload_package_to_s3(zip_path, bucket_result["bucket_name"], region_name=region_name)
 
         if s3_result.get("status") == "error":
             return s3_result
 
     # Step 4: Get Lambda role from Parameter Store
     try:
-        role_arn = get_parameter(
-            PARAMETER_PATHS["lab_02"]["lambda_role_arn"], region_name=region_name
-        )
+        role_arn = get_parameter(PARAMETER_PATHS["lab_02"]["lambda_role_arn"], region_name=region_name)
     except Exception as e:
         print("❌ Could not retrieve Lambda role ARN from Parameter Store")
         return {"status": "error", "error": f"Lambda role not found: {e}"}
@@ -689,9 +664,7 @@ def setup_lambda_zip_deployment(
     lambda_result = create_lambda_function_from_zip(
         function_name="aiml301-diagnostic-agent",
         zip_path=zip_path if package_result["upload_method"] == "direct" else None,
-        s3_uri=s3_result.get("s3_uri")
-        if package_result["upload_method"] == "S3"
-        else None,
+        s3_uri=s3_result.get("s3_uri") if package_result["upload_method"] == "S3" else None,
         role_arn=role_arn,
         region_name=region_name,
     )

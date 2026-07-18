@@ -78,9 +78,7 @@ def convert_currency(amount: float, from_currency: str, to_currency: str) -> str
             return f"Could not find exchange rate for {from_currency} to {to_currency}."
 
         # Format results with source citations
-        formatted_results = [
-            f"Currency conversion: {amount} {from_currency} to {to_currency}\n"
-        ]
+        formatted_results = [f"Currency conversion: {amount} {from_currency} to {to_currency}\n"]
         for i, result in enumerate(results, 1):
             formatted_results.append(
                 f"{i}. {result.get('title', 'No title')}\n"
@@ -160,9 +158,7 @@ def search_flight_info(origin: str, destination: str) -> str:
 
 
 @tool
-def calculate_trip_budget(
-    daily_cost: float, num_days: int, num_people: int, flights_total: float = 0.0
-) -> str:
+def calculate_trip_budget(daily_cost: float, num_days: int, num_people: int, flights_total: float = 0.0) -> str:
     """
     Calculate total trip budget including flights, accommodation, and daily expenses.
 
@@ -240,9 +236,7 @@ TRAVEL_SYSTEM_PROMPT = """You are a travel research assistant. Use tools for ALL
 At the point where tools are done being invoked and a summary can be presented to the user, invoke the ready_to_summarize tool and then continue with the summary."""
 
 # Initialize model at module level (stateless, reusable)
-model = BedrockModel(
-    model_id=MODEL_ID, temperature=MODEL_TEMPERATURE, max_tokens=MODEL_MAX_TOKENS
-)
+model = BedrockModel(model_id=MODEL_ID, temperature=MODEL_TEMPERATURE, max_tokens=MODEL_MAX_TOKENS)
 
 # Tools list
 TRAVEL_TOOLS = [

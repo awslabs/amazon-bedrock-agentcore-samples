@@ -59,9 +59,7 @@ def load_api_spec(file_path: str) -> list:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        raise json.JSONDecodeError(
-            f"Invalid JSON in API specification file: {e}", e.doc, e.pos
-        )
+        raise json.JSONDecodeError(f"Invalid JSON in API specification file: {e}", e.doc, e.pos)
 
     if not isinstance(data, list):
         raise ValueError("Expected a list in the JSON file")
@@ -88,9 +86,7 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
     return response["Parameter"]["Value"]
 
 
-def put_ssm_parameter(
-    name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
-) -> None:
+def put_ssm_parameter(name: str, value: str, parameter_type: str = "String", with_encryption: bool = False) -> None:
     """Store parameter value in AWS Systems Manager Parameter Store.
 
     Args:
@@ -151,10 +147,7 @@ def fetch_access_token(client_id, client_secret, token_url):
     if not token_url.startswith(("https://", "http://")):
         raise ValueError("token_url must be a valid HTTP/HTTPS URL")
 
-    data = (
-        f"grant_type=client_credentials&client_id={client_id}"
-        f"&client_secret={client_secret}"
-    )
+    data = f"grant_type=client_credentials&client_id={client_id}&client_secret={client_secret}"
 
     try:
         response = requests.post(
@@ -193,21 +186,15 @@ def delete_gateway(gateway_client, gateway_name):
     gateway_id = get_ssm_parameter("/app/asana/demo/agentcoregwy/gateway_id")
 
     print("Deleting all targets for gateway", gateway_id)
-    list_response = gateway_client.list_gateway_targets(
-        gatewayIdentifier=gateway_id, maxResults=100
-    )
+    list_response = gateway_client.list_gateway_targets(gatewayIdentifier=gateway_id, maxResults=100)
     for item in list_response["items"]:
         target_id = item["targetId"]
         print("Deleting target ", target_id)
-        gateway_client.delete_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        )
+        gateway_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
     # wait for 30 secs
     time.sleep(30)
 
-    list_response = gateway_client.list_gateway_targets(
-        gatewayIdentifier=gateway_id, maxResults=100
-    )
+    list_response = gateway_client.list_gateway_targets(gatewayIdentifier=gateway_id, maxResults=100)
     if len(list_response["items"]) > 0:
         print(f"{len(list_response['items'])} targets not deleted successfully)")
     else:

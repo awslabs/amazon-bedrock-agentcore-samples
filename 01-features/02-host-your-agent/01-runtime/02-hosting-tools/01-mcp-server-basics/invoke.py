@@ -24,9 +24,7 @@ def load_config() -> dict:
         sys.exit(1)
 
 
-def send_mcp_rpc(
-    runtime_arn: str, method: str, params: dict, region: str, rpc_id: int = 1
-) -> dict:
+def send_mcp_rpc(runtime_arn: str, method: str, params: dict, region: str, rpc_id: int = 1) -> dict:
     """Send an MCP JSON-RPC message to the deployed server."""
     client = boto3.client("bedrock-agentcore", region_name=region)
 

@@ -29,9 +29,7 @@ import os
 boto_session = Session()
 AWS_REGION = boto_session.region_name
 
-registry_client = boto_session.client(
-    "bedrock-agentcore-control", region_name=AWS_REGION
-)
+registry_client = boto_session.client("bedrock-agentcore-control", region_name=AWS_REGION)
 search_client = boto_session.client("bedrock-agentcore", region_name=AWS_REGION)
 
 print(f"Session ready | Region: {AWS_REGION}")
@@ -53,9 +51,7 @@ class C:
 
 def wait_for_record_draft(registry_id, record_id, interval=3):
     while True:
-        resp = registry_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        resp = registry_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = resp["status"]
         if status == "DRAFT":
             return resp
@@ -160,13 +156,7 @@ print(f"\n{C.BOLD}=== Registry Records ==={C.RESET}")
 print(f"Found {len(records_response['registryRecords'])} record(s):\n")
 for rec in records_response["registryRecords"]:
     status = rec["status"]
-    sc = (
-        C.GREEN
-        if status == "APPROVED"
-        else C.YELLOW
-        if status in ("DRAFT", "PENDING_APPROVAL")
-        else C.RED
-    )
+    sc = C.GREEN if status == "APPROVED" else C.YELLOW if status in ("DRAFT", "PENDING_APPROVAL") else C.RED
     print(
         f"  {sc}[{status}]{C.RESET} {rec['name']} | {C.CYAN}{rec['descriptorType']}{C.RESET} | {C.DIM}{rec['recordId']}{C.RESET}"
     )
@@ -174,9 +164,7 @@ for rec in records_response["registryRecords"]:
 # ── 3. Approve Skill Record ───────────────────────────────────────────────────
 print(f"\n{C.BOLD}=== 3. Approve the Skill Record ==={C.RESET}")
 
-registry_client.submit_registry_record_for_approval(
-    registryId=REGISTRY_ID, recordId=SKILL_RECORD_ID
-)
+registry_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=SKILL_RECORD_ID)
 print(f"  {C.YELLOW}⏳ Skill record → PENDING_APPROVAL{C.RESET}")
 
 registry_client.update_registry_record_status(
@@ -228,9 +216,7 @@ def search_and_load_skill(query: str) -> str:
 
     print(f"Found {len(records)} skill(s) matching '{query}':")
     for i, rec in enumerate(records):
-        print(
-            f"  {i + 1}. {rec.get('name', 'unknown')} [{rec.get('descriptorType', '')}]"
-        )
+        print(f"  {i + 1}. {rec.get('name', 'unknown')} [{rec.get('descriptorType', '')}]")
     print(f"\nLoading top result: {records[0].get('name', 'unknown')}...")
 
     skill_dir, skill_md = load_skill_from_registry(response, record_index=0)
@@ -268,18 +254,14 @@ print(f"  {C.BOLD}Available tools:{C.RESET} {C.CYAN}{agent.tool_names}{C.RESET}"
 # ── 4.3 Execute a Task ────────────────────────────────────────────────────────
 print(f"\n{C.BOLD}=== 4.3 Execute a Task with Dynamic Skill Discovery ==={C.RESET}")
 
-agent(
-    "Create a simple PDF with title 'Hello from Agent Skills' and save it in the current directory"
-)
+agent("Create a simple PDF with title 'Hello from Agent Skills' and save it in the current directory")
 
 # ── 5. Cleanup ────────────────────────────────────────────────────────────────
 print(f"\n{C.BOLD}=== 5. Cleanup ==={C.RESET}")
 
 records = registry_client.list_registry_records(registryId=REGISTRY_ID)
 for rec in records.get("registryRecords", []):
-    registry_client.delete_registry_record(
-        registryId=REGISTRY_ID, recordId=rec["recordId"]
-    )
+    registry_client.delete_registry_record(registryId=REGISTRY_ID, recordId=rec["recordId"])
     print(f"  {C.GREEN}✅ Deleted record: {C.DIM}{rec['recordId']}{C.RESET}")
 
 registry_client.delete_registry(registryId=REGISTRY_ID)

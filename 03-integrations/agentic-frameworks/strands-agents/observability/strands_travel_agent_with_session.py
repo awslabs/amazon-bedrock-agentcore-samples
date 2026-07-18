@@ -27,12 +27,8 @@ logging.getLogger("strands").setLevel(logging.INFO)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Strands Travel Agent with Session Tracking"
-    )
-    parser.add_argument(
-        "--session-id", required=True, help="Session ID for trace correlation"
-    )
+    parser = argparse.ArgumentParser(description="Strands Travel Agent with Session Tracking")
+    parser.add_argument("--session-id", required=True, help="Session ID for trace correlation")
     return parser.parse_args()
 
 
@@ -63,9 +59,7 @@ def web_search(query: str) -> str:
 
 
 def run_agent(session_id: str):
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
     model = BedrockModel(

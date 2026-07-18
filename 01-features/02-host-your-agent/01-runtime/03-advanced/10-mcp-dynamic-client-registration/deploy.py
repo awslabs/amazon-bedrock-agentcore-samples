@@ -197,10 +197,7 @@ def create_endpoint(runtime_id: str):
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     while True:
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
-        if (
-            eps.get("runtimeEndpoints")
-            and eps["runtimeEndpoints"][0]["status"] == "READY"
-        ):
+        if eps.get("runtimeEndpoints") and eps["runtimeEndpoints"][0]["status"] == "READY":
             break
         time.sleep(15)
     print("✓ Endpoint ready")
@@ -216,15 +213,11 @@ def main():
     if auth0_domain:
         print(f"  Auth0 domain: {auth0_domain}")
     else:
-        print(
-            "  ⚠ AUTH0_DOMAIN not set — Auth0 integration will need manual configuration"
-        )
+        print("  ⚠ AUTH0_DOMAIN not set — Auth0 integration will need manual configuration")
     if auth0_audience:
         print(f"  Auth0 audience: {auth0_audience}")
     else:
-        print(
-            "  ⚠ AUTH0_AUDIENCE not set — Auth0 integration will need manual configuration"
-        )
+        print("  ⚠ AUTH0_AUDIENCE not set — Auth0 integration will need manual configuration")
     print()
 
     role_arn = create_execution_role()

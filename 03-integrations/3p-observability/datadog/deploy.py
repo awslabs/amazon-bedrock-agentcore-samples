@@ -62,9 +62,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -157,9 +155,7 @@ def build_and_upload_package():
         capture_output=True,
     )
     for src_file in AGENT_FILES:
-        subprocess.run(
-            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
-        )
+        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
     print(f"  Package: {zip_file} ({os.path.getsize(zip_file) / 1024 / 1024:.1f} MB)")
     s3.upload_file(zip_file, S3_BUCKET, S3_PREFIX)
     shutil.rmtree(pkg_dir)
@@ -206,9 +202,7 @@ def create_endpoint(runtime_id: str):
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     print("  Waiting for endpoint to be ready...")
     while True:
-        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get(
-            "runtimeEndpoints", []
-        ):
+        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
             if ep["name"] == "default":
                 print(f"    Status: {ep['status']}")
                 if ep["status"] == "READY":
@@ -220,9 +214,7 @@ def create_endpoint(runtime_id: str):
 
 def main():
     if not PLATFORM_ENV_VARS.get("DD_API_KEY"):
-        print(
-            "ERROR: DD_API_KEY not set. Copy .env.example → .env and fill in your credentials."
-        )
+        print("ERROR: DD_API_KEY not set. Copy .env.example → .env and fill in your credentials.")
         sys.exit(1)
     print("=" * 60)
     print("Deploying Travel Agent with Datadog LLM Observability")

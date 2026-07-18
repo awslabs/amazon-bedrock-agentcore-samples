@@ -152,9 +152,7 @@ def lambda_handler(event, context):
     except ValueError as e:
         return {
             "statusCode": 400,
-            "body": json.dumps(
-                {"tool": "calculation_tool", "error": str(e), "success": False}
-            ),
+            "body": json.dumps({"tool": "calculation_tool", "error": str(e), "success": False}),
         }
     except Exception as e:
         return {

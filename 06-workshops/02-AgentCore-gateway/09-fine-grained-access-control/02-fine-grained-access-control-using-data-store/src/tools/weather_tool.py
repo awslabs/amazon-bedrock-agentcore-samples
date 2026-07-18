@@ -54,9 +54,7 @@ def lambda_handler(event, context):
 
     response = {
         "statusCode": 200,
-        "body": json.dumps(
-            {"tool": "weather_tool", "result": weather_data, "success": True}
-        ),
+        "body": json.dumps({"tool": "weather_tool", "result": weather_data, "success": True}),
     }
 
     print(f"Weather tool response: {json.dumps(response)}")

@@ -35,9 +35,7 @@ from bedrock_agentcore_starter_toolkit import Runtime
 boto_session = Session()
 AWS_REGION = boto_session.region_name
 
-registry_client = boto_session.client(
-    "bedrock-agentcore-control", region_name=AWS_REGION
-)
+registry_client = boto_session.client("bedrock-agentcore-control", region_name=AWS_REGION)
 search_client = boto_session.client("bedrock-agentcore", region_name=AWS_REGION)
 
 os.makedirs("agents/mcp", exist_ok=True)
@@ -67,9 +65,7 @@ def pretty_print_response(response):
 
 def wait_for_record_draft(registry_id, record_id, interval=3):
     while True:
-        resp = registry_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        resp = registry_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = resp["status"]
         if status == "DRAFT":
             return resp
@@ -94,9 +90,7 @@ def signed_mcp_post(url, payload):
     for line in text.splitlines():
         if line.startswith("data:"):
             return json.loads(line[len("data:") :].strip())
-    raise ValueError(
-        f"Could not parse MCP response (status {resp.status_code}): {text[:300]}"
-    )
+    raise ValueError(f"Could not parse MCP response (status {resp.status_code}): {text[:300]}")
 
 
 def signed_get(url):
@@ -123,9 +117,7 @@ def signed_a2a_post(url, payload):
     for line in text.splitlines():
         if line.startswith("data:"):
             return json.loads(line[len("data:") :].strip())
-    raise ValueError(
-        f"Could not parse A2A response (status {resp.status_code}): {text[:300]}"
-    )
+    raise ValueError(f"Could not parse A2A response (status {resp.status_code}): {text[:300]}")
 
 
 def wait_for_registry(registry_id, interval=5):
@@ -227,8 +219,7 @@ mcp_agent_id = mcp_launch_result.agent_id
 
 mcp_encoded_arn = mcp_agent_arn.replace(":", "%3A").replace("/", "%2F")
 MCP_ENDPOINT_URL = (
-    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com"
-    f"/runtimes/{mcp_encoded_arn}/invocations?qualifier=DEFAULT"
+    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{mcp_encoded_arn}/invocations?qualifier=DEFAULT"
 )
 
 print(f"  {C.GREEN}✅ Launch completed{C.RESET}")
@@ -237,9 +228,7 @@ print(f"  {C.BOLD}Endpoint:{C.RESET}  {C.CYAN}{MCP_ENDPOINT_URL}{C.RESET}")
 
 # Verify: tools/list
 print(f"\n{C.BOLD}1.3 Verify — tools/list{C.RESET}")
-mcp_tools_response = signed_mcp_post(
-    MCP_ENDPOINT_URL, {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
-)
+mcp_tools_response = signed_mcp_post(MCP_ENDPOINT_URL, {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
 print(f"{C.BOLD}MCP tools/list response:{C.RESET}")
 pretty_print_response(mcp_tools_response)
 
@@ -381,8 +370,7 @@ a2a_agent_id = a2a_launch_result.agent_id
 
 a2a_encoded_arn = a2a_agent_arn.replace(":", "%3A").replace("/", "%2F")
 A2A_ENDPOINT_URL = (
-    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com"
-    f"/runtimes/{a2a_encoded_arn}/invocations?qualifier=DEFAULT"
+    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/runtimes/{a2a_encoded_arn}/invocations?qualifier=DEFAULT"
 )
 
 print(f"  {C.GREEN}✅ Launch completed{C.RESET}")
@@ -522,23 +510,13 @@ records_response = registry_client.list_registry_records(registryId=REGISTRY_ID)
 print(f"Found {len(records_response['registryRecords'])} record(s):")
 for rec in records_response["registryRecords"]:
     status = rec["status"]
-    sc = (
-        C.GREEN
-        if status == "APPROVED"
-        else C.YELLOW
-        if status in ("DRAFT", "PENDING_APPROVAL")
-        else C.RED
-    )
-    print(
-        f"  {sc}[{status}]{C.RESET} {rec['name']} | {C.DIM}{rec['recordId']}{C.RESET}"
-    )
+    sc = C.GREEN if status == "APPROVED" else C.YELLOW if status in ("DRAFT", "PENDING_APPROVAL") else C.RED
+    print(f"  {sc}[{status}]{C.RESET} {rec['name']} | {C.DIM}{rec['recordId']}{C.RESET}")
 
 # Submit and approve
 for record_id, record_name in [(MCP_RECORD_ID, "MCP"), (A2A_RECORD_ID, "A2A")]:
     wait_for_record_draft(REGISTRY_ID, record_id)
-    registry_client.submit_registry_record_for_approval(
-        registryId=REGISTRY_ID, recordId=record_id
-    )
+    registry_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=record_id)
     print(f"  {C.YELLOW}⏳ {record_name} record → PENDING_APPROVAL{C.RESET}")
 
     registry_client.update_registry_record_status(
@@ -551,9 +529,7 @@ for record_id, record_name in [(MCP_RECORD_ID, "MCP"), (A2A_RECORD_ID, "A2A")]:
 
 # Verify
 for record_id, record_name in [(MCP_RECORD_ID, "MCP"), (A2A_RECORD_ID, "A2A")]:
-    rec = registry_client.get_registry_record(
-        registryId=REGISTRY_ID, recordId=record_id
-    )
+    rec = registry_client.get_registry_record(registryId=REGISTRY_ID, recordId=record_id)
     status = rec["status"]
     sc = C.GREEN if status == "APPROVED" else C.RED
     print(f"  {sc}{record_name} record status: {status}{C.RESET}")
@@ -577,9 +553,7 @@ print(f"Found {len(records)} record(s):\n")
 for rec in records:
     status = rec.get("status", "N/A")
     sc = C.GREEN if status == "APPROVED" else C.YELLOW
-    print(
-        f"  {sc}[{status}]{C.RESET} {C.CYAN}{rec.get('name', 'N/A')}{C.RESET} ({rec.get('descriptorType', 'N/A')})"
-    )
+    print(f"  {sc}[{status}]{C.RESET} {C.CYAN}{rec.get('name', 'N/A')}{C.RESET} ({rec.get('descriptorType', 'N/A')})")
     print(f"    {rec.get('description', '')}")
 
     mcp_desc = rec.get("descriptors", {}).get("mcp", {})
@@ -602,9 +576,7 @@ for rec in records:
             if skills:
                 print(f"    {C.BOLD}Skills:{C.RESET}")
                 for s in skills:
-                    print(
-                        f"      • {s.get('name', s.get('id', '?'))}: {s.get('description', '')}"
-                    )
+                    print(f"      • {s.get('name', s.get('id', '?'))}: {s.get('description', '')}")
         except (json.JSONDecodeError, TypeError):
             pass
 
@@ -614,9 +586,7 @@ for query in [
     "track shipment status",
     "create new order for customer",
 ]:
-    response = search_client.search_registry_records(
-        registryIds=[REGISTRY_ARN], searchQuery=query, maxResults=3
-    )
+    response = search_client.search_registry_records(registryIds=[REGISTRY_ARN], searchQuery=query, maxResults=3)
     records = response.get("registryRecords", [])
     print(f"{C.BOLD}'{query}'{C.RESET} → {len(records)} result(s)")
     for rec in records:
@@ -626,9 +596,7 @@ for query in [
 # ── 6. Cleanup ────────────────────────────────────────────────────────────────
 print(f"\n{C.BOLD}=== 6. Cleanup ==={C.RESET}")
 
-agentcore_client = boto_session.client(
-    "bedrock-agentcore-control", region_name=AWS_REGION
-)
+agentcore_client = boto_session.client("bedrock-agentcore-control", region_name=AWS_REGION)
 
 for agent_id, agent_name in [(mcp_agent_id, "MCP"), (a2a_agent_id, "A2A")]:
     try:
@@ -639,9 +607,7 @@ for agent_id, agent_name in [(mcp_agent_id, "MCP"), (a2a_agent_id, "A2A")]:
 
 records = registry_client.list_registry_records(registryId=REGISTRY_ID)
 for rec in records.get("registryRecords", []):
-    registry_client.delete_registry_record(
-        registryId=REGISTRY_ID, recordId=rec["recordId"]
-    )
+    registry_client.delete_registry_record(registryId=REGISTRY_ID, recordId=rec["recordId"])
     print(f"  {C.GREEN}✅ Deleted record: {C.DIM}{rec['recordId']}{C.RESET}")
 
 registry_client.delete_registry(registryId=REGISTRY_ID)

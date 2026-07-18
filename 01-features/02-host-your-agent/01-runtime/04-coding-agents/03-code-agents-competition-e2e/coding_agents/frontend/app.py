@@ -16,6 +16,7 @@ Usage:
 """
 
 from gevent import monkey
+
 monkey.patch_all()
 
 import json
@@ -121,8 +122,7 @@ def create_ws_connection(runtime_arn, session_id):
 def index():
     arns = get_all_arns()
     agents_info = {
-        k: {"name": v["name"], "arn": arns.get(k, ""), "default_model": v["default_model"]}
-        for k, v in AGENTS.items()
+        k: {"name": v["name"], "arn": arns.get(k, ""), "default_model": v["default_model"]} for k, v in AGENTS.items()
     }
     log.info("Serving index page, agents: %s", {k: bool(v) for k, v in arns.items()})
     return render_template("index.html", agents=agents_info)
@@ -233,11 +233,18 @@ class WebSocketMiddleware:
         if ws and path.startswith("/ws/proxy/"):
             session_id = path.split("/ws/proxy/")[-1].split("?")[0]
             from urllib.parse import parse_qs
+
             qs = parse_qs(environ.get("QUERY_STRING", ""))
             runtime_arn = qs.get("arn", [""])[0]
             agent_type = qs.get("agent_type", [""])[0]
             model = qs.get("model", [""])[0]
-            log.info("[TUI] New proxy: session=%s arn=%s agent=%s model=%s", session_id[:20], runtime_arn.split("/")[-1] if runtime_arn else "none", agent_type, model or "default")
+            log.info(
+                "[TUI] New proxy: session=%s arn=%s agent=%s model=%s",
+                session_id[:20],
+                runtime_arn.split("/")[-1] if runtime_arn else "none",
+                agent_type,
+                model or "default",
+            )
             self._proxy(ws, runtime_arn, session_id, agent_type=agent_type, model=model)
             return []
         return self.app(environ, start_response)
@@ -349,5 +356,6 @@ if __name__ == "__main__":
     log.info("=" * 50)
 
     from gevent.pywsgi import WSGIServer
+
     server = WSGIServer(("127.0.0.1", 5050), app, handler_class=WebSocketHandler, log=log)
     server.serve_forever()

@@ -11,9 +11,7 @@ import logging
 
 # Configure logging
 logging.getLogger("strands").setLevel(logging.INFO)
-logging.basicConfig(
-    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
-)
+logging.basicConfig(format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()])
 
 
 def create_mcp_client(gateway_url, access_token):
@@ -27,11 +25,7 @@ def create_mcp_client(gateway_url, access_token):
     Returns:
         MCPClient: Configured MCP client
     """
-    return MCPClient(
-        lambda: streamablehttp_client(
-            gateway_url, headers={"Authorization": f"Bearer {access_token}"}
-        )
-    )
+    return MCPClient(lambda: streamablehttp_client(gateway_url, headers={"Authorization": f"Bearer {access_token}"}))
 
 
 def get_all_tools(mcp_client):
