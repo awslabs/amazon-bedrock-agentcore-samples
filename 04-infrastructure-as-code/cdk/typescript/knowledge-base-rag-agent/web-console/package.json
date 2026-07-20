@@ -28,7 +28,7 @@
     "@mui/x-data-grid": "^6.10.0",
     "@tanstack/react-query": "^4.40.0",
     "aws-amplify": "^6.16.0",
-    "axios": "^1.4.0",
+    "axios": "^1.18.0",
     "next": "^15.5.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
