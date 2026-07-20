@@ -4,7 +4,7 @@ A conversational data analyst assistant built with the **[Strands Agents SDK](ht
 
 ## Overview
 
-This agent provides an intelligent conversational data analyst assistant. It leverages Amazon Bedrock Claude models for natural language processing, Aurora Serverless PostgreSQL for data storage, and AgentCore Memory for conversation context management.
+This agent provides an intelligent conversational data analyst assistant. It leverages Anthropic Claude models on Amazon Bedrock for natural language processing, Aurora Serverless PostgreSQL for data storage, and AgentCore Memory for conversation context management.
 
 ## Features
 

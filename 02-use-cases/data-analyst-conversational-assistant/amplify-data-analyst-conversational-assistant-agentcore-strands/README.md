@@ -17,7 +17,7 @@ The application consists of two main components:
 - **Amazon Bedrock AgentCore Integration:**
     - Uses your AgentCore deployment for data analysis and natural language processing
     - The application invokes Amazon Bedrock AgentCore for interacting with the assistant
-    - Directly invokes Claude Haiku 4.5 model for chart generation and visualization
+    - Directly invokes Anthropic Claude Haiku 4.5 on Amazon Bedrock for chart generation and visualization
 
 > [!IMPORTANT]
 > This sample application is for demonstration purposes only and is not production-ready. Please validate the code against your organization's security best practices.
@@ -29,7 +29,7 @@ Before you begin, ensure you have:
 - [Node.js version 22+](https://nodejs.org/en/download/package-manager)
 - [pnpm](https://pnpm.io/installation)
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) configured with credentials
-- A deployed Amazon Bedrock AgentCore runtime (from the CDK stack in this repository)
+- A deployed Amazon Bedrock AgentCore runtime (deployed via CDK — see [`../cdk-data-analyst-assistant-agentcore-strands/`](../cdk-data-analyst-assistant-agentcore-strands/README.md))
 
 Verify credentials:
 

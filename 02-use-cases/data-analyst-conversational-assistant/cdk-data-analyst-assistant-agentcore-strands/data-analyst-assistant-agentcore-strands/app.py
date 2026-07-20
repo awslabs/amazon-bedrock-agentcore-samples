@@ -2,9 +2,9 @@
 Data Analyst Conversational Assistant - Main Application
 
 This application provides an intelligent conversational data analyst assistant.
-It leverages Amazon Bedrock Claude models for natural language processing, AgentCore Gateway for
-centralized tool access, AgentCore Policy Engine for guardrail enforcement, and AgentCore Memory
-for conversation context management.
+It leverages Anthropic Claude models on Amazon Bedrock for natural language processing,
+Amazon Bedrock AgentCore Gateway for centralized tool access, AgentCore Policy Engine for
+guardrail enforcement, and AgentCore Memory for conversation context management.
 
 Key Features:
 - Natural language to SQL query conversion via Gateway-hosted MCP tools
@@ -23,7 +23,7 @@ from uuid import uuid4
 from opentelemetry import trace, context, baggage
 from opentelemetry.trace import StatusCode
 
-tracer = trace.get_tracer("data-analyst-conversational-assistant", "1.0.0")
+tracer = trace.get_tracer("strands.telemetry.tracer", "1.0.0")
 
 # Bedrock Agent Core imports
 from bedrock_agentcore import BedrockAgentCoreApp

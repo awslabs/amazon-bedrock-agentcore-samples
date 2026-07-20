@@ -2,11 +2,18 @@
 """
 Data Analyst Conversational Assistant — Evaluation Harness
 
-Measures SQL generation accuracy and response quality using AgentCore Evaluations.
+Measures SQL generation accuracy and response quality using Amazon Bedrock AgentCore
+Evaluations with managed datasets and batch evaluation.
 
-Custom evaluators:
-  - SQL Accuracy: Compares generated SQL results against ground-truth expected outputs
-  - Response Quality: Checks that natural language answers are relevant and complete
+This script demonstrates:
+  1. DatasetClient — Create and manage a PREDEFINED evaluation dataset
+  2. BatchEvaluationRunner — Invoke agent, submit server-side batch evaluation job,
+     poll for aggregate scores (the native AgentCore batch evaluation API)
+  3. EvaluationClient — Evaluate individual sessions against ground truth (on-demand)
+
+Custom evaluators (deployed via CDK):
+  - SqlAccuracy: Compares generated SQL results against ground-truth expected outputs
+  - ResponseQuality: Checks that natural language answers are relevant and complete
 
 Built-in evaluators:
   - Builtin.Correctness: General answer correctness
@@ -16,7 +23,7 @@ Usage:
   python evaluations/evaluate.py --region us-east-1 --agent-runtime-arn <ARN>
 
 Prerequisites:
-  - Agent deployed to AgentCore Runtime
+  - Agent deployed to Amazon Bedrock AgentCore Runtime
   - CloudWatch Transaction Search enabled
   - pip install bedrock-agentcore boto3
 """
@@ -24,13 +31,12 @@ Prerequisites:
 import argparse
 import json
 import logging
-import time
 import uuid
 from datetime import timedelta
 from pathlib import Path
 
 import boto3
-from botocore.exceptions import ClientError
+from boto3.session import Session
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -39,259 +45,540 @@ logger = logging.getLogger(__name__)
 
 DATASET_SCENARIOS = [
     {
-        "input": "What are the top 5 best-selling games globally?",
-        "expected_output": "The query should sum na_sales + jp_sales + pal_sales + other_sales and ORDER BY total DESC LIMIT 5",
-        "tags": ["sql_accuracy", "aggregation"],
+        "scenario_id": "top-5-best-selling",
+        "turns": [
+            {
+                "input": "What are the top 5 best-selling games globally?",
+                "expected_response": "The query should sum na_sales + jp_sales + pal_sales + other_sales and ORDER BY total DESC LIMIT 5",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent generated a SQL query summing all regional sales columns"},
+            {"text": "Agent ordered results by total sales descending with LIMIT 5"},
+        ],
+        "metadata": {"category": "aggregation"},
     },
     {
-        "input": "Which genre has the highest average critic score?",
-        "expected_output": "The query should use AVG(critic_score) grouped by genre, ordered descending, limit 1",
-        "tags": ["sql_accuracy", "aggregation"],
+        "scenario_id": "highest-avg-critic-score",
+        "turns": [
+            {
+                "input": "Which genre has the highest average critic score?",
+                "expected_response": "The query should use AVG(critic_score) grouped by genre, ordered descending, limit 1",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent used AVG(critic_score) in the query"},
+            {"text": "Agent grouped results by genre"},
+        ],
+        "metadata": {"category": "aggregation"},
     },
     {
-        "input": "Total North America sales for games released in 2015 by genre",
-        "expected_output": "The query should filter release_date for year 2015, sum na_sales, group by genre",
-        "tags": ["sql_accuracy", "filtering"],
+        "scenario_id": "na-sales-2015-by-genre",
+        "turns": [
+            {
+                "input": "Total North America sales for games released in 2015 by genre",
+                "expected_response": "The query should filter release_date for year 2015, sum na_sales, group by genre",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent filtered for year 2015 using release_date"},
+            {"text": "Agent summed na_sales grouped by genre"},
+        ],
+        "metadata": {"category": "filtering"},
     },
     {
-        "input": "Which publisher released the most games on PS4?",
-        "expected_output": "The query should filter console='PS4', count titles grouped by publisher, order descending, limit 1",
-        "tags": ["sql_accuracy", "filtering"],
+        "scenario_id": "most-ps4-games-publisher",
+        "turns": [
+            {
+                "input": "Which publisher released the most games on PS4?",
+                "expected_response": "The query should filter console='PS4', count titles grouped by publisher, order descending, limit 1",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent filtered for PS4 console"},
+            {"text": "Agent counted titles grouped by publisher"},
+        ],
+        "metadata": {"category": "filtering"},
     },
     {
-        "input": "Compare Japanese sales vs North American sales for Nintendo games",
-        "expected_output": "The query should filter publisher='Nintendo', sum jp_sales and na_sales",
-        "tags": ["sql_accuracy", "comparison"],
+        "scenario_id": "nintendo-jp-vs-na-sales",
+        "turns": [
+            {
+                "input": "Compare Japanese sales vs North American sales for Nintendo games",
+                "expected_response": "The query should filter publisher='Nintendo', sum jp_sales and na_sales",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent filtered for Nintendo publisher"},
+            {"text": "Agent compared jp_sales and na_sales totals"},
+        ],
+        "metadata": {"category": "comparison"},
     },
     {
-        "input": "What is the trend in game releases by year?",
-        "expected_output": "The query should extract year from release_date, count titles per year, order by year",
-        "tags": ["sql_accuracy", "trend"],
+        "scenario_id": "releases-by-year-trend",
+        "turns": [
+            {
+                "input": "What is the trend in game releases by year?",
+                "expected_response": "The query should extract year from release_date, count titles per year, order by year",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent extracted year from release_date"},
+            {"text": "Agent counted titles per year ordered chronologically"},
+        ],
+        "metadata": {"category": "trend"},
     },
     {
-        "input": "Tell me about the weather today",
-        "expected_output": "The agent should politely decline since this is outside the data analysis domain",
-        "tags": ["response_quality", "out_of_scope"],
+        "scenario_id": "out-of-scope-weather",
+        "turns": [
+            {
+                "input": "Tell me about the weather today",
+                "expected_response": "The agent should politely decline since this is outside the data analysis domain",
+            }
+        ],
+        "assertions": [
+            {"text": "Agent politely declined the out-of-scope request"},
+            {"text": "Agent did not attempt to generate a SQL query"},
+        ],
+        "metadata": {"category": "out_of_scope"},
     },
     {
-        "input": "What consoles have the highest total sales in Europe?",
-        "expected_output": "The query should sum pal_sales grouped by console, ordered descending",
-        "tags": ["sql_accuracy", "aggregation"],
+        "scenario_id": "europe-sales-by-console",
+        "turns": [
+            {
+                "input": "What consoles have the highest total sales in Europe?",
+                "expected_response": "The query should sum pal_sales grouped by console, ordered descending",
+            }
+        ],
+        "expected_trajectory": {"toolNames": ["execute_sql_query"]},
+        "assertions": [
+            {"text": "Agent summed pal_sales (Europe/PAL region sales)"},
+            {"text": "Agent grouped by console ordered descending"},
+        ],
+        "metadata": {"category": "aggregation"},
     },
 ]
 
 
-class DataAnalystEvaluator:
-    """Runs evaluations against the deployed Data Analyst Conversational Assistant."""
+def invoke_agent(agentcore_client, agent_runtime_arn: str, prompt: str, session_id: str) -> str:
+    """Invoke the deployed agent and collect the full response."""
+    payload = json.dumps({
+        "prompt": prompt,
+        "session_id": session_id,
+        "user_id": "evaluator",
+        "user_timezone": "UTC",
+        "user_name": "Evaluator",
+        "prompt_uuid": str(uuid.uuid4()),
+    }).encode()
 
-    def __init__(self, region: str, agent_runtime_arn: str):
-        self.region = region
-        self.agent_runtime_arn = agent_runtime_arn
-        self.agentcore_client = boto3.client("bedrock-agentcore", region_name=region)
+    response = agentcore_client.invoke_agent_runtime(
+        agentRuntimeArn=agent_runtime_arn,
+        runtimeSessionId=session_id,
+        payload=payload,
+        qualifier="DEFAULT",
+    )
 
-    def invoke_agent(self, prompt: str, session_id: str) -> str:
-        """Invoke the deployed agent and collect the full response."""
-        payload = json.dumps({
-            "prompt": prompt,
-            "session_id": session_id,
-            "user_id": "evaluator",
-            "user_timezone": "UTC",
-            "user_name": "Evaluator",
-            "prompt_uuid": str(uuid.uuid4()),
-        }).encode()
-
-        response = self.agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=self.agent_runtime_arn,
-            runtimeSessionId=session_id,
-            payload=payload,
-            qualifier="DEFAULT",
-        )
-
-        content = []
-        for chunk in response.get("response", []):
-            content.append(chunk.decode("utf-8"))
-
-        full_response = "".join(content)
-
-        # Extract text data from JSONL stream
-        text_parts = []
-        for line in full_response.strip().split("\n"):
+    raw = response["response"].read().decode("utf-8")
+    parts = []
+    for line in raw.splitlines():
+        if line.startswith("data: "):
+            chunk = line[len("data: "):]
             try:
-                parsed = json.loads(line)
-                if "data" in parsed:
-                    text_parts.append(parsed["data"])
-            except json.JSONDecodeError:
-                continue
+                chunk = json.loads(chunk)
+            except Exception:
+                pass
+            parts.append(str(chunk))
+    return "".join(parts) if parts else raw
 
-        return "".join(text_parts)
 
-    def run_dataset_evaluation(self) -> dict:
-        """Run evaluation across all dataset scenarios.
+def create_managed_dataset(region: str) -> tuple[str, str]:
+    """Create a managed PREDEFINED dataset from the evaluation scenarios.
 
-        Uses AgentCore on-demand evaluation when available, otherwise
-        falls back to direct invocation + manual scoring.
-        """
-        logger.info("Running evaluation with %d scenarios", len(DATASET_SCENARIOS))
-        results = []
+    Returns:
+        Tuple of (dataset_id, dataset_version)
+    """
+    from bedrock_agentcore.evaluation import DatasetClient
 
-        for i, scenario in enumerate(DATASET_SCENARIOS):
-            session_id = str(uuid.uuid4())
-            logger.info(
-                "[%d/%d] Evaluating: %s",
-                i + 1,
-                len(DATASET_SCENARIOS),
-                scenario["input"][:60],
+    client = DatasetClient(region_name=region)
+
+    ds_name = f"data_analyst_eval_{uuid.uuid4().hex[:8]}"
+    logger.info("Creating managed dataset '%s' with %d scenarios ...", ds_name, len(DATASET_SCENARIOS))
+
+    dataset = client.create_dataset_and_wait(
+        datasetName=ds_name,
+        schemaType="AGENTCORE_EVALUATION_PREDEFINED_V1",
+        source={"inlineExamples": {"examples": DATASET_SCENARIOS}},
+    )
+    dataset_id = dataset["datasetId"]
+    logger.info("  datasetId: %s (status: %s, examples: %s)",
+                dataset_id, dataset["status"], dataset.get("exampleCount", "?"))
+
+    logger.info("  Publishing as version 1 ...")
+    client.create_dataset_version_and_wait(datasetId=dataset_id)
+    logger.info("  Dataset version 1 published (immutable snapshot)")
+
+    return dataset_id, "1"
+
+
+def run_batch_evaluation(
+    region: str,
+    agent_runtime_arn: str,
+    dataset_id: str,
+    dataset_version: str,
+    cw_log_group: str,
+    service_name: str,
+) -> dict:
+    """Run evaluation using BatchEvaluationRunner (server-side batch API).
+
+    Uses the native AgentCore Batch Evaluation pipeline:
+      1. Loads scenarios from the managed dataset
+      2. Invokes the agent for each scenario (parallel)
+      3. Submits a StartBatchEvaluation job pointing at the CloudWatch spans
+      4. Polls until the server-side evaluation completes
+      5. Returns aggregate scores per evaluator
+    """
+    from bedrock_agentcore.evaluation import (
+        AgentInvokerInput,
+        AgentInvokerOutput,
+        BatchEvaluationRunConfig,
+        BatchEvaluationRunner,
+        BatchEvaluatorConfig,
+        CloudWatchDataSourceConfig,
+        Dataset,
+        DatasetClient,
+        PredefinedScenario,
+        Turn,
+    )
+
+    agentcore_client = boto3.client("bedrock-agentcore", region_name=region)
+
+    # Load examples from the managed dataset and convert to Dataset object
+    dc = DatasetClient(region_name=region)
+    logger.info("Loading dataset %s version %s ...", dataset_id, dataset_version)
+    examples_resp = dc.list_dataset_examples(datasetId=dataset_id, datasetVersion=dataset_version)
+    examples = examples_resp.get("examples", [])
+
+    scenarios = []
+    for ex in examples:
+        turns = [
+            Turn(input=t["input"], expected_response=t.get("expected_response"))
+            for t in ex.get("turns", [])
+        ]
+        traj = (ex.get("expected_trajectory") or {}).get("toolNames", [])
+        assertions = [a["text"] for a in ex.get("assertions", []) if isinstance(a, dict)]
+        scenarios.append(
+            PredefinedScenario(
+                scenario_id=ex["scenario_id"],
+                turns=turns,
+                expected_trajectory=traj or None,
+                assertions=assertions or None,
             )
+        )
+    dataset = Dataset(scenarios=scenarios)
+    logger.info("  Loaded %d scenarios", len(dataset.scenarios))
 
-            try:
-                response = self.invoke_agent(scenario["input"], session_id)
-                results.append({
-                    "scenario": scenario,
-                    "session_id": session_id,
-                    "response": response[:500],
-                    "status": "success",
-                })
-                logger.info("  Response length: %d chars", len(response))
-            except Exception as e:
-                results.append({
-                    "scenario": scenario,
-                    "session_id": session_id,
-                    "response": None,
-                    "status": "error",
-                    "error": str(e),
-                })
-                logger.error("  Error: %s", e)
+    def agent_invoker(invoker_input: AgentInvokerInput) -> AgentInvokerOutput:
+        payload = invoker_input.payload
+        body = {"prompt": payload} if isinstance(payload, str) else payload
+        body.setdefault("session_id", invoker_input.session_id)
+        body.setdefault("user_id", "evaluator")
+        body.setdefault("user_timezone", "UTC")
+        body.setdefault("user_name", "Evaluator")
+        resp = agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=agent_runtime_arn,
+            qualifier="DEFAULT",
+            runtimeSessionId=invoker_input.session_id,
+            payload=json.dumps(body).encode("utf-8"),
+        )
+        raw = resp["response"].read().decode("utf-8")
+        parts = []
+        for line in raw.splitlines():
+            if line.startswith("data: "):
+                chunk = line[len("data: "):]
+                try:
+                    chunk = json.loads(chunk)
+                except Exception:
+                    pass
+                parts.append(str(chunk))
+        return AgentInvokerOutput(agent_output="".join(parts) if parts else raw)
 
-            time.sleep(2)
-
-        return self._score_results(results)
-
-    def run_agentcore_evaluation(self, sql_evaluator_arn: str = "", response_evaluator_arn: str = "") -> dict:
-        """Run evaluation using AgentCore Evaluation SDK (built-in + custom evaluators).
-
-        Uses both built-in evaluators and CDK-deployed LLM-as-a-Judge evaluators:
-          - Builtin.Correctness: General answer correctness
-          - Builtin.GoalSuccessRate: Whether agent achieved user's goal
-          - SqlAccuracy (custom): SQL query correctness evaluation
-          - ResponseQuality (custom): Response clarity and helpfulness
-
-        Requires:
-          - Agent traces in CloudWatch (via ADOT/OpenTelemetry)
-          - Evaluators registered in the account (deployed via CDK)
-        """
-        try:
-            from bedrock_agentcore.evaluation import EvaluationClient
-
-            ec = EvaluationClient(region_name=self.region)
-
-            # Invoke agent to generate traces
-            session_id = str(uuid.uuid4()) + "-" + "0" * 10
-            logger.info("Invoking agent to generate traces for evaluation...")
-            self.invoke_agent(DATASET_SCENARIOS[0]["input"], session_id)
-            time.sleep(10)  # Wait for traces to propagate to CloudWatch
-
-            # Build evaluator list
-            evaluator_ids = [
+    eval_name = f"data_analyst_eval_{uuid.uuid4().hex[:8]}"
+    config = BatchEvaluationRunConfig(
+        batch_evaluation_name=eval_name,
+        evaluator_config=BatchEvaluatorConfig(
+            evaluator_ids=[
                 "Builtin.Correctness",
                 "Builtin.GoalSuccessRate",
             ]
-            if sql_evaluator_arn:
-                evaluator_ids.append(sql_evaluator_arn)
-            if response_evaluator_arn:
-                evaluator_ids.append(response_evaluator_arn)
+        ),
+        data_source=CloudWatchDataSourceConfig(
+            service_names=[service_name],
+            log_group_names=[cw_log_group],
+            ingestion_delay_seconds=180,
+        ),
+        max_concurrent_scenarios=3,
+        polling_timeout_seconds=600,
+        polling_interval_seconds=30,
+    )
 
-            logger.info("Running AgentCore evaluators: %s", evaluator_ids)
-            results = ec.run(
-                evaluator_ids=evaluator_ids,
-                agent_id=self.agent_runtime_arn.split("/")[-1],
-                session_id=session_id,
-                look_back_time=timedelta(hours=1),
-            )
+    logger.info("Starting batch evaluation '%s' ...", eval_name)
+    logger.info("  Service name: %s", service_name)
+    logger.info("  Log group: %s", cw_log_group)
+    logger.info("  Evaluators: %s", config.evaluator_config.evaluator_ids)
+    logger.info("  Scenarios: %d", len(dataset.scenarios))
 
-            logger.info("AgentCore evaluation results: %s", json.dumps(results, indent=2, default=str))
-            return results
+    runner = BatchEvaluationRunner(region=region)
+    result = runner.run_dataset_evaluation(
+        config=config,
+        dataset=dataset,
+        agent_invoker=agent_invoker,
+    )
 
-        except ImportError:
-            logger.warning(
-                "bedrock_agentcore.evaluation not available — "
-                "install bedrock-agentcore>=1.0 for built-in evaluator support"
-            )
-            return {}
-        except Exception as e:
-            logger.warning("AgentCore evaluation failed (non-fatal): %s", e)
-            return {}
+    logger.info("  Batch evaluation status: %s", result.status)
+    logger.info("  Batch evaluation ID: %s", result.batch_evaluation_id)
 
-    def _score_results(self, results: list) -> dict:
-        """Score evaluation results and produce a summary report."""
-        total = len(results)
-        successful = sum(1 for r in results if r["status"] == "success")
-        failed = sum(1 for r in results if r["status"] == "error")
+    result_data = {
+        "batch_evaluation_id": result.batch_evaluation_id,
+        "batch_evaluation_name": result.batch_evaluation_name,
+        "status": result.status,
+    }
 
-        # Basic heuristic scoring for SQL accuracy
-        sql_scenarios = [r for r in results if "sql_accuracy" in r["scenario"].get("tags", [])]
-        sql_with_response = [r for r in sql_scenarios if r["response"]]
-        sql_responded = len(sql_with_response)
+    if result.agent_invocation_failures:
+        result_data["invocation_failures"] = [
+            {"scenario_id": f.scenario_id, "error": f.error_message}
+            for f in result.agent_invocation_failures
+        ]
+        for f in result.agent_invocation_failures:
+            logger.warning("  Invocation failure: %s — %s", f.scenario_id, f.error_message)
 
-        summary = {
-            "total_scenarios": total,
-            "successful_invocations": successful,
-            "failed_invocations": failed,
-            "sql_accuracy_scenarios": len(sql_scenarios),
-            "sql_scenarios_with_response": sql_responded,
-            "success_rate": successful / total if total > 0 else 0,
-            "results": results,
-        }
+    if result.evaluation_results:
+        summary = result.evaluation_results
+        result_data["total_scenarios"] = len(dataset.scenarios)
+        result_data["completed"] = summary.number_of_sessions_completed
+        result_data["failed"] = summary.number_of_sessions_failed
+        result_data["evaluator_summaries"] = []
 
-        output_file = Path("evaluations/eval_results.json")
-        output_file.write_text(json.dumps(summary, indent=2, default=str))
-        logger.info("Results saved to: %s", output_file)
-        logger.info(
-            "Summary: %d/%d successful (%.0f%%)",
-            successful,
-            total,
-            summary["success_rate"] * 100,
-        )
+        for es in summary.evaluator_summaries or []:
+            avg = es.statistics.average_score if es.statistics else None
+            entry = {
+                "evaluator_id": es.evaluator_id,
+                "average_score": avg,
+                "total_evaluated": es.total_evaluated,
+            }
+            result_data["evaluator_summaries"].append(entry)
+            logger.info("  %s: avg=%.3f (n=%d)",
+                        es.evaluator_id, avg or 0, es.total_evaluated or 0)
+    else:
+        result_data["total_scenarios"] = len(dataset.scenarios)
+        result_data["completed"] = 0
+        result_data["failed"] = len(dataset.scenarios)
+        logger.warning("  No evaluation results returned (status: %s)", result.status)
+        if result.error_details:
+            logger.warning("  Error: %s", result.error_details)
+            result_data["error"] = str(result.error_details)
 
-        return summary
+    if result.output_data_config:
+        result_data["output_log_group"] = result.output_data_config.log_group_name
+        result_data["output_log_stream"] = result.output_data_config.log_stream_name
+        logger.info("  Detailed results: %s / %s",
+                    result.output_data_config.log_group_name,
+                    result.output_data_config.log_stream_name)
+
+    return result_data
+
+
+def run_session_evaluation(
+    region: str,
+    agent_runtime_arn: str,
+    dataset_id: str,
+    dataset_version: str,
+    sql_evaluator_arn: str = "",
+    response_evaluator_arn: str = "",
+) -> dict:
+    """Run EvaluationClient against individual sessions using managed dataset ground truth.
+
+    Invokes the agent for the first scenario, waits for CloudWatch ingestion,
+    then evaluates using ground truth loaded from the managed dataset.
+    """
+    from bedrock_agentcore.evaluation import DatasetClient, EvaluationClient, ReferenceInputs
+
+    agentcore_client = boto3.client("bedrock-agentcore", region_name=region)
+    agent_id = agent_runtime_arn.split("/")[-1]
+
+    dc = DatasetClient(region_name=region)
+    examples_resp = dc.list_dataset_examples(datasetId=dataset_id, datasetVersion=dataset_version)
+    examples = examples_resp.get("examples", [])
+
+    if not examples:
+        logger.warning("No examples found in dataset %s version %s", dataset_id, dataset_version)
+        return {}
+
+    scenario = examples[0]
+    first_turn = scenario["turns"][0]
+
+    session_id = str(uuid.uuid4())
+    logger.info("Invoking agent for scenario '%s' ...", scenario["scenario_id"])
+    invoke_agent(agentcore_client, agent_runtime_arn, first_turn["input"], session_id)
+
+    logger.info("  Waiting 60s for CloudWatch log ingestion ...")
+    time.sleep(60)
+
+    evaluator_ids = ["Builtin.Correctness", "Builtin.GoalSuccessRate"]
+    if sql_evaluator_arn:
+        evaluator_ids.append(sql_evaluator_arn)
+    if response_evaluator_arn:
+        evaluator_ids.append(response_evaluator_arn)
+
+    assertions = [a["text"] for a in scenario.get("assertions", []) if isinstance(a, dict)]
+
+    ec = EvaluationClient(region_name=region)
+    logger.info("Running evaluators: %s", evaluator_ids)
+    results = ec.run(
+        evaluator_ids=evaluator_ids,
+        agent_id=agent_id,
+        session_id=session_id,
+        look_back_time=timedelta(hours=1),
+        reference_inputs=ReferenceInputs(
+            expected_response=first_turn.get("expected_response"),
+            assertions=assertions or None,
+        ),
+    )
+
+    logger.info("EvaluationClient results:")
+    for r in results:
+        evaluator = r.get("evaluatorId", "")[-40:]
+        value = r.get("value", r.get("score", "N/A"))
+        label = r.get("label", r.get("rating", ""))
+        logger.info("  %s: value=%s label=%s", evaluator, value, label)
+
+    return {"scenario_id": scenario["scenario_id"], "session_id": session_id, "results": results}
+
+
+def cleanup_dataset(region: str, dataset_id: str):
+    """Delete the managed dataset created during evaluation."""
+    from bedrock_agentcore.evaluation import DatasetClient
+
+    client = DatasetClient(region_name=region)
+    try:
+        client.delete_dataset_and_wait(datasetId=dataset_id)
+        logger.info("Cleaned up dataset %s", dataset_id)
+    except Exception as e:
+        logger.warning("Failed to clean up dataset %s: %s", dataset_id, e)
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Run evaluations for Data Analyst Conversational Assistant"
     )
-    parser.add_argument("--region", default="us-east-1", help="AWS region")
+    parser.add_argument("--region", default=None, help="AWS region")
     parser.add_argument(
         "--agent-runtime-arn",
         required=True,
         help="AgentCore Runtime ARN (from deploy outputs)",
     )
     parser.add_argument(
+        "--cw-log-group",
+        default=None,
+        help="CloudWatch log group for agent traces (default: auto-derived from runtime ARN)",
+    )
+    parser.add_argument(
         "--use-agentcore-evals",
         action="store_true",
-        help="Also run AgentCore built-in evaluators (requires traces in CloudWatch)",
+        help="Also run EvaluationClient for individual session scoring",
+    )
+    parser.add_argument(
+        "--keep-dataset",
+        action="store_true",
+        help="Keep the managed dataset after evaluation (do not delete)",
     )
 
     args = parser.parse_args()
 
-    evaluator = DataAnalystEvaluator(
-        region=args.region, agent_runtime_arn=args.agent_runtime_arn
-    )
+    region = args.region or Session().region_name or "us-east-1"
+    agent_id = args.agent_runtime_arn.split("/")[-1]
+    cw_log_group = args.cw_log_group or f"/aws/bedrock-agentcore/runtimes/{agent_id}-DEFAULT"
 
-    # Run dataset evaluation
-    results = evaluator.run_dataset_evaluation()
+    # Derive the OTel service name from the runtime name (not ID).
+    # The service name in CloudWatch spans is "{runtimeName}.DEFAULT".
+    ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
+    runtime_info = ctrl.get_agent_runtime(agentRuntimeId=agent_id)
+    service_name = f"{runtime_info['agentRuntimeName']}.DEFAULT"
 
-    # Optionally run AgentCore built-in evaluators
-    if args.use_agentcore_evals:
-        agentcore_results = evaluator.run_agentcore_evaluation()
-        results["agentcore_evaluators"] = agentcore_results
+    print("=" * 60)
+    print("Data Analyst Assistant — Evaluation Harness")
+    print("=" * 60)
+    print(f"  Region           : {region}")
+    print(f"  Agent Runtime ARN: {args.agent_runtime_arn}")
+    print(f"  CW Log Group     : {cw_log_group}")
+    print(f"  Service Name     : {service_name}")
+    print()
+
+    # Step 1: Create managed dataset
+    print("[1/3] Creating managed evaluation dataset ...")
+    dataset_id, dataset_version = create_managed_dataset(region)
+    print(f"  Dataset ID: {dataset_id} (version: {dataset_version})")
+
+    results = {"dataset_id": dataset_id, "dataset_version": dataset_version}
+    output_file = Path("evaluations/eval_results.json")
+
+    try:
+        # Step 2: Run batch evaluation
+        print(f"\n[2/3] Running batch evaluation ({len(DATASET_SCENARIOS)} scenarios) ...")
+        batch_results = run_batch_evaluation(
+            region=region,
+            agent_runtime_arn=args.agent_runtime_arn,
+            dataset_id=dataset_id,
+            dataset_version=dataset_version,
+            cw_log_group=cw_log_group,
+            service_name=service_name,
+        )
+        results["batch_evaluation"] = batch_results
+
+        # Step 3: Optionally run EvaluationClient for individual sessions
+        if args.use_agentcore_evals:
+            print("\n[3/3] Running EvaluationClient on individual session ...")
+            session_results = run_session_evaluation(
+                region=region,
+                agent_runtime_arn=args.agent_runtime_arn,
+                dataset_id=dataset_id,
+                dataset_version=dataset_version,
+            )
+            results["session_evaluation"] = session_results
+        else:
+            print("\n[3/3] Skipped (pass --use-agentcore-evals to run EvaluationClient)")
+
+    finally:
+        # Save results
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(json.dumps(results, indent=2, default=str))
+        logger.info("Results saved to: %s", output_file)
+
+        # Cleanup
+        if not args.keep_dataset:
+            print("\n[Cleanup] Deleting managed dataset ...")
+            cleanup_dataset(region, dataset_id)
+        else:
+            print(f"\n[Cleanup] Skipped — dataset {dataset_id} preserved (--keep-dataset)")
 
     print("\n" + "=" * 60)
     print("EVALUATION COMPLETE")
     print("=" * 60)
-    print(f"  Success rate: {results['success_rate']:.0%}")
-    print(f"  Total: {results['total_scenarios']} scenarios")
-    print(f"  Passed: {results['successful_invocations']}")
-    print(f"  Failed: {results['failed_invocations']}")
+    eval_data = results.get("batch_evaluation", {})
+    print(f"  Scenarios      : {eval_data.get('total_scenarios', 'N/A')}")
+    print(f"  Completed      : {eval_data.get('completed', 'N/A')}")
+    print(f"  Failed         : {eval_data.get('failed', 'N/A')}")
+    if eval_data.get("evaluator_summaries"):
+        print("  Evaluator scores:")
+        for es in eval_data["evaluator_summaries"]:
+            avg = es.get("average_score")
+            print(f"    {es['evaluator_id']}: {avg:.3f} (n={es.get('total_evaluated', 0)})" if avg else f"    {es['evaluator_id']}: N/A")
+    print(f"  Results file   : {output_file}")
     print("=" * 60)
 
 

@@ -4,7 +4,6 @@
   "version": 1,
   "managedBy": "CDK",
   "tags": {
-    "agentcore:created-by": "agentcore-cli",
     "agentcore:project-name": "data-analyst-conversational-assistant"
   },
   "runtimes": [

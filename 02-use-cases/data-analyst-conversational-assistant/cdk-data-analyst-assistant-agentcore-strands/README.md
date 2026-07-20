@@ -296,12 +296,22 @@ Additionally, the harness leverages **built-in evaluators**:
 
 ### Running the Evaluation Harness
 
-```bash
-# Basic dataset evaluation (invokes agent with 8 test scenarios)
-python evaluations/evaluate.py --agent-runtime-arn $AGENT_RUNTIME_ARN
+The evaluation harness uses AgentCore's native **Dataset management** and **Batch evaluation** features:
 
-# Include AgentCore built-in evaluators (requires X-Ray traces in CloudWatch)
-python evaluations/evaluate.py --agent-runtime-arn $AGENT_RUNTIME_ARN --use-agentcore-evals
+1. Creates a **managed PREDEFINED dataset** (8 scenarios stored in AgentCore's dataset service)
+2. Publishes an **immutable dataset version** for reproducible CI/CD evaluation runs
+3. Runs **BatchEvaluationRunner** — invokes the agent, submits a server-side batch evaluation job, and returns aggregate scores
+4. Optionally runs **EvaluationClient** for per-session evaluation against managed dataset ground truth
+
+```bash
+# Run batch evaluation (creates managed dataset, invokes agent, scores all scenarios)
+python evaluations/evaluate.py --region us-east-1 --agent-runtime-arn $AGENT_RUNTIME_ARN
+
+# Also run EvaluationClient for individual session scoring
+python evaluations/evaluate.py --region us-east-1 --agent-runtime-arn $AGENT_RUNTIME_ARN --use-agentcore-evals
+
+# Keep the managed dataset after evaluation (for inspection or re-use)
+python evaluations/evaluate.py --region us-east-1 --agent-runtime-arn $AGENT_RUNTIME_ARN --keep-dataset
 ```
 
 The harness runs the following test scenarios covering SQL accuracy and response quality:
@@ -311,7 +321,7 @@ The harness runs the following test scenarios covering SQL accuracy and response
 - Trend analysis (releases over time)
 - Out-of-scope handling (non-domain questions)
 
-Results are saved to `evaluations/eval_results.json` with per-scenario pass/fail status and an overall success rate.
+Results are saved to `evaluations/eval_results.json` with batch evaluation ID, aggregate scores, and per-evaluator summaries.
 
 > [!NOTE]
 > The `--use-agentcore-evals` flag requires that the agent has been invoked at least once so that traces are available in CloudWatch Transaction Search. Allow 10-15 seconds after invocation for traces to propagate.
