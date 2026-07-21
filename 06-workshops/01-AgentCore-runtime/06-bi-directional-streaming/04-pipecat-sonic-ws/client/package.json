@@ -10,7 +10,7 @@
   "dependencies": {
     "@pipecat-ai/client-js": "1.5.0",
     "@pipecat-ai/websocket-transport": "1.5.0",
-    "protobufjs": "^7.6.0"
+    "protobufjs": "^7.6.5"
   },
   "devDependencies": {
     "vite": "^6.4.2"
