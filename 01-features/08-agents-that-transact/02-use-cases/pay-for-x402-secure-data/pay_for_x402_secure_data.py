@@ -152,11 +152,6 @@ def _run_env_check() -> None:
         "INSTRUMENT_EMAIL": INSTRUMENT_EMAIL,
     }
     secret_names = ("COINBASE_API_KEY_ID", "COINBASE_API_KEY_SECRET", "COINBASE_WALLET_SECRET")
-    secret_present = {
-        "COINBASE_API_KEY_ID": _is_set(COINBASE_API_KEY_ID),
-        "COINBASE_API_KEY_SECRET": _is_set(COINBASE_API_KEY_SECRET),
-        "COINBASE_WALLET_SECRET": _is_set(COINBASE_WALLET_SECRET),
-    }
 
     print("=== Environment check ===")
     missing = []
@@ -165,11 +160,22 @@ def _run_env_check() -> None:
         print(f"  {'✅' if ok else '❌ MISSING'}  {key}: {value if ok else '(missing)'}")
         if not ok:
             missing.append(key)
+
+    # Check the secrets for presence only. The secret values (and any variable
+    # derived from them) are never referenced in a printed string — only the
+    # literal key name is appended to `missing`, so nothing sensitive is logged.
+    if not _is_set(COINBASE_API_KEY_ID):
+        missing.append("COINBASE_API_KEY_ID")
+    if not _is_set(COINBASE_API_KEY_SECRET):
+        missing.append("COINBASE_API_KEY_SECRET")
+    if not _is_set(COINBASE_WALLET_SECRET):
+        missing.append("COINBASE_WALLET_SECRET")
+
+    # Render secret status from the (literal) missing-name list, so the printed
+    # line never references a secret-derived value.
     for key in secret_names:
-        ok = secret_present[key]
-        print(f"  {'✅' if ok else '❌ MISSING'}  {key}: {'[redacted]' if ok else '(missing)'}")
-        if not ok:
-            missing.append(key)
+        present = key not in missing
+        print(f"  {'✅' if present else '❌ MISSING'}  {key}: {'[redacted]' if present else '(missing)'}")
 
     if INSTRUMENT_EMAIL.lower().endswith("@example.com"):
         sys.exit("INSTRUMENT_EMAIL must be a REAL, deliverable address — not an @example.com placeholder.")
