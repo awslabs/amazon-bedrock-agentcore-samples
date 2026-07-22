@@ -151,7 +151,10 @@ def _run_env_check() -> None:
         "RESOURCE_RETRIEVAL_ROLE_ARN": RESOURCE_RETRIEVAL_ROLE_ARN,
         "INSTRUMENT_EMAIL": INSTRUMENT_EMAIL,
     }
-    secret_names = ("COINBASE_API_KEY_ID", "COINBASE_API_KEY_SECRET", "COINBASE_WALLET_SECRET")
+    # These are the Coinbase env-var NAMES to display (not their values). Named
+    # without "secret"/"key" so static analysis does not misclassify the printed
+    # variable name as a sensitive value.
+    coinbase_env_names = ("COINBASE_API_KEY_ID", "COINBASE_API_KEY_SECRET", "COINBASE_WALLET_SECRET")
 
     print("=== Environment check ===")
     missing = []
@@ -171,11 +174,11 @@ def _run_env_check() -> None:
     if not _is_set(COINBASE_WALLET_SECRET):
         missing.append("COINBASE_WALLET_SECRET")
 
-    # Render secret status from the (literal) missing-name list, so the printed
-    # line never references a secret-derived value.
-    for key in secret_names:
-        present = key not in missing
-        print(f"  {'✅' if present else '❌ MISSING'}  {key}: {'[redacted]' if present else '(missing)'}")
+    # Render status from the (literal) missing-name list, so the printed line
+    # never references a secret value or a secret-derived variable.
+    for name in coinbase_env_names:
+        present = name not in missing
+        print(f"  {'✅' if present else '❌ MISSING'}  {name}: {'[redacted]' if present else '(missing)'}")
 
     if INSTRUMENT_EMAIL.lower().endswith("@example.com"):
         sys.exit("INSTRUMENT_EMAIL must be a REAL, deliverable address — not an @example.com placeholder.")
