@@ -69,10 +69,15 @@ def _respond(event, context, status, data):
     )
     # event["ResponseURL"] is the pre-signed S3 URL CloudFormation provides for
     # the custom-resource response — it is service-supplied, not user input.
+    # Reject any non-HTTPS scheme so we never open file:// or custom schemes.
+    response_url = event["ResponseURL"]
+    if not response_url.lower().startswith("https://"):
+        raise ValueError("CloudFormation ResponseURL must be an HTTPS URL")
     req = urllib.request.Request(  # noqa: S310
-        event["ResponseURL"],
+        response_url,
         data=body.encode(),
         method="PUT",
         headers={"Content-Type": ""},
     )
-    urllib.request.urlopen(req)  # noqa: S310
+    # nosec B310 / noqa: S310 — URL scheme validated as HTTPS just above.
+    urllib.request.urlopen(req)  # noqa: S310  # nosec B310

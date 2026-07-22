@@ -231,12 +231,26 @@ class AgentCorePaymentsX402SecureDataAgentStack(Stack):
             )
         )
 
-        # AgentCore payments data-plane operations the plugin calls at
-        # runtime. The Manager / Instrument / Session IDs are not known at
-        # role creation time (the notebook creates them in §4/§5), so the
-        # resource list is wildcarded to all PaymentManagers in the caller's
-        # account. Production hardening: scope to the specific Manager ARN
-        # once it is stable, or add a tag-based condition.
+        # AgentCore payments data-plane operations the plugin calls at runtime.
+        # The runtime only ever transacts against the manager passed to it as
+        # MANAGER_ARN, so scope the policy to that specific manager (and its
+        # instruments/sessions) when it is known at synth time — the notebook
+        # creates the manager in §4 and writes MANAGER_ARN into .env before the
+        # §8 deploy. Fall back to an account-scoped wildcard only if MANAGER_ARN
+        # is not yet set (e.g. deploying before the manager exists).
+        if manager_arn and ":payment-manager/" in manager_arn:
+            manager_id = manager_arn.split(":payment-manager/", 1)[1].split("/")[0]
+            payment_resources = [
+                f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/{manager_id}",
+                f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/{manager_id}/instrument/*",
+                f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/{manager_id}/session/*",
+            ]
+        else:
+            payment_resources = [
+                f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/*",
+                f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/*/instrument/*",
+                f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/*/session/*",
+            ]
         execution_role.add_to_policy(
             iam.PolicyStatement(
                 actions=[
@@ -246,11 +260,7 @@ class AgentCorePaymentsX402SecureDataAgentStack(Stack):
                     "bedrock-agentcore:GetPaymentInstrumentBalance",
                     "bedrock-agentcore:GetResourcePaymentToken",
                 ],
-                resources=[
-                    f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/*",
-                    f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/*/instrument/*",
-                    f"arn:aws:bedrock-agentcore:{self.region}:{self.account}:payment-manager/*/session/*",
-                ],
+                resources=payment_resources,
             )
         )
 
