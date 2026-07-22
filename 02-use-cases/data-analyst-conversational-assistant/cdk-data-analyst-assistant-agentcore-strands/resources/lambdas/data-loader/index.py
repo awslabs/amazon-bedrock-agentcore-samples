@@ -123,15 +123,17 @@ def setup_database(event):
 
 def send_response(event, context, status, data):
     """Send response back to CloudFormation."""
-    response_body = json.dumps({
-        "Status": status,
-        "Reason": data.get("Error", data.get("Message", "")),
-        "PhysicalResourceId": context.log_stream_name if context else "data-loader",
-        "StackId": event.get("StackId", ""),
-        "RequestId": event.get("RequestId", ""),
-        "LogicalResourceId": event.get("LogicalResourceId", ""),
-        "Data": data,
-    })
+    response_body = json.dumps(
+        {
+            "Status": status,
+            "Reason": data.get("Error", data.get("Message", "")),
+            "PhysicalResourceId": context.log_stream_name if context else "data-loader",
+            "StackId": event.get("StackId", ""),
+            "RequestId": event.get("RequestId", ""),
+            "LogicalResourceId": event.get("LogicalResourceId", ""),
+            "Data": data,
+        }
+    )
 
     response_url = event.get("ResponseURL", "")
     if not response_url:

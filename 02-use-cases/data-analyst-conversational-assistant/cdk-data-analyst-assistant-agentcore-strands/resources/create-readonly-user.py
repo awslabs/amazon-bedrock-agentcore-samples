@@ -21,9 +21,7 @@ readonly_secret_arn = os.environ["READONLY_SECRET_ARN"]
 table_name = os.environ["TABLE_NAME"]
 database_name = os.environ["DATABASE_NAME"]
 
-print(
-    f"Configuring read-only user for table: {table_name} in database: {database_name}"
-)
+print(f"Configuring read-only user for table: {table_name} in database: {database_name}")
 
 secrets_client = boto3.client("secretsmanager")
 rds_data = boto3.client("rds-data")

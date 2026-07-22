@@ -66,7 +66,7 @@ def lambda_handler(event, context):
     """Route tool calls from AgentCore Gateway to the appropriate handler."""
     extended_tool_name = context.client_context.custom["bedrockAgentCoreToolName"]
     delimiter = "___"
-    tool_name = extended_tool_name[extended_tool_name.index(delimiter) + len(delimiter):]
+    tool_name = extended_tool_name[extended_tool_name.index(delimiter) + len(delimiter) :]
 
     if tool_name == "get_tables_information":
         return handle_get_tables_information()
@@ -110,9 +110,7 @@ def handle_execute_sql_query(event):
     max_response_size = int(os.environ.get("MAX_RESPONSE_SIZE_BYTES", "1048576"))
 
     if not aurora_resource_arn or not readonly_secret_arn or not database_name:
-        return {
-            "error": "Missing database configuration (READONLY_SECRET_ARN, AURORA_RESOURCE_ARN, DATABASE_NAME)"
-        }
+        return {"error": "Missing database configuration (READONLY_SECRET_ARN, AURORA_RESOURCE_ARN, DATABASE_NAME)"}
 
     try:
         client = boto3.client("rds-data")
@@ -140,9 +138,7 @@ def handle_execute_sql_query(event):
             record = {}
             for i, value in enumerate(row):
                 for value_type, actual_value in value.items():
-                    if value_type == "numberValue" and isinstance(
-                        actual_value, Decimal
-                    ):
+                    if value_type == "numberValue" and isinstance(actual_value, Decimal):
                         record[column_names[i]] = float(actual_value)
                     else:
                         record[column_names[i]] = actual_value

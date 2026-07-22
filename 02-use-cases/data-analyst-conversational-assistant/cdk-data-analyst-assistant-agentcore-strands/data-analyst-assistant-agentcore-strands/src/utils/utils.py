@@ -10,9 +10,7 @@ import json
 from datetime import datetime
 
 
-def save_raw_query_result(
-    user_prompt_uuid, user_prompt, sql_query, sql_query_description, result, message
-):
+def save_raw_query_result(user_prompt_uuid, user_prompt, sql_query, sql_query_description, result, message):
     """
     Save analysis query results to DynamoDB for audit trail.
 
@@ -48,9 +46,7 @@ def save_raw_query_result(
             },
         )
 
-        print(
-            f"✅ Analysis data saved to DynamoDB ({question_answers_table}), session: {user_prompt_uuid}"
-        )
+        print(f"✅ Analysis data saved to DynamoDB ({question_answers_table}), session: {user_prompt_uuid}")
         return {"success": True, "response": response}
 
     except Exception as e:

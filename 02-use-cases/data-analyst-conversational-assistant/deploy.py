@@ -32,9 +32,7 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 AGENT_NAME = "DataAnalystConversationalAgent"
@@ -50,9 +48,7 @@ class DataAnalystDeployer:
         self.region = region
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
         self.iam_client = boto3.client("iam", region_name=region)
-        self.control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        self.control_client = boto3.client("bedrock-agentcore-control", region_name=region)
         self.bedrock_client = boto3.client("bedrock", region_name=region)
         self.lambda_client = boto3.client("lambda", region_name=region)
 
@@ -110,9 +106,7 @@ class DataAnalystDeployer:
                         "logs:DescribeLogGroups",
                         "logs:DescribeLogStreams",
                     ],
-                    "Resource": [
-                        f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/*"
-                    ],
+                    "Resource": [f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/*"],
                 },
                 {
                     "Sid": "XRayTracing",
@@ -130,11 +124,7 @@ class DataAnalystDeployer:
                     "Effect": "Allow",
                     "Action": ["cloudwatch:PutMetricData"],
                     "Resource": ["*"],
-                    "Condition": {
-                        "StringEquals": {
-                            "cloudwatch:namespace": "bedrock-agentcore"
-                        }
-                    },
+                    "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
                 },
                 {
                     "Sid": "AgentCoreMemory",
@@ -150,9 +140,7 @@ class DataAnalystDeployer:
                         "bedrock-agentcore:ListEvents",
                         "bedrock-agentcore:GetEvent",
                     ],
-                    "Resource": [
-                        f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:memory/*"
-                    ],
+                    "Resource": [f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:memory/*"],
                 },
                 {
                     "Sid": "AgentCoreIdentity",
@@ -174,17 +162,13 @@ class DataAnalystDeployer:
                         "rds-data:ExecuteStatement",
                         "rds-data:BatchExecuteStatement",
                     ],
-                    "Resource": [
-                        f"arn:aws:rds:{self.region}:{self.account_id}:cluster:*"
-                    ],
+                    "Resource": [f"arn:aws:rds:{self.region}:{self.account_id}:cluster:*"],
                 },
                 {
                     "Sid": "SecretsManager",
                     "Effect": "Allow",
                     "Action": ["secretsmanager:GetSecretValue"],
-                    "Resource": [
-                        f"arn:aws:secretsmanager:{self.region}:{self.account_id}:secret:*"
-                    ],
+                    "Resource": [f"arn:aws:secretsmanager:{self.region}:{self.account_id}:secret:*"],
                 },
                 {
                     "Sid": "DynamoDB",
@@ -196,9 +180,7 @@ class DataAnalystDeployer:
                         "dynamodb:PutItem",
                         "dynamodb:UpdateItem",
                     ],
-                    "Resource": [
-                        f"arn:aws:dynamodb:{self.region}:{self.account_id}:table/*"
-                    ],
+                    "Resource": [f"arn:aws:dynamodb:{self.region}:{self.account_id}:table/*"],
                 },
                 {
                     "Sid": "GatewayInvoke",
@@ -209,9 +191,7 @@ class DataAnalystDeployer:
                         "bedrock-agentcore:GetGatewayTarget",
                         "bedrock-agentcore:ListGatewayTargets",
                     ],
-                    "Resource": [
-                        f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:*"
-                    ],
+                    "Resource": [f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:*"],
                 },
             ],
         }
@@ -253,10 +233,7 @@ class DataAnalystDeployer:
         try:
             memories = memory_client.list_memories()
             for memory in memories:
-                if (
-                    memory.get("name") == MEMORY_NAME
-                    and memory.get("status") == "ACTIVE"
-                ):
+                if memory.get("name") == MEMORY_NAME and memory.get("status") == "ACTIVE":
                     logger.info("Found existing memory: %s", memory["arn"])
                     return memory["arn"]
         except Exception as e:
@@ -301,9 +278,7 @@ class DataAnalystDeployer:
 
         runtime_env = {
             "MEMORY_ID": memory_id,
-            "BEDROCK_MODEL_ID": env_vars.get(
-                "BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-            ),
+            "BEDROCK_MODEL_ID": env_vars.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
             "READONLY_SECRET_ARN": env_vars.get("READONLY_SECRET_ARN", ""),
             "AURORA_RESOURCE_ARN": env_vars.get("AURORA_RESOURCE_ARN", ""),
             "DATABASE_NAME": env_vars.get("DATABASE_NAME", "video_games_sales"),
@@ -368,10 +343,7 @@ class DataAnalystDeployer:
             if status not in ("IN_PROGRESS",):
                 raise RuntimeError(f"CodeBuild failed: {status}")
 
-        ecr_uri = (
-            f"{self.account_id}.dkr.ecr.{self.region}.amazonaws.com"
-            f"/bedrock-agentcore-{AGENT_NAME}:latest"
-        )
+        ecr_uri = f"{self.account_id}.dkr.ecr.{self.region}.amazonaws.com/bedrock-agentcore-{AGENT_NAME}:latest"
         logger.info("Container ready: %s", ecr_uri)
         return ecr_uri
 
@@ -457,9 +429,7 @@ class DataAnalystDeployer:
                         }
                     }
                 },
-                credentialProviderConfigurations=[
-                    {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-                ],
+                credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
             )
         except ClientError as e:
             if "ConflictException" in str(type(e)):
@@ -473,18 +443,14 @@ class DataAnalystDeployer:
         logger.info("Gateway URL: %s", gateway_url)
         return {"gateway_id": gateway_id, "gateway_url": gateway_url}
 
-    def _add_lambda_gateway_permission(
-        self, lambda_arn: str, gateway_id: str
-    ) -> None:
+    def _add_lambda_gateway_permission(self, lambda_arn: str, gateway_id: str) -> None:
         """Grant AgentCore Gateway permission to invoke the Lambda."""
         function_name = lambda_arn.split(":")[-1]
         statement_id = "AllowAgentCoreGateway"
         gateway_arn = f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:gateway/{gateway_id}"
 
         try:
-            self.lambda_client.remove_permission(
-                FunctionName=function_name, StatementId=statement_id
-            )
+            self.lambda_client.remove_permission(FunctionName=function_name, StatementId=statement_id)
         except ClientError:
             pass
 
@@ -495,7 +461,6 @@ class DataAnalystDeployer:
             Principal="bedrock-agentcore.amazonaws.com",
             SourceArn=gateway_arn,
         )
-
 
     # ------------------------------------------------------------------
     # Orchestrator
@@ -562,21 +527,11 @@ class DataAnalystDeployer:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Deploy Data Analyst Conversational Assistant to AgentCore"
-    )
-    parser.add_argument(
-        "--region", default="us-east-1", help="AWS region (default: us-east-1)"
-    )
-    parser.add_argument(
-        "--aurora-arn", help="Aurora cluster ARN (from CDK output)"
-    )
-    parser.add_argument(
-        "--secret-arn", help="Read-only DB secret ARN (from CDK output)"
-    )
-    parser.add_argument(
-        "--dynamodb-table", help="DynamoDB table name (from CDK output)"
-    )
+    parser = argparse.ArgumentParser(description="Deploy Data Analyst Conversational Assistant to AgentCore")
+    parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
+    parser.add_argument("--aurora-arn", help="Aurora cluster ARN (from CDK output)")
+    parser.add_argument("--secret-arn", help="Read-only DB secret ARN (from CDK output)")
+    parser.add_argument("--dynamodb-table", help="DynamoDB table name (from CDK output)")
     parser.add_argument(
         "--db-tools-lambda-arn",
         help="Lambda ARN for database tools (from CDK output)",

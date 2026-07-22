@@ -103,24 +103,18 @@ try:
     print("Query response: " + str(response))
 
     # Delete the file from S3
-    versions_response = s3_client.list_object_versions(
-        Bucket=data_source_bucket_name, Prefix=s3_file_name
-    )
+    versions_response = s3_client.list_object_versions(Bucket=data_source_bucket_name, Prefix=s3_file_name)
 
     # Delete all versions of the object
     delete_markers = []
     if "Versions" in versions_response:
         for version in versions_response["Versions"]:
-            delete_markers.append(
-                {"Key": s3_file_name, "VersionId": version["VersionId"]}
-            )
+            delete_markers.append({"Key": s3_file_name, "VersionId": version["VersionId"]})
 
     # Delete all delete markers
     if "DeleteMarkers" in versions_response:
         for marker in versions_response["DeleteMarkers"]:
-            delete_markers.append(
-                {"Key": s3_file_name, "VersionId": marker["VersionId"]}
-            )
+            delete_markers.append({"Key": s3_file_name, "VersionId": marker["VersionId"]})
 
     # Execute the delete operation if there are versions to delete
     if delete_markers:

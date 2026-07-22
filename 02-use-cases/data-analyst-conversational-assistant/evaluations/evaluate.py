@@ -31,6 +31,7 @@ Prerequisites:
 import argparse
 import json
 import logging
+import time
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -38,9 +39,7 @@ from pathlib import Path
 import boto3
 from boto3.session import Session
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 DATASET_SCENARIOS = [
@@ -168,14 +167,16 @@ DATASET_SCENARIOS = [
 
 def invoke_agent(agentcore_client, agent_runtime_arn: str, prompt: str, session_id: str) -> str:
     """Invoke the deployed agent and collect the full response."""
-    payload = json.dumps({
-        "prompt": prompt,
-        "session_id": session_id,
-        "user_id": "evaluator",
-        "user_timezone": "UTC",
-        "user_name": "Evaluator",
-        "prompt_uuid": str(uuid.uuid4()),
-    }).encode()
+    payload = json.dumps(
+        {
+            "prompt": prompt,
+            "session_id": session_id,
+            "user_id": "evaluator",
+            "user_timezone": "UTC",
+            "user_name": "Evaluator",
+            "prompt_uuid": str(uuid.uuid4()),
+        }
+    ).encode()
 
     response = agentcore_client.invoke_agent_runtime(
         agentRuntimeArn=agent_runtime_arn,
@@ -188,7 +189,7 @@ def invoke_agent(agentcore_client, agent_runtime_arn: str, prompt: str, session_
     parts = []
     for line in raw.splitlines():
         if line.startswith("data: "):
-            chunk = line[len("data: "):]
+            chunk = line[len("data: ") :]
             try:
                 chunk = json.loads(chunk)
             except Exception:
@@ -216,8 +217,9 @@ def create_managed_dataset(region: str) -> tuple[str, str]:
         source={"inlineExamples": {"examples": DATASET_SCENARIOS}},
     )
     dataset_id = dataset["datasetId"]
-    logger.info("  datasetId: %s (status: %s, examples: %s)",
-                dataset_id, dataset["status"], dataset.get("exampleCount", "?"))
+    logger.info(
+        "  datasetId: %s (status: %s, examples: %s)", dataset_id, dataset["status"], dataset.get("exampleCount", "?")
+    )
 
     logger.info("  Publishing as version 1 ...")
     client.create_dataset_version_and_wait(datasetId=dataset_id)
@@ -266,10 +268,7 @@ def run_batch_evaluation(
 
     scenarios = []
     for ex in examples:
-        turns = [
-            Turn(input=t["input"], expected_response=t.get("expected_response"))
-            for t in ex.get("turns", [])
-        ]
+        turns = [Turn(input=t["input"], expected_response=t.get("expected_response")) for t in ex.get("turns", [])]
         traj = (ex.get("expected_trajectory") or {}).get("toolNames", [])
         assertions = [a["text"] for a in ex.get("assertions", []) if isinstance(a, dict)]
         scenarios.append(
@@ -300,7 +299,7 @@ def run_batch_evaluation(
         parts = []
         for line in raw.splitlines():
             if line.startswith("data: "):
-                chunk = line[len("data: "):]
+                chunk = line[len("data: ") :]
                 try:
                     chunk = json.loads(chunk)
                 except Exception:
@@ -351,8 +350,7 @@ def run_batch_evaluation(
 
     if result.agent_invocation_failures:
         result_data["invocation_failures"] = [
-            {"scenario_id": f.scenario_id, "error": f.error_message}
-            for f in result.agent_invocation_failures
+            {"scenario_id": f.scenario_id, "error": f.error_message} for f in result.agent_invocation_failures
         ]
         for f in result.agent_invocation_failures:
             logger.warning("  Invocation failure: %s — %s", f.scenario_id, f.error_message)
@@ -372,8 +370,7 @@ def run_batch_evaluation(
                 "total_evaluated": es.total_evaluated,
             }
             result_data["evaluator_summaries"].append(entry)
-            logger.info("  %s: avg=%.3f (n=%d)",
-                        es.evaluator_id, avg or 0, es.total_evaluated or 0)
+            logger.info("  %s: avg=%.3f (n=%d)", es.evaluator_id, avg or 0, es.total_evaluated or 0)
     else:
         result_data["total_scenarios"] = len(dataset.scenarios)
         result_data["completed"] = 0
@@ -386,9 +383,11 @@ def run_batch_evaluation(
     if result.output_data_config:
         result_data["output_log_group"] = result.output_data_config.log_group_name
         result_data["output_log_stream"] = result.output_data_config.log_stream_name
-        logger.info("  Detailed results: %s / %s",
-                    result.output_data_config.log_group_name,
-                    result.output_data_config.log_stream_name)
+        logger.info(
+            "  Detailed results: %s / %s",
+            result.output_data_config.log_group_name,
+            result.output_data_config.log_stream_name,
+        )
 
     return result_data
 
@@ -473,9 +472,7 @@ def cleanup_dataset(region: str, dataset_id: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run evaluations for Data Analyst Conversational Assistant"
-    )
+    parser = argparse.ArgumentParser(description="Run evaluations for Data Analyst Conversational Assistant")
     parser.add_argument("--region", default=None, help="AWS region")
     parser.add_argument(
         "--agent-runtime-arn",
@@ -577,7 +574,11 @@ def main():
         print("  Evaluator scores:")
         for es in eval_data["evaluator_summaries"]:
             avg = es.get("average_score")
-            print(f"    {es['evaluator_id']}: {avg:.3f} (n={es.get('total_evaluated', 0)})" if avg else f"    {es['evaluator_id']}: N/A")
+            print(
+                f"    {es['evaluator_id']}: {avg:.3f} (n={es.get('total_evaluated', 0)})"
+                if avg
+                else f"    {es['evaluator_id']}: N/A"
+            )
     print(f"  Results file   : {output_file}")
     print("=" * 60)
 

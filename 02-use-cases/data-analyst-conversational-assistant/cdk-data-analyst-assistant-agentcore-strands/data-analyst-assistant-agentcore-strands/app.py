@@ -47,9 +47,7 @@ from src.utils import load_file_content
 memory_id = os.environ.get("MEMORY_ID")
 
 # Retrieve Bedrock Model ID
-bedrock_model_id_env = os.environ.get(
-    "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
+bedrock_model_id_env = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # Gateway URL for centralized MCP tools (guardrails enforced at Gateway via Policy Engine)
 gateway_url = os.environ.get("GATEWAY_URL", "")
@@ -169,9 +167,9 @@ async def agent_invocation(payload):
                 )
 
             # Configure system prompt with user context
-            system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace(
-                "{timezone}", user_timezone
-            ).replace("{user_name}", user_name)
+            system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace("{timezone}", user_timezone).replace(
+                "{user_name}", user_name
+            )
 
             # Initialize session manager (explicit close instead of context manager for async generator)
             session_manager = AgentCoreMemorySessionManager(
@@ -201,9 +199,9 @@ async def agent_invocation(payload):
                         if "event" in item:
                             event = item["event"]
 
-                            if "contentBlockStart" in event and "toolUse" in event[
-                                "contentBlockStart"
-                            ].get("start", {}):
+                            if "contentBlockStart" in event and "toolUse" in event["contentBlockStart"].get(
+                                "start", {}
+                            ):
                                 tool_active = True
                                 yield json.dumps({"event": event}) + "\n"
 

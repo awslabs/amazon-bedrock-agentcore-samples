@@ -321,3 +321,6 @@ plan/
 02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/scripts/perf_baseline.py
 02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/docs/DESIGN_SYSTEM.md
 02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/agentcore/agentcore.json.deployed.bak
+
+# Blog post drafts
+02-use-cases/data-analyst-conversational-assistant/blog-*
