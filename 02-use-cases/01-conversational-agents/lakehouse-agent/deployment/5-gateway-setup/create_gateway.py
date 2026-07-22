@@ -20,8 +20,14 @@ Usage:
 
 import boto3
 import sys
+import os
 import json
 from typing import Dict, Any
+
+# Make the repo's utils/ importable (idp_config lives there) when this script
+# runs from its own deployment subdir.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from utils.idp_config import get_idp_provider
 
 
 class SSMConfig:
@@ -43,38 +49,72 @@ class SSMConfig:
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
 
+        # IdP selector — read once (DR-8 flag-branch convention).
+        self.idp_provider = get_idp_provider(self.ssm)
+
         # Load configuration from SSM
         print("\n🔍 Loading configuration from SSM Parameter Store...")
         self.mcp_server_runtime_arn = self._get_parameter("/app/lakehouse-agent/mcp-server-runtime-arn")
         self.interceptor_lambda_arn = self._get_parameter("/app/lakehouse-agent/interceptor-lambda-arn")
-        self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
-        self.cognito_app_client_id = self._get_parameter("/app/lakehouse-agent/cognito-app-client-id")
-        self.cognito_app_client_secret = self._get_parameter(
-            "/app/lakehouse-agent/cognito-app-client-secret", secure=True
+        # RESPONSE-point interceptor Lambda (pure-delta A1, both paths): attached
+        # alongside REQUEST so tools/list is filtered per persona, not just
+        # call-time gated. Upstream ships + stores this ARN but leaves it unattached.
+        self.response_interceptor_lambda_arn = self._get_parameter(
+            "/app/lakehouse-agent/response-interceptor-lambda-arn"
         )
-        self.cognito_domain = self._get_parameter("/app/lakehouse-agent/cognito-domain")
 
-        # Load M2M client credentials for Gateway-to-Runtime authentication
-        try:
-            self.cognito_m2m_client_id = self._get_parameter("/app/lakehouse-agent/cognito-m2m-client-id")
-            self.cognito_m2m_client_secret = self._get_parameter(
-                "/app/lakehouse-agent/cognito-m2m-client-secret", secure=True
+        if self.idp_provider == "cognito":
+            # [COGNITO] upstream verbatim (user-pool authorizer + M2M/hybrid provider)
+            self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
+            self.cognito_app_client_id = self._get_parameter("/app/lakehouse-agent/cognito-app-client-id")
+            self.cognito_app_client_secret = self._get_parameter(
+                "/app/lakehouse-agent/cognito-app-client-secret", secure=True
             )
-            print(f"   ✅ M2M Client ID: {self.cognito_m2m_client_id}")
-            print("   ✅ M2M Client Secret: ****** (loaded)")
-            self.has_m2m_client = True
-        except Exception:
-            print("   ⚠️  M2M client not found, will use hybrid client for Gateway-to-Runtime auth")
-            self.cognito_m2m_client_id = self.cognito_app_client_id
-            self.cognito_m2m_client_secret = self.cognito_app_client_secret
-            self.has_m2m_client = False
+            self.cognito_domain = self._get_parameter("/app/lakehouse-agent/cognito-domain")
 
-        print(f"   ✅ MCP Server Runtime ARN: {self.mcp_server_runtime_arn}")
-        print(f"   ✅ Interceptor Lambda ARN: {self.interceptor_lambda_arn}")
-        print(f"   ✅ Cognito User Pool ARN: {self.cognito_user_pool_arn}")
-        print(f"   ✅ Cognito App Client ID: {self.cognito_app_client_id}")
-        print("   ✅ Cognito Client Secret: ****** (loaded)")
-        print(f"   ✅ Cognito Domain: {self.cognito_domain}")
+            # Load M2M client credentials for Gateway-to-Runtime authentication
+            try:
+                self.cognito_m2m_client_id = self._get_parameter("/app/lakehouse-agent/cognito-m2m-client-id")
+                self.cognito_m2m_client_secret = self._get_parameter(
+                    "/app/lakehouse-agent/cognito-m2m-client-secret", secure=True
+                )
+                print(f"   ✅ M2M Client ID: {self.cognito_m2m_client_id}")
+                print("   ✅ M2M Client Secret: ****** (loaded)")
+                self.has_m2m_client = True
+            except Exception:
+                print("   ⚠️  M2M client not found, will use hybrid client for Gateway-to-Runtime auth")
+                self.cognito_m2m_client_id = self.cognito_app_client_id
+                self.cognito_m2m_client_secret = self.cognito_app_client_secret
+                self.has_m2m_client = False
+
+            print(f"   ✅ MCP Server Runtime ARN: {self.mcp_server_runtime_arn}")
+            print(f"   ✅ Interceptor Lambda ARN: {self.interceptor_lambda_arn}")
+            print(f"   ✅ Cognito User Pool ARN: {self.cognito_user_pool_arn}")
+            print(f"   ✅ Cognito App Client ID: {self.cognito_app_client_id}")
+            print("   ✅ Cognito Client Secret: ****** (loaded)")
+            print(f"   ✅ Cognito Domain: {self.cognito_domain}")
+        else:  # okta
+            # [OKTA] custom-auth-server authorizer + single-client provider (canonical §6)
+            self.okta_org_url = self._get_parameter("/app/lakehouse-agent/okta-org-url")
+            self.okta_auth_server_id = self._get_parameter("/app/lakehouse-agent/okta-auth-server-id")
+            self.okta_app_client_id = self._get_parameter("/app/lakehouse-agent/okta-app-client-id")
+            self.okta_app_client_secret = self._get_parameter(
+                "/app/lakehouse-agent/okta-app-client-secret", secure=True
+            )
+            self.okta_resource_server_audience = self._get_parameter(
+                "/app/lakehouse-agent/okta-resource-server-audience"
+            )
+            self.okta_discovery_url = self._get_parameter("/app/lakehouse-agent/okta-discovery-url")
+
+            print(f"   ✅ MCP Server Runtime ARN: {self.mcp_server_runtime_arn}")
+            print(f"   ✅ Interceptor Lambda ARN: {self.interceptor_lambda_arn}")
+            print(f"   ✅ Response Interceptor Lambda ARN: {self.response_interceptor_lambda_arn}")
+            print(f"   ✅ Okta Org URL: {self.okta_org_url}")
+            print(f"   ✅ Okta Auth Server ID: {self.okta_auth_server_id}")
+            print(f"   ✅ Okta App Client ID: {self.okta_app_client_id}")
+            print("   ✅ Okta App Client Secret: ****** (loaded)")
+            print(f"   ✅ Okta Resource Server Audience: {self.okta_resource_server_audience}")
+            print(f"   ✅ Okta Discovery URL: {self.okta_discovery_url}")
 
     def _get_parameter(self, parameter_name: str, secure: bool = False) -> str:
         """Get parameter value from SSM Parameter Store."""
@@ -243,68 +283,24 @@ class GatewaySetup:
             return role_arn
 
         except iam.exceptions.EntityAlreadyExistsException:
-            print(f"ℹ️  Role {role_name} already exists, deleting and recreating...")
+            # In-place idempotent update (DR-8 Flag-3, both paths): re-assert the
+            # script-owned trust + inline policy while preserving any out-of-band
+            # attachments. No detach-all / delete-recreate / sleep.
+            print(f"ℹ️  Role {role_name} already exists — updating in place (preserving out-of-band attachments)")
 
-            # Delete inline policies
-            try:
-                policy_names = iam.list_role_policies(RoleName=role_name)["PolicyNames"]
-                for policy_name in policy_names:
-                    print(f"   Deleting inline policy: {policy_name}")
-                    iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
-            except Exception as e:
-                print(f"   ⚠️  Error deleting inline policies: {e}")
+            role_arn = iam.get_role(RoleName=role_name)["Role"]["Arn"]
 
-            # Detach managed policies
-            try:
-                attached_policies = iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]
-                for policy in attached_policies:
-                    print(f"   Detaching managed policy: {policy['PolicyArn']}")
-                    iam.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
-            except Exception as e:
-                print(f"   ⚠️  Error detaching managed policies: {e}")
+            # Repair the trust policy in place (no delete).
+            iam.update_assume_role_policy(RoleName=role_name, PolicyDocument=json.dumps(trust_policy))
 
-            # Remove from instance profiles
-            try:
-                instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]
-                for profile in instance_profiles:
-                    print(f"   Removing from instance profile: {profile['InstanceProfileName']}")
-                    iam.remove_role_from_instance_profile(
-                        InstanceProfileName=profile["InstanceProfileName"],
-                        RoleName=role_name,
-                    )
-            except Exception as e:
-                print(f"   ⚠️  Error removing from instance profiles: {e}")
-
-            # Delete the role
-            try:
-                iam.delete_role(RoleName=role_name)
-                print("   ✅ Deleted existing role")
-            except Exception as e:
-                print(f"   ❌ Error deleting role: {e}")
-                raise
-
-            # Wait for IAM propagation
-            import time
-
-            time.sleep(2)
-
-            # Recreate the role
-            print(f"   Creating new role: {role_name}")
-            response = iam.create_role(
-                RoleName=role_name,
-                AssumeRolePolicyDocument=json.dumps(trust_policy),
-                Description="IAM role for AgentCore Gateway",
-            )
-            role_arn = response["Role"]["Arn"]
-
-            # Attach policy
+            # Upsert ONLY our known inline policy; put_role_policy overwrites in place.
             iam.put_role_policy(
                 RoleName=role_name,
                 PolicyName="GatewayExecutionPolicy",
                 PolicyDocument=json.dumps(policy_document),
             )
 
-            print(f"✅ Recreated IAM role: {role_arn}")
+            print(f"✅ Updated existing IAM role in place: {role_arn}")
             return role_arn
 
         except Exception as e:
@@ -327,30 +323,44 @@ class GatewaySetup:
             # Create IAM role for gateway
             role_arn = self.create_gateway_role(gateway_name)
 
-            # Extract user pool ID from ARN
-            user_pool_id = self.config.cognito_user_pool_arn.split("/")[-1]
-            issuer = f"https://cognito-idp.{self.config.region}.amazonaws.com/{user_pool_id}"
-
-            # JWT authorizer configuration
-            # Cognito OIDC discovery URL
-            discovery_url = f"{issuer}/.well-known/openid-configuration"
-
-            auth_config = {
-                "customJWTAuthorizer": {
-                    "discoveryUrl": discovery_url,
-                    "allowedClients": [self.config.cognito_app_client_id],
-                    # Note: Not using allowedAudience because Cognito access tokens
-                    # don't include 'aud' claim. We validate via client_id instead.
+            # JWT authorizer differs by IdP (DR-8): Cognito validates by client_id
+            # (Cognito access tokens carry no 'aud'); Okta validates by audience.
+            if self.config.idp_provider == "cognito":
+                # [COGNITO] upstream verbatim
+                user_pool_id = self.config.cognito_user_pool_arn.split("/")[-1]
+                issuer = f"https://cognito-idp.{self.config.region}.amazonaws.com/{user_pool_id}"
+                discovery_url = f"{issuer}/.well-known/openid-configuration"
+                auth_config = {
+                    "customJWTAuthorizer": {
+                        "discoveryUrl": discovery_url,
+                        "allowedClients": [self.config.cognito_app_client_id],
+                        # Cognito access tokens carry no 'aud'; validate via client_id.
+                    }
                 }
-            }
+            else:  # okta
+                # [OKTA] custom-auth-server discovery + audience (canonical §6 names)
+                auth_config = {
+                    "customJWTAuthorizer": {
+                        "discoveryUrl": self.config.okta_discovery_url,
+                        "allowedAudience": [self.config.okta_resource_server_audience],
+                    }
+                }
 
-            # Interceptor configuration for request processing
+            # Interceptor config (pure-delta A1, both paths): TWO entries — a REQUEST
+            # interceptor (call-time 403 gate + identity extraction) and a RESPONSE
+            # interceptor (filters tools/list per persona). RESPONSE must set
+            # passRequestHeaders so it can resolve the caller's group from the bearer.
             interceptor_config = [
                 {
                     "interceptor": {"lambda": {"arn": self.config.interceptor_lambda_arn}},
                     "interceptionPoints": ["REQUEST"],
                     "inputConfiguration": {"passRequestHeaders": True},
-                }
+                },
+                {
+                    "interceptor": {"lambda": {"arn": self.config.response_interceptor_lambda_arn}},
+                    "interceptionPoints": ["RESPONSE"],
+                    "inputConfiguration": {"passRequestHeaders": True},
+                },
             ]
 
             # Create gateway
@@ -390,15 +400,39 @@ class GatewaySetup:
 
         except Exception as e:
             if "already exists" in str(e):
-                print(f"ℹ️  Gateway {gateway_name} already exists, retrieving details...")
+                # In-place converge (DR-8 Flag-3, both paths): round-trip the LIVE
+                # authorizer + protocol (update_gateway is a full-replace PUT — omitting
+                # them would drop auth / reset SEMANTIC search) and re-apply the
+                # REQUEST+RESPONSE interceptor config so re-runs attach RESPONSE.
+                print(f"ℹ️  Gateway {gateway_name} already exists — updating in place to converge interceptors...")
                 response = self.client.list_gateways()
                 for gateway in response.get("items", []):
                     if gateway["name"] == gateway_name:
                         gateway_id = gateway["gatewayId"]
-                        response = self.client.get_gateway(gatewayIdentifier=gateway_id)
-                        gateway_url = response["gatewayUrl"]
+                        live = self.client.get_gateway(gatewayIdentifier=gateway_id)
+                        gateway_url = live["gatewayUrl"]
                         gateway_arn = f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:gateway/{gateway_id}"
-                        print(f"✅ Using existing gateway: {gateway_id}")
+
+                        update_kwargs = {
+                            "gatewayIdentifier": gateway_id,
+                            "name": live["name"],
+                            "roleArn": live["roleArn"],
+                            "protocolType": live["protocolType"],
+                            "protocolConfiguration": live["protocolConfiguration"],
+                            "authorizerType": "CUSTOM_JWT",
+                            "authorizerConfiguration": live["authorizerConfiguration"],
+                            "interceptorConfigurations": interceptor_config,
+                        }
+                        if live.get("description"):
+                            update_kwargs["description"] = live["description"]
+
+                        print(f"   ↻ update_gateway {gateway_id} (adding REQUEST+RESPONSE interceptors)")
+                        self.client.update_gateway(**update_kwargs)
+
+                        if not self.wait_for_gateway_active(gateway_id):
+                            raise RuntimeError(f"Gateway {gateway_id} did not return to READY after update_gateway")
+
+                        print(f"✅ Updated existing gateway in place: {gateway_id}")
                         return {
                             "gatewayId": gateway_id,
                             "gatewayUrl": gateway_url,
@@ -411,10 +445,10 @@ class GatewaySetup:
     def create_oauth_provider(
         self,
         provider_name: str,
-        cognito_client_id: str,
-        cognito_client_secret: str,
-        cognito_token_endpoint: str,
-        cognito_issuer: str,
+        client_id: str,
+        client_secret: str,
+        cognito_token_endpoint: str = None,
+        cognito_issuer: str = None,
     ) -> str:
         """
         Create an OAuth2 credential provider in AgentCore Identity for Cognito.
@@ -445,13 +479,13 @@ class GatewaySetup:
         try:
             print(f"\n🔐 Creating OAuth2 credential provider: {provider_name}")
 
-            # For Cognito, we use CustomOauth2 vendor with authorization server metadata
-            # Cognito doesn't have a .well-known/openid-configuration endpoint for token endpoint
-            # so we provide the metadata directly
-            response = self.client.create_oauth2_credential_provider(
-                name=provider_name,
-                credentialProviderVendor="CustomOauth2",
-                oauth2ProviderConfigInput={
+            # Provider config differs by IdP (DR-8): Cognito has no OIDC discovery
+            # endpoint for its token endpoint → pass authorization-server metadata
+            # directly; Okta exposes /.well-known on its custom auth server → use
+            # the discoveryUrl form.
+            if self.config.idp_provider == "cognito":
+                # [COGNITO] upstream verbatim
+                oauth2_config = {
                     "customOauth2ProviderConfig": {
                         "oauthDiscovery": {
                             "authorizationServerMetadata": {
@@ -461,10 +495,24 @@ class GatewaySetup:
                                 "tokenEndpointAuthMethods": ["client_secret_post"],
                             }
                         },
-                        "clientId": cognito_client_id,
-                        "clientSecret": cognito_client_secret,
+                        "clientId": client_id,
+                        "clientSecret": client_secret,
                     }
-                },
+                }
+            else:  # okta
+                # [OKTA] discovery-URL form (canonical §6 okta-discovery-url)
+                oauth2_config = {
+                    "customOauth2ProviderConfig": {
+                        "oauthDiscovery": {"discoveryUrl": self.config.okta_discovery_url},
+                        "clientId": client_id,
+                        "clientSecret": client_secret,
+                    }
+                }
+
+            response = self.client.create_oauth2_credential_provider(
+                name=provider_name,
+                credentialProviderVendor="CustomOauth2",
+                oauth2ProviderConfigInput=oauth2_config,
             )
 
             # Debug: print response to see actual structure
@@ -525,6 +573,7 @@ class GatewaySetup:
         target_name: str,
         mcp_server_url: str,
         oauth_provider_arn: str,
+        scopes: list = None,
     ) -> Dict[str, Any]:
         """
         Create a gateway target pointing to the MCP server runtime with OAuth authentication.
@@ -554,7 +603,9 @@ class GatewaySetup:
                         "credentialProvider": {
                             "oauthCredentialProvider": {
                                 "providerArn": oauth_provider_arn,
-                                "scopes": [],  # Empty scopes for Client Credentials flow
+                                # Cognito: [] (client_credentials); Okta: non-empty
+                                # scope required by its auth server (DR-8).
+                                "scopes": scopes or [],
                             }
                         },
                     }
@@ -597,7 +648,7 @@ class GatewaySetup:
                 if status in ["ACTIVE", "READY"]:
                     print(f"✅ Gateway is ready (status: {status})!")
                     return True
-                elif status in ["FAILED", "DELETING", "DELETED"]:
+                elif status in ["FAILED", "DELETING", "DELETED", "UPDATE_UNSUCCESSFUL"]:
                     print(f"❌ Gateway is in {status} status")
                     return False
 
@@ -662,8 +713,12 @@ def main():
     print(f"   Gateway Name: {gateway_name}")
     print(f"   MCP Server: {config.mcp_server_runtime_arn}")
     print(f"   Interceptor: {config.interceptor_lambda_arn}")
-    print(f"   Cognito User Pool: {config.cognito_user_pool_arn}")
-    print(f"   Client ID: {config.cognito_app_client_id}")
+    if config.idp_provider == "cognito":
+        print(f"   Cognito User Pool: {config.cognito_user_pool_arn}")
+        print(f"   Client ID: {config.cognito_app_client_id}")
+    else:  # okta
+        print(f"   Okta Discovery URL: {config.okta_discovery_url}")
+        print(f"   Okta App Client ID: {config.okta_app_client_id}")
 
     try:
         # Create gateway
@@ -674,31 +729,46 @@ def main():
             # Get MCP endpoint URL for the runtime
             mcp_url = get_runtime_mcp_url(config.mcp_server_runtime_arn, config.region)
 
-            # Build Cognito endpoints
-            user_pool_id = config.cognito_user_pool_arn.split("/")[-1]
-            cognito_issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
-            cognito_token_endpoint = f"{config.cognito_domain}/oauth2/token"
+            # OAuth2 provider for the Gateway→MCP-runtime M2M leg differs by IdP
+            # (DR-8): Cognito needs a manual auth-server-metadata envelope + an
+            # M2M/hybrid client choice; Okta uses discovery + its single app client.
+            # Target scopes: Cognito [] (client_credentials); Okta ['claims.query'].
+            if config.idp_provider == "cognito":
+                # [COGNITO] upstream verbatim
+                user_pool_id = config.cognito_user_pool_arn.split("/")[-1]
+                cognito_issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
+                cognito_token_endpoint = f"{config.cognito_domain}/oauth2/token"
 
-            # Determine which client to use for Gateway-to-Runtime authentication
-            if config.has_m2m_client:
-                print("\n🔐 Using M2M client for Gateway-to-Runtime authentication")
-                auth_client_id = config.cognito_m2m_client_id
-                auth_client_secret = config.cognito_m2m_client_secret
-                provider_name = "lakehouse-mcp-m2m-oauth-provider"
-            else:
-                print("\n🔐 Using hybrid client for Gateway-to-Runtime authentication")
-                auth_client_id = config.cognito_app_client_id
-                auth_client_secret = config.cognito_app_client_secret
-                provider_name = "lakehouse-mcp-oauth-provider"
+                if config.has_m2m_client:
+                    print("\n🔐 Using M2M client for Gateway-to-Runtime authentication")
+                    auth_client_id = config.cognito_m2m_client_id
+                    auth_client_secret = config.cognito_m2m_client_secret
+                    provider_name = "lakehouse-mcp-m2m-oauth-provider"
+                else:
+                    print("\n🔐 Using hybrid client for Gateway-to-Runtime authentication")
+                    auth_client_id = config.cognito_app_client_id
+                    auth_client_secret = config.cognito_app_client_secret
+                    provider_name = "lakehouse-mcp-oauth-provider"
 
-            # Create OAuth credential provider
-            oauth_provider_arn = setup.create_oauth_provider(
-                provider_name=provider_name,
-                cognito_client_id=auth_client_id,
-                cognito_client_secret=auth_client_secret,
-                cognito_token_endpoint=cognito_token_endpoint,
-                cognito_issuer=cognito_issuer,
-            )
+                oauth_provider_arn = setup.create_oauth_provider(
+                    provider_name=provider_name,
+                    client_id=auth_client_id,
+                    client_secret=auth_client_secret,
+                    cognito_token_endpoint=cognito_token_endpoint,
+                    cognito_issuer=cognito_issuer,
+                )
+                target_scopes = []
+            else:  # okta
+                # [OKTA] single Okta app client handles client_credentials directly
+                # (canonical §6 provider name)
+                print("\n🔐 Using Okta app client for Gateway-to-Runtime authentication")
+                provider_name = "lakehouse-mcp-okta-oauth-provider"
+                oauth_provider_arn = setup.create_oauth_provider(
+                    provider_name=provider_name,
+                    client_id=config.okta_app_client_id,
+                    client_secret=config.okta_app_client_secret,
+                )
+                target_scopes = ["claims.query"]
 
             # Create gateway target with OAuth authentication
             if mcp_url and oauth_provider_arn:
@@ -707,6 +777,7 @@ def main():
                     target_name="lakehouse-mcp-target",
                     mcp_server_url=mcp_url,
                     oauth_provider_arn=oauth_provider_arn,
+                    scopes=target_scopes,
                 )
         else:
             print("\n⚠️  Gateway not active yet. You can create the target later.")

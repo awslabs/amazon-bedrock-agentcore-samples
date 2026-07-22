@@ -18,40 +18,63 @@ fi
 
 echo "   Region: $AWS_REGION"
 
-# Read configuration from SSM Parameter Store
+# IdP selector (DR-8 Flag-2): env override → SSM → cognito default.
+IDP_PROVIDER=${IDP_PROVIDER:-$(aws ssm get-parameter --name /app/lakehouse-agent/idp-provider --query 'Parameter.Value' --output text 2>/dev/null || echo "cognito")}
+echo "   IdP Provider: $IDP_PROVIDER"
+
+# Read configuration from SSM Parameter Store, and build the Lambda env var block
+# for the active IdP. The Lambda code reads IDP_PROVIDER + the IdP-specific keys
+# (falling back to SSM if an env var is absent).
 echo ""
 echo "🔍 Loading configuration from SSM Parameter Store..."
 
-# Temporarily disable exit on error to capture SSM errors
-set +e
-COGNITO_USER_POOL_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-user-pool-id --query 'Parameter.Value' --output text 2>&1)
-COGNITO_RESULT=$?
+if [ "$IDP_PROVIDER" = "cognito" ]; then
+    # [COGNITO] upstream verbatim param loads
+    set +e
+    COGNITO_USER_POOL_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-user-pool-id --query 'Parameter.Value' --output text 2>&1)
+    COGNITO_RESULT=$?
+    COGNITO_APP_CLIENT_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-app-client-id --query 'Parameter.Value' --output text 2>&1)
+    CLIENT_RESULT=$?
+    set -e
 
-COGNITO_APP_CLIENT_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-app-client-id --query 'Parameter.Value' --output text 2>&1)
-CLIENT_RESULT=$?
-set -e
+    if [ $COGNITO_RESULT -ne 0 ] || [ $CLIENT_RESULT -ne 0 ]; then
+        echo "❌ Error: Required SSM parameters not found"
+        [ $COGNITO_RESULT -ne 0 ] && echo "   Missing: /app/lakehouse-agent/cognito-user-pool-id ($COGNITO_USER_POOL_ID)"
+        [ $CLIENT_RESULT -ne 0 ] && echo "   Missing: /app/lakehouse-agent/cognito-app-client-id ($COGNITO_APP_CLIENT_ID)"
+        echo "   Please run notebook 01 (Cognito setup) first."
+        exit 1
+    fi
 
-if [ $COGNITO_RESULT -ne 0 ] || [ $CLIENT_RESULT -ne 0 ]; then
-    echo "❌ Error: Required SSM parameters not found"
-    echo ""
-    if [ $COGNITO_RESULT -ne 0 ]; then
-        echo "   Missing: /app/lakehouse-agent/cognito-user-pool-id"
-        echo "   Error: $COGNITO_USER_POOL_ID"
+    echo "✅ Configuration loaded from SSM"
+    echo "   Cognito User Pool ID: $COGNITO_USER_POOL_ID"
+    echo "   Cognito App Client ID: $COGNITO_APP_CLIENT_ID"
+    LAMBDA_ENV_VARS="COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,IDP_PROVIDER=$IDP_PROVIDER,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map"
+else
+    # [OKTA] custom-auth-server param loads (canonical §6 keys)
+    set +e
+    OKTA_ORG_URL=$(aws ssm get-parameter --name /app/lakehouse-agent/okta-org-url --query 'Parameter.Value' --output text 2>&1)
+    ORG_RESULT=$?
+    OKTA_AUTH_SERVER_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/okta-auth-server-id --query 'Parameter.Value' --output text 2>&1)
+    AUTH_SERVER_RESULT=$?
+    OKTA_RESOURCE_SERVER_AUDIENCE=$(aws ssm get-parameter --name /app/lakehouse-agent/okta-resource-server-audience --query 'Parameter.Value' --output text 2>&1)
+    AUDIENCE_RESULT=$?
+    set -e
+
+    if [ $ORG_RESULT -ne 0 ] || [ $AUTH_SERVER_RESULT -ne 0 ] || [ $AUDIENCE_RESULT -ne 0 ]; then
+        echo "❌ Error: Required SSM parameters not found"
+        [ $ORG_RESULT -ne 0 ] && echo "   Missing: /app/lakehouse-agent/okta-org-url ($OKTA_ORG_URL)"
+        [ $AUTH_SERVER_RESULT -ne 0 ] && echo "   Missing: /app/lakehouse-agent/okta-auth-server-id ($OKTA_AUTH_SERVER_ID)"
+        [ $AUDIENCE_RESULT -ne 0 ] && echo "   Missing: /app/lakehouse-agent/okta-resource-server-audience ($OKTA_RESOURCE_SERVER_AUDIENCE)"
+        echo "   Please run notebook 01 (Okta setup) first."
+        exit 1
     fi
-    if [ $CLIENT_RESULT -ne 0 ]; then
-        echo "   Missing: /app/lakehouse-agent/cognito-app-client-id"
-        echo "   Error: $COGNITO_APP_CLIENT_ID"
-    fi
-    echo ""
-    echo "   Please run setup_cognito.py first:"
-    echo "   cd gateway-setup"
-    echo "   python setup_cognito.py"
-    exit 1
+
+    echo "✅ Configuration loaded from SSM"
+    echo "   Okta Org URL: $OKTA_ORG_URL"
+    echo "   Okta Auth Server ID: $OKTA_AUTH_SERVER_ID"
+    echo "   Okta Resource Server Audience: $OKTA_RESOURCE_SERVER_AUDIENCE"
+    LAMBDA_ENV_VARS="OKTA_ORG_URL=$OKTA_ORG_URL,OKTA_AUTH_SERVER_ID=$OKTA_AUTH_SERVER_ID,OKTA_RESOURCE_SERVER_AUDIENCE=$OKTA_RESOURCE_SERVER_AUDIENCE,IDP_PROVIDER=$IDP_PROVIDER,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map"
 fi
-
-echo "✅ Configuration loaded from SSM"
-echo "   Cognito User Pool ID: $COGNITO_USER_POOL_ID"
-echo "   Cognito App Client ID: $COGNITO_APP_CLIENT_ID"
 
 # Package Lambda function
 echo ""
@@ -117,7 +140,7 @@ if aws lambda get-function --function-name lakehouse-gateway-interceptor --regio
     echo "⚙️  Updating Lambda configuration..."
     aws lambda update-function-configuration \
         --function-name lakehouse-gateway-interceptor \
-        --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
+        --environment "Variables={$LAMBDA_ENV_VARS}" \
         --kms-key-arn "" \
         --region $AWS_REGION
 
@@ -142,7 +165,7 @@ else
             --zip-file fileb://interceptor-lambda.zip \
             --timeout 30 \
             --memory-size 256 \
-            --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
+            --environment "Variables={$LAMBDA_ENV_VARS}" \
             --region $AWS_REGION 2>/dev/null; then
             aws lambda wait function-active \
                 --function-name lakehouse-gateway-interceptor \

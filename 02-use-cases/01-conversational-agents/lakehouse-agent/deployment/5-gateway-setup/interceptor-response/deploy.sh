@@ -18,6 +18,33 @@ fi
 
 echo "   Region: $AWS_REGION"
 
+# IdP selector (DR-8 Flag-2): env override → SSM → cognito default. Build the
+# Lambda env var block for the active IdP once, used by BOTH the create and
+# update paths below (the upstream update path referenced unset COGNITO_* vars).
+IDP_PROVIDER=${IDP_PROVIDER:-$(aws ssm get-parameter --name /app/lakehouse-agent/idp-provider --query 'Parameter.Value' --output text 2>/dev/null || echo "cognito")}
+echo "   IdP Provider: $IDP_PROVIDER"
+
+if [ "$IDP_PROVIDER" = "cognito" ]; then
+    COGNITO_USER_POOL_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-user-pool-id --query 'Parameter.Value' --output text 2>/dev/null)
+    COGNITO_APP_CLIENT_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-app-client-id --query 'Parameter.Value' --output text 2>/dev/null)
+    if [ -z "$COGNITO_USER_POOL_ID" ] || [ -z "$COGNITO_APP_CLIENT_ID" ]; then
+        echo "❌ Failed to retrieve Cognito configuration from SSM"
+        echo "   Please ensure the request interceptor has been deployed first"
+        exit 1
+    fi
+    LAMBDA_ENV_VARS="COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,IDP_PROVIDER=$IDP_PROVIDER,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map"
+else
+    OKTA_ORG_URL=$(aws ssm get-parameter --name /app/lakehouse-agent/okta-org-url --query 'Parameter.Value' --output text 2>/dev/null)
+    OKTA_AUTH_SERVER_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/okta-auth-server-id --query 'Parameter.Value' --output text 2>/dev/null)
+    OKTA_RESOURCE_SERVER_AUDIENCE=$(aws ssm get-parameter --name /app/lakehouse-agent/okta-resource-server-audience --query 'Parameter.Value' --output text 2>/dev/null)
+    if [ -z "$OKTA_ORG_URL" ] || [ -z "$OKTA_AUTH_SERVER_ID" ] || [ -z "$OKTA_RESOURCE_SERVER_AUDIENCE" ]; then
+        echo "❌ Failed to retrieve Okta configuration from SSM"
+        echo "   Please ensure the request interceptor has been deployed first"
+        exit 1
+    fi
+    LAMBDA_ENV_VARS="OKTA_ORG_URL=$OKTA_ORG_URL,OKTA_AUTH_SERVER_ID=$OKTA_AUTH_SERVER_ID,OKTA_RESOURCE_SERVER_AUDIENCE=$OKTA_RESOURCE_SERVER_AUDIENCE,IDP_PROVIDER=$IDP_PROVIDER,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map"
+fi
+
 # Package Lambda function
 echo ""
 echo "📦 Packaging Lambda function..."
@@ -73,7 +100,7 @@ if aws lambda get-function --function-name lakehouse-gateway-response-intercepto
     echo "⚙️  Updating Lambda configuration..."
     aws lambda update-function-configuration \
         --function-name lakehouse-gateway-response-interceptor \
-        --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
+        --environment "Variables={$LAMBDA_ENV_VARS}" \
         --kms-key-arn "" \
         --region $AWS_REGION
 
@@ -84,18 +111,9 @@ if aws lambda get-function --function-name lakehouse-gateway-response-intercepto
     echo "✅ Lambda function updated!"
 else
     echo "📝 Creating new Lambda function..."
-    
-    # Get Cognito configuration from SSM (needed for environment variables)
-    echo "🔍 Loading Cognito configuration from SSM..."
-    COGNITO_USER_POOL_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-user-pool-id --query 'Parameter.Value' --output text 2>/dev/null)
-    COGNITO_APP_CLIENT_ID=$(aws ssm get-parameter --name /app/lakehouse-agent/cognito-app-client-id --query 'Parameter.Value' --output text 2>/dev/null)
-    
-    if [ -z "$COGNITO_USER_POOL_ID" ] || [ -z "$COGNITO_APP_CLIENT_ID" ]; then
-        echo "❌ Failed to retrieve Cognito configuration from SSM"
-        echo "   Please ensure the request interceptor has been deployed first"
-        exit 1
-    fi
-    
+
+    # (IdP config + LAMBDA_ENV_VARS already resolved near the top of this script.)
+
     # Retry logic for role propagation
     MAX_RETRIES=3
     RETRY_COUNT=0
@@ -109,7 +127,7 @@ else
             --zip-file fileb://response-interceptor-lambda.zip \
             --timeout 30 \
             --memory-size 256 \
-            --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
+            --environment "Variables={$LAMBDA_ENV_VARS}" \
             --region $AWS_REGION 2>/dev/null; then
             aws lambda wait function-active \
                 --function-name lakehouse-gateway-response-interceptor \

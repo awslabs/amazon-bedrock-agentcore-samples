@@ -20,6 +20,22 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger()
 
 
+def _resolve_idp_provider() -> str:
+    """IdP selector for the Lambda (DR-8): env (set at deploy time) → SSM → cognito."""
+    v = os.environ.get("IDP_PROVIDER")
+    if v:
+        return v.strip().lower()
+    try:
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        ssm = boto3.client("ssm", region_name=region)
+        return ssm.get_parameter(Name="/app/lakehouse-agent/idp-provider")["Parameter"]["Value"].strip().lower()
+    except Exception:
+        return "cognito"
+
+
+IDP_PROVIDER = _resolve_idp_provider()
+
+
 def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> Optional[Dict[str, Any]]:
     """
     Exchange JWT claim to IAM temporary credentials via DynamoDB role mapping.
@@ -146,27 +162,48 @@ def get_claim_for_exchange(claims: Dict[str, Any]) -> Optional[tuple]:
     Returns:
         Tuple of (claim_name, claim_value) or None if no suitable claim found
     """
-    # Priority 1: Check for cognito:groups
-    groups = claims.get("cognito:groups")
-    if groups:
-        # Convert list to JSON string format for DynamoDB lookup
-        import json
+    import json
 
-        claim_value = json.dumps(groups)
-        logger.info(f"Found cognito:groups claim: {claim_value}")
-        return ("cognito:groups", claim_value)
+    if IDP_PROVIDER == "cognito":
+        # [COGNITO] upstream verbatim: cognito:groups (whole-array) → email → username
+        groups = claims.get("cognito:groups")
+        if groups:
+            claim_value = json.dumps(groups)
+            logger.info(f"Found cognito:groups claim: {claim_value}")
+            return ("cognito:groups", claim_value)
 
-    # Priority 2: Check for email
-    email = claims.get("email")
-    if email:
-        logger.info(f"Found email claim: {email}")
-        return ("email", email)
+        email = claims.get("email")
+        if email:
+            logger.info(f"Found email claim: {email}")
+            return ("email", email)
 
-    # Priority 3: Check for username
-    username = claims.get("username") or claims.get("cognito:username")
-    if username:
-        logger.info(f"Found username claim: {username}")
-        return ("username", username)
+        username = claims.get("username") or claims.get("cognito:username")
+        if username:
+            logger.info(f"Found username claim: {username}")
+            return ("username", username)
+    else:  # okta
+        # [OKTA] fork verbatim: Okta `groups` includes built-in `Everyone`, so filter
+        # built-ins + iterate (per-app-group seed shape); then email → sub.
+        OKTA_BUILTIN_GROUPS = {"Everyone"}  # Okta-specific; sibling IdPs revisit
+        groups = claims.get("groups")
+        if groups:
+            for group in groups:
+                if group in OKTA_BUILTIN_GROUPS:
+                    continue
+                claim_value = json.dumps([group])
+                logger.info(f"Found groups claim (per-group iter): {claim_value}")
+                return ("groups", claim_value)
+            logger.warning(f"⚠️  All groups filtered as built-ins: {groups}")
+
+        email = claims.get("email")
+        if email:
+            logger.info(f"Found email claim: {email}")
+            return ("email", email)
+
+        sub = claims.get("sub")
+        if sub:
+            logger.info(f"Found sub claim: {sub}")
+            return ("sub", sub)
 
     logger.warning("⚠️  No suitable claim found for token exchange")
     return None

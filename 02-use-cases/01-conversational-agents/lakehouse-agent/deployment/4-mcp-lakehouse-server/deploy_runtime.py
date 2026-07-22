@@ -19,7 +19,13 @@ Usage:
 
 import boto3
 import json
+import os
 import sys
+
+# Make the repo's utils/ importable (idp_config lives there) when this script
+# runs from its own deployment subdir.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from utils.idp_config import get_idp_provider
 
 try:
     from bedrock_agentcore_starter_toolkit import Runtime
@@ -44,11 +50,24 @@ class SSMConfig:
         # Get account ID
         self.account_id = self.sts.get_caller_identity()["Account"]
 
+        # IdP selector — read once (DR-8 flag-branch convention).
+        self.idp_provider = get_idp_provider(self.ssm)
+
         # Load configuration from SSM
         self.s3_bucket_name = self._get_parameter("/app/lakehouse-agent/s3-bucket-name")
         self.database_name = self._get_parameter("/app/lakehouse-agent/database-name")
         self.catalog_name = self._get_parameter("/app/lakehouse-agent/catalog-name", required=False)
-        self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
+
+        # Authorizer config source differs by IdP — load only the active IdP's keys.
+        if self.idp_provider == "cognito":
+            self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
+        else:  # okta
+            self.okta_org_url = self._get_parameter("/app/lakehouse-agent/okta-org-url")
+            self.okta_auth_server_id = self._get_parameter("/app/lakehouse-agent/okta-auth-server-id")
+            self.okta_resource_server_audience = self._get_parameter(
+                "/app/lakehouse-agent/okta-resource-server-audience"
+            )
+            self.okta_discovery_url = self._get_parameter("/app/lakehouse-agent/okta-discovery-url")
 
         # Constants
         self.log_level = "DEBUG"
@@ -86,7 +105,10 @@ class SSMConfig:
         print(f"   S3 Bucket: {self.s3_bucket_name}")
         print(f"   Database: {self.database_name}")
         print(f"   Catalog: {self.catalog_name or 'default'}")
-        print(f"   Cognito User Pool ARN: {self.cognito_user_pool_arn}")
+        if self.idp_provider == "cognito":
+            print(f"   Cognito User Pool ARN: {self.cognito_user_pool_arn}")
+        else:  # okta
+            print(f"   Okta Discovery URL: {self.okta_discovery_url}")
         print(f"   Log Level: {self.log_level}")
 
     def store_runtime_parameters(self, runtime_arn: str, runtime_id: str):
@@ -237,68 +259,24 @@ def create_runtime_role(config: SSMConfig):
         return role_arn
 
     except iam.exceptions.EntityAlreadyExistsException:
-        print(f"ℹ️  Role {role_name} already exists, deleting and recreating...")
+        # In-place idempotent update (DR-8 Flag-3, both paths): re-assert this
+        # script's trust + inline policy while preserving any out-of-band
+        # attachments. No detach-all / delete-recreate / sleep.
+        print(f"ℹ️  Role {role_name} already exists — updating in place (preserving out-of-band attachments)")
 
-        # Delete inline policies
-        try:
-            policy_names = iam.list_role_policies(RoleName=role_name)["PolicyNames"]
-            for policy_name in policy_names:
-                print(f"   Deleting inline policy: {policy_name}")
-                iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
-        except Exception as e:
-            print(f"   ⚠️  Error deleting inline policies: {e}")
+        role_arn = iam.get_role(RoleName=role_name)["Role"]["Arn"]
 
-        # Detach managed policies
-        try:
-            attached_policies = iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]
-            for policy in attached_policies:
-                print(f"   Detaching managed policy: {policy['PolicyArn']}")
-                iam.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
-        except Exception as e:
-            print(f"   ⚠️  Error detaching managed policies: {e}")
+        # Repair the trust policy in place (no delete).
+        iam.update_assume_role_policy(RoleName=role_name, PolicyDocument=json.dumps(trust_policy))
 
-        # Remove from instance profiles
-        try:
-            instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]
-            for profile in instance_profiles:
-                print(f"   Removing from instance profile: {profile['InstanceProfileName']}")
-                iam.remove_role_from_instance_profile(
-                    InstanceProfileName=profile["InstanceProfileName"],
-                    RoleName=role_name,
-                )
-        except Exception as e:
-            print(f"   ⚠️  Error removing from instance profiles: {e}")
-
-        # Delete the role
-        try:
-            iam.delete_role(RoleName=role_name)
-            print("   ✅ Deleted existing role")
-        except Exception as e:
-            print(f"   ❌ Error deleting role: {e}")
-            raise
-
-        # Wait a moment for IAM to propagate
-        import time
-
-        time.sleep(2)
-
-        # Recreate the role
-        print(f"   Creating new role: {role_name}")
-        response = iam.create_role(
-            RoleName=role_name,
-            AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description="AgentCore Runtime execution role for lakehouse data MCP server",
-        )
-        role_arn = response["Role"]["Arn"]
-
-        # Attach inline policy
+        # Upsert ONLY our known inline policy; put_role_policy overwrites in place.
         iam.put_role_policy(
             RoleName=role_name,
             PolicyName="AgentCoreRuntimePermissions",
             PolicyDocument=json.dumps(permissions_policy),
         )
 
-        print(f"✅ Recreated IAM role: {role_arn}")
+        print(f"✅ Updated existing IAM role in place: {role_arn}")
         return role_arn
 
 
@@ -335,25 +313,46 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         # Extract role name from ARN (format: arn:aws:iam::account:role/RoleName)
         role_name = role_arn.split("/")[-1]
 
-        # Extract user pool ID from ARN and build JWT configuration
-        user_pool_id = config.cognito_user_pool_arn.split("/")[-1]
-        issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
-        discovery_url = f"{issuer}/.well-known/openid-configuration"
+        # JWT authorizer differs by IdP (DR-8): Cognito access tokens carry no
+        # `aud` → validate by M2M client_id; Okta tokens carry `aud` → by audience.
+        if config.idp_provider == "cognito":
+            # [COGNITO] upstream verbatim
+            user_pool_id = config.cognito_user_pool_arn.split("/")[-1]
+            issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
+            discovery_url = f"{issuer}/.well-known/openid-configuration"
 
-        # Get M2M client ID
-        response = config.ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-id")
-        cognito_m2m_client_id = response["Parameter"]["Value"]
-        allowed_clients = [cognito_m2m_client_id]
-        print("\n🔐 JWT Authentication Configuration:")
-        print(f"   Discovery URL: {discovery_url}")
-        print("   Allowed Clients:")
-        print(f"      - {cognito_m2m_client_id} (M2M only)")
-        auth_config = {
-            "customJWTAuthorizer": {
-                "allowedClients": allowed_clients,
-                "discoveryUrl": discovery_url,
+            # Get M2M client ID
+            response = config.ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-id")
+            cognito_m2m_client_id = response["Parameter"]["Value"]
+            allowed_clients = [cognito_m2m_client_id]
+            print("\n🔐 JWT Authentication Configuration:")
+            print(f"   Discovery URL: {discovery_url}")
+            print("   Allowed Clients:")
+            print(f"      - {cognito_m2m_client_id} (M2M only)")
+            auth_config = {
+                "customJWTAuthorizer": {
+                    "allowedClients": allowed_clients,
+                    "discoveryUrl": discovery_url,
+                }
             }
-        }
+        else:  # okta
+            # [OKTA] custom-auth-server discovery + audience (canonical §6 names)
+            discovery_url = config.okta_discovery_url
+            allowed_audience = [config.okta_resource_server_audience]
+            print("\n🔐 JWT Authentication Configuration:")
+            print(f"   Discovery URL: {discovery_url}")
+            print("   Allowed Audience:")
+            print(f"      - {config.okta_resource_server_audience}")
+            auth_config = {
+                "customJWTAuthorizer": {
+                    "allowedAudience": allowed_audience,
+                    "discoveryUrl": discovery_url,
+                }
+            }
+
+        # requestHeaderAllowlist (pure-delta, both paths): lets the OpenSearch OBO
+        # server read the validated Authorization header; harmless for Claims.
+        request_header_config = {"requestHeaderAllowlist": ["Authorization"]}
 
         # Note: Environment variables are read from SSM Parameter Store by the MCP server
         # The starter toolkit will package the entire directory
@@ -366,6 +365,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
             protocol="MCP",
             agent_name=runtime_name,
             authorizer_configuration=auth_config,
+            request_header_configuration=request_header_config,
         )
         print("✅ Configuration complete with JWT authentication")
 
@@ -381,12 +381,9 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         print(f"   Runtime ARN: {runtime_arn}")
         print(f"   Runtime ID: {runtime_id}")
 
-        # Note about JWT authentication
-        print("\n⚠️  Important: Configure JWT Authentication")
-        print("   The runtime is deployed but needs JWT authentication configured.")
-        print("   Run the configuration script:")
-        print("   cd mcp-lakehouse-server")
-        print("   python configure_runtime_auth.py")
+        # JWT authentication was configured inline above (auth_config passed to
+        # .configure()), so no separate configuration step is needed.
+        print("\n✅ JWT authentication configured")
 
         return {
             "runtime_arn": runtime_arn,

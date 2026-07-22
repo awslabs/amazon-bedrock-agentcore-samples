@@ -40,61 +40,111 @@ _config = None
 _jwks = None
 
 
-def get_config() -> Dict[str, str]:
-    """
-    Get Cognito configuration from environment variables or SSM.
+def _resolve_idp_provider() -> str:
+    """IdP selector for the Lambda (DR-8): env (set at deploy time) → SSM → cognito."""
+    v = os.environ.get("IDP_PROVIDER")
+    if v:
+        return v.strip().lower()
+    try:
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        ssm = boto3.client("ssm", region_name=region)
+        return ssm.get_parameter(Name="/app/lakehouse-agent/idp-provider")["Parameter"]["Value"].strip().lower()
+    except Exception:
+        return "cognito"
 
-    Returns:
-        Dictionary with Cognito configuration
-    """
+
+IDP_PROVIDER = _resolve_idp_provider()
+
+
+def get_config() -> Dict[str, str]:
+    """Get IdP configuration from environment variables or SSM (DR-8 branch)."""
     global _config
 
     if _config is not None:
         return _config
 
-    # First try environment variables
-    region = os.environ.get("COGNITO_REGION") or os.environ.get("AWS_REGION", "us-west-2")
-    user_pool_id = os.environ.get("COGNITO_USER_POOL_ID", "")
-    app_client_id = os.environ.get("COGNITO_APP_CLIENT_ID", "")
+    if IDP_PROVIDER == "cognito":
+        # [COGNITO] upstream verbatim
+        region = os.environ.get("COGNITO_REGION") or os.environ.get("AWS_REGION", "us-west-2")
+        user_pool_id = os.environ.get("COGNITO_USER_POOL_ID", "")
+        app_client_id = os.environ.get("COGNITO_APP_CLIENT_ID", "")
 
-    # If not set, try SSM Parameter Store
-    if not user_pool_id or not app_client_id:
-        logger.info("Loading Cognito configuration from SSM Parameter Store...")
-        try:
-            ssm = boto3.client("ssm", region_name=region)
+        # If not set, try SSM Parameter Store
+        if not user_pool_id or not app_client_id:
+            logger.info("Loading Cognito configuration from SSM Parameter Store...")
+            try:
+                ssm = boto3.client("ssm", region_name=region)
 
-            if not user_pool_id:
-                response = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")
-                user_pool_id = response["Parameter"]["Value"]
-                logger.info(f"Loaded user_pool_id from SSM: {user_pool_id}")
+                if not user_pool_id:
+                    response = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")
+                    user_pool_id = response["Parameter"]["Value"]
+                    logger.info(f"Loaded user_pool_id from SSM: {user_pool_id}")
 
-            if not app_client_id:
-                response = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")
-                app_client_id = response["Parameter"]["Value"]
-                logger.info(f"Loaded app_client_id from SSM: {app_client_id}")
+                if not app_client_id:
+                    response = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")
+                    app_client_id = response["Parameter"]["Value"]
+                    logger.info(f"Loaded app_client_id from SSM: {app_client_id}")
 
-        except Exception as e:
-            logger.error(f"Error loading configuration from SSM: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Error loading configuration from SSM: {e}")
+                raise
 
-    _config = {
-        "region": region,
-        "user_pool_id": user_pool_id,
-        "app_client_id": app_client_id,
-        "issuer": f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}",
-    }
+        _config = {
+            "region": region,
+            "user_pool_id": user_pool_id,
+            "app_client_id": app_client_id,
+            "issuer": f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}",
+        }
+        logger.info(f"Cognito configuration loaded: region={region}, user_pool_id={user_pool_id}")
+    else:  # okta
+        # [OKTA] fork verbatim (canonical §6 okta-* keys)
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        okta_org_url = os.environ.get("OKTA_ORG_URL", "")
+        okta_auth_server_id = os.environ.get("OKTA_AUTH_SERVER_ID", "")
+        okta_audience = os.environ.get("OKTA_RESOURCE_SERVER_AUDIENCE", "")
 
-    logger.info(f"Cognito configuration loaded: region={region}, user_pool_id={user_pool_id}")
+        # If not set, try SSM Parameter Store
+        if not okta_org_url or not okta_auth_server_id or not okta_audience:
+            logger.info("Loading Okta configuration from SSM Parameter Store...")
+            try:
+                ssm = boto3.client("ssm", region_name=region)
+
+                if not okta_org_url:
+                    okta_org_url = ssm.get_parameter(Name="/app/lakehouse-agent/okta-org-url")["Parameter"]["Value"]
+                    logger.info(f"Loaded okta_org_url from SSM: {okta_org_url}")
+
+                if not okta_auth_server_id:
+                    okta_auth_server_id = ssm.get_parameter(Name="/app/lakehouse-agent/okta-auth-server-id")[
+                        "Parameter"
+                    ]["Value"]
+                    logger.info(f"Loaded okta_auth_server_id from SSM: {okta_auth_server_id}")
+
+                if not okta_audience:
+                    okta_audience = ssm.get_parameter(Name="/app/lakehouse-agent/okta-resource-server-audience")[
+                        "Parameter"
+                    ]["Value"]
+                    logger.info(f"Loaded okta_audience from SSM: {okta_audience}")
+
+            except Exception as e:
+                logger.error(f"Error loading configuration from SSM: {e}")
+                raise
+
+        _config = {
+            "region": region,
+            "okta_org_url": okta_org_url,
+            "okta_auth_server_id": okta_auth_server_id,
+            "okta_audience": okta_audience,
+            "issuer": f"https://{okta_org_url}/oauth2/{okta_auth_server_id}",
+        }
+        logger.info(
+            f"Okta configuration loaded: region={region}, org_url={okta_org_url}, auth_server_id={okta_auth_server_id}"
+        )
+
     return _config
 
 
-def get_cognito_public_keys() -> Dict[str, Any]:
-    """
-    Fetch Cognito public keys for JWT validation.
-
-    Returns:
-        Dictionary of public keys
-    """
+def get_public_keys() -> Dict[str, Any]:
+    """Fetch IdP public keys for JWT validation (DR-8: Cognito vs Okta JWKS URL)."""
     global _jwks
 
     if _jwks is not None:
@@ -102,15 +152,19 @@ def get_cognito_public_keys() -> Dict[str, Any]:
 
     try:
         config = get_config()
-        jwks_url = f"{config['issuer']}/.well-known/jwks.json"
+        # Cognito exposes /.well-known/jwks.json; Okta uses /v1/keys.
+        if IDP_PROVIDER == "cognito":
+            jwks_url = f"{config['issuer']}/.well-known/jwks.json"
+        else:  # okta
+            jwks_url = f"{config['issuer']}/v1/keys"
         logger.info(f"Fetching JWKS from: {jwks_url}")
 
         with urllib.request.urlopen(jwks_url) as response:  # nosec B310
             _jwks = json.loads(response.read())
-            logger.info("Successfully fetched Cognito public keys")
+            logger.info("Successfully fetched public keys")
             return _jwks
     except Exception as e:
-        logger.error(f"Error fetching Cognito public keys: {str(e)}")
+        logger.error(f"Error fetching public keys: {str(e)}")
         raise
 
 
@@ -127,8 +181,8 @@ def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:
         config = get_config()
 
-        # Get Cognito public keys
-        jwks = get_cognito_public_keys()
+        # Get IdP public keys
+        jwks = get_public_keys()
 
         # Decode token header to get key ID
         unverified_headers = jwt.get_unverified_header(token)
@@ -145,32 +199,44 @@ def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
             logger.error("Public key not found for token")
             return None
 
-        # Validate and decode JWT
-        try:
-            claims = jwt.decode(
-                token,
-                key,
-                algorithms=["RS256"],
-                audience=config["app_client_id"],
-                issuer=config["issuer"],
-            )
-        except JWTError as e:
-            # If audience validation fails, try without audience (for access tokens)
-            if "audience" in str(e).lower() or "aud" in str(e).lower():
-                logger.info("Retrying JWT validation without audience check (access token)")
+        # Decode differs by IdP (DR-8): Cognito access tokens have no 'aud' →
+        # validate client_id; Okta access tokens carry 'aud' → validate directly.
+        if IDP_PROVIDER == "cognito":
+            # [COGNITO] upstream verbatim
+            try:
                 claims = jwt.decode(
                     token,
                     key,
                     algorithms=["RS256"],
+                    audience=config["app_client_id"],
                     issuer=config["issuer"],
-                    options={"verify_aud": False},
                 )
-                # Manually verify client_id for access tokens
-                if claims.get("client_id") != config["app_client_id"]:
-                    logger.error(f"Client ID mismatch: {claims.get('client_id')} != {config['app_client_id']}")
-                    return None
-            else:
-                raise
+            except JWTError as e:
+                # If audience validation fails, try without audience (for access tokens)
+                if "audience" in str(e).lower() or "aud" in str(e).lower():
+                    logger.info("Retrying JWT validation without audience check (access token)")
+                    claims = jwt.decode(
+                        token,
+                        key,
+                        algorithms=["RS256"],
+                        issuer=config["issuer"],
+                        options={"verify_aud": False},
+                    )
+                    # Manually verify client_id for access tokens
+                    if claims.get("client_id") != config["app_client_id"]:
+                        logger.error(f"Client ID mismatch: {claims.get('client_id')} != {config['app_client_id']}")
+                        return None
+                else:
+                    raise
+        else:  # okta
+            # [OKTA] fork verbatim: single-path decode with audience validation
+            claims = jwt.decode(
+                token,
+                key,
+                algorithms=["RS256"],
+                audience=config["okta_audience"],
+                issuer=config["issuer"],
+            )
 
         logger.info(f"Successfully validated JWT for user: {claims.get('username', claims.get('sub'))}")
         return claims
@@ -198,25 +264,53 @@ def get_claim_for_authorization(claims: Dict[str, Any]) -> Optional[Tuple[str, s
     Returns:
         Tuple of (claim_name, claim_value) or None if no suitable claim found
     """
-    # Priority 1: Check for cognito:groups
-    groups = claims.get("cognito:groups")
-    if groups:
-        # Convert list to JSON string format for DynamoDB lookup
-        claim_value = json.dumps(groups)
-        logger.info(f"Found cognito:groups claim for authorization: {claim_value}")
-        return ("cognito:groups", claim_value)
+    if IDP_PROVIDER == "cognito":
+        # [COGNITO] upstream verbatim: cognito:groups (whole-array) → email → username.
+        # Priority 1: Check for cognito:groups
+        groups = claims.get("cognito:groups")
+        if groups:
+            # Convert list to JSON string format for DynamoDB lookup
+            claim_value = json.dumps(groups)
+            logger.info(f"Found cognito:groups claim for authorization: {claim_value}")
+            return ("cognito:groups", claim_value)
 
-    # Priority 2: Check for email
-    email = claims.get("email")
-    if email:
-        logger.info(f"Found email claim for authorization: {email}")
-        return ("email", email)
+        # Priority 2: Check for email
+        email = claims.get("email")
+        if email:
+            logger.info(f"Found email claim for authorization: {email}")
+            return ("email", email)
 
-    # Priority 3: Check for username
-    username = claims.get("username") or claims.get("cognito:username")
-    if username:
-        logger.info(f"Found username claim for authorization: {username}")
-        return ("username", username)
+        # Priority 3: Check for username
+        username = claims.get("username") or claims.get("cognito:username")
+        if username:
+            logger.info(f"Found username claim for authorization: {username}")
+            return ("username", username)
+    else:  # okta
+        # [OKTA] fork verbatim: Okta `groups` (value '.*') includes built-in groups
+        # like `Everyone`, so filter built-ins and iterate; the per-app-group seed
+        # (e.g. ["policyholders"]) matches a single-group key, not the whole array.
+        OKTA_BUILTIN_GROUPS = {"Everyone"}  # Okta-specific; sibling IdPs revisit
+        groups = claims.get("groups")
+        if groups:
+            for group in groups:
+                if group in OKTA_BUILTIN_GROUPS:
+                    continue
+                claim_value = json.dumps([group])
+                logger.info(f"Found groups claim for authorization (per-group iter): {claim_value}")
+                return ("groups", claim_value)
+            logger.warning(f"⚠️  All groups filtered as built-ins: {groups}")
+
+        # Priority 2: Check for email
+        email = claims.get("email")
+        if email:
+            logger.info(f"Found email claim for authorization: {email}")
+            return ("email", email)
+
+        # Priority 3: Check for sub
+        sub = claims.get("sub")
+        if sub:
+            logger.info(f"Found sub claim for authorization: {sub}")
+            return ("sub", sub)
 
     logger.warning("⚠️  No suitable claim found for authorization")
     return None
