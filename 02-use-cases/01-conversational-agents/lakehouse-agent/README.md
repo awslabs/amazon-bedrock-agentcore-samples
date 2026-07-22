@@ -451,10 +451,10 @@ python setup_lakeformation_permissions.py
 python load_sample_data.py
 
 # Step 4: MCP Server on AgentCore Runtime
-cd ../4-mcp-lakehouse-server && python deploy_runtime.py --yes
+cd ../4a-mcp-lakehouse-server && python deploy_runtime.py --yes
 
 # Step 5: Gateway interceptors + Gateway
-cd ../5-gateway-setup/interceptor-request && ./deploy.sh
+cd ../5a-gateway-setup/interceptor-request && ./deploy.sh
 cd ../interceptor-response && ./deploy.sh
 cd .. && python create_gateway.py --yes
 
@@ -549,8 +549,8 @@ The system includes an optional login audit feature that records every Cognito a
 
 ```bash
 cd deployment/6-lakehouse-agent   && python cleanup_agent.py
-cd ../5-gateway-setup             && python cleanup_gateway.py
-cd ../4-mcp-lakehouse-server      && python cleanup_runtime.py
+cd ../5a-gateway-setup             && python cleanup_gateway.py
+cd ../4a-mcp-lakehouse-server      && python cleanup_runtime.py
 cd ../3-s3tables-setup            && python cleanup_s3tables.py
 cd ../2-lakehouse-tenant-roles-setup && python cleanup_iam_roles.py
 cd ../1-cognito-setup             && python cleanup_cognito.py
@@ -816,12 +816,12 @@ lakehouse-agent/
 │   │   ├── load_sample_data.py             #   Sample claims/users data
 │   │   ├── verify_setup.py                 #   Verify deployment
 │   │   └── cleanup_s3tables.py
-│   ├── 4-mcp-lakehouse-server/
+│   ├── 4a-mcp-lakehouse-server/
 │   │   ├── server.py                       #   MCP server (Athena tools)
 │   │   ├── athena_tools_secure.py          #   Secure Athena query tools
 │   │   ├── deploy_runtime.py               #   AgentCore Runtime deployment
 │   │   └── cleanup_runtime.py
-│   ├── 5-gateway-setup/
+│   ├── 5a-gateway-setup/
 │   │   ├── interceptor-request/            #   Request interceptor Lambda
 │   │   │   ├── deploy.sh
 │   │   │   ├── lambda_function.py

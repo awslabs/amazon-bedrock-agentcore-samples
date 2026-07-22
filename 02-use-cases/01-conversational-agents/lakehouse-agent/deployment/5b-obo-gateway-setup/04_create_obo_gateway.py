@@ -523,7 +523,7 @@ def create_notes_cognito_provider(client, config: SSMConfig) -> str:
     """Create (or reuse) the Cognito M2M OAuth2 provider for the gateway→runtime leg.
 
     Cognito has no OIDC token-endpoint discovery, so pass authorization-server
-    metadata directly (mirrors 5-gateway-setup/create_gateway.py's Cognito branch).
+    metadata directly (mirrors 5a-gateway-setup/create_gateway.py's Cognito branch).
     """
     provider_name = COGNITO_M2M_PROVIDER_NAME
     user_pool_id = config.cognito_user_pool_arn.split("/")[-1]

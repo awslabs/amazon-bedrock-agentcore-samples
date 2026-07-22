@@ -250,7 +250,7 @@ The admin role has Lake Formation permissions granted in Step 3d.
 Deploys the MCP Athena server to AgentCore Runtime.
 
 ```bash
-cd ../4-mcp-lakehouse-server
+cd ../4a-mcp-lakehouse-server
 python deploy_runtime.py --yes
 ```
 
@@ -267,7 +267,7 @@ Deploys the request and response interceptor Lambdas and creates the tenant role
 #### 5a. Deploy Request Interceptor
 
 ```bash
-cd ../5-gateway-setup/interceptor-request
+cd ../5a-gateway-setup/interceptor-request
 ./deploy.sh
 ```
 
@@ -378,10 +378,10 @@ every ARN / ID it needs from SSM parameters populated by those steps.
 | 3c           | `3-s3tables-setup`                              | `python setup_s3tables.py`                        |
 | 3d           | `3-s3tables-setup`                              | `python setup_lakeformation_permissions.py`       |
 | 3e           | `3-s3tables-setup`                              | `python load_sample_data.py`                      |
-| 4            | `4-mcp-lakehouse-server`                        | `python deploy_runtime.py --yes`                  |
-| 5a           | `5-gateway-setup/interceptor-request`           | `./deploy.sh`                                     |
-| 5b           | `5-gateway-setup/interceptor-response`          | `./deploy.sh`                                     |
-| 6            | `5-gateway-setup`                               | `python create_gateway.py --yes`                  |
+| 4            | `4a-mcp-lakehouse-server`                       | `python deploy_runtime.py --yes`                  |
+| 5a           | `5a-gateway-setup/interceptor-request`          | `./deploy.sh`                                     |
+| 5b           | `5a-gateway-setup/interceptor-response`         | `./deploy.sh`                                     |
+| 6            | `5a-gateway-setup`                              | `python create_gateway.py --yes`                  |
 | 7            | `6-lakehouse-agent`                             | `python deploy_lakehouse_agent.py --yes`          |
 | 8            | `streamlit-ui`                                  | `streamlit run streamlit_app.py`                  |
 | 9 (optional) | `advanced-agentcore-policy-gateway-interceptor` | `bash scripts/pre-deploy.sh && npx cdk deploy`    |
@@ -405,10 +405,10 @@ deployment/
 │   ├── load_sample_data.py
 │   ├── verify_setup.py
 │   └── cleanup_s3tables.py
-├── 4-mcp-lakehouse-server/               # Step 4
+├── 4a-mcp-lakehouse-server/              # Step 4
 │   ├── deploy_runtime.py
 │   └── cleanup_runtime.py
-├── 5-gateway-setup/                      # Steps 5-6
+├── 5a-gateway-setup/                     # Steps 5-6
 │   ├── interceptor-request/              # Step 5a
 │   │   ├── deploy.sh
 │   │   ├── lambda_function.py
@@ -477,11 +477,11 @@ cd 6-lakehouse-agent
 python cleanup_agent.py
 
 # Step 6/5: Delete Gateway, interceptors, DynamoDB mapping table
-cd ../5-gateway-setup
+cd ../5a-gateway-setup
 python cleanup_gateway.py
 
 # Step 4: Delete MCP Server Runtime
-cd ../4-mcp-lakehouse-server
+cd ../4a-mcp-lakehouse-server
 python cleanup_runtime.py
 
 # Step 3: Delete S3 Tables, Lake Formation integration
