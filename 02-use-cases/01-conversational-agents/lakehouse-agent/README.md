@@ -5,6 +5,7 @@ A lakehouse data processing system demonstrating Amazon Bedrock AgentCore capabi
 ## Table of Contents
 
 - [Overview](#overview)
+- [Choose Your Identity Provider](#choose-your-identity-provider-idp_provider)
 - [Architecture](#architecture)
 - [Key Features](#key-features)
 - [Prerequisites](#prerequisites)
@@ -46,6 +47,82 @@ For detailed role-based access control scenarios and examples, see [scenarios.md
 ✅ **Full Audit Trail**: CloudTrail logs all data access with user identity
 
 ✅ **Secure by Design**: Token validation at multiple checkpoints
+
+---
+
+## Choose Your Identity Provider (IDP_PROVIDER)
+
+This tutorial runs end-to-end on **either Amazon Cognito or Okta**, selected by a
+single top-level flag. You set it once and every notebook honors it — there are
+no source edits between cells.
+
+**How to set it:** put `IDP_PROVIDER=cognito` or `IDP_PROVIDER=okta` in your
+`.env` file (see `.env.example`). Notebook `01` validates the value and mirrors
+it to SSM (`/app/lakehouse-agent/idp-provider`); all downstream notebooks read it
+back from there. `IDP_PROVIDER` defaults to `cognito`, so an unmodified checkout
+reproduces the standard Cognito tutorial.
+
+### Prerequisites by provider
+
+| Provider | Prerequisites |
+|---|---|
+| `cognito` (default) | An AWS account (the tutorial creates the Cognito user pool for you). |
+| `okta` | An AWS account **plus** a free [Okta Developer](https://developer.okta.com/) tenant and an API token. |
+
+### Flag-map — which sections apply per provider
+
+The consolidated tutorial is a single notebook arc. Most steps are
+**identity-provider-agnostic and shared**; divergence is localized to a few
+setup sections. This map is filled in as the build progresses.
+
+| Notebook | `cognito` | `okta` | Notes |
+|---|:---:|:---:|---|
+| `01-deploy-idp` | ✅ branched | ✅ branched | Sets + persists `IDP_PROVIDER`; runs the Cognito **or** Okta setup. |
+| `02-deploy-iam-roles` | ✅ shared | ✅ shared | Identity-provider-agnostic. |
+| `03-deploy-s3tables` | ✅ shared | ✅ shared | Identity-provider-agnostic. |
+| `04-deploy-mcp-server` | ✅ shared | ✅ shared | JWT authorizer config is a guarded cell (Cognito vs Okta discovery). |
+| `05a-deploy-claims-gateway` | ✅ shared | ✅ shared | GW1 claims; authorizer guarded. REQUEST + RESPONSE interceptor. |
+| `05b-deploy-notes-gateway` | ✅ branched | ✅ branched | GW2 notes; **the auth flip** — Cognito interceptor vs Okta OBO. |
+| `06-deploy-agent` | ✅ shared | ✅ shared | Two MCP clients (claims/ + opensearch/); no OBO grant on the agent. |
+| `07-optional-multi-user-isolation-test` | ✅ shared | ✅ shared | Same logic; expectations tagged per provider. |
+| `08-streamlit-ui` | ✅ shared | ✅ shared | Login widget guarded (Cognito vs Okta). |
+| `09-optional-cleanup` | ✅ shared | ✅ shared | Extra Okta OBO / AOSS teardown guarded. |
+
+_Legend: **shared** = one cell serves both providers (unguarded); **branched** =
+the section contains provider-specific cells selected by the flag._
+
+### Authoring convention (for contributors reading the notebooks)
+
+To keep the notebooks legible, provider-specific content follows one convention:
+
+1. **Read the flag** from SSM at the top of each notebook (never hard-code it):
+
+   ```python
+   from utils.idp_config import get_idp_provider
+   IDP_PROVIDER = get_idp_provider(ssm_client)   # notebook 01 uses set_idp_provider(...)
+   ```
+
+2. **Mark provider-specific sections** with a markdown header, so a reader can
+   skip what does not apply to them:
+
+   ```markdown
+   ## [COGNITO] Configure the Cognito JWT authorizer
+   ...
+   ## [OKTA] Configure the Okta JWT authorizer
+   ```
+
+3. **Guard provider-specific code cells** with a plain flag check:
+
+   ```python
+   if IDP_PROVIDER == "cognito":
+       ...  # Cognito-only setup
+   elif IDP_PROVIDER == "okta":
+       ...  # Okta-only setup
+   ```
+
+4. **Leave identity-provider-agnostic cells shared and unguarded** — the
+   majority of cells. Do **not** add a `[COGNITO]`/`[OKTA]` header or an
+   `if IDP_PROVIDER` guard to a cell that behaves identically on both providers.
 
 ---
 
