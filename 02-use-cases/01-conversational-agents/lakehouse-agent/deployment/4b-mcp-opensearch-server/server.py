@@ -66,6 +66,23 @@ opensearch_tools = None
 _config_cache = None
 
 
+def _resolve_idp_provider() -> str:
+    """IdP selector (DR-8): env (set at deploy time) → SSM → cognito default."""
+    v = os.environ.get("IDP_PROVIDER")
+    if v:
+        return v.strip().lower()
+    try:
+        session = boto3.Session()
+        region = os.environ.get("AWS_REGION") or session.region_name or "us-east-1"
+        ssm = boto3.client("ssm", region_name=region)
+        return ssm.get_parameter(Name="/app/lakehouse-agent/idp-provider")["Parameter"]["Value"].strip().lower()
+    except Exception:
+        return "cognito"
+
+
+IDP_PROVIDER = _resolve_idp_provider()
+
+
 def get_config() -> Dict[str, Optional[str]]:
     """
     Load configuration from environment variables and SSM Parameter Store.
@@ -239,8 +256,13 @@ def extract_user_sub_from_headers() -> Optional[str]:
         "live in the lakehouse and are served by the claims/* tools."
     ),
 )
-def search_claim_notes(query: str, limit: int = 10) -> Dict[str, Any]:
-    """Search claim notes for the authenticated user."""
+def search_claim_notes(query: str, limit: int = 10, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    """Search claim notes for the authenticated user.
+
+    `context` carries interceptor-injected identity on the Cognito path
+    (params.arguments.context.user_id = caller sub); unused on the Okta OBO path
+    (identity comes from the forwarded bearer).
+    """
     msg = f"{'=' * 60}\n🔧 TOOL INVOKED: search_claim_notes\n{'=' * 60}"
     logger.info(msg)
     print(msg, file=sys.stderr, flush=True)
@@ -272,7 +294,17 @@ def search_claim_notes(query: str, limit: int = 10) -> Dict[str, Any]:
         except Exception:
             pass  # Don't fail if we can't write to file
 
-        user_sub = extract_user_sub_from_headers()
+        # Identity source differs by IdP (DR-8/DR-9): Okta forwards a user-scoped
+        # bearer via OBO (decode `sub` from the header); Cognito's notes REQUEST
+        # interceptor injects the caller `sub` on the body-context channel
+        # (params.arguments.context.user_id). Either way the value is the caller
+        # `sub` and matches the seeded owner_user_sub by construction.
+        if IDP_PROVIDER == "cognito":
+            user_sub = (context or {}).get("user_id")
+            if user_sub:
+                print(f"✅ Caller sub from interceptor-injected context: {user_sub}")
+        else:  # okta
+            user_sub = extract_user_sub_from_headers()
         logger.info(f"👤 USER SUB: {user_sub}")
         print(f"👤 USER SUB: {user_sub}", file=sys.stderr, flush=True)
         print(f"👤 USER SUB: {user_sub}")

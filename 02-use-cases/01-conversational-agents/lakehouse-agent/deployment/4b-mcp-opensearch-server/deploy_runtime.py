@@ -20,7 +20,12 @@ Usage:
 
 import boto3
 import json
+import os
 import sys
+
+# Make the repo's utils/ importable (idp_config lives there).
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from utils.idp_config import get_idp_provider
 
 try:
     from bedrock_agentcore_starter_toolkit import Runtime
@@ -51,14 +56,22 @@ class SSMConfig:
         # this runtime is read-only against that collection.
         self.opensearch_collection_endpoint = self._get_parameter("/app/lakehouse-agent/opensearch-collection-endpoint")
         self.opensearch_collection_arn = self._get_parameter("/app/lakehouse-agent/opensearch-collection-arn")
-        # Okta IdP configuration (mirrors 4a-mcp-lakehouse-server/deploy_runtime.py).
-        # The custom authorization server's discovery URL drives the runtime
-        # authorizer's JWT validation; the resource-server audience
-        # (api://lakehouse-api) drives the allowedAudience check.
-        self.okta_org_url = self._get_parameter("/app/lakehouse-agent/okta-org-url")
-        self.okta_auth_server_id = self._get_parameter("/app/lakehouse-agent/okta-auth-server-id")
-        self.okta_resource_server_audience = self._get_parameter("/app/lakehouse-agent/okta-resource-server-audience")
-        self.okta_discovery_url = self._get_parameter("/app/lakehouse-agent/okta-discovery-url")
+
+        # IdP selector — read once (DR-8). The runtime authorizer must validate
+        # the GW2 gateway's M2M token: Okta = audience-validated OBO leg; Cognito =
+        # M2M client_credentials (validate by client_id). DR-9 requires this branch
+        # so the Cognito GW2 interceptor gateway can reach this runtime.
+        self.idp_provider = get_idp_provider(self.ssm)
+        if self.idp_provider == "okta":
+            # [OKTA] custom-auth-server discovery + audience
+            self.okta_org_url = self._get_parameter("/app/lakehouse-agent/okta-org-url")
+            self.okta_auth_server_id = self._get_parameter("/app/lakehouse-agent/okta-auth-server-id")
+            self.okta_resource_server_audience = self._get_parameter(
+                "/app/lakehouse-agent/okta-resource-server-audience"
+            )
+            self.okta_discovery_url = self._get_parameter("/app/lakehouse-agent/okta-discovery-url")
+        else:  # cognito
+            self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
 
         # Constants
         self.log_level = "DEBUG"
@@ -95,9 +108,13 @@ class SSMConfig:
         print(f"   Region: {self.region}")
         print(f"   OpenSearch Collection Endpoint: {self.opensearch_collection_endpoint}")
         print(f"   OpenSearch Collection ARN: {self.opensearch_collection_arn}")
-        print(f"   Okta Org URL: {self.okta_org_url}")
-        print(f"   Okta Auth Server ID: {self.okta_auth_server_id}")
-        print(f"   Okta Resource Server Audience: {self.okta_resource_server_audience}")
+        print(f"   IdP: {self.idp_provider}")
+        if self.idp_provider == "okta":
+            print(f"   Okta Org URL: {self.okta_org_url}")
+            print(f"   Okta Auth Server ID: {self.okta_auth_server_id}")
+            print(f"   Okta Resource Server Audience: {self.okta_resource_server_audience}")
+        else:  # cognito
+            print(f"   Cognito User Pool ARN: {self.cognito_user_pool_arn}")
         print(f"   Log Level: {self.log_level}")
 
     def store_runtime_parameters(self, runtime_arn: str, runtime_id: str):
@@ -232,6 +249,9 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
             "AWS_REGION": config.region,
             "OPENSEARCH_COLLECTION_ENDPOINT": config.opensearch_collection_endpoint,
             "LOG_LEVEL": config.log_level,
+            # DR-9: the server reads IDP_PROVIDER to pick its identity source
+            # (Cognito interceptor-injected context.user_id vs Okta bearer sub).
+            "IDP_PROVIDER": config.idp_provider,
         }
 
         print("\n📋 Environment variables:")
@@ -247,15 +267,27 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         # Extract role name from ARN (format: arn:aws:iam::account:role/RoleName)
         role_name = role_arn.split("/")[-1]
 
-        # Build JWT authorizer configuration against the Okta custom
-        # authorization server. Identical shape to the Claims runtime.
-        discovery_url = config.okta_discovery_url
-        allowed_audience = [config.okta_resource_server_audience]
+        # JWT authorizer for the GW2 gateway's M2M token (DR-8/DR-9). Cognito access
+        # tokens carry no `aud` → validate by M2M client_id; Okta tokens carry `aud`.
         print("\n🔐 JWT Authentication Configuration:")
-        print(f"   Discovery URL: {discovery_url}")
-        print("   Allowed Audience:")
-        print(f"      - {config.okta_resource_server_audience}")
-        auth_config = {"customJWTAuthorizer": {"allowedAudience": allowed_audience, "discoveryUrl": discovery_url}}
+        if config.idp_provider == "cognito":
+            # [COGNITO] M2M client_credentials from the gateway; validate by client_id
+            user_pool_id = config.cognito_user_pool_arn.split("/")[-1]
+            issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
+            discovery_url = f"{issuer}/.well-known/openid-configuration"
+            m2m_client_id = config.ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-id")["Parameter"][
+                "Value"
+            ]
+            print(f"   Discovery URL: {discovery_url}")
+            print(f"   Allowed Clients: {m2m_client_id} (M2M)")
+            auth_config = {"customJWTAuthorizer": {"allowedClients": [m2m_client_id], "discoveryUrl": discovery_url}}
+        else:  # okta
+            discovery_url = config.okta_discovery_url
+            allowed_audience = [config.okta_resource_server_audience]
+            print(f"   Discovery URL: {discovery_url}")
+            print("   Allowed Audience:")
+            print(f"      - {config.okta_resource_server_audience}")
+            auth_config = {"customJWTAuthorizer": {"allowedAudience": allowed_audience, "discoveryUrl": discovery_url}}
 
         # The runtime authorizer validates inbound JWTs (security gate) but does
         # NOT forward the validated Authorization header to user code by default.

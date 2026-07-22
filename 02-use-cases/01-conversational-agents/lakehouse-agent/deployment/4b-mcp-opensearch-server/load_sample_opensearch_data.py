@@ -31,12 +31,17 @@ Usage:
 
 import boto3
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from typing import List, Dict
 
 from opensearchpy import OpenSearch, RequestsHttpConnection, helpers
 from aws_requests_auth.aws_auth import AWSRequestsAuth
+
+# Make the repo's utils/ importable (idp_config lives there).
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from utils.idp_config import get_idp_provider
 
 
 CLAIM_NOTES_INDEX = "claim-notes"
@@ -238,37 +243,44 @@ def discover_user_subs(ssm) -> List[Dict[str, str]]:
     """
     Discover test-user sub identifiers from SSM.
 
-    Reads parameters under /app/lakehouse-agent/okta-user-*-sub. Returns
-    a sorted list of {label, sub} dicts where label is the SSM key suffix
-    (e.g., 'policyholder001') extracted from `okta-user-<label>-sub`. Sort
-    order is alphabetical by label so the per-user template slicing is
-    deterministic across runs.
+    Reads /app/lakehouse-agent/<idp>-user-*-sub (DR-8/DR-9 IdP branch):
+    `okta-user-*` on Okta (seeded by notebook 07), `cognito-user-*` on Cognito
+    (each user's Cognito `sub` GUID, seeded by seed_cognito_user_subs.py).
+    Returns a sorted list of {label, sub} where label is the middle segment
+    (e.g., 'policyholder001'). Alphabetical sort keeps per-user template slicing
+    deterministic across runs. The seeded `sub` matches what the gateway forwards
+    at query time by construction, so the owner_user_sub filter is non-vacuous.
     """
-    print(f"\n🔎 Discovering test-user subs in SSM under '{SSM_PREFIX}okta-user-*-sub'...")
+    idp = get_idp_provider(ssm)
+    user_prefix = "cognito-user-" if idp == "cognito" else "okta-user-"
+    print(f"\n🔎 Discovering test-user subs in SSM under '{SSM_PREFIX}{user_prefix}*-sub' (IdP: {idp})...")
 
     paginator = ssm.get_paginator("get_parameters_by_path")
     found = []
     for page in paginator.paginate(Path=SSM_PREFIX, Recursive=False):
         for p in page.get("Parameters", []):
             name = p["Name"]
-            # Match /app/lakehouse-agent/okta-user-<label>-sub
-            if not name.startswith(f"{SSM_PREFIX}okta-user-"):
+            # Match /app/lakehouse-agent/<idp>-user-<label>-sub
+            if not name.startswith(f"{SSM_PREFIX}{user_prefix}"):
                 continue
             if not name.endswith("-sub"):
                 continue
-            label = name[len(f"{SSM_PREFIX}okta-user-") : -len("-sub")]
+            label = name[len(f"{SSM_PREFIX}{user_prefix}") : -len("-sub")]
             found.append({"label": label, "sub": p["Value"]})
 
     found.sort(key=lambda x: x["label"])
 
     if not found:
-        print("   ❌ No okta-user-*-sub parameters found in SSM")
-        print("      Notebook 07 provisions test users and writes their subs to SSM. Run that cell first.")
+        print(f"   ❌ No {user_prefix}*-sub parameters found in SSM")
+        if idp == "cognito":
+            print("      Run seed_cognito_user_subs.py first (writes cognito-user-*-sub from the pool).")
+        else:
+            print("      Notebook 07 provisions test users and writes their subs to SSM. Run that cell first.")
         return []
 
     print(f"   ✅ Discovered {len(found)} test user(s):")
     for u in found:
-        print(f"      - okta-user-{u['label']}-sub = {u['sub']}")
+        print(f"      - {user_prefix}{u['label']}-sub = {u['sub']}")
     return found
 
 
