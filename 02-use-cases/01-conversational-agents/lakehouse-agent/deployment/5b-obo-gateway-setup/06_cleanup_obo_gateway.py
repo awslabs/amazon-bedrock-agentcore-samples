@@ -8,15 +8,15 @@ to the interceptor side or to other workloads in the account).
 
 Cleanup coverage (per R10.4 + tasks.md 9.6):
   1. OBO_Gateway target (lakehouse-obo-target)
-  2. OBO_Gateway (lakehouse-obo-gateway)
-  3. OBO_Gateway IAM role (agentcore-lakehouse-obo-gateway-role)
+  2. OBO_Gateway (lakehouse-notes-gateway)
+  3. OBO_Gateway IAM role (agentcore-lakehouse-notes-gateway-role)
   4. OBO OAuth2 credential provider (lakehouse-obo-okta-provider)
   5. AOSS data-access policy   (lakehouse-claim-notes-data)        [9.1 created]
   6. AOSS network policy       (lakehouse-claim-notes-network)     [9.1 created]
   7. AOSS encryption policy    (lakehouse-claim-notes-encryption)  [9.1 created]
   8. AOSS collection           (lakehouse-claim-notes)             [9.1 created]
   9. Revert agent IAM patch (remove GetWorkloadAccessTokenForJWT statement)
- 10. Net-new SSM keys: obo-* (4 keys), opensearch-collection-{arn,endpoint},
+ 10. Net-new SSM keys: notes-gateway-* (4 keys), opensearch-collection-{arn,endpoint},
      obo-credential-provider-arn
 
 Resources NOT cleaned here (owned by sibling cleanup scripts):
@@ -54,7 +54,7 @@ from utils.aws_session_utils import get_aws_session
 
 # Names match the create-side scripts (9.1, 9.3, 9.4, 9.5)
 COLLECTION_NAME = "lakehouse-claim-notes"
-GATEWAY_NAME = "lakehouse-obo-gateway"
+GATEWAY_NAME = "lakehouse-notes-gateway"
 GATEWAY_ROLE_NAME = f"agentcore-{GATEWAY_NAME}-role"
 PROVIDER_NAME = "lakehouse-obo-okta-provider"
 ENCRYPTION_POLICY_NAME = f"{COLLECTION_NAME}-encryption"
@@ -89,7 +89,7 @@ class OBOCleanup:
         print(f"\n🗑️  Deleting OBO_Gateway: {GATEWAY_NAME}")
 
         # Find by name (SSM key may be missing if 9.4 partially failed)
-        gateway_id = self._get_ssm_param("obo-gateway-id")
+        gateway_id = self._get_ssm_param("notes-gateway-id")
         if not gateway_id:
             try:
                 response = self.bedrock.list_gateways()
@@ -274,11 +274,11 @@ class OBOCleanup:
         print("\n🗑️  Deleting SSM parameters...")
         # All net-new keys this 5b/ directory owns
         params = [
-            # OBO gateway (9.4)
-            "obo-gateway-id",
-            "obo-gateway-arn",
-            "obo-gateway-url",
-            "obo-gateway-name",
+            # GW2 notes gateway (9.4)
+            "notes-gateway-id",
+            "notes-gateway-arn",
+            "notes-gateway-url",
+            "notes-gateway-name",
             # OBO credential provider (9.3)
             "obo-credential-provider-arn",
             # AOSS collection (9.1)

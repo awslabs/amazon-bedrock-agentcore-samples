@@ -110,7 +110,7 @@ def get_config() -> Dict[str, Optional[str]]:
     else:
         logger.info(f"✅ Gateway ARN from environment: {config['gateway_arn']}")
 
-    # GW2 (notes / OpenSearch) URL. Read straight from SSM `obo-gateway-url`
+    # GW2 (notes / OpenSearch) URL. Read straight from SSM `notes-gateway-url`
     # (written by 5b/04 on BOTH IdP paths — Okta OBO gateway and Cognito notes
     # interceptor gateway share the GW2 SSM keys, so this is IdP-agnostic).
     # Optional: if absent, the agent runs claims-only so the GW1 path never
@@ -119,7 +119,7 @@ def get_config() -> Dict[str, Optional[str]]:
     if not config["obo_gateway_url"]:
         try:
             ssm = boto3.client("ssm", region_name=config["region"])
-            response = ssm.get_parameter(Name="/app/lakehouse-agent/obo-gateway-url")
+            response = ssm.get_parameter(Name="/app/lakehouse-agent/notes-gateway-url")
             config["obo_gateway_url"] = response["Parameter"]["Value"]
             logger.info(f"✅ GW2 (notes) Gateway URL from SSM: {config['obo_gateway_url']}")
         except Exception as e:
@@ -183,7 +183,7 @@ def handle_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     Handle requests to the lakehouse agent.
 
     Wires TWO prefixed MCP clients (R6): claims/* → GW1 (Interceptor_Gateway,
-    SSM gateway-arn) and notes/* → GW2 (Notes_Gateway, SSM obo-gateway-url). The
+    SSM gateway-arn) and notes/* → GW2 (Notes_Gateway, SSM notes-gateway-url). The
     SAME inbound user bearer authenticates both gateways; the agent is
     IdP-agnostic (GW2's auth flip — Cognito interceptor vs Okta OBO — is entirely
     gateway-side). The union of both tool catalogs is exposed to the model.
@@ -248,7 +248,7 @@ def handle_request(payload: Dict[str, Any]) -> Dict[str, Any]:
             except Exception as e:
                 logger.warning(f"⚠️  GW2 notes gateway unreachable — running claims-only ({e})")
         else:
-            logger.warning("⚠️  GW2 notes gateway not found (no obo-gateway-url) — running claims-only")
+            logger.warning("⚠️  GW2 notes gateway not found (no notes-gateway-url) — running claims-only")
 
         logger.info(f"✅ Total tools available to the agent: {len(tools)}")
 

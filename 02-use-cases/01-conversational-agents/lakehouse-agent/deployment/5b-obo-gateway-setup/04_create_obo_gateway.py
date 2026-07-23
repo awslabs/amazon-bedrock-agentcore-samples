@@ -9,7 +9,7 @@ This is the structural contrast to the Interceptor_Gateway path.
 
 This script does three things, in order:
 
-  1. Create an IAM role agentcore-lakehouse-obo-gateway-role with the same
+  1. Create an IAM role agentcore-lakehouse-notes-gateway-role with the same
      permissions as the interceptor gateway's role (workload-identity +
      OAuth2 token vault access). Mirrors the interceptor side's defect of
      unconditionally deleting-and-recreating the role on already-exists
@@ -42,7 +42,7 @@ MCP protocol version gate:
 SSM keys:
   Reads:  okta-discovery-url, okta-resource-server-audience,
           opensearch-mcp-runtime-arn, obo-credential-provider-arn
-  Writes: obo-gateway-id, obo-gateway-arn, obo-gateway-url, obo-gateway-name
+  Writes: notes-gateway-id, notes-gateway-arn, notes-gateway-url, notes-gateway-name
 
 Usage:
     python 04_create_obo_gateway.py
@@ -61,7 +61,7 @@ from utils.idp_config import get_idp_provider
 
 
 # Pattern naming over data-store naming.
-GATEWAY_NAME = "lakehouse-obo-gateway"
+GATEWAY_NAME = "lakehouse-notes-gateway"
 TARGET_NAME = "lakehouse-obo-target"
 
 # Separate role for OBO gateway, mirroring interceptor's
@@ -154,22 +154,22 @@ class SSMConfig:
         print("\n💾 Storing OBO gateway configuration in SSM Parameter Store...")
         parameters = [
             {
-                "name": f"{SSM_PREFIX}obo-gateway-id",
+                "name": f"{SSM_PREFIX}notes-gateway-id",
                 "value": gateway_id,
                 "description": "AgentCore OBO_Gateway ID",
             },
             {
-                "name": f"{SSM_PREFIX}obo-gateway-arn",
+                "name": f"{SSM_PREFIX}notes-gateway-arn",
                 "value": gateway_arn,
                 "description": "AgentCore OBO_Gateway ARN",
             },
             {
-                "name": f"{SSM_PREFIX}obo-gateway-url",
+                "name": f"{SSM_PREFIX}notes-gateway-url",
                 "value": gateway_url,
                 "description": "AgentCore OBO_Gateway URL",
             },
             {
-                "name": f"{SSM_PREFIX}obo-gateway-name",
+                "name": f"{SSM_PREFIX}notes-gateway-name",
                 "value": gateway_name,
                 "description": "AgentCore OBO_Gateway Name",
             },
