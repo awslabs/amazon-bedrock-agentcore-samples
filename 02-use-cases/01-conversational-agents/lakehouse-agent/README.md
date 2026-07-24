@@ -389,9 +389,9 @@ There are two ways to deploy the Lakehouse Agent system:
 | | Jupyter Notebooks | CLI Scripts |
 |---|---|---|
 | **Best for** | Learning, exploration, step-by-step walkthrough | DevOps, automation, CI/CD pipelines |
-| **Guide** | Notebooks in this directory (`01-` through `08-`) | [deployment/README.md](deployment/README.md) |
+| **Guide** | Notebooks in this directory (`01-` through `09-`) | [deployment/README.md](deployment/README.md) |
 | **Interactivity** | Cell-by-cell execution with inline output | Command-line with terminal output |
-| **Cleanup** | `08-optional-cleanup.ipynb` | Dedicated `cleanup_*.py` scripts per step |
+| **Cleanup** | `09-optional-cleanup.ipynb` | Dedicated `cleanup_*.py` scripts per step |
 
 Both paths deploy the same resources and use SSM Parameter Store to share configuration between steps.
 
@@ -415,8 +415,9 @@ jupyter notebook ### Or select the kernel to be the .venv installed with pre-req
 | `04-deploy-mcp-server.ipynb` | Deploy MCP Athena server on AgentCore Runtime |
 | `05a-deploy-claims-gateway.ipynb` | Deploy Claims Gateway (GW1) with request/response interceptors |
 | `06-deploy-agent.ipynb` | Deploy conversational AI agent on AgentCore Runtime |
-| `07-streamlit-ui.ipynb` | Launch Streamlit UI and test end-to-end flow |
-| `08-optional-cleanup.ipynb` | Clean up all deployed resources |
+| `07-optional-multi-user-isolation-test.ipynb` | (Optional) Multi-user isolation test — both gateways, both users |
+| `08-streamlit-ui.ipynb` | Launch Streamlit UI and test end-to-end flow |
+| `09-optional-cleanup.ipynb` | Clean up all deployed resources |
 
 Each notebook explains what it deploys, shows progress, saves configuration to SSM, and can be re-run safely.
 
@@ -543,7 +544,7 @@ The system includes an optional login audit feature that records every Cognito a
 
 ## Cleanup
 
-**Notebooks**: Run `08-optional-cleanup.ipynb` — calls each cleanup script in reverse order.
+**Notebooks**: Run `09-optional-cleanup.ipynb` — calls each cleanup script in reverse order.
 
 **CLI**: Each deployment step has a dedicated cleanup script. Run in reverse order:
 
@@ -797,8 +798,9 @@ lakehouse-agent/
 ├── 04-deploy-mcp-server.ipynb              # Notebook: MCP server deployment
 ├── 05a-deploy-claims-gateway.ipynb         # Notebook: Claims Gateway (GW1) + interceptors
 ├── 06-deploy-agent.ipynb                   # Notebook: Agent deployment
-├── 07-streamlit-ui.ipynb                   # Notebook: Streamlit UI test
-├── 08-optional-cleanup.ipynb               # Notebook: Resource cleanup
+├── 07-optional-multi-user-isolation-test.ipynb  # Notebook: Multi-user isolation test (optional)
+├── 08-streamlit-ui.ipynb                   # Notebook: Streamlit UI test
+├── 09-optional-cleanup.ipynb               # Notebook: Resource cleanup
 │
 ├── deployment/                             # CLI deployment scripts
 │   ├── README.md                           #   Full CLI deployment guide
