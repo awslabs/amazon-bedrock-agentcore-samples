@@ -413,7 +413,7 @@ jupyter notebook ### Or select the kernel to be the .venv installed with pre-req
 | `02-deploy-iam-roles.ipynb` | Create IAM roles for tenant groups (policyholders, adjusters, administrators) |
 | `03-deploy-s3tables.ipynb` | Deploy S3 Tables with Lake Formation integration and sample data |
 | `04-deploy-mcp-server.ipynb` | Deploy MCP Athena server on AgentCore Runtime |
-| `05-deploy-gateway.ipynb` | Deploy Gateway with request/response interceptors |
+| `05a-deploy-claims-gateway.ipynb` | Deploy Claims Gateway (GW1) with request/response interceptors |
 | `06-deploy-agent.ipynb` | Deploy conversational AI agent on AgentCore Runtime |
 | `07-streamlit-ui.ipynb` | Launch Streamlit UI and test end-to-end flow |
 | `08-optional-cleanup.ipynb` | Clean up all deployed resources |
@@ -795,7 +795,7 @@ lakehouse-agent/
 ├── 02-deploy-iam-roles.ipynb              # Notebook: IAM tenant roles
 ├── 03-deploy-s3tables.ipynb                # Notebook: S3 Tables + Lake Formation
 ├── 04-deploy-mcp-server.ipynb              # Notebook: MCP server deployment
-├── 05-deploy-gateway.ipynb                 # Notebook: Gateway + interceptors
+├── 05a-deploy-claims-gateway.ipynb         # Notebook: Claims Gateway (GW1) + interceptors
 ├── 06-deploy-agent.ipynb                   # Notebook: Agent deployment
 ├── 07-streamlit-ui.ipynb                   # Notebook: Streamlit UI test
 ├── 08-optional-cleanup.ipynb               # Notebook: Resource cleanup
