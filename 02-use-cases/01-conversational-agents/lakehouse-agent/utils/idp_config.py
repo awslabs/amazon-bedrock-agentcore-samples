@@ -140,3 +140,78 @@ def get_idp_provider(ssm_client) -> str:
         ) from e
 
     return validate_idp_provider(value)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# DR-11 pre-flight IdP-mismatch guard
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def detect_gateway_idp(live_gateway) -> str:
+    """
+    Infer a live gateway's IdP from its JWT authorizer configuration.
+
+    Used by the DR-11 pre-flight guard to catch a flag-switch-without-teardown
+    before an in-place converge/reuse mutates the gateway into the other IdP.
+
+    Detection (from ``authorizerConfiguration.customJWTAuthorizer``):
+      - **cognito**: a ``discoveryUrl`` on ``cognito-idp.<region>.amazonaws.com``
+        with ``allowedClients`` present (Cognito access tokens carry no ``aud``).
+      - **okta**: an Okta-tenant ``discoveryUrl`` with ``allowedAudience`` present.
+
+    Args:
+        live_gateway: A get_gateway / list_gateways item (dict) for the live gateway.
+
+    Returns:
+        "cognito" or "okta".
+
+    Raises:
+        ValueError: If the authorizer is missing or the signals are ambiguous.
+    """
+    authz = ((live_gateway or {}).get("authorizerConfiguration") or {}).get("customJWTAuthorizer") or {}
+    discovery_url = authz.get("discoveryUrl") or ""
+    has_clients = bool(authz.get("allowedClients"))
+    has_audience = bool(authz.get("allowedAudience"))
+
+    # Primary signal: the discovery URL host.
+    if "cognito-idp." in discovery_url and has_clients:
+        return "cognito"
+    if discovery_url and "cognito-idp." not in discovery_url and has_audience:
+        return "okta"
+    # Fallback: the credential-shape signal when the URL is absent/ambiguous.
+    if has_clients and not has_audience:
+        return "cognito"
+    if has_audience and not has_clients:
+        return "okta"
+
+    raise ValueError(
+        "Cannot determine gateway IdP from its authorizer configuration "
+        f"(discoveryUrl={discovery_url!r}, allowedClients={has_clients}, "
+        f"allowedAudience={has_audience}). Expected a Cognito "
+        "(cognito-idp.* discoveryUrl + allowedClients) or Okta "
+        "(tenant discoveryUrl + allowedAudience) authorizer."
+    )
+
+
+def assert_gateway_idp_matches(live_gateway, flag: str, gateway_name: str) -> None:
+    """
+    DR-11 pre-flight guard: fail fast if a live gateway's IdP != the current flag.
+
+    A gateway's IdP is baked into its JWT authorizer; an in-place converge (GW1)
+    or reuse (GW2) against a gateway deployed for the *other* IdP would silently
+    mutate / mis-wire it. Detect the mismatch and refuse, pointing at teardown.
+
+    Raises:
+        RuntimeError: On IdP mismatch, with teardown guidance.
+        ValueError:   If the live gateway's IdP cannot be determined.
+    """
+    live = detect_gateway_idp(live_gateway)
+    if live != flag:
+        raise RuntimeError(
+            f"❌ IdP mismatch on gateway '{gateway_name}': deployed for "
+            f"IDP_PROVIDER='{live}', current flag='{flag}'. A gateway cannot "
+            "switch IdPs in place. Run teardown first "
+            "(GW1: deployment/5a-gateway-setup/cleanup_gateway.py or notebook 09; "
+            "GW2: deployment/5b-obo-gateway-setup/06_cleanup_obo_gateway.py), then "
+            f"set IDP_PROVIDER='{flag}' and re-run."
+        )

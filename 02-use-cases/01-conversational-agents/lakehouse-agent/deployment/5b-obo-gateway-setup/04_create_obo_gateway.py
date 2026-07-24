@@ -57,7 +57,7 @@ from typing import Dict, Any
 
 # Make the repo's utils/ importable (idp_config lives there).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-from utils.idp_config import get_idp_provider
+from utils.idp_config import get_idp_provider, assert_gateway_idp_matches
 
 
 # Pattern naming over data-store naming.
@@ -387,6 +387,9 @@ def create_obo_gateway(client, config: SSMConfig, role_arn: str) -> Dict[str, An
                 if gateway["name"] == GATEWAY_NAME:
                     gateway_id = gateway["gatewayId"]
                     detail = client.get_gateway(gatewayIdentifier=gateway_id)
+                    # DR-11 pre-flight: refuse to reuse a gateway deployed for the
+                    # other IdP (flag-switch without teardown).
+                    assert_gateway_idp_matches(detail, config.idp_provider, GATEWAY_NAME)
                     gateway_url = detail["gatewayUrl"]
                     gateway_arn = f"arn:aws:bedrock-agentcore:{config.region}:{config.account_id}:gateway/{gateway_id}"
                     print(f"✅ Using existing gateway: {gateway_id}")
@@ -628,6 +631,9 @@ def create_notes_interceptor_gateway(client, config: SSMConfig, role_arn: str) -
                 if gateway["name"] == GATEWAY_NAME:
                     gateway_id = gateway["gatewayId"]
                     detail = client.get_gateway(gatewayIdentifier=gateway_id)
+                    # DR-11 pre-flight: refuse to reuse a gateway deployed for the
+                    # other IdP (flag-switch without teardown).
+                    assert_gateway_idp_matches(detail, config.idp_provider, GATEWAY_NAME)
                     gateway_arn = f"arn:aws:bedrock-agentcore:{config.region}:{config.account_id}:gateway/{gateway_id}"
                     return {
                         "gatewayId": gateway_id,

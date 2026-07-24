@@ -27,7 +27,7 @@ from typing import Dict, Any
 # Make the repo's utils/ importable (idp_config lives there) when this script
 # runs from its own deployment subdir.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-from utils.idp_config import get_idp_provider
+from utils.idp_config import get_idp_provider, assert_gateway_idp_matches
 
 
 class SSMConfig:
@@ -410,6 +410,9 @@ class GatewaySetup:
                     if gateway["name"] == gateway_name:
                         gateway_id = gateway["gatewayId"]
                         live = self.client.get_gateway(gatewayIdentifier=gateway_id)
+                        # DR-11 pre-flight: refuse to converge a gateway deployed
+                        # for the other IdP (flag-switch without teardown).
+                        assert_gateway_idp_matches(live, self.config.idp_provider, gateway_name)
                         gateway_url = live["gatewayUrl"]
                         gateway_arn = f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:gateway/{gateway_id}"
 
