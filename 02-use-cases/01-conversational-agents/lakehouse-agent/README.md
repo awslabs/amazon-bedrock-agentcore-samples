@@ -409,7 +409,7 @@ jupyter notebook ### Or select the kernel to be the .venv installed with pre-req
 
 | Notebook | Description |
 |----------|-------------|
-| `01-deploy-cognito.ipynb` | Set up Cognito User Pool with OAuth and test users. Optional: deploy login audit tracking |
+| `01-deploy-idp.ipynb` | Set up the selected identity provider (Cognito user pool **or** Okta apps) with OAuth clients, groups, and test users; persists `IDP_PROVIDER`. Optional: Cognito login audit tracking |
 | `02-deploy-iam-roles.ipynb` | Create IAM roles for tenant groups (policyholders, adjusters, administrators) |
 | `03-deploy-s3tables.ipynb` | Deploy S3 Tables with Lake Formation integration and sample data |
 | `04-deploy-mcp-server.ipynb` | Deploy MCP Athena server on AgentCore Runtime |
@@ -524,7 +524,7 @@ The system includes an optional login audit feature that records every Cognito a
 4. The MCP server's `query_login_audit` tool reads from this DynamoDB table (no Lake Formation involvement — this is a direct DynamoDB read, restricted to the administrators group via Gateway fine-grained access control)
 
 **To enable it:**
-- Via notebook: Run the optional Step 3 cells in `01-deploy-cognito.ipynb`
+- Via notebook: Run the optional Step 3 cells in `01-deploy-idp.ipynb` (Cognito path)
 - Via CLI:
   ```bash
   cd deployment/1-cognito-setup
@@ -791,7 +791,7 @@ lakehouse-agent/
 │   ├── aws_session_utils.py                #   AWS SSO session management
 │   └── notebook_init.py                    #   Notebook initialization helper
 │
-├── 01-deploy-cognito.ipynb                 # Notebook: Cognito OAuth
+├── 01-deploy-idp.ipynb                     # Notebook: IdP setup (Cognito or Okta)
 ├── 02-deploy-iam-roles.ipynb              # Notebook: IAM tenant roles
 ├── 03-deploy-s3tables.ipynb                # Notebook: S3 Tables + Lake Formation
 ├── 04-deploy-mcp-server.ipynb              # Notebook: MCP server deployment

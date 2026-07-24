@@ -1,6 +1,6 @@
 # Okta Setup — Two-Client OBO Topology (Optional Deep-Dive)
 
-**This document is optional.** `setup_okta.py` (run by notebook `01-deploy-okta.ipynb`) automates everything described here — both Okta apps, the custom authorization server, scopes, groups, users, and the access policy. You do **not** need to read this to deploy the demo.
+**This document is optional.** `setup_okta.py` (run by notebook `01-deploy-idp.ipynb`) automates everything described here — both Okta apps, the custom authorization server, scopes, groups, users, and the access policy. You do **not** need to read this to deploy the demo.
 
 Read it if you want to:
 
@@ -94,7 +94,7 @@ The two-client requirement is **Okta-specific**. Okta uses `TOKEN_EXCHANGE` (RFC
 
 ## Verify your setup
 
-After running notebook `01-deploy-okta.ipynb` (or building the topology by hand), run the read-only verifier:
+After running notebook `01-deploy-idp.ipynb` (or building the topology by hand), run the read-only verifier:
 
 ```bash
 cd deployment/1-okta-setup

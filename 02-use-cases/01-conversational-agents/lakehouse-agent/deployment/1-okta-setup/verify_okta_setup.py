@@ -12,7 +12,7 @@ This script is READ-ONLY and idempotent: it inspects Okta + SSM and reports a
 ✅/❌ checklist. It never creates, updates, or deletes anything. Safe to run
 repeatedly.
 
-Default mode (Okta-only) — runnable right after notebook 01-deploy-okta, with
+Default mode (Okta-only) — runnable right after notebook 01-deploy-idp, with
 no dependency on the AgentCore gateways:
   • both apps exist (by label) and both SSM client-id/secret pairs are present
   • the exchange app carries the token-exchange grant type
@@ -174,7 +174,7 @@ async def check_apps(okta, ssm, cl: Checklist):
     elif login_err:
         cl.api_error(f"Could not verify user-login app: {OKTA_APP_NAME}", login_err)
     else:
-        cl.fail(f"User-login app missing: {OKTA_APP_NAME}", "Run setup_okta.py (notebook 01-deploy-okta).")
+        cl.fail(f"User-login app missing: {OKTA_APP_NAME}", "Run setup_okta.py (notebook 01-deploy-idp).")
 
     exchange_app, exchange_err = await find_app_by_label(okta, OKTA_EXCHANGE_APP_NAME)
     if exchange_app:
