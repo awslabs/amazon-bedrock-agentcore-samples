@@ -7,9 +7,9 @@ This script:
 2. Idempotent-creates the `claim-notes` index with the spec mapping
    (owner_user_sub keyword, note_text text, claim_id/note_type keyword,
    created_at date).
-3. Discovers test-user subs from SSM (okta-user-*-sub keys provisioned by
-   notebook 07) and bulk-loads DISJOINT free-text claim-note documents
-   per user.
+3. Discovers test-user subs from SSM (<idp>-user-*-sub keys: okta-user-* written
+   by setup_okta.py in notebook 01, cognito-user-* by seed_cognito_user_subs.py)
+   and bulk-loads DISJOINT free-text claim-note documents per user.
 
 Data distinctness (per design §4):
 - Notes are FREE-TEXT (adjuster narratives, damage descriptions, call
@@ -244,8 +244,9 @@ def discover_user_subs(ssm) -> List[Dict[str, str]]:
     Discover test-user sub identifiers from SSM.
 
     Reads /app/lakehouse-agent/<idp>-user-*-sub (DR-8/DR-9 IdP branch):
-    `okta-user-*` on Okta (seeded by notebook 07), `cognito-user-*` on Cognito
-    (each user's Cognito `sub` GUID, seeded by seed_cognito_user_subs.py).
+    `okta-user-*` on Okta (written by setup_okta.py in notebook 01),
+    `cognito-user-*` on Cognito (each user's Cognito `sub` GUID, seeded by
+    seed_cognito_user_subs.py).
     Returns a sorted list of {label, sub} where label is the middle segment
     (e.g., 'policyholder001'). Alphabetical sort keeps per-user template slicing
     deterministic across runs. The seeded `sub` matches what the gateway forwards
@@ -275,7 +276,7 @@ def discover_user_subs(ssm) -> List[Dict[str, str]]:
         if idp == "cognito":
             print("      Run seed_cognito_user_subs.py first (writes cognito-user-*-sub from the pool).")
         else:
-            print("      Notebook 07 provisions test users and writes their subs to SSM. Run that cell first.")
+            print("      okta-user-*-sub keys are written by setup_okta.py (notebook 01). Run notebook 01 first.")
         return []
 
     print(f"   ✅ Discovered {len(found)} test user(s):")

@@ -844,6 +844,34 @@ class OktaSetup:
             except Exception as e:
                 print(f"⚠️  Error creating user {u['login']}: {e}")
 
+        # Seed the per-user subject key for the OpenSearch notes RLS
+        # (FINDING-1: load_sample_opensearch_data.py in 05b consumes
+        # okta-user-<label>-sub; setup_okta is the PRODUCER, mirroring the
+        # Cognito seed_cognito_user_subs.py convention). CRITICAL: the Okta
+        # access-token `sub` claim is the user's EMAIL (login), NOT created.id
+        # (the 00u… Okta user id) — seeding the id would make owner_user_sub
+        # match nothing at query time (vacuous-pass; fork Finding 16). The
+        # created.id capture above (results["sub"]) is left as-is for the
+        # summary print and is intentionally NOT reused here.
+        print("\n🔑 Seeding okta-user-<label>-sub keys for notes RLS...")
+        for u in results:
+            sub_value = u["login"]  # email == access-token `sub` claim
+            # Fail-fast guard against a future regression to created.id.
+            assert "@" in sub_value, (
+                f"okta-user sub must be the email (access-token `sub` claim), got {sub_value!r}; "
+                "do NOT seed created.id (the 00u… Okta user id)."
+            )
+            label = sub_value.split("@")[0]
+            param_name = f"/app/lakehouse-agent/okta-user-{label}-sub"
+            self.ssm.put_parameter(
+                Name=param_name,
+                Value=sub_value,
+                Description=f"Okta access-token `sub` (email) for test user {u['login']} — notes RLS owner_user_sub",
+                Type="String",
+                Overwrite=True,
+            )
+            print(f"✅ Stored parameter: {param_name} = {sub_value}")
+
         return results
 
     async def _add_user_to_group(self, user_id: str, group_id: str, group_name: str):
