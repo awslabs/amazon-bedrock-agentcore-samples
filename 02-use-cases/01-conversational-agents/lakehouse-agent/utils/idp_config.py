@@ -5,21 +5,24 @@ IdP provider flag helper for the consolidated lakehouse-agent tutorial.
 This tutorial runs on either Amazon Cognito or Okta, selected by a single
 top-level flag ``IDP_PROVIDER`` with allowed values ``"cognito"`` or ``"okta"``.
 
-Flag persistence (see design "Flag-Persistence Mechanism"):
-    1. The author sets ``IDP_PROVIDER=cognito|okta`` in ``.env`` (loaded into the
-       environment by the existing ``load_env_credentials`` loader).
-    2. Notebook ``01`` calls ``set_idp_provider(...)`` once to validate the value
-       and mirror it into SSM at ``/app/lakehouse-agent/idp-provider``.
+Flag persistence (see design "Flag-Persistence Mechanism", DR-12):
+    1. The reader chooses the IdP **in notebook 01's Step-0 cell** by passing an
+       explicit value: ``set_idp_provider(ssm_client, value="cognito")`` (or
+       ``"okta"``). The notebook cell is the canonical knob — NOT ``.env``.
+    2. ``set_idp_provider`` validates the value and mirrors it into SSM at
+       ``/app/lakehouse-agent/idp-provider``.
     3. Every downstream notebook / script calls ``get_idp_provider(...)`` to read
        the flag back from SSM (the demo's existing cross-cell coordination
        substrate) and fails fast if it is missing.
 
-No new dependency is introduced: this reuses the ``.env`` loader and the
-``/app/lakehouse-agent/*`` SSM contract already used throughout the tutorial.
+The ``IDP_PROVIDER`` environment variable is only a **fallback** in the
+resolution order (used when the notebook passes no explicit ``value=``); it is
+NOT the documented way to choose the IdP. No new dependency is introduced: this
+reuses the ``/app/lakehouse-agent/*`` SSM contract already used throughout the tutorial.
 
-Usage in notebook 01 (set once, after ``.env`` is loaded):
+Usage in notebook 01 (choose here, in the Step-0 cell):
     from utils.idp_config import set_idp_provider
-    IDP_PROVIDER = set_idp_provider(ssm_client)   # reads .env, defaults to cognito
+    IDP_PROVIDER = set_idp_provider(ssm_client, value="cognito")  # change to "okta"
 
 Usage in every downstream notebook (read the persisted flag):
     from utils.idp_config import get_idp_provider
@@ -63,10 +66,7 @@ def validate_idp_provider(value: Optional[str]) -> str:
 
     normalized = str(value).strip().lower()
     if normalized not in ALLOWED_VALUES:
-        raise ValueError(
-            f"{FLAG_NAME}={value!r} is invalid. Allowed values are "
-            f"{list(ALLOWED_VALUES)}."
-        )
+        raise ValueError(f"{FLAG_NAME}={value!r} is invalid. Allowed values are {list(ALLOWED_VALUES)}.")
     return normalized
 
 
@@ -75,8 +75,11 @@ def set_idp_provider(ssm_client, value: Optional[str] = None, verbose: bool = Tr
     Resolve, validate, and persist the IDP_PROVIDER flag to SSM (notebook 01).
 
     Resolution order:
-        1. Explicit ``value`` argument, if provided.
-        2. The ``IDP_PROVIDER`` environment variable (loaded from .env).
+        1. Explicit ``value`` argument — the canonical knob; notebook 01's Step-0
+           cell passes this (e.g. ``value="cognito"``).
+        2. Fallback only: the ``IDP_PROVIDER`` environment variable, if set. This
+           is NOT the documented way to choose the IdP (DR-12) — it exists so the
+           resolver has a sensible middle rung when no explicit value is passed.
         3. The default (``"cognito"``) so an unmodified checkout reproduces the
            upstream tutorial.
 

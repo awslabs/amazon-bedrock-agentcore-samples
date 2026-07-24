@@ -16,7 +16,7 @@ Data distinctness (per design §4):
   summaries), qualitatively different from the structured claims records
   served by the Claims_MCP_Server (which carry claim_id, claim_status,
   claim_amount, etc.). The agent's tool choice should be obvious from the
-  question shape: note-search => opensearch/* (this server); structured
+  question shape: note-search => notes/* (this server); structured
   claims/amounts/status => claims/* (Claims_MCP_Server).
 - note_type ∈ {adjuster_note, call_summary, damage_assessment}.
 - Per-user content is disjoint: each user gets a unique 3-document slice
