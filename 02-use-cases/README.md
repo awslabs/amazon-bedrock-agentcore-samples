@@ -34,6 +34,7 @@ Agents that interact with users in real time. Users authenticate through an iden
 | [healthcare-appointment-agent](./01-conversational-agents/healthcare-appointment-agent/) | Healthcare | Runtime, Gateway, Policy, Observability (FHIR R4) |
 | [lakehouse-agent](./01-conversational-agents/lakehouse-agent/) | Data and Analytics | Runtime, Gateway, Memory, Policy (row-level security) |
 | [market-trends-agent](./01-conversational-agents/market-trends-agent/) | Financial Services | Runtime, Memory, Browser, Evaluations, Optimization |
+| [multi-agent-devops-triage-typescript](./01-conversational-agents/multi-agent-devops-triage-typescript/) | IT / DevOps | Runtime (HTTP + A2A), Gateway, Identity (Claude Agent SDK, TypeScript) |
 | [SRE-agent](./01-conversational-agents/SRE-agent/) | Site Reliability | Runtime, Gateway, Memory, Observability |
 | [video-games-sales-assistant](./01-conversational-agents/video-games-sales-assistant/) | Retail / Gaming | Runtime, Gateway, Memory |
 
