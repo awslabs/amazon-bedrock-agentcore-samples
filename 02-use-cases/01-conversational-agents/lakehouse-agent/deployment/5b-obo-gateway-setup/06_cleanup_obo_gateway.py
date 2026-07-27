@@ -10,7 +10,8 @@ Cleanup coverage (per R10.4 + tasks.md 9.6):
   1. OBO_Gateway target (lakehouse-obo-target)
   2. OBO_Gateway (lakehouse-notes-gateway)
   3. OBO_Gateway IAM role (agentcore-lakehouse-notes-gateway-role)
-  4. OBO OAuth2 credential provider (lakehouse-obo-okta-provider)
+  4. OAuth2 credential providers: Okta OBO (lakehouse-obo-okta-provider) +
+     Cognito M2M (lakehouse-notes-cognito-oauth-provider) — each safe-if-absent
   5. AOSS data-access policy   (lakehouse-claim-notes-data)        [9.1 created]
   6. AOSS network policy       (lakehouse-claim-notes-network)     [9.1 created]
   7. AOSS encryption policy    (lakehouse-claim-notes-encryption)  [9.1 created]
@@ -57,6 +58,11 @@ COLLECTION_NAME = "lakehouse-claim-notes"
 GATEWAY_NAME = "lakehouse-notes-gateway"
 GATEWAY_ROLE_NAME = f"agentcore-{GATEWAY_NAME}-role"
 PROVIDER_NAME = "lakehouse-obo-okta-provider"
+# Cognito M2M gateway->runtime credential provider created by 04's Cognito
+# branch (COGNITO_M2M_PROVIDER_NAME). Deleted explicitly here (symmetric with
+# the Okta OBO provider above) rather than relying on cleanup_gateway.py's
+# incidental "lakehouse" substring match. Safe-if-absent -> no-op on Okta.
+COGNITO_M2M_PROVIDER_NAME = "lakehouse-notes-cognito-oauth-provider"
 ENCRYPTION_POLICY_NAME = f"{COLLECTION_NAME}-encryption"
 NETWORK_POLICY_NAME = f"{COLLECTION_NAME}-network"
 DATA_ACCESS_POLICY_NAME = f"{COLLECTION_NAME}-data"
@@ -153,18 +159,18 @@ class OBOCleanup:
         except Exception as e:
             print(f"   ❌ Error: {e}")
 
-    # ─── 4: OBO OAuth2 credential provider ────────────────────────────
-    def delete_oauth_provider(self):
-        print(f"\n🗑️  Deleting OBO OAuth2 credential provider: {PROVIDER_NAME}")
+    # ─── 4: OAuth2 credential providers (Okta OBO + Cognito M2M) ───────
+    def delete_oauth_provider(self, provider_name=PROVIDER_NAME):
+        print(f"\n🗑️  Deleting OAuth2 credential provider: {provider_name}")
         try:
-            self.bedrock.delete_oauth2_credential_provider(name=PROVIDER_NAME)
-            print(f"   ✅ Deleted: {PROVIDER_NAME}")
+            self.bedrock.delete_oauth2_credential_provider(name=provider_name)
+            print(f"   ✅ Deleted: {provider_name}")
         except self.bedrock.exceptions.ResourceNotFoundException:
-            print(f"   ⏭️  Provider not found: {PROVIDER_NAME}")
+            print(f"   ⏭️  Provider not found: {provider_name}")
         except Exception as e:
             msg = str(e).lower()
             if "not found" in msg or "resourcenotfound" in msg:
-                print(f"   ⏭️  Provider not found: {PROVIDER_NAME}")
+                print(f"   ⏭️  Provider not found: {provider_name}")
             else:
                 print(f"   ❌ Error: {e}")
 
@@ -306,7 +312,8 @@ class OBOCleanup:
         # role -> provider), then AOSS, then revert agent IAM, then SSM.
         self.delete_gateway()
         self.delete_gateway_role()
-        self.delete_oauth_provider()
+        self.delete_oauth_provider()  # Okta OBO provider (no-op on Cognito)
+        self.delete_oauth_provider(COGNITO_M2M_PROVIDER_NAME)  # Cognito M2M provider (no-op on Okta)
         self.delete_aoss_collection()
         self.revert_agent_iam_patch()
         self.delete_ssm_parameters()
