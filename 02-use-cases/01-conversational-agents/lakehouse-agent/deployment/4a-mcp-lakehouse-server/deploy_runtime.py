@@ -245,6 +245,10 @@ def create_runtime_role(config: SSMConfig):
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description="AgentCore Runtime execution role for lakehouse data MCP server",
+            Tags=[
+                {"Key": "Application", "Value": "lakehouse-agent"},
+                {"Key": "Purpose", "Value": "lakehouse-mcp-role"},
+            ],
         )
         role_arn = response["Role"]["Arn"]
         print(json.dumps(permissions_policy))
@@ -380,6 +384,20 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         print("\n✅ MCP Server deployed successfully!")
         print(f"   Runtime ARN: {runtime_arn}")
         print(f"   Runtime ID: {runtime_id}")
+
+        # Tag the runtime (post-launch). The starter toolkit's configure()/launch()
+        # do not surface a tags= kwarg, so apply the Application/Purpose tags via the
+        # control-plane TagResource on the returned runtime ARN (mirrors 4b + the
+        # Application-tag convention). Fail-soft: tags are inventory/cost-allocation
+        # metadata, not load-bearing for the deployment.
+        try:
+            boto3.client("bedrock-agentcore-control", region_name=config.region).tag_resource(
+                resourceArn=runtime_arn,
+                tags={"Application": "lakehouse-agent", "Purpose": "lakehouse-mcp"},
+            )
+            print("   🏷️  Tagged runtime: Application=lakehouse-agent, Purpose=lakehouse-mcp")
+        except Exception as tag_err:
+            print(f"   ⚠️  Could not tag runtime (non-fatal): {tag_err}")
 
         # JWT authentication was configured inline above (auth_config passed to
         # .configure()), so no separate configuration step is needed.

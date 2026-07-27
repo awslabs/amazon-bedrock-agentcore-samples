@@ -128,6 +128,7 @@ else
             --timeout 30 \
             --memory-size 256 \
             --environment "Variables={$LAMBDA_ENV_VARS}" \
+            --tags Application=lakehouse-agent,Purpose=claims-response-interceptor \
             --region $AWS_REGION 2>/dev/null; then
             aws lambda wait function-active \
                 --function-name lakehouse-gateway-response-interceptor \

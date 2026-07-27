@@ -39,6 +39,10 @@ def create_lambda_role():
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description="Lambda execution role for Gateway Interceptor",
+            Tags=[
+                {"Key": "Application", "Value": "lakehouse-agent"},
+                {"Key": "Purpose", "Value": "claims-interceptor-role"},
+            ],
         )
         role_arn = response["Role"]["Arn"]
         print(f"✅ Created IAM role: {role_arn}")

@@ -268,6 +268,10 @@ class GatewaySetup:
                 RoleName=role_name,
                 AssumeRolePolicyDocument=json.dumps(trust_policy),
                 Description="IAM role for AgentCore Gateway",
+                Tags=[
+                    {"Key": "Application", "Value": "lakehouse-agent"},
+                    {"Key": "Purpose", "Value": "claims-gateway-role"},
+                ],
             )
             role_arn = response["Role"]["Arn"]
             print(f"✅ Created IAM role: {role_arn}")
@@ -378,6 +382,7 @@ class GatewaySetup:
                 authorizerConfiguration=auth_config,
                 interceptorConfigurations=interceptor_config,
                 description="Gateway for Lakehouse Data MCP Server with OAuth-based access control",
+                tags={"Application": "lakehouse-agent", "Purpose": "claims-gateway"},
             )
 
             gateway_id = response["gatewayId"]
@@ -516,6 +521,7 @@ class GatewaySetup:
                 name=provider_name,
                 credentialProviderVendor="CustomOauth2",
                 oauth2ProviderConfigInput=oauth2_config,
+                tags={"Application": "lakehouse-agent", "Purpose": "claims-mcp-oauth-provider"},
             )
 
             # Debug: print response to see actual structure

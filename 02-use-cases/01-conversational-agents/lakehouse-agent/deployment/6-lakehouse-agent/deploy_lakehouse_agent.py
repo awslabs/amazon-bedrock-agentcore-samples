@@ -190,6 +190,10 @@ def create_agent_role(config: SSMConfig):
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description="AgentCore Runtime execution role for lakehouse data agent",
+            Tags=[
+                {"Key": "Application", "Value": "lakehouse-agent"},
+                {"Key": "Purpose", "Value": "agent-role"},
+            ],
         )
         role_arn = response["Role"]["Arn"]
 
@@ -297,6 +301,20 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         print("\n✅ Lakehouse Agent deployed successfully!")
         print(f"   Runtime ARN: {runtime_arn}")
         print(f"   Runtime ID: {runtime_id}")
+
+        # Tag the runtime (post-launch). The starter toolkit's configure()/launch()
+        # do not surface a tags= kwarg, so apply the Application/Purpose tags via the
+        # control-plane TagResource on the returned runtime ARN (mirrors 4a/4b + the
+        # Application-tag convention). Fail-soft: tags are inventory/cost-allocation
+        # metadata, not load-bearing for the deployment.
+        try:
+            boto3.client("bedrock-agentcore-control", region_name=config.region).tag_resource(
+                resourceArn=runtime_arn,
+                tags={"Application": "lakehouse-agent", "Purpose": "lakehouse-agent"},
+            )
+            print("   🏷️  Tagged runtime: Application=lakehouse-agent, Purpose=lakehouse-agent")
+        except Exception as tag_err:
+            print(f"   ⚠️  Could not tag runtime (non-fatal): {tag_err}")
 
         return {
             "runtime_arn": runtime_arn,

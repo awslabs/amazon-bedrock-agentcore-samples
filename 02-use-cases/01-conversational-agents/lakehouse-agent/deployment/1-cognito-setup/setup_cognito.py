@@ -242,6 +242,7 @@ class CognitoSetup:
                 AdminCreateUserConfig={
                     "AllowAdminCreateUserOnly": False  # Allow users to sign up
                 },
+                UserPoolTags={"Application": "lakehouse-agent", "Purpose": "cognito-user-pool"},
             )
             user_pool_id = pool_response["UserPool"]["Id"]
             print(f"✅ User Pool created: {user_pool_id}")
