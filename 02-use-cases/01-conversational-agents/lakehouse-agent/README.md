@@ -434,38 +434,62 @@ For command-line deployment, follow the detailed guide in [deployment/README.md]
 
 Quick summary of the deployment sequence:
 
+Steps tagged **[COGNITO]** / **[OKTA]** run only on that path; untagged steps are
+shared. Run the tagged steps for the `IDP_PROVIDER` you selected in Step 0.
+
 ```bash
-cd 02-use-cases/lakehouse-agent/deployment
+cd 02-use-cases/lakehouse-agent
 
-# Step 1: Cognito User Pool + OAuth
+# Step 0: Select the identity provider (persists IDP_PROVIDER to SSM).
+#         This is the CLI equivalent of notebook 01's Step-0 cell (explicit
+#         value, NOT .env). Choose ONE:
+python -m utils.idp_config cognito     # ... or: python -m utils.idp_config okta
+
+cd deployment
+
+# Step 1: Identity provider setup  [branch on IDP_PROVIDER]
+## [COGNITO] Cognito User Pool + OAuth
 cd 1-cognito-setup && python setup_cognito.py
+## [COGNITO] (Optional) login audit tracking
+bash deploy_post_auth_lambda.sh && python setup_cognito.py --add-post-auth-trigger
+## [OKTA] Okta apps + auth server + groups + test users
+#         (requires OKTA_ORG_URL + OKTA_API_TOKEN in .env; seeds okta-user-*-sub)
+cd 1-okta-setup && python setup_okta.py
 
-# Step 1b (Optional): Login audit tracking
-bash deploy_post_auth_lambda.sh
-python setup_cognito.py --add-post-auth-trigger
-
-# Step 2: IAM tenant roles (policyholders, adjusters, administrators)
+# Step 2: IAM tenant roles (policyholders, adjusters, administrators)  [shared]
 cd ../2-lakehouse-tenant-roles-setup && python setup_iam_roles.py
 
-# Step 3: S3 Tables + Lake Formation + sample data
+# Step 3: S3 Tables + Lake Formation + sample data  [shared]
 cd ../3-s3tables-setup
 python integrate_s3tables_lakeformation.py
 python setup_s3tables.py
 python setup_lakeformation_permissions.py
 python load_sample_data.py
 
-# Step 4: MCP Server on AgentCore Runtime
+# Step 4: Claims MCP server (Athena) on AgentCore Runtime  [shared]
 cd ../4a-mcp-lakehouse-server && python deploy_runtime.py --yes
 
-# Step 5: Gateway interceptors + Gateway
+# Step 5a: Claims Gateway (GW1) — interceptors + gateway  [shared]
 cd ../5a-gateway-setup/interceptor-request && ./deploy.sh
 cd ../interceptor-response && ./deploy.sh
 cd .. && python create_gateway.py --yes
 
-# Step 6: Lakehouse Agent on AgentCore Runtime
+# Step 5b: Notes Gateway (GW2) + OpenSearch — the auth flip
+cd ../5b-obo-gateway-setup && python 01_deploy_opensearch_collection.py   # [shared] AOSS collection
+cd ../../4b-mcp-opensearch-server && python deploy_runtime.py --yes       # [shared] OpenSearch MCP runtime
+python seed_cognito_user_subs.py                                          # [COGNITO] seed cognito-user-*-sub (Okta seeded these in Step 1)
+python load_sample_opensearch_data.py                                     # [shared] seed disjoint per-user claim-notes
+cd ../5b-obo-gateway-setup && python 02_verify_opensearch_mcp.py          # [shared] verify
+python 03_create_oauth_provider.py                                        # [OKTA] OBO credential provider  ── auth-flip ──
+cd ../5a-gateway-setup/interceptor-notes && ./deploy.sh                   # [COGNITO] notes REQUEST interceptor  ── auth-flip ──
+cd ../../5b-obo-gateway-setup && python 04_create_obo_gateway.py          # [shared] create GW2 (branches internally by IdP)
+# (05_update_agent_iam.py is intentionally omitted — the GW2 role performs the
+#  RFC 8693 exchange; the agent holds no OBO grant. See notebook 05b.)
+
+# Step 6: Lakehouse Agent on AgentCore Runtime  [shared]
 cd ../6-lakehouse-agent && python deploy_lakehouse_agent.py --yes
 
-# Step 7: Streamlit UI
+# Step 7: Streamlit UI  [shared] (login widget branches by IdP)
 cd ../../streamlit-ui && streamlit run streamlit_app.py
 ```
 
@@ -552,15 +576,37 @@ The system includes an optional login audit feature that records every Cognito a
 **CLI**: Each deployment step has a dedicated cleanup script. Run in reverse order:
 
 ```bash
-cd deployment/6-lakehouse-agent   && python cleanup_agent.py
-cd ../5a-gateway-setup             && python cleanup_gateway.py
-cd ../4a-mcp-lakehouse-server      && python cleanup_runtime.py
-cd ../3-s3tables-setup            && python cleanup_s3tables.py
+cd deployment
+
+# Agent  [shared]
+cd 6-lakehouse-agent && python cleanup_agent.py
+
+# GW2 notes gateway + OpenSearch OBO/M2M + AOSS  [shared]
+cd ../5b-obo-gateway-setup && python 06_cleanup_obo_gateway.py
+## [COGNITO] notes REQUEST interceptor (Lambda + role + log group)
+cd ../5a-gateway-setup/interceptor-notes && ./cleanup.sh
+
+# GW1 claims gateway + interceptors + DynamoDB tenant-role map  [shared]
+cd .. && python cleanup_gateway.py
+
+# MCP runtimes: 4a claims + 4b OpenSearch  [shared]
+cd ../4a-mcp-lakehouse-server && python cleanup_runtime.py
+cd ../4b-mcp-opensearch-server && python cleanup_runtime.py
+
+# S3 Tables + Lake Formation (deregister; pre-existing LF admins preserved)  [shared]
+cd ../3-s3tables-setup && python cleanup_s3tables.py
+
+# IAM tenant roles  [shared]
 cd ../2-lakehouse-tenant-roles-setup && python cleanup_iam_roles.py
-cd ../1-cognito-setup             && python cleanup_cognito.py
+
+# Identity provider  [branch on IDP_PROVIDER]
+cd ../1-cognito-setup && python cleanup_cognito.py   # [COGNITO]
+cd ../1-okta-setup && python cleanup_okta.py         # [OKTA] (needs OKTA_ORG_URL + OKTA_API_TOKEN)
 ```
 
 All cleanup scripts support `--keep-ssm` to preserve SSM parameters for re-deployment.
+The optional S3-bucket delete and the bulk SSM-parameter sweep live in
+`09-optional-cleanup.ipynb` (Steps 8–9), which runs this same reverse-order teardown behind `IDP_PROVIDER` guards.
 
 See [deployment/README.md](deployment/README.md) for full cleanup details.
 
@@ -754,8 +800,8 @@ aws logs tail /aws/lambda/lakehouse-gateway-interceptor --follow
 # View MCP server logs
 aws logs tail /aws/bedrock-agentcore/runtime/mcp-server-id --follow
 
-# Test JWT token
-python 5a-gateway-setup/test_cognito_login.py
+# Decode/inspect a user JWT
+python 5a-gateway-setup/decode_user_token.py
 ```
 
 ### Logs to Check

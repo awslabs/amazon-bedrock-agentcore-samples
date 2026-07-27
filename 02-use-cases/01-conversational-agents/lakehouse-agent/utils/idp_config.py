@@ -218,3 +218,38 @@ def assert_gateway_idp_matches(live_gateway, flag: str, gateway_name: str) -> No
             "GW2: deployment/5b-obo-gateway-setup/06_cleanup_obo_gateway.py), then "
             f"set IDP_PROVIDER='{flag}' and re-run."
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CLI entrypoint (Option-B / DevOps path — DR-12-consistent)
+# ─────────────────────────────────────────────────────────────────────────
+# The notebook path chooses the IdP in notebook 01's Step-0 cell. The CLI path
+# has no notebook, so this entrypoint is the equivalent explicit knob:
+#     python -m utils.idp_config cognito     # or: okta
+# It persists an EXPLICIT value to SSM (never reads .env for the choice) — the
+# same canonical mechanism as the notebook cell, just from the shell.
+
+
+def main(argv=None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="python -m utils.idp_config",
+        description="Persist the IDP_PROVIDER flag to SSM (Option-B/CLI equivalent of notebook 01's Step-0 cell).",
+    )
+    parser.add_argument(
+        "value",
+        choices=ALLOWED_VALUES,
+        help="Identity provider to select (cognito | okta).",
+    )
+    args = parser.parse_args(argv)
+
+    import boto3  # imported after arg-parse so `--help` works without boto3 installed
+
+    ssm_client = boto3.client("ssm")
+    set_idp_provider(ssm_client, value=args.value)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
