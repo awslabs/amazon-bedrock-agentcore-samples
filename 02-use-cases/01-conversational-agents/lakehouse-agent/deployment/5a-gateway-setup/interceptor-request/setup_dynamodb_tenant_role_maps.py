@@ -17,10 +17,15 @@ Usage:
 
 import boto3
 import json
+import os
 import sys
 import argparse
 from typing import Dict, List
 from botocore.exceptions import ClientError
+
+# Repo utils (idp flag reader) — deployment/5a-gateway-setup/interceptor-request/ → ../../..
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
+from utils.idp_config import get_idp_provider
 
 
 class TenantRoleMappingSetup:
@@ -46,10 +51,19 @@ class TenantRoleMappingSetup:
 
         self.table_name = table_name
 
+        # Read the IdP flag ONCE (same SSM substrate the interceptors use, DR-8).
+        # The interceptor's get_claim_for_authorization builds the DynamoDB key with
+        # claim_name = "cognito:groups" (Cognito) vs "groups" (Okta); seed the rows to
+        # match the ACTIVE IdP so the lookup hits on both paths. claim_value is
+        # IdP-invariant ('["<group>"]'); only claim_name branches.
+        self.idp_provider = get_idp_provider(self.ssm_client)
+        self.claim_name = "cognito:groups" if self.idp_provider == "cognito" else "groups"
+
         print("✅ Using AWS configuration")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         print(f"   Table Name: {self.table_name}")
+        print(f"   IdP Provider: {self.idp_provider} → claim_name: {self.claim_name}")
 
     def create_table(self) -> bool:
         """
@@ -156,7 +170,7 @@ class TenantRoleMappingSetup:
         """
         return [
             {
-                "claim_name": "cognito:groups",
+                "claim_name": self.claim_name,
                 "claim_value": '["adjusters"]',
                 "role_type": "iam_role",
                 "role_value": role_arns.get(
@@ -172,7 +186,7 @@ class TenantRoleMappingSetup:
                 "createdAt": "2024-01-01T00:00:00Z",
             },
             {
-                "claim_name": "cognito:groups",
+                "claim_name": self.claim_name,
                 "claim_value": '["policyholders"]',
                 "role_type": "iam_role",
                 "role_value": role_arns.get(
@@ -188,7 +202,7 @@ class TenantRoleMappingSetup:
                 "createdAt": "2024-01-01T00:00:00Z",
             },
             {
-                "claim_name": "cognito:groups",
+                "claim_name": self.claim_name,
                 "claim_value": '["administrators"]',
                 "role_type": "iam_role",
                 "role_value": role_arns.get(
