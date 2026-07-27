@@ -25,7 +25,7 @@ A lakehouse data processing system demonstrating Amazon Bedrock AgentCore capabi
 
 This system showcases a lakehouse data processing application with:
 
-- **Streamlit UI** with Cognito OAuth authentication
+- **Streamlit UI** with Cognito or Okta OAuth authentication (selected by `IDP_PROVIDER`)
 - **AI-Powered Lakehouse Agent** hosted on AgentCore Runtime using Strands framework
 - **AgentCore Gateway** with JWT token validation via interceptor Lambda
 - **MCP Server** connecting to AWS Athena for data queries
@@ -56,11 +56,13 @@ This tutorial runs end-to-end on **either Amazon Cognito or Okta**, selected by 
 single top-level flag. You set it once and every notebook honors it — there are
 no source edits between cells.
 
-**How to set it:** put `IDP_PROVIDER=cognito` or `IDP_PROVIDER=okta` in your
-`.env` file (see `.env.example`). Notebook `01` validates the value and mirrors
-it to SSM (`/app/lakehouse-agent/idp-provider`); all downstream notebooks read it
-back from there. `IDP_PROVIDER` defaults to `cognito`, so an unmodified checkout
-reproduces the standard Cognito tutorial.
+**How to set it:** choose the provider in notebook `01`'s **Step-0 cell** —
+`set_idp_provider(ssm, value="cognito")` (or `"okta"`) — which validates the
+value and persists it to SSM (`/app/lakehouse-agent/idp-provider`); all
+downstream notebooks read it back from there via `get_idp_provider(ssm)`. It
+defaults to `cognito`, so an unmodified checkout reproduces the standard Cognito
+tutorial. (The flag is **not** read from `.env` — `.env` holds only the Okta
+credentials needed on the `okta` path.)
 
 ### Prerequisites by provider
 
@@ -73,7 +75,7 @@ reproduces the standard Cognito tutorial.
 
 The consolidated tutorial is a single notebook arc. Most steps are
 **identity-provider-agnostic and shared**; divergence is localized to a few
-setup sections. This map is filled in as the build progresses.
+setup sections.
 
 | Notebook | `cognito` | `okta` | Notes |
 |---|:---:|:---:|---|
@@ -83,10 +85,10 @@ setup sections. This map is filled in as the build progresses.
 | `04-deploy-mcp-server` | ✅ shared | ✅ shared | JWT authorizer config is a guarded cell (Cognito vs Okta discovery). |
 | `05a-deploy-claims-gateway` | ✅ shared | ✅ shared | GW1 claims; authorizer guarded. REQUEST + RESPONSE interceptor. |
 | `05b-deploy-notes-gateway` | ✅ branched | ✅ branched | GW2 notes; **the auth flip** — Cognito interceptor vs Okta OBO. |
-| `06-deploy-agent` | ✅ shared | ✅ shared | Two MCP clients (claims/ + opensearch/); no OBO grant on the agent. |
+| `06-deploy-agent` | ✅ shared | ✅ shared | Two MCP clients (claims/ + notes/); no OBO grant on the agent. |
 | `07-optional-multi-user-isolation-test` | ✅ shared | ✅ shared | Same logic; expectations tagged per provider. |
 | `08-streamlit-ui` | ✅ shared | ✅ shared | Login widget guarded (Cognito vs Okta). |
-| `09-optional-cleanup` | ✅ shared | ✅ shared | Extra Okta OBO / AOSS teardown guarded. |
+| `09-optional-cleanup` | ✅ branched | ✅ branched | Dual-IdP `[COGNITO]`/`[OKTA]` teardown in reverse-deploy order (GW2/AOSS/4b/notes-interceptor + IdP-specific). |
 
 _Legend: **shared** = one cell serves both providers (unguarded); **branched** =
 the section contains provider-specific cells selected by the flag._
@@ -412,8 +414,9 @@ jupyter notebook ### Or select the kernel to be the .venv installed with pre-req
 | `01-deploy-idp.ipynb` | Set up the selected identity provider (Cognito user pool **or** Okta apps) with OAuth clients, groups, and test users; persists `IDP_PROVIDER`. Optional: Cognito login audit tracking |
 | `02-deploy-iam-roles.ipynb` | Create IAM roles for tenant groups (policyholders, adjusters, administrators) |
 | `03-deploy-s3tables.ipynb` | Deploy S3 Tables with Lake Formation integration and sample data |
-| `04-deploy-mcp-server.ipynb` | Deploy MCP Athena server on AgentCore Runtime |
+| `04-deploy-mcp-server.ipynb` | Deploy the claims MCP (Athena) server on AgentCore Runtime (the notes/OpenSearch MCP runtime, `4b`, is deployed from `05b`) |
 | `05a-deploy-claims-gateway.ipynb` | Deploy Claims Gateway (GW1) with request/response interceptors |
+| `05b-deploy-notes-gateway.ipynb` | Deploy Notes Gateway (GW2) — OpenSearch MCP runtime (`4b`) + AOSS collection; auth flips by IdP (Cognito interceptor vs Okta OBO) |
 | `06-deploy-agent.ipynb` | Deploy conversational AI agent on AgentCore Runtime |
 | `07-optional-multi-user-isolation-test.ipynb` | (Optional) Multi-user isolation test — both gateways, both users |
 | `08-streamlit-ui.ipynb` | Launch Streamlit UI and test end-to-end flow |
@@ -752,7 +755,7 @@ aws logs tail /aws/lambda/lakehouse-gateway-interceptor --follow
 aws logs tail /aws/bedrock-agentcore/runtime/mcp-server-id --follow
 
 # Test JWT token
-python gateway-setup/test_cognito_login.py
+python 5a-gateway-setup/test_cognito_login.py
 ```
 
 ### Logs to Check
@@ -797,6 +800,7 @@ lakehouse-agent/
 ├── 03-deploy-s3tables.ipynb                # Notebook: S3 Tables + Lake Formation
 ├── 04-deploy-mcp-server.ipynb              # Notebook: MCP server deployment
 ├── 05a-deploy-claims-gateway.ipynb         # Notebook: Claims Gateway (GW1) + interceptors
+├── 05b-deploy-notes-gateway.ipynb          # Notebook: Notes Gateway (GW2) + OpenSearch (4b) + AOSS; auth flips by IdP
 ├── 06-deploy-agent.ipynb                   # Notebook: Agent deployment
 ├── 07-optional-multi-user-isolation-test.ipynb  # Notebook: Multi-user isolation test (optional)
 ├── 08-streamlit-ui.ipynb                   # Notebook: Streamlit UI test
@@ -808,6 +812,10 @@ lakehouse-agent/
 │   │   ├── setup_cognito.py                #   Cognito User Pool + OAuth
 │   │   ├── deploy_post_auth_lambda.sh      #   Login audit Lambda
 │   │   └── cleanup_cognito.py
+│   ├── 1-okta-setup/                        #   [OKTA] IdP setup (apps, auth server, groups, users)
+│   │   ├── setup_okta.py                   #   Okta apps + auth server + test users
+│   │   ├── verify_okta_setup.py            #   Verify Okta config
+│   │   └── cleanup_okta.py
 │   ├── 2-lakehouse-tenant-roles-setup/
 │   │   ├── setup_iam_roles.py              #   IAM roles per tenant group
 │   │   └── cleanup_iam_roles.py
@@ -819,9 +827,15 @@ lakehouse-agent/
 │   │   ├── verify_setup.py                 #   Verify deployment
 │   │   └── cleanup_s3tables.py
 │   ├── 4a-mcp-lakehouse-server/
-│   │   ├── server.py                       #   MCP server (Athena tools)
+│   │   ├── server.py                       #   Claims MCP server (Athena tools)
 │   │   ├── athena_tools_secure.py          #   Secure Athena query tools
 │   │   ├── deploy_runtime.py               #   AgentCore Runtime deployment
+│   │   └── cleanup_runtime.py
+│   ├── 4b-mcp-opensearch-server/           #   Notes MCP server (OpenSearch/AOSS)
+│   │   ├── server.py                       #   search_claim_notes (owner_user_sub RLS)
+│   │   ├── deploy_runtime.py               #   AgentCore Runtime deployment (from 05b)
+│   │   ├── seed_cognito_user_subs.py       #   [COGNITO] seed cognito-user-*-sub for RLS
+│   │   ├── load_sample_opensearch_data.py  #   Seed disjoint per-user claim-notes
 │   │   └── cleanup_runtime.py
 │   ├── 5a-gateway-setup/
 │   │   ├── interceptor-request/            #   Request interceptor Lambda
@@ -833,15 +847,22 @@ lakehouse-agent/
 │   │   ├── interceptor-response/           #   Response interceptor Lambda
 │   │   │   ├── deploy.sh
 │   │   │   └── lambda_function.py
+│   │   ├── interceptor-notes/              #   [COGNITO] thin notes REQUEST interceptor
+│   │   │   ├── deploy.sh
+│   │   │   ├── lambda_function.py
+│   │   │   └── cleanup.sh
 │   │   ├── create_gateway.py               #   AgentCore Gateway creation
 │   │   └── cleanup_gateway.py
+│   ├── 5b-obo-gateway-setup/               #   GW2 notes gateway (Okta OBO / Cognito M2M) + AOSS
+│   │   ├── 04_create_obo_gateway.py        #   Create GW2 (branches by IdP)
+│   │   └── 06_cleanup_obo_gateway.py       #   Teardown GW2 + AOSS + credential providers
 │   └── 6-lakehouse-agent/
 │       ├── lakehouse_agent.py              #   Strands-based agent
 │       ├── deploy_lakehouse_agent.py       #   AgentCore Runtime deployment
 │       └── cleanup_agent.py
 │
 ├── streamlit-ui/
-│   └── streamlit_app.py                    # Streamlit UI with Cognito OAuth
+│   └── streamlit_app.py                    # Streamlit UI (Cognito or Okta OAuth, per IDP_PROVIDER)
 │
 └── test/                                   # Test scripts
 ```
