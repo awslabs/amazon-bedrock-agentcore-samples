@@ -65,7 +65,8 @@ if aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
 else
     aws iam create-role --role-name "$ROLE_NAME" \
         --assume-role-policy-document "$TRUST_POLICY" \
-        --description "Least-priv execution role for the notes gateway REQUEST interceptor (CloudWatch Logs only)"
+        --description "Least-priv execution role for the notes gateway REQUEST interceptor (CloudWatch Logs only)" \
+        --tags Key=Application,Value=lakehouse-agent Key=Purpose,Value=notes-interceptor-role
 fi
 # CloudWatch Logs only.
 aws iam attach-role-policy --role-name "$ROLE_NAME" \
@@ -110,6 +111,7 @@ else
             --timeout 30 \
             --memory-size 256 \
             --environment "Variables={$LAMBDA_ENV_VARS}" \
+            --tags Application=lakehouse-agent,Purpose=notes-interceptor \
             --region $AWS_REGION 2>/dev/null; then
             aws lambda wait function-active \
                 --function-name lakehouse-notes-interceptor \

@@ -173,6 +173,7 @@ def create_obo_provider(client, config: SSMConfig) -> str:
             name=PROVIDER_NAME,
             credentialProviderVendor="CustomOauth2",
             oauth2ProviderConfigInput=provider_config,
+            tags={"Application": "lakehouse-agent", "Purpose": "obo-okta-provider"},
         )
         provider_arn = (
             response.get("credentialProviderArn") or response.get("oauth2CredentialProviderArn") or response.get("arn")

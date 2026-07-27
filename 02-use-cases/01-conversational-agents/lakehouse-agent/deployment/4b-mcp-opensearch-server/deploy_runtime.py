@@ -199,6 +199,10 @@ def create_runtime_role(config: SSMConfig):
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description="AgentCore Runtime execution role for OpenSearch claim-notes MCP server",
+            Tags=[
+                {"Key": "Application", "Value": "lakehouse-agent"},
+                {"Key": "Purpose", "Value": "opensearch-mcp-role"},
+            ],
         )
         role_arn = response["Role"]["Arn"]
         print(json.dumps(permissions_policy))
@@ -328,6 +332,21 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         print("\n✅ OpenSearch MCP Server deployed successfully!")
         print(f"   Runtime ARN: {runtime_arn}")
         print(f"   Runtime ID: {runtime_id}")
+
+        # Tag the runtime (post-launch). The starter toolkit's configure()/launch()
+        # do not surface a tags= kwarg, so apply the Application/Purpose tags via the
+        # control-plane TagResource on the returned runtime ARN (mirrors the
+        # Application-tag convention applied at create time on the other net-new
+        # resources). Fail-soft: tags are inventory/cost-allocation metadata, not
+        # load-bearing for the deployment.
+        try:
+            boto3.client("bedrock-agentcore-control", region_name=config.region).tag_resource(
+                resourceArn=runtime_arn,
+                tags={"Application": "lakehouse-agent", "Purpose": "opensearch-mcp"},
+            )
+            print("   🏷️  Tagged runtime: Application=lakehouse-agent, Purpose=opensearch-mcp")
+        except Exception as tag_err:
+            print(f"   ⚠️  Could not tag runtime (non-fatal): {tag_err}")
 
         return {"runtime_arn": runtime_arn, "runtime_id": runtime_id, "role_arn": role_arn}
 

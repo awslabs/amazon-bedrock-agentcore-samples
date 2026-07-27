@@ -272,6 +272,10 @@ def create_obo_gateway_role(config: SSMConfig) -> str:
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description="IAM role for AgentCore OBO_Gateway",
+            Tags=[
+                {"Key": "Application", "Value": "lakehouse-agent"},
+                {"Key": "Purpose", "Value": "notes-gateway-role"},
+            ],
         )
         role_arn = response["Role"]["Arn"]
         print(f"✅ Created IAM role: {role_arn}")
@@ -364,6 +368,7 @@ def create_obo_gateway(client, config: SSMConfig, role_arn: str) -> Dict[str, An
             authorizerType="CUSTOM_JWT",
             authorizerConfiguration=auth_config,
             description="OBO_Gateway for OpenSearch_MCP_Server (RFC 8693 TOKEN_EXCHANGE; design §7d)",
+            tags={"Application": "lakehouse-agent", "Purpose": "notes-gateway"},
         )
         gateway_id = response["gatewayId"]
         gateway_url = response["gatewayUrl"]
@@ -554,6 +559,7 @@ def create_notes_cognito_provider(client, config: SSMConfig) -> str:
                     "clientSecret": client_secret,
                 }
             },
+            tags={"Application": "lakehouse-agent", "Purpose": "notes-cognito-oauth-provider"},
         )
         provider_arn = (
             response.get("oauth2CredentialProviderArn") or response.get("arn") or response.get("credentialProviderArn")
@@ -613,6 +619,7 @@ def create_notes_interceptor_gateway(client, config: SSMConfig, role_arn: str) -
             authorizerConfiguration=auth_config,
             interceptorConfigurations=interceptor_config,
             description="GW2 notes gateway (Cognito REQUEST interceptor; DR-9)",
+            tags={"Application": "lakehouse-agent", "Purpose": "notes-gateway"},
         )
         gateway_id = response["gatewayId"]
         gateway_url = response["gatewayUrl"]

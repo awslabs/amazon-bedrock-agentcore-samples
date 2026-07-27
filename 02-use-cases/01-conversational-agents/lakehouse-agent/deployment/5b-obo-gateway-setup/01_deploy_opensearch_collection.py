@@ -229,6 +229,10 @@ def ensure_collection(aoss, collection_name: str) -> dict:
             type="SEARCH",
             description="Free-text claim-note search for OpenSearch_MCP_Server",
             standbyReplicas="DISABLED",
+            tags=[
+                {"key": "Application", "value": "lakehouse-agent"},
+                {"key": "Purpose", "value": "claim-notes"},
+            ],
         )
         collection_id = create_response["createCollectionDetail"]["id"]
         print(f"   ✅ Create initiated; id={collection_id}")
