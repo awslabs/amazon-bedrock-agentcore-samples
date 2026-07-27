@@ -1,5 +1,15 @@
 # Lakehouse Agent: Role-Based Access Control Scenarios
 
+> **Applies to both identity providers.** These RBAC scenarios are
+> **IdP-agnostic** — the same personas (policyholders / adjusters /
+> administrators), the same tools, and the same `lakehouse_tenant_role_map`
+> lookup apply whether `IDP_PROVIDER` is `cognito` or `okta`. The **only**
+> difference is the name of the group claim in the access token —
+> `cognito:groups` (Cognito) vs `groups` (Okta) — which the seeder
+> (`interceptor-request/setup_dynamodb_tenant_role_maps.py`) writes as the
+> table's `claim_name`, branched once on `IDP_PROVIDER`. Everything below is
+> shown with Cognito claim names for concreteness.
+
 ---
 
 ## Scenario 1: Policy Holder Inquiry
@@ -60,6 +70,8 @@
     │<───────────────────────────────────────────────────────────────────────────────│Claims (own only, adjuster hidden)
     │               │               │               │                │               │                 │               │
 ```
+
+_(Diagram simplifies the interceptor as forwarded headers; the real mechanism is group→role STS + tool-list filtering — see below.)_
 
 **Security Controls**:
 - **Row-Level**: `WHERE user_id = '{authenticated_user}'` (application-level via tool parameters)
@@ -128,8 +140,10 @@
      │                │               │               │                │               │                 │               │
 ```
 
+_(Diagram simplifies the interceptor as forwarded headers; the real mechanism is group→role STS + tool-list filtering — see below.)_
+
 **Security Controls**:
-- **Tool-Based**: `query_assigned_claims` only available to `adjuster` role
+- **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the assumed IAM role, not by a distinct tool)
 - **Row-Level**: `WHERE adjuster_id = '{authenticated_adjuster}'`
 - **Column-Level**: Lake Formation masks `patient_dob` for `adjuster` role
 
@@ -142,25 +156,27 @@
 
 ### How the Interceptor Works (Validated Against Current Code)
 
-The incoming request does NOT contain a role or email in the headers. It contains only a JWT bearer token in the `Authorization` header. The Lambda interceptor (`gateway-setup/interceptor/lambda_function.py`):
+The incoming request does NOT contain a role or email in the headers. It contains only a JWT bearer token in the `Authorization` header. The claims REQUEST interceptor Lambda (`deployment/5a-gateway-setup/interceptor-request/lambda_function.py`):
 
 1. Extracts the `Authorization: Bearer <token>` from the MCP gateway request
-2. Validates the JWT against Cognito JWKS public keys
-3. Decodes the JWT claims to extract user identity (priority: `email` → `username` → `cognito:username` → `sub`)
-4. Extracts `cognito:groups` from the JWT claims (e.g., `["administrators"]`)
-5. Passes `X-User-Identity` and `X-User-Scopes` (which includes groups) as headers to the downstream MCP server
+2. Validates the JWT against the active IdP's JWKS public keys (Cognito user pool **or** Okta authorization server)
+3. Decodes the JWT claims to extract user identity — **`[COGNITO]`** priority `email` → `username` → `cognito:username` → `sub`; **`[OKTA]`** the `sub`/`email` claim
+4. Extracts the **group claim** — **`[COGNITO]`** `cognito:groups`, **`[OKTA]`** `groups` (e.g., `["administrators"]`)
+5. Looks up that group in `lakehouse_tenant_role_map` (partition key `claim_name` = the active IdP's group-claim name) and **assumes the mapped tenant IAM role via STS** — the assumed role's session (with tenant tags) is what scopes the downstream Athena/Lake Formation query. A separate RESPONSE interceptor then **filters the returned tool list** to the group's `allowed_tools`.
 
-### Role-to-Tool Mapping (DynamoDB: `lakehouse-role-mappings`)
+> The claims path carries identity via this group→role STS exchange (not a forwarded header). The **notes** path (GW2 / OpenSearch) differs: on Cognito a thin notes REQUEST interceptor injects the caller `sub` on the body-context channel (`params.arguments.context.user_id`, DR-9); on Okta the OBO-exchanged bearer carries it.
 
-Tool access is controlled by mapping Cognito groups to allowed tools:
+### Role-to-Tool Mapping (DynamoDB: `lakehouse_tenant_role_map`)
+
+Tool access is controlled by mapping the caller's group claim to allowed tools. `claim_name` is `cognito:groups` on Cognito and `groups` on Okta (shown below with Cognito names):
 
 | claim_name | claim_value | allowed_tools | description | role_type | role_value |
 |------------|-------------|---------------|-------------|-----------|------------|
 | cognito:groups | ["adjusters"] | get_claims_summary, get_claim_details, query_claims | Adjusters group mapping | iam_role | arn:aws:iam::XXXXXXXXXXXX:role/lakehouse-adjusters-role |
-| cognito:groups | ["administrators"] | query_login_audit | Administrators group mapping with audit access | iam_role | arn:aws:iam::XXXXXXXXXXXX:role/lakehouse-administrators-role |
+| cognito:groups | ["administrators"] | query_login_audit, text_to_sql | Administrators group mapping with audit access and text-to-SQL | iam_role | arn:aws:iam::XXXXXXXXXXXX:role/lakehouse-administrators-role |
 | cognito:groups | ["policyholders"] | get_claims_summary, get_claim_details, query_claims | Policyholders group mapping | iam_role | arn:aws:iam::XXXXXXXXXXXX:role/lakehouse-policyholders-role |
 
-### DynamoDB Table: `lakehouse-session-logs`
+### DynamoDB Table: `lakehouse_user_login_audit`
 
 Session data captured by Cognito post-authentication Lambda trigger:
 
@@ -228,12 +244,14 @@ Session data captured by Cognito post-authentication Lambda trigger:
     │              │               │               │                │               │                 │               │
 ```
 
+_(Diagram simplifies the interceptor as forwarded headers; the real mechanism is group→role STS + tool-list filtering — see below.)_
+
 **Security Controls**:
 
-- **Tool-Based**: `query_login_audit` tool only available to `administrators` group (via role-mapping table)
+- **Tool-Based**: `query_login_audit` and `text_to_sql` only available to the `administrators` group (via the role-mapping table)
 - **IAM Policies**: DynamoDB table access restricted to `lakehouse-administrators-role` ARN
-- **Interceptor**: Extracts `cognito:groups` from JWT, passes as `X-User-Scopes` to MCP server
-- **MCP Server**: Looks up allowed tools from `lakehouse-role-mappings` DynamoDB table based on user's group
+- **Interceptor**: extracts the group claim (`[COGNITO]` `cognito:groups` / `[OKTA]` `groups`) from the JWT and assumes the mapped tenant role via STS
+- **MCP Server**: allowed tools come from the RESPONSE interceptor filtering the tool list against the group's `allowed_tools` in the `lakehouse_tenant_role_map` DynamoDB table
 
 **Lake Formation + DynamoDB Note**:
 > ⚠️ Lake Formation does NOT support DynamoDB. DynamoDB security is enforced via:
@@ -250,10 +268,31 @@ Session data captured by Cognito post-authentication Lambda trigger:
 |------|---------------|------------|---------------|-----------------|-------------|
 | **Patient** | policyholders | Own claims only | All except `adjuster_id` | `query_claims`, `get_claim_details`, `get_claims_summary` | Athena |
 | **Adjuster** | adjusters | Assigned claims only | All except `patient_dob` | `query_claims`, `get_claim_details`, `get_claims_summary` | Athena |
-| **Admin** | administrators | Session logs (all users) | All columns | `query_login_audit` | DynamoDB |
+| **Admin** | administrators | Session logs (all users) | All columns | `query_login_audit`, `text_to_sql` | DynamoDB |
 
 ## Implementation Priority
 
 1. **Scenario 1** (Easiest): Add `adjuster_id` column + Lake Formation column mask
 2. **Scenario 2** (Medium): Add new tool + role-based tool filtering in interceptor
-3. **Scenario 3** (Complex): DynamoDB session-logs table + Cognito post-auth trigger + role-mapping table + `query_login_audit` MCP tool
+3. **Scenario 3** (Complex): DynamoDB login-audit table + Cognito post-auth trigger + role-mapping table + `query_login_audit` MCP tool
+
+---
+
+## Claim Notes (OpenSearch RLS) — both IdPs
+
+Beyond the claims (Athena) path above, the agent also exposes a **notes** path
+through a second gateway (GW2) backed by an OpenSearch Serverless collection
+(`claim-notes` index). Notes carry an `owner_user_sub` field and are isolated
+**per user**: each caller sees only their own notes (∩ across users = ∅).
+
+The owner identity is resolved by IdP:
+
+- **`[OKTA]`** — derived from the OBO-exchanged bearer token's `sub` (the user's
+  email/login).
+- **`[COGNITO]`** — injected by the thin notes REQUEST interceptor on the
+  body-context channel (`params.arguments.context.user_id`), per DR-9.
+
+The group→tool RBAC above is unchanged for notes tools; only the row-level
+owner scoping is notes-specific. See `deployment/README.md` **Step 7 (Notes
+Gateway GW2 + OpenSearch)** and notebook `05b-deploy-notes-gateway` for the
+deployment path.
