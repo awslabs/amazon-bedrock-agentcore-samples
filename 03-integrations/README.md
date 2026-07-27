@@ -51,6 +51,7 @@ This folder contains framework and protocol integrations that demonstrate how to
 ## 🎨 UX Examples
 
 * **[Streamlit Chat](./ux-examples/streamlit-chat/)**: Interactive chat interface with AgentCore backend integration
+* **[Slack Chat (Welt)](./ux-examples/slack-welt/)**: Chat with an AgentCore agent in Slack, with human-in-the-loop approvals
 
 ## 🚀 Integration Patterns
 
