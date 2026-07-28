@@ -18,8 +18,19 @@ fi
 
 echo "   Region: $AWS_REGION"
 
-# IdP selector (DR-8 Flag-2): env override → SSM → cognito default.
-IDP_PROVIDER=${IDP_PROVIDER:-$(aws ssm get-parameter --name /app/lakehouse-agent/idp-provider --query 'Parameter.Value' --output text 2>/dev/null || echo "cognito")}
+# IdP selector (DR-8 Flag-2, R4/M3): fail-fast SSM read — NO env override, NO
+# implicit default (matches utils.idp_config.get_idp_provider). The flag is set
+# once in notebook 01 Step-0 (or `python -m utils.idp_config <cognito|okta>`).
+IDP_PROVIDER=$(aws ssm get-parameter --name /app/lakehouse-agent/idp-provider --query 'Parameter.Value' --output text 2>/dev/null)
+if [ -z "$IDP_PROVIDER" ] || [ "$IDP_PROVIDER" = "None" ]; then
+    echo "❌ Error: IDP_PROVIDER not set in SSM (/app/lakehouse-agent/idp-provider)"
+    echo "   Run notebook 01 (Step-0) first, or: python -m utils.idp_config <cognito|okta>"
+    exit 1
+fi
+if [ "$IDP_PROVIDER" != "cognito" ] && [ "$IDP_PROVIDER" != "okta" ]; then
+    echo "❌ Error: invalid IDP_PROVIDER='$IDP_PROVIDER' (allowed: cognito|okta)"
+    exit 1
+fi
 echo "   IdP Provider: $IDP_PROVIDER"
 
 # Read configuration from SSM Parameter Store, and build the Lambda env var block
