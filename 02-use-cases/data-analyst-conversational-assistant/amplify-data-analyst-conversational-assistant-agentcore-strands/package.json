@@ -39,7 +39,7 @@
     "@types/node": "^22.15.0",
     "@types/react": "19.2.14",
     "@types/uuid": "^11.0.0",
-    "aws-cdk-lib": "^2.241.0",
+    "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.5.1",
     "esbuild": "^0.25.0",
     "eslint": "^9",
