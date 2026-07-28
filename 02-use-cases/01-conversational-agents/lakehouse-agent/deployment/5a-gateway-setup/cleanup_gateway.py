@@ -23,6 +23,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.aws_session_utils import get_aws_session
+from utils.idp_config import get_idp_provider
 
 
 class GatewayCleanup:
@@ -33,6 +34,8 @@ class GatewayCleanup:
         self.iam = boto3.client("iam")
         self.dynamodb = boto3.client("dynamodb", region_name=self.region)
         self.ssm = boto3.client("ssm", region_name=self.region)
+        # Active IdP (R4/M4) — selects the exact GW1 provider name(s) to delete.
+        self.idp_provider = get_idp_provider(self.ssm)
         self.keep_ssm = keep_ssm
 
     def _get_ssm_param(self, name, default=None):
@@ -77,27 +80,34 @@ class GatewayCleanup:
             print(f"   ❌ Error: {e}")
 
     def delete_oauth_providers(self):
-        print("\n🗑️  Deleting OAuth2 credential providers...")
-        try:
-            response = self.bedrock.list_oauth2_credential_providers()
-            providers = response.get(
-                "oauth2CredentialProviders",
-                response.get("credentialProviders", response.get("items", [])),
-            )
-            deleted = 0
-            for provider in providers:
-                name = provider.get("name", "")
-                if "lakehouse" in name.lower():
-                    try:
-                        self.bedrock.delete_oauth2_credential_provider(name=name)
-                        print(f"   ✅ Deleted: {name}")  # codeql[py/clear-text-logging-sensitive-data]
-                        deleted += 1
-                    except Exception as e:
-                        print(f"   ⚠️  Error deleting {name}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
-            if deleted == 0:
-                print("   ⏭️  No lakehouse OAuth providers found")
-        except Exception as e:
-            print(f"   ⚠️  Error listing providers: {e}")
+        print("\n🗑️  Deleting GW1 OAuth2 credential providers...")
+        # EXACT-name deletes for the ACTIVE IdP's GW1 provider(s) only (R4/M4),
+        # safe-if-absent. The prior lakehouse-prefix substring match collaterally
+        # deleted the GW2 notes/OBO providers — those are owned by
+        # 06_cleanup_obo_gateway.py and are intentionally NOT deleted here.
+        if self.idp_provider == "cognito":
+            # Either the dedicated-M2M or the hybrid provider exists (depends on
+            # has_m2m_client at deploy time); both are safe-if-absent.
+            provider_names = ["lakehouse-mcp-m2m-oauth-provider", "lakehouse-mcp-oauth-provider"]
+        else:  # okta
+            provider_names = ["lakehouse-mcp-okta-oauth-provider"]
+
+        deleted = 0
+        for name in provider_names:
+            try:
+                self.bedrock.delete_oauth2_credential_provider(name=name)
+                print(f"   ✅ Deleted: {name}")  # codeql[py/clear-text-logging-sensitive-data]
+                deleted += 1
+            except self.bedrock.exceptions.ResourceNotFoundException:
+                print(f"   ⏭️  Not found: {name}")
+            except Exception as e:
+                msg = str(e).lower()
+                if "not found" in msg or "resourcenotfound" in msg:
+                    print(f"   ⏭️  Not found: {name}")
+                else:
+                    print(f"   ⚠️  Error deleting {name}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
+        if deleted == 0:
+            print(f"   ⏭️  No GW1 OAuth providers found for IdP={self.idp_provider}")
 
     def delete_lambda_functions(self):
         print("\n🗑️  Deleting Lambda functions...")
