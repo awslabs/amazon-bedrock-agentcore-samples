@@ -3,7 +3,7 @@
 Cleanup OBO_Gateway substrate.
 
 Mirrors deployment/5a-gateway-setup/cleanup_gateway.py shape. Tears down what
-9.1-9.5 created (and only that — by-name scoping prevents collateral damage
+9.1-9.4 created (and only that — by-name scoping prevents collateral damage
 to the interceptor side or to other workloads in the account).
 
 Cleanup coverage (per R10.4 + tasks.md 9.6):
@@ -16,9 +16,12 @@ Cleanup coverage (per R10.4 + tasks.md 9.6):
   6. AOSS network policy       (lakehouse-claim-notes-network)     [9.1 created]
   7. AOSS encryption policy    (lakehouse-claim-notes-encryption)  [9.1 created]
   8. AOSS collection           (lakehouse-claim-notes)             [9.1 created]
-  9. Revert agent IAM patch (remove GetWorkloadAccessTokenForJWT statement)
- 10. Net-new SSM keys: notes-gateway-* (4 keys), opensearch-collection-{arn,endpoint},
+  9. Net-new SSM keys: notes-gateway-* (4 keys), opensearch-collection-{arn,endpoint},
      obo-credential-provider-arn
+
+Note: there is no agent-IAM revert step — the agent deliberately holds NO OBO
+grant (the GW2 gateway role performs the RFC 8693 exchange, Finding 15), so
+there is nothing to undo on the agent role.
 
 Resources NOT cleaned here (owned by sibling cleanup scripts):
   - OpenSearch_MCP_Server runtime + its IAM/ECR/CodeBuild + opensearch-mcp-runtime-{arn,id}
@@ -47,7 +50,6 @@ import sys
 import os
 import argparse
 import time
-import json
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.aws_session_utils import get_aws_session
@@ -66,11 +68,6 @@ COGNITO_M2M_PROVIDER_NAME = "lakehouse-notes-cognito-oauth-provider"
 ENCRYPTION_POLICY_NAME = f"{COLLECTION_NAME}-encryption"
 NETWORK_POLICY_NAME = f"{COLLECTION_NAME}-network"
 DATA_ACCESS_POLICY_NAME = f"{COLLECTION_NAME}-data"
-
-# 9.5 patch site
-AGENT_ROLE_NAME = "AgentCoreRuntimeRole-lakehouse-agent"
-INLINE_POLICY_NAME = "AgentCoreRuntimePermissions"
-OBO_SID = "OBOWorkloadAccessTokenForJWT"
 
 SSM_PREFIX = "/app/lakehouse-agent/"
 
@@ -235,44 +232,7 @@ class OBOCleanup:
         except Exception as e:
             print(f"   ❌ Error: {e}")
 
-    # ─── 9: Revert agent IAM patch ────────────────────────────────────
-    def revert_agent_iam_patch(self):
-        print(f"\n🗑️  Reverting agent IAM patch: removing OBO statement from {AGENT_ROLE_NAME}")
-        try:
-            self.iam.get_role(RoleName=AGENT_ROLE_NAME)
-        except self.iam.exceptions.NoSuchEntityException:
-            print("   ⏭️  Agent role not found (already cleaned up)")
-            return
-
-        try:
-            resp = self.iam.get_role_policy(
-                RoleName=AGENT_ROLE_NAME,
-                PolicyName=INLINE_POLICY_NAME,
-            )
-        except self.iam.exceptions.NoSuchEntityException:
-            print(f"   ⏭️  Inline policy '{INLINE_POLICY_NAME}' not found")
-            return
-
-        policy_doc = resp["PolicyDocument"]
-        statements = policy_doc.get("Statement", [])
-        before_count = len(statements)
-        # Remove by Sid (matches what 9.5 inserts)
-        new_statements = [s for s in statements if s.get("Sid") != OBO_SID]
-        if len(new_statements) == before_count:
-            print(f"   ⏭️  No statement with Sid '{OBO_SID}' found; nothing to revert")
-            return
-        policy_doc["Statement"] = new_statements
-        try:
-            self.iam.put_role_policy(
-                RoleName=AGENT_ROLE_NAME,
-                PolicyName=INLINE_POLICY_NAME,
-                PolicyDocument=json.dumps(policy_doc),
-            )
-            print(f"   ✅ Removed OBO statement (was {before_count} statements, now {len(new_statements)})")
-        except Exception as e:
-            print(f"   ❌ Error updating inline policy: {e}")
-
-    # ─── 10: SSM keys ─────────────────────────────────────────────────
+    # ─── 9: SSM keys ──────────────────────────────────────────────────
     def delete_ssm_parameters(self):
         if self.keep_ssm:
             print("\n⏭️  Keeping SSM parameters (--keep-ssm)")
@@ -309,13 +269,12 @@ class OBOCleanup:
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         # Order matters: gateway-side AWS resources first (target -> gateway ->
-        # role -> provider), then AOSS, then revert agent IAM, then SSM.
+        # role -> provider), then AOSS, then SSM.
         self.delete_gateway()
         self.delete_gateway_role()
         self.delete_oauth_provider()  # Okta OBO provider (no-op on Cognito)
         self.delete_oauth_provider(COGNITO_M2M_PROVIDER_NAME)  # Cognito M2M provider (no-op on Okta)
         self.delete_aoss_collection()
-        self.revert_agent_iam_patch()
         self.delete_ssm_parameters()
         print("\n✨ OBO_Gateway cleanup complete!")
 

@@ -543,10 +543,9 @@ SSM Parameters created:
 - `/app/lakehouse-agent/notes-gateway-url`
 - `/app/lakehouse-agent/notes-gateway-name`
 
-> **Note:** `05_update_agent_iam.py` is intentionally **not** part of the happy
-> path (Finding 15). GW2 performs the RFC 8693 exchange with its own gateway
-> role — the agent holds no OBO grant. The script remains only for the optional
-> self-mint variant.
+> **Note:** the agent deliberately holds **NO** OBO grant — the GW2 gateway role
+> performs the RFC 8693 exchange with its own role (Finding 15). No agent-IAM
+> patch step is needed.
 
 ---
 
@@ -687,7 +686,6 @@ deployment/
 │   ├── 02_verify_opensearch_mcp.py
 │   ├── 03_create_oauth_provider.py          #   Step 7.5 [OKTA]
 │   ├── 04_create_obo_gateway.py             #   Step 7.6
-│   ├── 05_update_agent_iam.py               #   optional self-mint variant (Finding 15 — not in happy path)
 │   └── 06_cleanup_obo_gateway.py
 ├── 6-lakehouse-agent/                    # Step 8 — conversational agent (two clients: claims/ + notes/)
 │   ├── deploy_lakehouse_agent.py

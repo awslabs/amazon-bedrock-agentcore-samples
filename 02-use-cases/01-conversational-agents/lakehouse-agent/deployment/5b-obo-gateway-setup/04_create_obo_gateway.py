@@ -749,12 +749,10 @@ def main():
         else:  # cognito
             print("   Auth: Cognito M2M (client_credentials) + REQUEST interceptor for identity")
         print("\n📋 Next Steps:")
-        print("   1. (OPTIONAL) 05_update_agent_iam.py grants the agent role")
-        print("      bedrock-agentcore:GetWorkloadAccessTokenForJWT — NOT needed for the")
-        print("      gateway OBO path (the gateway's own role performs the exchange);")
-        print("      only for the direct, non-gateway self-mint path.")
-        print("   2. Deploy the agent (06-deploy-agent.ipynb) with its two MCP clients:")
-        print("      claims/* via Interceptor_Gateway, notes/* via OBO_Gateway.")
+        print("   - The agent deliberately holds NO OBO grant — the GW2 gateway role")
+        print("     performs the RFC 8693 exchange (Finding 15).")
+        print("   - Deploy the agent (06-deploy-agent.ipynb) with its two MCP clients:")
+        print("     claims/* via Interceptor_Gateway, notes/* via OBO_Gateway.")
         print("=" * 70)
 
     except Exception as e:
