@@ -17,8 +17,14 @@ Usage:
 """
 
 import sys
+import os
 import boto3
 import json
+
+# Make the repo's utils/ importable (idp_config lives there) when this script
+# runs from its own deployment subdir.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from utils.idp_config import get_idp_provider
 
 try:
     from bedrock_agentcore_starter_toolkit import Runtime
@@ -43,25 +49,42 @@ class SSMConfig:
         # Get account ID
         self.account_id = self.sts.get_caller_identity()["Account"]
 
+        # IdP selector — read once (DR-8 flag-branch convention).
+        self.idp_provider = get_idp_provider(self.ssm)
+
         print("✅ Using AWS configuration")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
+        print(f"   IdP: {self.idp_provider}")
 
         # Load configuration from SSM
         print("\n🔍 Loading configuration from SSM Parameter Store...")
         self.gateway_arn = self._get_parameter("/app/lakehouse-agent/gateway-arn", required=False)
+        # Cognito authorizer inputs — USER app client (the agent is user-invoked,
+        # unlike the gateway-called MCP runtimes which validate the M2M client).
         self.cognito_user_pool_id = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-id", required=False)
         self.cognito_app_client_id = self._get_parameter("/app/lakehouse-agent/cognito-app-client-id", required=False)
+
+        # Okta authorizer inputs — required only on the Okta path (mirrors the MCP deployers).
+        self.okta_discovery_url = None
+        self.okta_resource_server_audience = None
+        if self.idp_provider == "okta":
+            self.okta_discovery_url = self._get_parameter("/app/lakehouse-agent/okta-discovery-url")
+            self.okta_resource_server_audience = self._get_parameter(
+                "/app/lakehouse-agent/okta-resource-server-audience"
+            )
 
         if self.gateway_arn:
             print(f"   ✅ Gateway ARN: {self.gateway_arn}")
         else:
             print("   ⚠️  Gateway ARN not configured")
 
-        if self.cognito_user_pool_id and self.cognito_app_client_id:
+        if self.idp_provider == "okta":
+            print("   ✅ Okta configured")
+        elif self.cognito_user_pool_id and self.cognito_app_client_id:
             print("   ✅ Cognito configured")
         else:
-            print("   ⚠️  Cognito not configured - will use IAM authentication")
+            print("   ⚠️  IdP not configured - will use IAM authentication")
 
     def _get_parameter(self, parameter_name: str, required: bool = True) -> str:
         """Get parameter value from SSM Parameter Store."""
@@ -264,8 +287,14 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
             "agent_name": runtime_name,
         }
 
-        # Add JWT authentication configuration if Cognito is configured
-        if config.cognito_user_pool_id and config.cognito_app_client_id:
+        # JWT authorizer differs by IdP (DR-8). The agent runtime is invoked by
+        # the END USER (Streamlit forwards `Authorization: Bearer <access_token>`),
+        # so it must validate that user token: Cognito by USER app-client-id (NOT
+        # the M2M client the gateway-called MCP runtimes use), Okta by resource-
+        # server audience. A pure-IAM fallback remains only for a genuinely-
+        # unconfigured deploy (idp not in {cognito, okta} with keys present).
+        if config.idp_provider == "cognito" and config.cognito_user_pool_id and config.cognito_app_client_id:
+            # [COGNITO] upstream verbatim — USER app client.
             print("   Configuring JWT authentication...")
             issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{config.cognito_user_pool_id}"
             discovery_url = f"{issuer}/.well-known/openid-configuration"
@@ -280,12 +309,30 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
                 }
             }
 
-            # Add Authorization header to allowlist for OAuth token propagation
-            config_params["request_header_configuration"] = {"requestHeaderAllowlist": ["Authorization"]}
+            print("✅ JWT authentication will be configured")
+        elif config.idp_provider == "okta":
+            # [OKTA] custom-auth-server discovery + audience (canonical §6 names);
+            # mirrors the MCP Okta branch. Okta access tokens carry `aud` →
+            # validate by resource-server audience.
+            print("   Configuring JWT authentication...")
+            print(f"   Discovery URL: {config.okta_discovery_url}")
+            print(f"   Allowed Audience: {config.okta_resource_server_audience}")
+
+            config_params["authorizer_configuration"] = {
+                "customJWTAuthorizer": {
+                    "allowedAudience": [config.okta_resource_server_audience],
+                    "discoveryUrl": config.okta_discovery_url,
+                }
+            }
 
             print("✅ JWT authentication will be configured")
         else:
-            print("⚠️  Cognito not configured - runtime will use IAM authentication")
+            print("⚠️  IdP not configured - runtime will use IAM authentication")
+
+        # Add Authorization header to allowlist for OAuth token propagation.
+        # UNCONDITIONAL (both IdP paths): hoisted out of the Cognito branch so the
+        # Okta path keeps it (the OAuth access token must reach the runtime).
+        config_params["request_header_configuration"] = {"requestHeaderAllowlist": ["Authorization"]}
 
         agentcore_runtime.configure(**config_params)
         print("✅ Configuration complete")
@@ -387,17 +434,22 @@ def main():
         print("   /app/lakehouse-agent/agent-name")
 
         # Print JWT configuration status
-        if config.cognito_user_pool_id and config.cognito_app_client_id:
-            print("\n✅ JWT Authentication Configured:")
+        if config.idp_provider == "cognito" and config.cognito_user_pool_id and config.cognito_app_client_id:
+            print("\n✅ JWT Authentication Configured (Cognito):")
             print(
                 f"   Discovery URL: https://cognito-idp.{config.region}.amazonaws.com/{config.cognito_user_pool_id}/.well-known/openid-configuration"
             )
             print(f"   Allowed Clients: {config.cognito_app_client_id}")
             print("   Authorization header: Enabled for OAuth token propagation")
+        elif config.idp_provider == "okta":
+            print("\n✅ JWT Authentication Configured (Okta):")
+            print(f"   Discovery URL: {config.okta_discovery_url}")
+            print(f"   Allowed Audience: {config.okta_resource_server_audience}")
+            print("   Authorization header: Enabled for OAuth token propagation")
         else:
             print("\n⚠️  JWT Authentication Not Configured:")
             print("   Runtime deployed with IAM authentication")
-            print("   To enable JWT auth, set COGNITO_USER_POOL_ID and COGNITO_APP_CLIENT_ID in SSM and redeploy")
+            print("   To enable JWT auth, set the IdP flag (notebook 01) and the IdP's SSM keys, then redeploy")
 
         print("\n📋 Next Steps:")
         print("   1. Test the agent: python ../test_agent_simple.py")
