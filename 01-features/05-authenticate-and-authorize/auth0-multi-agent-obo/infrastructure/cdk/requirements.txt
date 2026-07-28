@@ -2,7 +2,7 @@
 # These packages are required for AWS CDK infrastructure as code
 
 # Core CDK library
-aws-cdk-lib==2.120.0
+aws-cdk-lib==2.253.0
 
 # CDK constructs library
 constructs>=10.0.0,<11.0.0
