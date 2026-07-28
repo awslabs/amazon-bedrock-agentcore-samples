@@ -35,7 +35,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 CERT_PEM_PATH = ROOT / "entra_cert.pem"
@@ -92,7 +91,7 @@ def load_cert() -> tuple[str, bytes]:
     return pem_text, der
 
 
-def print_intro(*, tenant_id: str, kms_arn: str, x5t_s256: str, sha1_hex: str) -> None:
+def print_intro(*, tenant_id: str, kms_arn: str, x5t_s256: str) -> None:
     _header("Manual Entra ID configuration walkthrough")
     print(
         "You are configuring your Entra tenant WITHOUT the setup scripts\n"
@@ -101,11 +100,14 @@ def print_intro(*, tenant_id: str, kms_arn: str, x5t_s256: str, sha1_hex: str) -
         "identity) is still handled by setup/00, 01, 03, 04, 04b.\n"
     )
     print("Environment:")
-    print(f"  Entra admin center : https://entra.microsoft.com")
+    print("  Entra admin center : https://entra.microsoft.com")
     print(f"  Tenant ID          : {tenant_id or '(unset - fill in .env before running providers)'}")
     print(f"  KMS key            : {kms_arn}")
     print(f"  x5t#S256 thumbprint: {x5t_s256}")
-    print(f"  Portal hex (SHA-1) : {sha1_hex}")
+    print()
+    print("  If you want the SHA-1 fingerprint that the Entra admin portal")
+    print("  displays (Certificates & Secrets tab), run:")
+    print(f"    openssl x509 -in {CERT_PEM_PATH.name} -noout -fingerprint -sha1")
     print()
     print("Two Entra apps get created below. Both use PRIVATE_KEY_JWT")
     print("client authentication, and both upload the same certificate.")
@@ -122,9 +124,7 @@ def print_cert_block(pem_text: str) -> None:
         print(f"    {line}")
 
 
-def print_service_app_instructions(
-    *, service_label: str, app_role: str, obo_scope: str
-) -> None:
+def print_service_app_instructions(*, service_label: str, app_role: str, obo_scope: str) -> None:
     _header("Step A - create the SERVICE app (M2M + OBO caller)")
 
     _substep(1, "Entra admin center → App registrations → New registration")
@@ -141,8 +141,8 @@ def print_service_app_instructions(
 
     _substep(2, "Certificates & secrets → Certificates tab → Upload certificate")
     print(f"  Upload the {CERT_PEM_PATH.name} file from this folder → Add.")
-    print("  Confirm the displayed Thumbprint matches the portal hex value")
-    print("  printed above (SHA-1 in uppercase hex).")
+    print("  The portal displays a SHA-1 fingerprint after upload. To verify")
+    print("  it matches your local cert, run the openssl command shown above.")
 
     _substep(3, "Expose an API → Add an Application ID URI")
     print("  Application ID URI          : accept the default")
@@ -192,15 +192,13 @@ def print_service_app_instructions(
     print("  HTTP 400 even though the user token itself is valid.")
 
     _substep(8, "API permissions → Grant admin consent for <tenant name>")
-    print(f"  Click the 'Grant admin consent for <tenant>' button at the")
-    print(f"  top of the permissions list → confirm.")
+    print("  Click the 'Grant admin consent for <tenant>' button at the")
+    print("  top of the permissions list → confirm.")
     print(f"  Both the {app_role} app role and all five Graph delegated")
-    print(f"  permissions should show 'Granted for <tenant>' in green.")
+    print("  permissions should show 'Granted for <tenant>' in green.")
 
 
-def print_login_app_instructions(
-    *, login_label: str, service_label: str, obo_scope: str
-) -> None:
+def print_login_app_instructions(*, login_label: str, service_label: str, obo_scope: str) -> None:
     _header("Step B - create the WEB app (browser 3LO for OBO)")
     print(
         "OBO needs a user access token as the RFC 7523 assertion. The web app\n"
@@ -298,9 +296,7 @@ def print_next_steps(*, include_web: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Print a manual Entra admin center walkthrough for the sample."
-    )
+    parser = argparse.ArgumentParser(description="Print a manual Entra admin center walkthrough for the sample.")
     parser.add_argument(
         "--m2m",
         action="store_true",
@@ -322,28 +318,15 @@ def main() -> None:
     if tenant_id.startswith("00000000"):
         tenant_id = ""  # placeholder from config.example.env
 
-    service_label = (
-        os.environ.get("ENTRA_SERVICE_APP_LABEL") or DEFAULT_SERVICE_APP_LABEL
-    )
+    service_label = os.environ.get("ENTRA_SERVICE_APP_LABEL") or DEFAULT_SERVICE_APP_LABEL
     login_label = os.environ.get("ENTRA_LOGIN_APP_LABEL") or DEFAULT_LOGIN_APP_LABEL
     app_role = os.environ.get("ENTRA_APP_ROLE_NAME") or DEFAULT_APP_ROLE_NAME
-    obo_scope = (
-        os.environ.get("ENTRA_DELEGATED_SCOPE_NAME") or DEFAULT_DELEGATED_SCOPE_NAME
-    )
+    obo_scope = os.environ.get("ENTRA_DELEGATED_SCOPE_NAME") or DEFAULT_DELEGATED_SCOPE_NAME
 
     pem_text, der = load_cert()
-    x5t_s256 = (
-        base64.urlsafe_b64encode(hashlib.sha256(der).digest())
-        .rstrip(b"=")
-        .decode("ascii")
-    )
-    # SHA-1 here computes the x5t certificate thumbprint per RFC 7515
-    # section 4.1.7. It's a cert identifier used by Entra to look up the
-    # uploaded cert, not a cryptographic signature. Not security-critical.
-    # nosemgrep: python.lang.security.insecure-hash-algorithm-sha1
-    sha1_hex = hashlib.sha1(der, usedforsecurity=False).hexdigest().upper()
+    x5t_s256 = base64.urlsafe_b64encode(hashlib.sha256(der).digest()).rstrip(b"=").decode("ascii")
 
-    print_intro(tenant_id=tenant_id, kms_arn=key_arn, x5t_s256=x5t_s256, sha1_hex=sha1_hex)
+    print_intro(tenant_id=tenant_id, kms_arn=key_arn, x5t_s256=x5t_s256)
     print_cert_block(pem_text)
 
     if include_service:

@@ -115,7 +115,7 @@ below.
 Run all commands from this sample's `entra/` folder.
 
 ```bash
-cd 05-outbound-auth-private-key-jwt/entra
+cd 05-certificate-based-auth/entra
 
 # Python environment
 python3 -m venv .venv

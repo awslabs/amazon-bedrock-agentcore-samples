@@ -25,7 +25,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 HERE = Path(__file__).resolve().parent
 SETUP_DIR = HERE.parent / "setup"
 
@@ -46,9 +45,7 @@ def load_setup_module(filename: str, mod_name: str):
 class KmsKeyPolicyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_setup_module(
-            "00_provision_signing_key.py", "entra_provision_key"
-        )
+        cls.mod = load_setup_module("00_provision_signing_key.py", "entra_provision_key")
 
     def test_policy_has_admin_and_service_statements(self) -> None:
         policy = json.loads(self.mod.build_key_policy("123456789012"))
@@ -58,11 +55,7 @@ class KmsKeyPolicyTests(unittest.TestCase):
 
     def test_service_statement_grants_sign_and_getpublickey_and_describe(self) -> None:
         policy = json.loads(self.mod.build_key_policy("123456789012"))
-        service = next(
-            s
-            for s in policy["Statement"]
-            if s["Sid"] == "BedrockAgentCoreIdentityPrivateKeyJwtAccess"
-        )
+        service = next(s for s in policy["Statement"] if s["Sid"] == "BedrockAgentCoreIdentityPrivateKeyJwtAccess")
         # setup/01 needs kms:GetPublicKey (to build the cert's SPKI) and
         # kms:Sign (to sign the cert's TBS). Runtime uses the same three.
         self.assertEqual(
@@ -78,9 +71,7 @@ class KmsKeyPolicyTests(unittest.TestCase):
         policy = json.loads(self.mod.build_key_policy("123456789012"))
         for stmt in policy["Statement"]:
             self.assertIn("Principal", stmt, f"{stmt['Sid']} missing Principal")
-            self.assertEqual(
-                stmt["Principal"]["AWS"], "arn:aws:iam::123456789012:root"
-            )
+            self.assertEqual(stmt["Principal"]["AWS"], "arn:aws:iam::123456789012:root")
 
 
 # ─────────────────────────── Cert builder ───────────────────────────
@@ -90,8 +81,8 @@ class CertificateBuilderTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         try:
-            from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: F401
-            from asn1crypto import x509  # noqa: F401
+            from asn1crypto import x509
+            from cryptography.hazmat.primitives.asymmetric import rsa
         except ImportError:
             raise unittest.SkipTest("cryptography or asn1crypto not installed")
         cls.mod = load_setup_module("01_build_certificate.py", "entra_build_cert")
@@ -104,9 +95,7 @@ class CertificateBuilderTests(unittest.TestCase):
         )
 
         cls._priv = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        cls._spki_der = cls._priv.public_key().public_bytes(
-            Encoding.DER, PublicFormat.SubjectPublicKeyInfo
-        )
+        cls._spki_der = cls._priv.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
 
     def test_deterministic_serial_is_stable(self) -> None:
         # Two calls with the same SPKI should produce the same serial.
@@ -124,9 +113,7 @@ class CertificateBuilderTests(unittest.TestCase):
         )
 
         other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        other_spki = other.public_key().public_bytes(
-            Encoding.DER, PublicFormat.SubjectPublicKeyInfo
-        )
+        other_spki = other.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
         self.assertNotEqual(
             self.mod.deterministic_serial(self._spki_der),
             self.mod.deterministic_serial(other_spki),
@@ -147,41 +134,21 @@ class CertificateBuilderTests(unittest.TestCase):
         tbs = self.mod.build_tbs_certificate(self._spki_der)
         self.assertEqual(tbs["version"].native, "v3")
 
-    def test_thumbprints_are_correct_encodings(self) -> None:
+    def test_x5t_s256_thumbprint_is_correct_encoding(self) -> None:
         # Build a full cert (TBS + fake signature) to feed the thumbprint fn.
         tbs = self.mod.build_tbs_certificate(self._spki_der)
         fake_sig = b"x" * 256
         cert = self.mod.assemble_certificate(tbs, fake_sig)
         cert_der = cert.dump()
 
-        x5t, x5t_s256, hex1 = self.mod.thumbprints(cert_der)
-
-        # x5t = base64url(SHA-1(cert-DER)), unpadded
-        expected_x5t = (
-            # SHA-1 is required by RFC 7515 section 4.1.7 (the x5t claim).
-            # nosemgrep: python.lang.security.insecure-hash-algorithm-sha1
-            base64.urlsafe_b64encode(hashlib.sha1(cert_der, usedforsecurity=False).digest())
-            .rstrip(b"=")
-            .decode("ascii")
-        )
-        self.assertEqual(x5t, expected_x5t)
-        self.assertNotIn("=", x5t)
-        self.assertNotIn("+", x5t)
-        self.assertNotIn("/", x5t)
+        x5t_s256 = self.mod.x5t_s256_thumbprint(cert_der)
 
         # x5t#S256 = base64url(SHA-256(cert-DER)), unpadded
-        expected_x5t_s256 = (
-            base64.urlsafe_b64encode(hashlib.sha256(cert_der).digest())
-            .rstrip(b"=")
-            .decode("ascii")
-        )
+        expected_x5t_s256 = base64.urlsafe_b64encode(hashlib.sha256(cert_der).digest()).rstrip(b"=").decode("ascii")
         self.assertEqual(x5t_s256, expected_x5t_s256)
-
-        # portal hex = SHA-1(cert-DER) as uppercase hex
-        # SHA-1 is required by RFC 7515 section 4.1.7 (the x5t claim).
-        # nosemgrep: python.lang.security.insecure-hash-algorithm-sha1
-        expected_hex = hashlib.sha1(cert_der, usedforsecurity=False).hexdigest().upper()
-        self.assertEqual(hex1, expected_hex)
+        self.assertNotIn("=", x5t_s256)
+        self.assertNotIn("+", x5t_s256)
+        self.assertNotIn("/", x5t_s256)
 
 
 # ─────────────────────────── Provider configs ───────────────────────
@@ -218,21 +185,16 @@ class M2MProviderConfigTests(unittest.TestCase):
     def test_discovery_url_is_entra_v2(self) -> None:
         self.assertEqual(
             self.inner["oauthDiscovery"]["discoveryUrl"],
-            f"https://login.microsoftonline.com/{self.TENANT}"
-            "/v2.0/.well-known/openid-configuration",
+            f"https://login.microsoftonline.com/{self.TENANT}/v2.0/.well-known/openid-configuration",
         )
 
     def test_signing_algorithm_rs256(self) -> None:
-        self.assertEqual(
-            self.inner["privateKeyJwtConfig"]["signingAlgorithm"], "RS256"
-        )
+        self.assertEqual(self.inner["privateKeyJwtConfig"]["signingAlgorithm"], "RS256")
 
     def test_header_claim_is_x5t_s256(self) -> None:
         pk = self.inner["privateKeyJwtConfig"]
         # The header claim key must be exactly "x5t#S256" (hash in key name).
-        self.assertEqual(
-            pk["additionalHeaderClaims"], {"x5t#S256": self.X5T}
-        )
+        self.assertEqual(pk["additionalHeaderClaims"], {"x5t#S256": self.X5T})
         self.assertNotIn("kid", pk["additionalHeaderClaims"])
         self.assertNotIn("x5t", pk["additionalHeaderClaims"])
 
@@ -276,9 +238,7 @@ class OBOProviderConfigTests(unittest.TestCase):
     def test_shares_shape_with_m2m(self) -> None:
         self.assertEqual(self.inner["clientAuthenticationMethod"], "PRIVATE_KEY_JWT")
         self.assertNotIn("clientSecret", self.inner)
-        self.assertEqual(
-            self.inner["privateKeyJwtConfig"]["signingAlgorithm"], "RS256"
-        )
+        self.assertEqual(self.inner["privateKeyJwtConfig"]["signingAlgorithm"], "RS256")
         self.assertEqual(
             self.inner["privateKeyJwtConfig"]["additionalHeaderClaims"],
             {"x5t#S256": self.X5T},
@@ -310,9 +270,7 @@ class ClientProviderConfigTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_setup_module(
-            "04b_create_provider_client.py", "entra_client_provider"
-        )
+        cls.mod = load_setup_module("04b_create_provider_client.py", "entra_client_provider")
         cls.config = cls.mod.build_provider_config(
             tenant_id=cls.TENANT,
             client_id=cls.WEB_CLIENT,
@@ -346,9 +304,7 @@ class AppRoleUuidTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_setup_module(
-            "02a_configure_entra_permissions.py", "entra_permissions"
-        )
+        cls.mod = load_setup_module("02a_configure_entra_permissions.py", "entra_permissions")
 
     def test_same_inputs_yield_same_uuid(self) -> None:
         a = self.mod.stable_role_uuid("client-id-1", "m2m")
@@ -395,9 +351,7 @@ class KeyCredentialBodyTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_setup_module(
-            "02_create_entra_service_app.py", "entra_create_service_app"
-        )
+        cls.mod = load_setup_module("02_create_entra_service_app.py", "entra_create_service_app")
 
     def test_shape_matches_graph_keycredential_resource(self) -> None:
         cert_der = b"fake DER bytes for a certificate"

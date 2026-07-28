@@ -22,7 +22,6 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
@@ -81,7 +80,7 @@ def main() -> None:
     print(f"  name          = {app.get('name')}")
     settings = app.get("settings", {}) or {}
     print(f"  implicitAssignment = {settings.get('implicitAssignment')}")
-    oauth = (settings.get("oauthClient") or {})
+    oauth = settings.get("oauthClient") or {}
     redirect_uris = oauth.get("redirect_uris") or []
     print(f"  grant_types   = {oauth.get('grant_types')}")
     print(f"  application_type = {oauth.get('application_type')}")
@@ -103,10 +102,7 @@ def main() -> None:
             name = u.get("credentials", {}).get("userName") or u.get("id")
             print(f"  - {name}  (id={u.get('id')}, scope={u.get('scope')}, status={u.get('status')})")
     if expected_user:
-        found = any(
-            (u.get("credentials", {}).get("userName") == expected_user)
-            for u in users
-        )
+        found = any((u.get("credentials", {}).get("userName") == expected_user) for u in users)
         print(f"  {expected_user!r} assigned? {'✓ yes' if found else '✗ NO'}")
     print()
 

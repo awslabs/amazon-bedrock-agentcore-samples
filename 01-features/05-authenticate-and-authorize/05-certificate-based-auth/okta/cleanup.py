@@ -62,7 +62,6 @@ import requests
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 # Names / labels this sample uses if not overridden by env vars.
@@ -184,9 +183,7 @@ def list_apps_by_label(base_url: str, api_token: str, label: str) -> list[dict]:
     return [app for app in resp.json() if app.get("label") == label]
 
 
-def delete_app(
-    base_url: str, api_token: str, app_id: str, label: str, dry_run: bool
-) -> None:
+def delete_app(base_url: str, api_token: str, app_id: str, label: str, dry_run: bool) -> None:
     if dry_run:
         _mark("[dry-run]", f"would delete Okta app {label!r} (id={app_id})")
         return
@@ -213,9 +210,7 @@ def delete_app(
         _mark("⚠", f"delete {app_id} → HTTP {resp.status_code}: {resp.text[:200]}")
 
 
-def delete_as_access_policy(
-    base_url: str, api_token: str, as_id: str, name: str, dry_run: bool
-) -> None:
+def delete_as_access_policy(base_url: str, api_token: str, as_id: str, name: str, dry_run: bool) -> None:
     """Delete the Custom AS Access Policy (and its rules) by name."""
     resp = requests.get(
         f"{base_url}/api/v1/authorizationServers/{as_id}/policies",
@@ -245,9 +240,7 @@ def delete_as_access_policy(
             _mark("⚠", f"delete policy {pid} → HTTP {d.status_code}: {d.text[:200]}")
 
 
-def delete_as_scope(
-    base_url: str, api_token: str, as_id: str, name: str | None, dry_run: bool
-) -> None:
+def delete_as_scope(base_url: str, api_token: str, as_id: str, name: str | None, dry_run: bool) -> None:
     if not name:
         return
     resp = requests.get(
@@ -278,9 +271,7 @@ def delete_as_scope(
             _mark("⚠", f"delete scope {sid} → HTTP {d.status_code}: {d.text[:200]}")
 
 
-def delete_app_auth_policy(
-    base_url: str, api_token: str, name: str, dry_run: bool
-) -> None:
+def delete_app_auth_policy(base_url: str, api_token: str, name: str, dry_run: bool) -> None:
     """Delete an App Authentication Policy (type=ACCESS_POLICY) by name."""
     resp = requests.get(
         f"{base_url}/api/v1/policies",
@@ -358,9 +349,7 @@ def delete_kms(kms, alias_name: str | None, dry_run: bool, days: int = 7) -> Non
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Tear down PRIVATE_KEY_JWT Okta sample resources."
-    )
+    parser = argparse.ArgumentParser(description="Tear down PRIVATE_KEY_JWT Okta sample resources.")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -396,9 +385,7 @@ def main() -> None:
     service_label = maybe_env("OKTA_SERVICE_APP_LABEL") or DEFAULT_SERVICE_APP_LABEL
     login_label = maybe_env("OKTA_LOGIN_APP_LABEL") or DEFAULT_LOGIN_APP_LABEL
     as_policy_name = maybe_env("OKTA_POLICY_NAME") or DEFAULT_POLICY_NAME
-    app_auth_policy_name = (
-        maybe_env("OKTA_AUTH_POLICY_NAME") or DEFAULT_AUTH_POLICY_NAME
-    )
+    app_auth_policy_name = maybe_env("OKTA_AUTH_POLICY_NAME") or DEFAULT_AUTH_POLICY_NAME
 
     print(f"Region:       {region}")
     print(f"Okta:         {okta_domain or '(no OKTA_DOMAIN in .env)'}")
@@ -437,9 +424,7 @@ def main() -> None:
 
         # 3. AS access policy
         _print_section(f"Custom AS Access Policy on AS {as_id!r}")
-        delete_as_access_policy(
-            base_url, okta_api_token, as_id, as_policy_name, args.dry_run
-        )
+        delete_as_access_policy(base_url, okta_api_token, as_id, as_policy_name, args.dry_run)
 
         # 4. AS scope
         _print_section(f"Custom AS scope on AS {as_id!r}")
@@ -448,9 +433,7 @@ def main() -> None:
         # 5. App Authentication Policy (must come AFTER apps are gone,
         #    Okta refuses to delete a policy that still has apps bound)
         _print_section("App Authentication Policy (Security → Authentication Policies)")
-        delete_app_auth_policy(
-            base_url, okta_api_token, app_auth_policy_name, args.dry_run
-        )
+        delete_app_auth_policy(base_url, okta_api_token, app_auth_policy_name, args.dry_run)
     else:
         _print_section("Okta side")
         _mark(
@@ -466,8 +449,7 @@ def main() -> None:
     else:
         _mark(
             "•",
-            f"KMS alias {kms_alias or '(unset)'} left in place "
-            f"(pass --delete-kms to schedule deletion).",
+            f"KMS alias {kms_alias or '(unset)'} left in place (pass --delete-kms to schedule deletion).",
         )
 
     # 7. .env - only after actual (not dry-run) cleanup

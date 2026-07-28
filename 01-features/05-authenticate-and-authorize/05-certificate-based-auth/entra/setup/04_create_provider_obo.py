@@ -54,7 +54,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
@@ -67,10 +66,7 @@ def must_env(name: str) -> str:
 
 
 def discovery_url(tenant_id: str) -> str:
-    return (
-        f"https://login.microsoftonline.com/{tenant_id}"
-        f"/v2.0/.well-known/openid-configuration"
-    )
+    return f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
 
 
 def build_provider_config(
@@ -186,42 +182,42 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 04: OBO credential provider (Entra)")
     print("=" * 70)
-    print(f"  What was created / updated on AgentCore Identity:")
+    print("  What was created / updated on AgentCore Identity:")
     print(f"    Provider name     : {provider_name}")
     print(f"    Provider ARN      : {arn}")
-    print(f"    Vendor            : CustomOauth2")
-    print(f"    Client auth       : PRIVATE_KEY_JWT (same KMS key as M2M)")
+    print("    Vendor            : CustomOauth2")
+    print("    Client auth       : PRIVATE_KEY_JWT (same KMS key as M2M)")
     print(f"    Client ID         : {client_id}  (same service app as M2M)")
     print(f"    KMS key           : {key_arn}")
     print(f"    Assertion header  : x5t#S256 = {x5t_s256}")
     print(f"    Discovery URL     : {discovery_url(tenant_id)}")
-    print(f"    Grant type used   : urn:ietf:params:oauth:grant-type:jwt-bearer")
-    print(f"    Provider config   : JWT_AUTHORIZATION_GRANT (no actor_token)")
+    print("    Grant type used   : urn:ietf:params:oauth:grant-type:jwt-bearer")
+    print("    Provider config   : JWT_AUTHORIZATION_GRANT (no actor_token)")
     print()
-    print(f"  Where to inspect it:")
-    print(f"    aws bedrock-agentcore-control get-oauth2-credential-provider \\")
+    print("  Where to inspect it:")
+    print("    aws bedrock-agentcore-control get-oauth2-credential-provider \\")
     print(f"      --name {provider_name} --region {region}")
     print()
-    print(f"  Written to .env:")
-    print(f"    (no new keys - provider name is user-supplied)")
+    print("  Written to .env:")
+    print("    (no new keys - provider name is user-supplied)")
     print()
-    print(f"  Why this step matters:")
-    print(f"    outbound_private_key_jwt_obo.py uses this provider to perform")
-    print(f"    the RFC 7523 jwt-bearer exchange. The user token is passed as")
-    print(f"    the `assertion` parameter (not `subject_token` like Okta), and")
-    print(f"    `requested_token_use=on_behalf_of` is passed via customParameters.")
-    print(f"    Entra returns a new access token whose `sub` is the user and")
-    print(f"    whose `appid` is your service app - the caller-on-behalf-of-user")
-    print(f"    identity shape that makes chained service calls work cleanly.")
+    print("  Why this step matters:")
+    print("    outbound_private_key_jwt_obo.py uses this provider to perform")
+    print("    the RFC 7523 jwt-bearer exchange. The user token is passed as")
+    print("    the `assertion` parameter (not `subject_token` like Okta), and")
+    print("    `requested_token_use=on_behalf_of` is passed via customParameters.")
+    print("    Entra returns a new access token whose `sub` is the user and")
+    print("    whose `appid` is your service app - the caller-on-behalf-of-user")
+    print("    identity shape that makes chained service calls work cleanly.")
     print()
-    print(f"  Next steps:")
-    print(f"    M2M-only path: run the M2M demo now.")
-    print(f"      python outbound_private_key_jwt_m2m.py")
+    print("  Next steps:")
+    print("    M2M-only path: run the M2M demo now.")
+    print("      python outbound_private_key_jwt_m2m.py")
     print()
-    print(f"    OBO path: continue setup, then run the OBO demo.")
-    print(f"      python setup/04b_create_provider_client.py")
-    print(f"      python get_entra_user_jwt.py")
-    print(f"      python outbound_private_key_jwt_obo.py")
+    print("    OBO path: continue setup, then run the OBO demo.")
+    print("      python setup/04b_create_provider_client.py")
+    print("      python get_entra_user_jwt.py")
+    print("      python outbound_private_key_jwt_obo.py")
 
 
 if __name__ == "__main__":

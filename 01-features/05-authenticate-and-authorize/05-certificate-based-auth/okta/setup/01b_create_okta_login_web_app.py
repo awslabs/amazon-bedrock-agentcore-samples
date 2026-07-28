@@ -63,7 +63,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 DEFAULT_LABEL = "AgentCore Identity Private Key JWT Login App"
 DEFAULT_POLICY_NAME = "AgentCore Identity Private Key JWT Sample"
@@ -104,7 +103,7 @@ def b64url_uint(value: int) -> str:
 def kms_public_key_to_jwk(der_public_key: bytes) -> dict:
     pubkey = load_der_public_key(der_public_key)
     if not isinstance(pubkey, rsa.RSAPublicKey):
-        raise ValueError("This sample only supports RSA keys (RS256).")
+        raise TypeError("This sample only supports RSA keys (RS256).")
     numbers = pubkey.public_numbers()
     kid = hashlib.sha256(der_public_key).hexdigest()[:16]
     return {
@@ -120,9 +119,7 @@ def kms_public_key_to_jwk(der_public_key: bytes) -> dict:
 def get_kms_public_key_der(kms, key_arn: str) -> bytes:
     resp = kms.get_public_key(KeyId=key_arn)
     if resp.get("KeyUsage") != "SIGN_VERIFY":
-        raise RuntimeError(
-            f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, expected SIGN_VERIFY."
-        )
+        raise RuntimeError(f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, expected SIGN_VERIFY.")
     return resp["PublicKey"]
 
 
@@ -140,9 +137,7 @@ def find_app_by_label(base_url: str, api_token: str, label: str) -> dict | None:
     return None
 
 
-def create_web_app_via_dcr(
-    base_url: str, api_token: str, label: str, jwk: dict
-) -> dict:
+def create_web_app_via_dcr(base_url: str, api_token: str, label: str, jwk: dict) -> dict:
     """Create a Web app with authorization_code grant + PRIVATE_KEY_JWT via DCR."""
     payload = {
         "client_name": label,
@@ -163,9 +158,7 @@ def create_web_app_via_dcr(
     return resp.json()
 
 
-def set_federation_broker_mode(
-    base_url: str, api_token: str, app_id: str, enabled: bool
-) -> None:
+def set_federation_broker_mode(base_url: str, api_token: str, app_id: str, enabled: bool) -> None:
     """Toggle settings.implicitAssignment on the app.
 
     Okta's DCR endpoint doesn't accept the implicitAssignment field, so we
@@ -218,9 +211,7 @@ def find_user_by_login(base_url: str, api_token: str, login: str) -> str | None:
     return resp.json().get("id")
 
 
-def assign_user_to_app(
-    base_url: str, api_token: str, app_id: str, login: str
-) -> None:
+def assign_user_to_app(base_url: str, api_token: str, app_id: str, login: str) -> None:
     """Assign a specific Okta user to the app so they can complete 3LO sign-in.
 
     Some Okta tenants refuse the built-in 'Everyone' group assignment via
@@ -258,9 +249,7 @@ def assign_user_to_app(
         )
 
 
-def find_auth_policy_by_name(
-    base_url: str, api_token: str, name: str
-) -> dict | None:
+def find_auth_policy_by_name(base_url: str, api_token: str, name: str) -> dict | None:
     """Return the ACCESS_POLICY (app authentication policy) with this name."""
     resp = requests.get(
         f"{base_url}/api/v1/policies",
@@ -275,9 +264,7 @@ def find_auth_policy_by_name(
     return None
 
 
-def create_permissive_auth_policy(
-    base_url: str, api_token: str, name: str
-) -> dict:
+def create_permissive_auth_policy(base_url: str, api_token: str, name: str) -> dict:
     """Create an Okta Authentication Policy (ACCESS_POLICY) with an
     unconditional allow rule, so any assigned user can sign in with just
     a password (no MFA challenge).
@@ -345,9 +332,7 @@ def ensure_allow_rule(base_url: str, api_token: str, policy_id: str) -> None:
     print("✓ Added ALLOW rule (1FA / password) to auth policy")
 
 
-def bind_app_to_auth_policy(
-    base_url: str, api_token: str, app_id: str, policy_id: str
-) -> None:
+def bind_app_to_auth_policy(base_url: str, api_token: str, app_id: str, policy_id: str) -> None:
     """Bind the Web app to a specific authentication policy."""
     resp = requests.put(
         f"{base_url}/api/v1/apps/{app_id}/policies/{policy_id}",
@@ -363,9 +348,7 @@ def bind_app_to_auth_policy(
 DEFAULT_AUTH_POLICY_NAME = "AgentCore Identity Private Key JWT Sample Auth"
 
 
-def ensure_permissive_auth_policy(
-    base_url: str, api_token: str, app_id: str
-) -> None:
+def ensure_permissive_auth_policy(base_url: str, api_token: str, app_id: str) -> None:
     """Idempotently create/reuse a permissive auth policy and bind it to the app."""
     policy_name = os.environ.get("OKTA_AUTH_POLICY_NAME") or DEFAULT_AUTH_POLICY_NAME
     policy = find_auth_policy_by_name(base_url, api_token, policy_name)
@@ -393,10 +376,7 @@ def add_client_to_policy(
     raise_for_status(resp, "GET /policies")
     target = next((p for p in resp.json() if p.get("name") == policy_name), None)
     if not target:
-        print(
-            f"⚠ Could not find policy named {policy_name!r} on AS {as_id!r}. "
-            f"Run setup/01a first."
-        )
+        print(f"⚠ Could not find policy named {policy_name!r} on AS {as_id!r}. Run setup/01a first.")
         return
 
     policy_id = target["id"]
@@ -530,47 +510,47 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 01b: Okta Web app for user 3LO (OBO)")
     print("=" * 70)
-    print(f"  What was created / updated:")
+    print("  What was created / updated:")
     print(f"    Label                     : {label}")
     print(f"    App / client ID           : {client_id}")
-    print(f"    Application type          : web")
-    print(f"    Grant types               : authorization_code, refresh_token")
-    print(f"    Client auth method        : private_key_jwt (same KMS-hosted JWK")
+    print("    Application type          : web")
+    print("    Grant types               : authorization_code, refresh_token")
+    print("    Client auth method        : private_key_jwt (same KMS-hosted JWK")
     print(f"                                as the service app, kid={jwk['kid']})")
     if assign_login:
-        print(f"    Access model              : explicit user assignment")
+        print("    Access model              : explicit user assignment")
         print(f"    User assigned             : {assign_login}")
     else:
-        print(f"    Access model              : Federation Broker Mode (implicitAssignment=true)")
+        print("    Access model              : Federation Broker Mode (implicitAssignment=true)")
     print(f"    Authentication Policy     : '{DEFAULT_AUTH_POLICY_NAME}'")
-    print(f"                                (permissive 1FA / password only)")
-    print(f"    redirect_uris             : [<placeholder>] - setup/03b will")
-    print(f"                                replace this with the AgentCore-")
-    print(f"                                managed callback URL")
+    print("                                (permissive 1FA / password only)")
+    print("    redirect_uris             : [<placeholder>] - setup/03b will")
+    print("                                replace this with the AgentCore-")
+    print("                                managed callback URL")
     print()
-    print(f"  Where to inspect it in the Okta admin console:")
+    print("  Where to inspect it in the Okta admin console:")
     print(f"    Applications → Applications → search {label!r}")
-    print(f"    General tab → Client Credentials → Public Keys")
+    print("    General tab → Client Credentials → Public Keys")
     print(f"    Assignments tab (should list {assign_login or 'no explicit users'})")
     print(f"    Security → Authentication Policies → '{DEFAULT_AUTH_POLICY_NAME}'")
-    print(f"    Direct URL:")
+    print("    Direct URL:")
     print(f"      {base_url}/admin/app/oidc_client/instance/{app_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    OKTA_LOGIN_APP_ID={app_id}")
     print(f"    OKTA_LOGIN_APP_CLIENT_ID={client_id}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    OBO needs a user access token as the subject_token. We mint")
-    print(f"    that token by running the AgentCore-mediated USER_FEDERATION")
-    print(f"    3LO flow (get_okta_user_jwt.py). That flow signs the user")
-    print(f"    into this Web app; the code-exchange leg then uses")
-    print(f"    PRIVATE_KEY_JWT with this app's JWK.")
+    print("  Why this step matters:")
+    print("    OBO needs a user access token as the subject_token. We mint")
+    print("    that token by running the AgentCore-mediated USER_FEDERATION")
+    print("    3LO flow (get_okta_user_jwt.py). That flow signs the user")
+    print("    into this Web app; the code-exchange leg then uses")
+    print("    PRIVATE_KEY_JWT with this app's JWK.")
     print()
-    print(f"  Next steps (run in order):")
-    print(f"    python setup/02_create_provider_m2m.py")
-    print(f"    python setup/03_create_provider_obo.py")
-    print(f"    python setup/03b_create_provider_client.py")
+    print("  Next steps (run in order):")
+    print("    python setup/02_create_provider_m2m.py")
+    print("    python setup/03_create_provider_obo.py")
+    print("    python setup/03b_create_provider_client.py")
 
 
 if __name__ == "__main__":

@@ -41,7 +41,6 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 POLICY_NAME = "AgentCore Identity Private Key JWT Sample"
@@ -165,9 +164,7 @@ def upsert_policy(
         policy_id = existing["id"]
         # Merge in the existing include list plus our client_id so we
         # don't clobber other clients an admin has added.
-        existing_include = (
-            existing.get("conditions", {}).get("clients", {}).get("include", [])
-        )
+        existing_include = existing.get("conditions", {}).get("clients", {}).get("include", [])
         merged = list(dict.fromkeys([*existing_include, client_id]))
         payload["conditions"]["clients"]["include"] = merged
 
@@ -383,35 +380,35 @@ def main() -> None:
     print(f"    Access Policy: '{POLICY_NAME}' (id={policy_id})")
     print(f"      clients.include  : [{client_id}]")
     print(f"    Rule        : '{RULE_NAME}'")
-    print(f"      grantTypes.include:")
-    print(f"        client_credentials             (M2M demo)")
-    print(f"        authorization_code             (3LO via login web app)")
-    print(f"        urn:ietf:params:oauth:grant-type:token-exchange (OBO)")
+    print("      grantTypes.include:")
+    print("        client_credentials             (M2M demo)")
+    print("        authorization_code             (3LO via login web app)")
+    print("        urn:ietf:params:oauth:grant-type:token-exchange (OBO)")
     print(f"      scopes.include : {scope_name}, openid, profile, email,")
-    print(f"                       offline_access")
-    print(f"      people         : Everyone")
+    print("                       offline_access")
+    print("      people         : Everyone")
     print()
-    print(f"  Where to inspect it in the Okta admin console:")
+    print("  Where to inspect it in the Okta admin console:")
     print(f"    Security → API → Authorization Servers → {as_id}")
     print(f"    Scopes tab      : confirms {scope_name} is present")
     print(f"    Access Policies : {POLICY_NAME!r} → your service app under Clients")
-    print(f"    Direct URL:")
+    print("    Direct URL:")
     print(f"      {base_url}/admin/oauth2/as/{as_id}/policies")
     print()
-    print(f"  Written to .env:")
-    print(f"    (no new keys - this step configures Okta only)")
+    print("  Written to .env:")
+    print("    (no new keys - this step configures Okta only)")
     print()
-    print(f"  Why this step matters:")
-    print(f"    Okta's Custom AS refuses to issue a token unless the request")
-    print(f"    matches an Access Policy AND a rule inside it. Missing scopes")
-    print(f"    on this rule cause the browser 3LO flow to show 'You are not")
-    print(f"    allowed to access this app' - Okta's user-facing rendering of")
-    print(f"    'no matching policy'.")
+    print("  Why this step matters:")
+    print("    Okta's Custom AS refuses to issue a token unless the request")
+    print("    matches an Access Policy AND a rule inside it. Missing scopes")
+    print("    on this rule cause the browser 3LO flow to show 'You are not")
+    print("    allowed to access this app' - Okta's user-facing rendering of")
+    print("    'no matching policy'.")
     print()
-    print(f"  Next step:")
-    print(f"    M2M-only path:  python setup/02_create_provider_m2m.py")
-    print(f"    OBO path:       python setup/01b_create_okta_login_web_app.py")
-    print(f"                    (creates the Web app used for user 3LO sign-in)")
+    print("  Next step:")
+    print("    M2M-only path:  python setup/02_create_provider_m2m.py")
+    print("    OBO path:       python setup/01b_create_okta_login_web_app.py")
+    print("                    (creates the Web app used for user 3LO sign-in)")
 
 
 if __name__ == "__main__":

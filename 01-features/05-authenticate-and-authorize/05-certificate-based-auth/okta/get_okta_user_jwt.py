@@ -60,7 +60,6 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 DEFAULT_USER_ID = "me"
 
@@ -78,7 +77,7 @@ def decode_jwt_claims(token: str) -> dict:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         return json.loads(base64.urlsafe_b64decode(payload))
-    except Exception:
+    except (ValueError, IndexError, TypeError):
         return {}
 
 
@@ -101,7 +100,7 @@ class _CallbackState:
 
 def make_handler(state: _CallbackState, redirect_path: str):
     class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802
+        def do_GET(self) -> None:
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path != redirect_path:
                 self.send_response(404)
@@ -281,7 +280,7 @@ def main() -> None:
     print("=" * 70)
     print(f"  Preview: {access_token[:40]}...{access_token[-10:]}")
     print()
-    print(f"  Decoded claims:")
+    print("  Decoded claims:")
     claim_meaning = {
         "iss": "Okta issuer - the Custom AS URL",
         "aud": "Audience - API this token is intended for",
@@ -298,26 +297,26 @@ def main() -> None:
             print(f"    {key:<20}: {claims[key]}")
             print(f"    {'':<20}  ↳ {meaning}")
     print()
-    print(f"  What just happened:")
-    print(f"    1. AgentCore identity built an authorize URL and opened it")
-    print(f"       in your browser.")
-    print(f"    2. Okta authenticated you (password / MFA per your Auth policy).")
-    print(f"    3. Okta redirected to AgentCore's managed callback URL with an")
-    print(f"       auth code.")
-    print(f"    4. AgentCore built a JWT client assertion (iss=sub=Web app's")
-    print(f"       client_id, aud=Okta token endpoint), signed it via kms:Sign,")
-    print(f"       and POSTed to Okta's /token with grant_type=authorization_code")
-    print(f"       + client_assertion. This is the same PRIVATE_KEY_JWT dance")
-    print(f"       as M2M, just with a user-context grant type.")
-    print(f"    5. Okta returned the access token above. AgentCore stored it in")
-    print(f"       its vault and returned it to this script.")
+    print("  What just happened:")
+    print("    1. AgentCore identity built an authorize URL and opened it")
+    print("       in your browser.")
+    print("    2. Okta authenticated you (password / MFA per your Auth policy).")
+    print("    3. Okta redirected to AgentCore's managed callback URL with an")
+    print("       auth code.")
+    print("    4. AgentCore built a JWT client assertion (iss=sub=Web app's")
+    print("       client_id, aud=Okta token endpoint), signed it via kms:Sign,")
+    print("       and POSTed to Okta's /token with grant_type=authorization_code")
+    print("       + client_assertion. This is the same PRIVATE_KEY_JWT dance")
+    print("       as M2M, just with a user-context grant type.")
+    print("    5. Okta returned the access token above. AgentCore stored it in")
+    print("       its vault and returned it to this script.")
     print()
-    print(f"  Written to .env:")
-    print(f"    OKTA_USER_JWT=<the JWT above>")
+    print("  Written to .env:")
+    print("    OKTA_USER_JWT=<the JWT above>")
     print()
-    print(f"  Next step:")
-    print(f"    python outbound_private_key_jwt_obo.py")
-    print(f"    (uses this token as the subject_token in the RFC 8693 exchange)")
+    print("  Next step:")
+    print("    python outbound_private_key_jwt_obo.py")
+    print("    (uses this token as the subject_token in the RFC 8693 exchange)")
 
 
 if __name__ == "__main__":

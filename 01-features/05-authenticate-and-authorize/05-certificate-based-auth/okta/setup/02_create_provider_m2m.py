@@ -27,7 +27,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
@@ -156,34 +155,34 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 02: M2M credential provider")
     print("=" * 70)
-    print(f"  What was created / updated on AgentCore identity:")
+    print("  What was created / updated on AgentCore identity:")
     print(f"    Workload identity : {workload_name}")
     print(f"    Provider name     : {provider_name}")
     print(f"    Provider ARN      : {arn}")
-    print(f"    Vendor            : CustomOauth2")
-    print(f"    Client auth       : PRIVATE_KEY_JWT (KMS-signed)")
+    print("    Vendor            : CustomOauth2")
+    print("    Client auth       : PRIVATE_KEY_JWT (KMS-signed)")
     print(f"    Client ID         : {client_id}")
     print(f"    KMS key           : {key_arn}")
     print(f"    JWK kid header    : {kid}")
     print(f"    Discovery URL     : {discovery_url(domain, auth_server_id)}")
-    print(f"    Grant type used   : client_credentials (M2M)")
+    print("    Grant type used   : client_credentials (M2M)")
     print()
-    print(f"  Where to inspect it:")
-    print(f"    No console UI in this preview. Verify with:")
-    print(f"      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
+    print("  Where to inspect it:")
+    print("    No console UI in this preview. Verify with:")
+    print("      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
     print(f"        --name {provider_name} --region {region}")
     print()
-    print(f"  Written to .env:")
-    print(f"    (no new keys - provider name is user-supplied)")
+    print("  Written to .env:")
+    print("    (no new keys - provider name is user-supplied)")
     print()
-    print(f"  Why this step matters:")
-    print(f"    outbound_private_key_jwt_m2m.py points at this provider by name.")
-    print(f"    On every GetResourceOauth2Token call, AgentCore identity builds")
-    print(f"    the JWT client assertion, calls kms:Sign on the ARN above, and")
-    print(f"    posts to Okta's /token endpoint using this configuration.")
+    print("  Why this step matters:")
+    print("    outbound_private_key_jwt_m2m.py points at this provider by name.")
+    print("    On every GetResourceOauth2Token call, AgentCore identity builds")
+    print("    the JWT client assertion, calls kms:Sign on the ARN above, and")
+    print("    posts to Okta's /token endpoint using this configuration.")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/03_create_provider_obo.py")
+    print("  Next step:")
+    print("    python setup/03_create_provider_obo.py")
 
 
 if __name__ == "__main__":

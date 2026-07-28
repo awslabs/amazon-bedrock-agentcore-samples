@@ -23,8 +23,8 @@ import os
 import sys
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
-
 
 ROOT = Path(__file__).resolve().parent
 ENV_FILE = ROOT / ".env"
@@ -67,12 +67,11 @@ def print_service_app(graph, token: str, object_id: str, expected_x5t_s256: str)
             token,
             params={
                 "$select": (
-                    "id,appId,displayName,signInAudience,identifierUris,"
-                    "appRoles,requiredResourceAccess,keyCredentials"
+                    "id,appId,displayName,signInAudience,identifierUris,appRoles,requiredResourceAccess,keyCredentials"
                 ),
             },
         )
-    except Exception as e:
+    except (requests.RequestException, ValueError, KeyError) as e:
         print(f"  ✗ could not fetch app: {e}")
         return
 
@@ -94,7 +93,7 @@ def print_service_app(graph, token: str, object_id: str, expected_x5t_s256: str)
             der_hash = base64.b64decode(kid)
             our_hash = base64.urlsafe_b64decode(expected_x5t_s256 + "==")
             match = der_hash == our_hash
-        except Exception:
+        except (ValueError, TypeError):
             match = False
         marker = "✓ matches X5T_S256_THUMBPRINT" if match else ""
         matched_cert = matched_cert or match
@@ -132,16 +131,14 @@ def print_service_sp_consent(graph, token: str, sp_object_id: str) -> None:
             f"servicePrincipals/{sp_object_id}/appRoleAssignedTo",
             token,
         )
-    except Exception as e:
+    except (requests.RequestException, ValueError, KeyError) as e:
         print(f"  ✗ could not fetch appRoleAssignedTo: {e}")
         return
     assignments = resp.get("value") or []
     print(f"  Assignments: {len(assignments)}")
     for a in assignments:
         print(
-            f"    - principalId={a.get('principalId')} "
-            f"resourceId={a.get('resourceId')} "
-            f"appRoleId={a.get('appRoleId')}"
+            f"    - principalId={a.get('principalId')} resourceId={a.get('resourceId')} appRoleId={a.get('appRoleId')}"
         )
 
 
@@ -152,13 +149,10 @@ def print_login_app(graph, token: str, object_id: str, expected_x5t_s256: str) -
             f"applications/{object_id}",
             token,
             params={
-                "$select": (
-                    "id,appId,displayName,signInAudience,web,"
-                    "keyCredentials,requiredResourceAccess"
-                ),
+                "$select": ("id,appId,displayName,signInAudience,web,keyCredentials,requiredResourceAccess"),
             },
         )
-    except Exception as e:
+    except (requests.RequestException, ValueError, KeyError) as e:
         print(f"  ✗ could not fetch app: {e}")
         return
 
@@ -178,29 +172,22 @@ def print_login_app(graph, token: str, object_id: str, expected_x5t_s256: str) -
     )
     if graph_entry:
         access = graph_entry.get("resourceAccess") or []
-        print(
-            f"  Microsoft Graph delegated permissions: {len(access)} declared"
-        )
+        print(f"  Microsoft Graph delegated permissions: {len(access)} declared")
     else:
         print("  ⚠ no Microsoft Graph delegated permissions declared")
 
 
-def print_login_consent(
-    graph, token: str, login_sp_object_id: str, graph_sp_object_id: str
-) -> None:
+def print_login_consent(graph, token: str, login_sp_object_id: str, graph_sp_object_id: str) -> None:
     _header("Login web app admin consent (oauth2PermissionGrants)")
     try:
         resp = graph.graph_get(
             "oauth2PermissionGrants",
             token,
             params={
-                "$filter": (
-                    f"clientId eq '{login_sp_object_id}' and "
-                    f"resourceId eq '{graph_sp_object_id}'"
-                ),
+                "$filter": (f"clientId eq '{login_sp_object_id}' and resourceId eq '{graph_sp_object_id}'"),
             },
         )
-    except Exception as e:
+    except (requests.RequestException, ValueError, KeyError) as e:
         print(f"  ✗ could not fetch oauth2PermissionGrants: {e}")
         return
     grants = resp.get("value") or []
@@ -240,9 +227,7 @@ def main() -> None:
         print_login_app(graph, token, login_obj, x5t_s256)
         # Find the login web app's SP to query oauth2PermissionGrants.
         login_client_id = os.environ.get("ENTRA_LOGIN_CLIENT_ID", "")
-        graph_sp = graph.find_service_principal_by_app_id(
-            MICROSOFT_GRAPH_APP_ID, token
-        )
+        graph_sp = graph.find_service_principal_by_app_id(MICROSOFT_GRAPH_APP_ID, token)
         login_sp = None
         if login_client_id:
             login_sp = graph.find_service_principal_by_app_id(login_client_id, token)

@@ -41,7 +41,6 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
@@ -59,14 +58,12 @@ def decode_jwt_claims(token: str) -> dict:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         return json.loads(base64.urlsafe_b64decode(payload))
-    except Exception:
+    except (ValueError, IndexError, TypeError):
         return {}
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Fetch an M2M access token from Okta via AgentCore PRIVATE_KEY_JWT."
-    )
+    parser = argparse.ArgumentParser(description="Fetch an M2M access token from Okta via AgentCore PRIVATE_KEY_JWT.")
     parser.add_argument(
         "--scope",
         default=None,

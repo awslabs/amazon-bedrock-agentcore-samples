@@ -42,7 +42,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 CERT_DER_PATH = ROOT / "entra_cert.der"
@@ -115,25 +114,18 @@ def create_service_app(graph, token: str, label: str) -> dict:
     return resp
 
 
-def upsert_key_credential(
-    graph, token: str, object_id: str, existing_creds: list, cert_der: bytes
-) -> None:
+def upsert_key_credential(graph, token: str, object_id: str, existing_creds: list, cert_der: bytes) -> None:
     """PATCH keyCredentials to include our cert, preserving other entries."""
     target = build_key_credential(cert_der)
     target_id = target["customKeyIdentifier"]
 
-    already_present = any(
-        (c.get("customKeyIdentifier") == target_id) for c in existing_creds
-    )
+    already_present = any((c.get("customKeyIdentifier") == target_id) for c in existing_creds)
     if already_present:
         print("• Certificate already present in the app's keyCredentials")
         return
 
     # Preserve other entries but strip fields Graph doesn't accept on PATCH.
-    sanitized = [
-        {k: v for k, v in c.items() if v is not None and k != "keyId"}
-        for c in existing_creds
-    ]
+    sanitized = [{k: v for k, v in c.items() if v is not None and k != "keyId"} for c in existing_creds]
     updated = sanitized + [target]
 
     print("→ PATCH /applications (add certificate to keyCredentials)...")
@@ -226,39 +218,39 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 02: Entra service app registration")
     print("=" * 70)
-    print(f"  What was created (or reused):")
+    print("  What was created (or reused):")
     print(f"    Label                     : {label}")
     print(f"    Application (client) ID   : {app_id}")
     print(f"    App object ID             : {object_id}")
     print(f"    Service Principal ID      : {sp_object_id}")
-    print(f"    Sign-in audience          : AzureADMyOrg (single-tenant)")
-    print(f"    Client credential         : X.509 cert (private_key_jwt)")
+    print("    Sign-in audience          : AzureADMyOrg (single-tenant)")
+    print("    Client credential         : X.509 cert (private_key_jwt)")
     print(f"                                x5t#S256 = {x5t_s256}")
     print()
-    print(f"  Where to inspect it in the Entra admin center:")
+    print("  Where to inspect it in the Entra admin center:")
     print(f"    Microsoft Entra ID → App registrations → '{label}'")
-    print(f"    Certificates & secrets → Certificates tab (should show the cert)")
-    print(f"    Overview tab shows both Application ID and Object ID (they differ!)")
-    print(f"    Direct URL:")
-    print(f"      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/")
+    print("    Certificates & secrets → Certificates tab (should show the cert)")
+    print("    Overview tab shows both Application ID and Object ID (they differ!)")
+    print("    Direct URL:")
+    print("      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/")
     print(f"      ApplicationMenuBlade/~/Overview/appId/{app_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    ENTRA_TENANT_ID={tenant_id}")
     print(f"    ENTRA_SERVICE_APP_OBJECT_ID={object_id}")
     print(f"    ENTRA_SERVICE_CLIENT_ID={app_id}")
     print(f"    ENTRA_SERVICE_SP_OBJECT_ID={sp_object_id}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    This is the confidential client that authenticates to Entra's")
-    print(f"    /token endpoint on every M2M or OBO call. Its appId is the")
-    print(f"    iss/sub of the KMS-signed JWT client assertion; the cert we")
-    print(f"    just uploaded is what Entra uses to verify that assertion.")
+    print("  Why this step matters:")
+    print("    This is the confidential client that authenticates to Entra's")
+    print("    /token endpoint on every M2M or OBO call. Its appId is the")
+    print("    iss/sub of the KMS-signed JWT client assertion; the cert we")
+    print("    just uploaded is what Entra uses to verify that assertion.")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/02a_configure_entra_permissions.py")
-    print(f"    (exposes an API URI, adds the 'm2m' app role, and grants")
-    print(f"     admin consent so client_credentials can request .default)")
+    print("  Next step:")
+    print("    python setup/02a_configure_entra_permissions.py")
+    print("    (exposes an API URI, adds the 'm2m' app role, and grants")
+    print("     admin consent so client_credentials can request .default)")
 
 
 if __name__ == "__main__":

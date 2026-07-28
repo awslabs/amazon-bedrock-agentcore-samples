@@ -34,7 +34,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
@@ -71,11 +70,7 @@ def build_key_policy(account_id: str) -> str:
                 "Principal": {"AWS": f"arn:aws:iam::{account_id}:root"},
                 "Action": ["kms:Sign", "kms:DescribeKey"],
                 "Resource": "*",
-                "Condition": {
-                    "StringLike": {
-                        "kms:ViaService": "bedrock-agentcore-identity.*.amazonaws.com"
-                    }
-                },
+                "Condition": {"StringLike": {"kms:ViaService": "bedrock-agentcore-identity.*.amazonaws.com"}},
             },
         ],
     }
@@ -131,8 +126,7 @@ def write_env_var(name: str, value: str) -> None:
         example = ENV_FILE.with_name("config.example.env")
         if not example.exists():
             print(
-                f"ERROR: neither {ENV_FILE} nor {example} exists. "
-                f"Copy config.example.env to .env first.",
+                f"ERROR: neither {ENV_FILE} nor {example} exists. Copy config.example.env to .env first.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -175,36 +169,33 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 00: KMS signing key")
     print("=" * 70)
-    print(f"  What was created (or reused, if the alias already existed):")
+    print("  What was created (or reused, if the alias already existed):")
     print(f"    KMS key ARN  : {key_arn}")
-    print(f"    Key spec     : RSA_2048, usage SIGN_VERIFY")
+    print("    Key spec     : RSA_2048, usage SIGN_VERIFY")
     print(f"    Alias        : {alias_name}")
-    print(f"    Key policy   : root admin + kms:Sign for AgentCore identity")
-    print(f"                   (via kms:ViaService ")
-    print(f"                    bedrock-agentcore-identity.*.amazonaws.com)")
+    print("    Key policy   : root admin + kms:Sign for AgentCore identity")
+    print("                   (via kms:ViaService ")
+    print("                    bedrock-agentcore-identity.*.amazonaws.com)")
     print()
-    print(f"  Where to inspect it in the AWS console:")
+    print("  Where to inspect it in the AWS console:")
     print(f"    KMS → Customer managed keys → filter by alias '{alias_name}'")
     print(f"    Region: {region}, account: {account_id}")
-    print(f"    Direct URL:")
-    print(
-        f"      https://{region}.console.aws.amazon.com/kms/home"
-        f"?region={region}#/kms/keys/{key_id}"
-    )
+    print("    Direct URL:")
+    print(f"      https://{region}.console.aws.amazon.com/kms/home?region={region}#/kms/keys/{key_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    SIGNING_KMS_KEY_ARN={key_arn}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    AgentCore identity signs the PRIVATE_KEY_JWT client assertion")
-    print(f"    by calling kms:Sign against this key. The private key material")
-    print(f"    never leaves KMS - the sample only ever uses the public key")
-    print(f"    (published as a JWK on your Okta apps in the next step).")
+    print("  Why this step matters:")
+    print("    AgentCore identity signs the PRIVATE_KEY_JWT client assertion")
+    print("    by calling kms:Sign against this key. The private key material")
+    print("    never leaves KMS - the sample only ever uses the public key")
+    print("    (published as a JWK on your Okta apps in the next step).")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/01_create_okta_service_app.py")
-    print(f"    (creates the Okta OIDC service app and registers this key's")
-    print(f"     public half as a JWK on it)")
+    print("  Next step:")
+    print("    python setup/01_create_okta_service_app.py")
+    print("    (creates the Okta OIDC service app and registers this key's")
+    print("     public half as a JWK on it)")
 
 
 if __name__ == "__main__":

@@ -52,7 +52,6 @@ import requests
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 DEFAULT_LOCAL_CALLBACK_URL = "http://localhost:8081/callback"
 
@@ -146,16 +145,12 @@ def update_okta_app_redirect_uris(
         print(f"⚠ Could not fetch Okta app {app_id}: HTTP {resp.status_code}")
         return
     app = resp.json()
-    existing_uris = (
-        app.get("settings", {}).get("oauthClient", {}).get("redirect_uris", [])
-    )
+    existing_uris = app.get("settings", {}).get("oauthClient", {}).get("redirect_uris", [])
     # Keep any real URIs the admin added, and add ours if not already present.
-    real_uris = [
-        u for u in existing_uris if "placeholder" not in u and "example.com" not in u
-    ]
+    real_uris = [u for u in existing_uris if "placeholder" not in u and "example.com" not in u]
     if callback_url in real_uris:
         merged = real_uris
-        print(f"• Callback URL already registered on Okta Web app")
+        print("• Callback URL already registered on Okta Web app")
     else:
         merged = [*real_uris, callback_url]
         print(f"→ Setting Okta Web app redirect_uris to {merged}")
@@ -174,12 +169,10 @@ def update_okta_app_redirect_uris(
             file=sys.stderr,
         )
         put.raise_for_status()
-    print(f"✓ Updated Okta Web app redirect_uris")
+    print("✓ Updated Okta Web app redirect_uris")
 
 
-def _manual_redirect_uri_instructions(
-    base_url: str, login_app_id: str, callback_url: str
-) -> str:
+def _manual_redirect_uri_instructions(base_url: str, login_app_id: str, callback_url: str) -> str:
     """Text block telling the user which field to paste the URL into."""
     return (
         f"  In the Okta admin console:\n"
@@ -202,9 +195,7 @@ def update_workload_return_url(control, workload_name: str, local_url: str) -> N
     except ClientError as e:
         code = e.response["Error"].get("Code", "")
         if code in {"ResourceNotFoundException", "NotFoundException"}:
-            print(
-                f"⚠ Workload identity {workload_name!r} not found. Run setup/02 or 03 first."
-            )
+            print(f"⚠ Workload identity {workload_name!r} not found. Run setup/02 or 03 first.")
             return
         raise
 
@@ -248,12 +239,8 @@ def main() -> None:
     workload_name = must_env("WORKLOAD_NAME")
     login_app_id = must_env("OKTA_LOGIN_APP_ID")
     login_app_client_id = must_env("OKTA_LOGIN_APP_CLIENT_ID")
-    provider_name = (
-        os.environ.get("CLIENT_PROVIDER_NAME") or "pkjwt-okta-sample-client"
-    )
-    local_url = (
-        os.environ.get("LOCAL_CALLBACK_URL") or DEFAULT_LOCAL_CALLBACK_URL
-    )
+    provider_name = os.environ.get("CLIENT_PROVIDER_NAME") or "pkjwt-okta-sample-client"
+    local_url = os.environ.get("LOCAL_CALLBACK_URL") or DEFAULT_LOCAL_CALLBACK_URL
 
     base_url = f"https://{domain}"
     ac_control = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -278,8 +265,7 @@ def main() -> None:
     arn, callback_url = upsert_provider(ac_control, name=provider_name, config=config)
     if not callback_url:
         print(
-            "✗ AgentCore did not return a callbackUrl for the client provider - "
-            "cannot wire the Okta redirect_uri.",
+            "✗ AgentCore did not return a callbackUrl for the client provider - cannot wire the Okta redirect_uri.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -310,45 +296,45 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 03b: client (USER_FEDERATION) provider")
     print("=" * 70)
-    print(f"  What was created / updated:")
+    print("  What was created / updated:")
     print(f"    Provider name        : {provider_name}")
     print(f"    Provider ARN         : {arn}")
-    print(f"    Vendor               : CustomOauth2")
-    print(f"    Client auth          : PRIVATE_KEY_JWT (same KMS key as M2M/OBO)")
+    print("    Vendor               : CustomOauth2")
+    print("    Client auth          : PRIVATE_KEY_JWT (same KMS key as M2M/OBO)")
     print(f"    Client ID (Web app)  : {login_app_client_id}")
     print(f"    JWK kid header       : {kid}")
     print(f"    AgentCore callback   : {callback_url}")
     if api_token:
-        print(f"    Okta Web app redirect_uris updated to include that callback")
+        print("    Okta Web app redirect_uris updated to include that callback")
     else:
-        print(f"    Okta Web app redirect_uris update: PENDING MANUAL STEP")
-        print(f"      (paste the callback URL above into the web app -")
-        print(f"       see the instructions block earlier in this run)")
+        print("    Okta Web app redirect_uris update: PENDING MANUAL STEP")
+        print("      (paste the callback URL above into the web app -")
+        print("       see the instructions block earlier in this run)")
     print(f"    Workload allowed URL : {local_url}")
     print()
-    print(f"  Where to inspect it:")
-    print(f"    AgentCore identity provider (control-plane API):")
-    print(f"      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
+    print("  Where to inspect it:")
+    print("    AgentCore identity provider (control-plane API):")
+    print("      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
     print(f"        --name {provider_name} --region {region}")
-    print(f"    Okta Web app redirect_uris:")
-    print(f"      Applications → Applications → login Web app → General tab")
+    print("    Okta Web app redirect_uris:")
+    print("      Applications → Applications → login Web app → General tab")
     print(f"        {base_url}/admin/app/oidc_client/instance/{login_app_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    CLIENT_PROVIDER_NAME={provider_name}")
     print(f"    AGENTCORE_MANAGED_CALLBACK_URL={callback_url}")
     print(f"    LOCAL_CALLBACK_URL={local_url}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    This provider handles the code-exchange call to Okta's /token")
-    print(f"    endpoint after you sign in through the browser. Same KMS key")
-    print(f"    signs the JWT client assertion - same private_key_jwt flow -")
-    print(f"    but the client_id is your Web app (not the service app), and")
-    print(f"    the grant type is authorization_code (not client_credentials).")
+    print("  Why this step matters:")
+    print("    This provider handles the code-exchange call to Okta's /token")
+    print("    endpoint after you sign in through the browser. Same KMS key")
+    print("    signs the JWT client assertion - same private_key_jwt flow -")
+    print("    but the client_id is your Web app (not the service app), and")
+    print("    the grant type is authorization_code (not client_credentials).")
     print()
-    print(f"  Next step:")
-    print(f"    python get_okta_user_jwt.py")
-    print(f"    (opens your browser, runs 3LO, writes OKTA_USER_JWT to .env)")
+    print("  Next step:")
+    print("    python get_okta_user_jwt.py")
+    print("    (opens your browser, runs 3LO, writes OKTA_USER_JWT to .env)")
 
 
 if __name__ == "__main__":

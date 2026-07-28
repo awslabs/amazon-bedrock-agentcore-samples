@@ -42,7 +42,6 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
@@ -60,21 +59,16 @@ def decode_jwt_claims(token: str) -> dict:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         return json.loads(base64.urlsafe_b64decode(payload))
-    except Exception:
+    except (ValueError, IndexError, TypeError):
         return {}
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Fetch an M2M access token from Entra via AgentCore PRIVATE_KEY_JWT."
-    )
+    parser = argparse.ArgumentParser(description="Fetch an M2M access token from Entra via AgentCore PRIVATE_KEY_JWT.")
     parser.add_argument(
         "--scope",
         default=None,
-        help=(
-            "OAuth scope to request. Defaults to "
-            "api://<ENTRA_SERVICE_CLIENT_ID>/.default"
-        ),
+        help=("OAuth scope to request. Defaults to api://<ENTRA_SERVICE_CLIENT_ID>/.default"),
     )
     args = parser.parse_args()
 
@@ -148,8 +142,7 @@ def main() -> None:
     print("  What just happened:")
     print("    1. AgentCore Identity built a JWT client assertion:")
     print(f"         iss = sub = {claims.get('appid') or '<service app appId>'}")
-    print(f"         aud = https://login.microsoftonline.com/{claims.get('tid') or '<tenant>'}"
-          f"/oauth2/v2.0/token")
+    print(f"         aud = https://login.microsoftonline.com/{claims.get('tid') or '<tenant>'}/oauth2/v2.0/token")
     print("         jti, iat, exp populated")
     print("         header includes  alg = RS256  and  x5t#S256 = <thumbprint>")
     print("    2. Called kms:Sign against SIGNING_KMS_KEY_ARN. The private key")

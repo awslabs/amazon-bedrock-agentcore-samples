@@ -101,7 +101,7 @@ only need M2M.
 Run all commands from this sample's `okta/` folder.
 
 ```bash
-cd 05-outbound-auth-private-key-jwt/okta
+cd 05-certificate-based-auth/okta
 
 # Python environment
 python3 -m venv .venv

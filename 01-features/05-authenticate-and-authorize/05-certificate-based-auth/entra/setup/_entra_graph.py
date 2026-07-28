@@ -26,7 +26,6 @@ from typing import Any
 
 import requests
 
-
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 
@@ -82,8 +81,7 @@ def get_graph_token() -> str:
     token = result.stdout.strip()
     if not token:
         print(
-            "✗ `az account get-access-token` returned an empty token.\n"
-            "  Try re-running `az login`.",
+            "✗ `az account get-access-token` returned an empty token.\n  Try re-running `az login`.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -141,7 +139,7 @@ def _print_graph_error(action: str, resp: requests.Response) -> None:
             print(f"  message: {err.get('message')}", file=sys.stderr)
         else:
             print(f"  body:    {resp.text[:600]}", file=sys.stderr)
-    except Exception:
+    except (ValueError, KeyError):
         print(f"  body:    {resp.text[:600]}", file=sys.stderr)
 
 
@@ -159,9 +157,7 @@ def graph_get(path: str, token: str, params: dict | None = None) -> dict | list:
     return resp.json()
 
 
-def graph_post(
-    path: str, token: str, body: dict, *, expect_status: tuple[int, ...] = (200, 201)
-) -> dict:
+def graph_post(path: str, token: str, body: dict, *, expect_status: tuple[int, ...] = (200, 201)) -> dict:
     """POST /v1.0/{path}. Returns the response body if status matches."""
     resp = requests.post(
         f"{GRAPH_BASE}/{path.lstrip('/')}",
@@ -175,14 +171,12 @@ def graph_post(
     if resp.text:
         try:
             return resp.json()
-        except Exception:
+        except ValueError:
             return {}
     return {}
 
 
-def graph_patch(
-    path: str, token: str, body: dict, *, expect_status: tuple[int, ...] = (200, 204)
-) -> None:
+def graph_patch(path: str, token: str, body: dict, *, expect_status: tuple[int, ...] = (200, 204)) -> None:
     """PATCH /v1.0/{path}. Raises if the status is unexpected."""
     resp = requests.patch(
         f"{GRAPH_BASE}/{path.lstrip('/')}",
@@ -195,9 +189,7 @@ def graph_patch(
         resp.raise_for_status()
 
 
-def graph_delete(
-    path: str, token: str, *, expect_status: tuple[int, ...] = (200, 204, 404)
-) -> int:
+def graph_delete(path: str, token: str, *, expect_status: tuple[int, ...] = (200, 204, 404)) -> int:
     """DELETE /v1.0/{path}. 404 is treated as success (idempotent teardown)."""
     resp = requests.delete(
         f"{GRAPH_BASE}/{path.lstrip('/')}",

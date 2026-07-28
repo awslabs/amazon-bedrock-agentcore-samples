@@ -53,7 +53,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
@@ -100,11 +99,7 @@ def build_key_policy(account_id: str) -> str:
                     "kms:DescribeKey",
                 ],
                 "Resource": "*",
-                "Condition": {
-                    "StringLike": {
-                        "kms:ViaService": "bedrock-agentcore-identity.*.amazonaws.com"
-                    }
-                },
+                "Condition": {"StringLike": {"kms:ViaService": "bedrock-agentcore-identity.*.amazonaws.com"}},
             },
         ],
     }
@@ -160,8 +155,7 @@ def write_env_var(name: str, value: str) -> None:
         example = ENV_FILE.with_name("config.example.env")
         if not example.exists():
             print(
-                f"ERROR: neither {ENV_FILE} nor {example} exists. "
-                f"Copy config.example.env to .env first.",
+                f"ERROR: neither {ENV_FILE} nor {example} exists. Copy config.example.env to .env first.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -204,37 +198,34 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 00: KMS signing key")
     print("=" * 70)
-    print(f"  What was created (or reused, if the alias already existed):")
+    print("  What was created (or reused, if the alias already existed):")
     print(f"    KMS key ARN  : {key_arn}")
-    print(f"    Key spec     : RSA_2048, usage SIGN_VERIFY")
+    print("    Key spec     : RSA_2048, usage SIGN_VERIFY")
     print(f"    Alias        : {alias_name}")
-    print(f"    Key policy   : root admin + AgentCore Identity signing access")
-    print(f"                   (kms:Sign / kms:GetPublicKey / kms:DescribeKey)")
-    print(f"                   scoped by kms:ViaService")
+    print("    Key policy   : root admin + AgentCore Identity signing access")
+    print("                   (kms:Sign / kms:GetPublicKey / kms:DescribeKey)")
+    print("                   scoped by kms:ViaService")
     print()
-    print(f"  Where to inspect it in the AWS console:")
+    print("  Where to inspect it in the AWS console:")
     print(f"    KMS → Customer managed keys → filter by alias '{alias_name}'")
     print(f"    Region: {region}, account: {account_id}")
-    print(f"    Direct URL:")
-    print(
-        f"      https://{region}.console.aws.amazon.com/kms/home"
-        f"?region={region}#/kms/keys/{key_id}"
-    )
+    print("    Direct URL:")
+    print(f"      https://{region}.console.aws.amazon.com/kms/home?region={region}#/kms/keys/{key_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    SIGNING_KMS_KEY_ARN={key_arn}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    AgentCore Identity signs the PRIVATE_KEY_JWT client assertion")
-    print(f"    by calling kms:Sign against this key. setup/01 additionally")
-    print(f"    uses kms:GetPublicKey to derive the certificate that Entra")
-    print(f"    validates against, and kms:Sign to self-sign that certificate.")
-    print(f"    The private key material never leaves KMS at any point.")
+    print("  Why this step matters:")
+    print("    AgentCore Identity signs the PRIVATE_KEY_JWT client assertion")
+    print("    by calling kms:Sign against this key. setup/01 additionally")
+    print("    uses kms:GetPublicKey to derive the certificate that Entra")
+    print("    validates against, and kms:Sign to self-sign that certificate.")
+    print("    The private key material never leaves KMS at any point.")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/01_build_certificate.py")
-    print(f"    (builds the self-signed X.509 cert whose public key IS this")
-    print(f"     KMS key's public half, with the cert TBS signed by kms:Sign)")
+    print("  Next step:")
+    print("    python setup/01_build_certificate.py")
+    print("    (builds the self-signed X.509 cert whose public key IS this")
+    print("     KMS key's public half, with the cert TBS signed by kms:Sign)")
 
 
 if __name__ == "__main__":

@@ -39,7 +39,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 DEFAULT_SERVICE_APP_LABEL = "AgentCore Identity Private Key JWT Sample"
@@ -71,7 +70,7 @@ def b64url_uint(value: int) -> str:
 def kms_public_key_to_jwk(der_public_key: bytes) -> dict:
     pubkey = load_der_public_key(der_public_key)
     if not isinstance(pubkey, rsa.RSAPublicKey):
-        raise ValueError("This sample only supports RSA keys (RS256).")
+        raise TypeError("This sample only supports RSA keys (RS256).")
     numbers = pubkey.public_numbers()
     kid = hashlib.sha256(der_public_key).hexdigest()[:16]
     return {
@@ -87,10 +86,7 @@ def kms_public_key_to_jwk(der_public_key: bytes) -> dict:
 def get_kms_public_key_der(kms, key_arn: str) -> bytes:
     resp = kms.get_public_key(KeyId=key_arn)
     if resp.get("KeyUsage") != "SIGN_VERIFY":
-        raise RuntimeError(
-            f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, "
-            f"expected SIGN_VERIFY."
-        )
+        raise RuntimeError(f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, expected SIGN_VERIFY.")
     return resp["PublicKey"]
 
 
@@ -151,10 +147,10 @@ def print_service_app_instructions(*, service_label: str) -> None:
 
     _substep(2, "General settings")
     print(f"  App integration name             : {service_label}")
-    print(f"  Grant type (Client acting on behalf of itself):")
-    print(f"    ☑ Client Credentials")
-    print(f"    ☑ Token Exchange")
-    print(f"  → Save")
+    print("  Grant type (Client acting on behalf of itself):")
+    print("    ☑ Client Credentials")
+    print("    ☑ Token Exchange")
+    print("  → Save")
 
     _substep(3, "General tab → Client Credentials → Client authentication")
     print("  Client authentication            : Public key / Private key")
@@ -181,36 +177,36 @@ def print_as_config_instructions(
     _substep(1, "Security → API → Authorization Servers → " + as_id + " → Scopes tab")
     print("  Add Scope:")
     print(f"    Name                : {scope}")
-    print(f"    Description         : Sample scope for AgentCore Identity PRIVATE_KEY_JWT test")
-    print(f"    User consent        : Implicit")
-    print(f"    Include in public metadata: ☑")
-    print(f"    → Create")
+    print("    Description         : Sample scope for AgentCore Identity PRIVATE_KEY_JWT test")
+    print("    User consent        : Implicit")
+    print("    Include in public metadata: ☑")
+    print("    → Create")
 
     _substep(2, "→ Access Policies tab → Add New Access Policy")
     print(f"  Name        : {policy_name}")
-    print(f"  Description : Auto-created by the PRIVATE_KEY_JWT sample. Grants the sample")
-    print(f"                service app permission to use client_credentials +")
-    print(f"                token_exchange for the sample scope.")
-    print(f"  Assign to   : Add Client → search 'AgentCore Identity Private Key")
-    print(f"                JWT Sample' → select your SERVICE app → Save.")
+    print("  Description : Auto-created by the PRIVATE_KEY_JWT sample. Grants the sample")
+    print("                service app permission to use client_credentials +")
+    print("                token_exchange for the sample scope.")
+    print("  Assign to   : Add Client → search 'AgentCore Identity Private Key")
+    print("                JWT Sample' → select your SERVICE app → Save.")
 
     _substep(3, "→ Access Policies → your new policy → Add Rule")
     print(f"  Rule Name                              : {rule_name}")
-    print(f"  IF Grant type is                       : Client acting on behalf")
-    print(f"                                             of itself (Client")
-    print(f"                                             Credentials + Token")
-    print(f"                                             Exchange)")
-    print(f"                                           AND")
-    print(f"                                           Client acting on behalf")
-    print(f"                                             of a user (Authorization")
-    print(f"                                             Code)")
-    print(f"  AND User is                            : Any user assigned the app")
-    print(f"  AND Scopes requested                   :")
-    print(f"    Any scopes  ← pick this OR list them explicitly:")
+    print("  IF Grant type is                       : Client acting on behalf")
+    print("                                             of itself (Client")
+    print("                                             Credentials + Token")
+    print("                                             Exchange)")
+    print("                                           AND")
+    print("                                           Client acting on behalf")
+    print("                                             of a user (Authorization")
+    print("                                             Code)")
+    print("  AND User is                            : Any user assigned the app")
+    print("  AND Scopes requested                   :")
+    print("    Any scopes  ← pick this OR list them explicitly:")
     print(f"      {scope}, openid, profile, email, offline_access")
-    print(f"  THEN Access token lifetime is          : 60 minutes (default)")
-    print(f"  Refresh token lifetime                 : 90 days (default)")
-    print(f"  → Create Rule")
+    print("  THEN Access token lifetime is          : 60 minutes (default)")
+    print("  Refresh token lifetime                 : 90 days (default)")
+    print("  → Create Rule")
 
     _substep(4, "Verify")
     print(f"  {base_url}/admin/oauth2/as/{as_id}/policies")
@@ -237,17 +233,17 @@ def print_web_app_instructions(
 
     _substep(2, "General settings")
     print(f"  App integration name             : {login_label}")
-    print(f"  Grant type:")
-    print(f"    ☑ Authorization Code")
-    print(f"    ☑ Refresh Token")
-    print(f"  Sign-in redirect URIs            : https://placeholder.example.com/set-later")
-    print(f"                                     (setup/03b will print the")
-    print(f"                                      real AgentCore-managed URL")
-    print(f"                                      to paste here.)")
-    print(f"  Sign-out redirect URIs           : (leave blank)")
-    print(f"  Assignments                      : Limit access to selected groups")
-    print(f"                                     OR Skip group assignment for now")
-    print(f"  → Save")
+    print("  Grant type:")
+    print("    ☑ Authorization Code")
+    print("    ☑ Refresh Token")
+    print("  Sign-in redirect URIs            : https://placeholder.example.com/set-later")
+    print("                                     (setup/03b will print the")
+    print("                                      real AgentCore-managed URL")
+    print("                                      to paste here.)")
+    print("  Sign-out redirect URIs           : (leave blank)")
+    print("  Assignments                      : Limit access to selected groups")
+    print("                                     OR Skip group assignment for now")
+    print("  → Save")
 
     _substep(3, "General tab → Client Credentials → Client authentication")
     print("  Client authentication            : Public key / Private key")
@@ -262,15 +258,15 @@ def print_web_app_instructions(
 
     _substep(5, "Security → Authentication Policies → Add a policy")
     print(f"  Name         : {auth_policy_name}")
-    print(f"  Description  : Permissive authentication policy for the AgentCore")
-    print(f"                 Identity Private Key JWT sample login app.")
-    print(f"  Rules        : Add Rule → default 'Catch-all Rule':")
-    print(f"                   IF User's group membership is        : Any group")
-    print(f"                   THEN Access is                       : Allowed")
-    print(f"                   with authentication provider being   : Any")
-    print(f"                   factor mode                          : Password /")
-    print(f"                                                          any 1 factor")
-    print(f"                   Reauthentication frequency           : 2 hours")
+    print("  Description  : Permissive authentication policy for the AgentCore")
+    print("                 Identity Private Key JWT sample login app.")
+    print("  Rules        : Add Rule → default 'Catch-all Rule':")
+    print("                   IF User's group membership is        : Any group")
+    print("                   THEN Access is                       : Allowed")
+    print("                   with authentication provider being   : Any")
+    print("                   factor mode                          : Password /")
+    print("                                                          any 1 factor")
+    print("                   Reauthentication frequency           : 2 hours")
 
     _substep(6, "Applications → your web app → Sign On tab → Authentication policy")
     print(f"  Edit → pick '{auth_policy_name}' → Save.")
@@ -294,7 +290,7 @@ def print_env_summary(
     if include_service:
         print("  OKTA_SERVICE_APP_ID=<client_id from step A.4>")
         print("  OKTA_SERVICE_APP_CLIENT_ID=<same value as above>")
-    print(f"  SIGNING_KID=<kid from the JWK block above>")
+    print("  SIGNING_KID=<kid from the JWK block above>")
     print(f"  M2M_SCOPE={scope}")
     if include_web:
         print("  OKTA_LOGIN_APP_ID=<client_id from step C.7>")
@@ -329,9 +325,7 @@ def print_next_steps(*, include_web: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Print a manual Okta admin console walkthrough for the sample."
-    )
+    parser = argparse.ArgumentParser(description="Print a manual Okta admin console walkthrough for the sample.")
     parser.add_argument(
         "--m2m",
         action="store_true",
@@ -354,16 +348,10 @@ def main() -> None:
     domain = must_env("OKTA_DOMAIN")
     as_id = os.environ.get("OKTA_AUTH_SERVER_ID") or "default"
     scope = os.environ.get("M2M_SCOPE") or "api:access"
-    service_label = (
-        os.environ.get("OKTA_SERVICE_APP_LABEL") or DEFAULT_SERVICE_APP_LABEL
-    )
-    login_label = (
-        os.environ.get("OKTA_LOGIN_APP_LABEL") or DEFAULT_LOGIN_APP_LABEL
-    )
+    service_label = os.environ.get("OKTA_SERVICE_APP_LABEL") or DEFAULT_SERVICE_APP_LABEL
+    login_label = os.environ.get("OKTA_LOGIN_APP_LABEL") or DEFAULT_LOGIN_APP_LABEL
     policy_name = os.environ.get("OKTA_POLICY_NAME") or DEFAULT_POLICY_NAME
-    auth_policy_name = (
-        os.environ.get("OKTA_AUTH_POLICY_NAME") or DEFAULT_AUTH_POLICY_NAME
-    )
+    auth_policy_name = os.environ.get("OKTA_AUTH_POLICY_NAME") or DEFAULT_AUTH_POLICY_NAME
     rule_name = DEFAULT_RULE_NAME
     base_url = f"https://{domain}"
 

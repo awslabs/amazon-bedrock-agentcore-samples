@@ -50,7 +50,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ROOT = Path(__file__).resolve().parent
 ENV_FILE = ROOT / ".env"
 CERT_PEM_PATH = ROOT / "entra_cert.pem"
@@ -153,9 +152,7 @@ def delete_workload(control, name: str | None, dry_run: bool) -> None:
 # ─────────────────────────── Entra ──────────────────────────────────
 
 
-def delete_application(
-    graph, token: str, object_id: str, label: str, dry_run: bool
-) -> None:
+def delete_application(graph, token: str, object_id: str, label: str, dry_run: bool) -> None:
     if not object_id:
         return
     if dry_run:
@@ -208,9 +205,7 @@ def delete_kms(kms, alias_name: str | None, dry_run: bool, days: int = 7) -> Non
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Tear down PRIVATE_KEY_JWT Entra sample resources."
-    )
+    parser = argparse.ArgumentParser(description="Tear down PRIVATE_KEY_JWT Entra sample resources.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--delete-kms", action="store_true")
     parser.add_argument("--keep-env", action="store_true")
@@ -259,18 +254,13 @@ def main() -> None:
 
         if token:
             if login_object_id:
-                delete_application(
-                    graph, token, login_object_id, login_label, args.dry_run
-                )
+                delete_application(graph, token, login_object_id, login_label, args.dry_run)
             if service_object_id:
-                delete_application(
-                    graph, token, service_object_id, service_label, args.dry_run
-                )
+                delete_application(graph, token, service_object_id, service_label, args.dry_run)
         else:
             _mark(
                 "•",
-                "az login unavailable - skipping Entra cleanup. Delete these "
-                "manually in the Entra admin center:",
+                "az login unavailable - skipping Entra cleanup. Delete these manually in the Entra admin center:",
             )
             if login_object_id:
                 _mark("  ", f"App registrations → objectId={login_object_id}")
@@ -287,8 +277,7 @@ def main() -> None:
     else:
         _mark(
             "•",
-            f"KMS alias {kms_alias or '(unset)'} left in place "
-            f"(pass --delete-kms to schedule deletion).",
+            f"KMS alias {kms_alias or '(unset)'} left in place (pass --delete-kms to schedule deletion).",
         )
 
     # 4. Local cert files

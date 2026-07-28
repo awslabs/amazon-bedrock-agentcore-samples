@@ -61,7 +61,6 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
@@ -78,7 +77,7 @@ def decode_jwt_claims(token: str) -> dict:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         return json.loads(base64.urlsafe_b64decode(payload))
-    except Exception:
+    except (ValueError, IndexError, TypeError):
         return {}
 
 
@@ -103,16 +102,11 @@ def check_user_jwt_not_expired(user_jwt: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Perform an OBO token exchange with Entra via PRIVATE_KEY_JWT."
-    )
+    parser = argparse.ArgumentParser(description="Perform an OBO token exchange with Entra via PRIVATE_KEY_JWT.")
     parser.add_argument(
         "--scope",
         default=None,
-        help=(
-            "OAuth scope for the downstream resource. Defaults to "
-            "https://graph.microsoft.com/.default"
-        ),
+        help=("OAuth scope for the downstream resource. Defaults to https://graph.microsoft.com/.default"),
     )
     args = parser.parse_args()
 
@@ -125,11 +119,7 @@ def main() -> None:
     # Entra OBO requires a downstream .default scope. Default to Graph
     # so the sample can demonstrate OBO end-to-end without needing a
     # second custom API. Override with --scope for other resources.
-    scope = (
-        args.scope
-        or os.environ.get("OBO_SCOPE")
-        or "https://graph.microsoft.com/.default"
-    )
+    scope = args.scope or os.environ.get("OBO_SCOPE") or "https://graph.microsoft.com/.default"
 
     check_user_jwt_not_expired(user_jwt)
 
@@ -157,10 +147,7 @@ def main() -> None:
     print("✓ Received workload access token (carries the user JWT as subject)")
 
     print()
-    print(
-        f"→ GetResourceOauth2Token "
-        f"(oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE, provider={provider_name})..."
-    )
+    print(f"→ GetResourceOauth2Token (oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE, provider={provider_name})...")
     # requested_token_use=on_behalf_of is Entra's flag that this is an
     # OBO call rather than a plain jwt-bearer grant. AgentCore Identity
     # forwards customParameters to the token endpoint as extra form data.

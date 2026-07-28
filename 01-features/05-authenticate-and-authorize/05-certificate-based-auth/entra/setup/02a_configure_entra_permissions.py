@@ -38,8 +38,8 @@ import sys
 import uuid
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
-
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
@@ -146,16 +146,14 @@ def build_desired_app(
     if not any(s.get("value") == scope_name for s in existing_scopes):
         new_scope = {
             "id": scope_id,
-            "adminConsentDisplayName": f"Access the sample API as user",
+            "adminConsentDisplayName": "Access the sample API as user",
             "adminConsentDescription": (
                 "Allows the app to access the AgentCore Identity PRIVATE_KEY_JWT "
                 "sample API on behalf of the signed-in user. Required for the "
                 "OBO demo - the resulting user token has aud=api://<clientId>."
             ),
             "userConsentDisplayName": "Access the sample API as you",
-            "userConsentDescription": (
-                "Allows this app to access the sample API on your behalf."
-            ),
+            "userConsentDescription": ("Allows this app to access the sample API on your behalf."),
             "value": scope_name,
             "type": "User",
             "isEnabled": True,
@@ -207,7 +205,7 @@ def grant_admin_consent(graph, token: str, sp_object_id: str, role_id: str) -> N
             f"servicePrincipals/{sp_object_id}/appRoleAssignedTo",
             token,
         )
-        for a in (current.get("value") or []):
+        for a in current.get("value") or []:
             if (
                 a.get("appRoleId") == role_id
                 and a.get("principalId") == sp_object_id
@@ -215,8 +213,10 @@ def grant_admin_consent(graph, token: str, sp_object_id: str, role_id: str) -> N
             ):
                 print("• App role already granted (admin consent present)")
                 return
-    except Exception:
-        pass  # fall through to POST - we'll see the error there if it fails.
+    except (requests.RequestException, ValueError, KeyError):
+        # Fall through to POST - if the check GET failed, the POST will
+        # surface the real error. This is a best-effort idempotency probe.
+        pass
 
     body = {
         "principalId": sp_object_id,
@@ -241,29 +241,21 @@ def grant_admin_consent(graph, token: str, sp_object_id: str, role_id: str) -> N
             raise
 
 
-def resolve_graph_delegated_scope_ids(
-    graph, token: str, scope_names: list[str]
-) -> tuple[str, list[str]]:
+def resolve_graph_delegated_scope_ids(graph, token: str, scope_names: list[str]) -> tuple[str, list[str]]:
     """Return (Graph SP object id, [scope_id in the same order as scope_names])."""
     sp = graph.find_service_principal_by_app_id(MICROSOFT_GRAPH_APP_ID, token)
     if not sp:
-        raise RuntimeError(
-            "Microsoft Graph service principal not found in this tenant."
-        )
+        raise RuntimeError("Microsoft Graph service principal not found in this tenant.")
     graph_sp_id = sp["id"]
     detail = graph.graph_get(
         f"servicePrincipals/{graph_sp_id}",
         token,
         params={"$select": "id,appId,oauth2PermissionScopes"},
     )
-    scope_map = {
-        s["value"]: s["id"] for s in (detail.get("oauth2PermissionScopes") or [])
-    }
+    scope_map = {s["value"]: s["id"] for s in (detail.get("oauth2PermissionScopes") or [])}
     missing = [s for s in scope_names if s not in scope_map]
     if missing:
-        raise RuntimeError(
-            f"Microsoft Graph SP does not publish these scopes: {missing}"
-        )
+        raise RuntimeError(f"Microsoft Graph SP does not publish these scopes: {missing}")
     return graph_sp_id, [scope_map[s] for s in scope_names]
 
 
@@ -287,9 +279,7 @@ def add_graph_delegated_permissions_to_app(
     existing_scope_ids = set()
     if graph_entry:
         existing_scope_ids = {
-            a.get("id")
-            for a in (graph_entry.get("resourceAccess") or [])
-            if a.get("type") == "Scope"
+            a.get("id") for a in (graph_entry.get("resourceAccess") or []) if a.get("type") == "Scope"
         }
     missing = [sid for sid in scope_ids if sid not in existing_scope_ids]
     if not missing:
@@ -297,17 +287,10 @@ def add_graph_delegated_permissions_to_app(
         return
 
     others = [r for r in existing_rra if r.get("resourceAppId") != MICROSOFT_GRAPH_APP_ID]
-    merged_access = [
-        {"id": sid, "type": "Scope"}
-        for sid in sorted(existing_scope_ids | set(scope_ids))
-    ]
-    merged = others + [
-        {"resourceAppId": MICROSOFT_GRAPH_APP_ID, "resourceAccess": merged_access}
-    ]
+    merged_access = [{"id": sid, "type": "Scope"} for sid in sorted(existing_scope_ids | set(scope_ids))]
+    merged = others + [{"resourceAppId": MICROSOFT_GRAPH_APP_ID, "resourceAccess": merged_access}]
     print("→ PATCH /applications (declare delegated Graph perms on service app)...")
-    graph.graph_patch(
-        f"applications/{object_id}", token, {"requiredResourceAccess": merged}
-    )
+    graph.graph_patch(f"applications/{object_id}", token, {"requiredResourceAccess": merged})
     print(f"✓ Added {len(missing)} delegated Graph permission(s) on the service app")
 
 
@@ -323,10 +306,7 @@ def grant_graph_admin_consent(
         "oauth2PermissionGrants",
         token,
         params={
-            "$filter": (
-                f"clientId eq '{service_sp_object_id}' and "
-                f"resourceId eq '{graph_sp_id}'"
-            ),
+            "$filter": (f"clientId eq '{service_sp_object_id}' and resourceId eq '{graph_sp_id}'"),
         },
     )
     existing_grants = existing.get("value") or []
@@ -340,9 +320,7 @@ def grant_graph_admin_consent(
             return
         merged = " ".join(sorted(current | needed))
         print("→ PATCH /oauth2PermissionGrants (merge missing Graph scopes)...")
-        graph.graph_patch(
-            f"oauth2PermissionGrants/{grant['id']}", token, {"scope": merged}
-        )
+        graph.graph_patch(f"oauth2PermissionGrants/{grant['id']}", token, {"scope": merged})
         print(f"✓ Admin consent updated on service app (scope='{merged}')")
         return
 
@@ -365,9 +343,7 @@ def main() -> None:
     client_id = must_env("ENTRA_SERVICE_CLIENT_ID")
     sp_object_id = must_env("ENTRA_SERVICE_SP_OBJECT_ID")
     role_name = os.environ.get("ENTRA_APP_ROLE_NAME") or DEFAULT_APP_ROLE_NAME
-    scope_name = (
-        os.environ.get("ENTRA_DELEGATED_SCOPE_NAME") or DEFAULT_DELEGATED_SCOPE_NAME
-    )
+    scope_name = os.environ.get("ENTRA_DELEGATED_SCOPE_NAME") or DEFAULT_DELEGATED_SCOPE_NAME
 
     role_id = stable_role_uuid(client_id, role_name)
     scope_id = stable_scope_uuid(client_id, scope_name)
@@ -388,10 +364,7 @@ def main() -> None:
     current = graph.graph_get(
         f"applications/{object_id}",
         token,
-        params={
-            "$select": "id,appId,displayName,identifierUris,appRoles,api,"
-            "requiredResourceAccess"
-        },
+        params={"$select": "id,appId,displayName,identifierUris,appRoles,api,requiredResourceAccess"},
     )
 
     delta = build_desired_app(
@@ -405,10 +378,7 @@ def main() -> None:
 
     print()
     if delta is None:
-        print(
-            "• App already has identifierUris, appRoles, and requiredResourceAccess "
-            "configured - nothing to PATCH."
-        )
+        print("• App already has identifierUris, appRoles, and requiredResourceAccess configured - nothing to PATCH.")
     else:
         keys = ", ".join(sorted(delta.keys()))
         print(f"→ PATCH /applications/{{id}} - updating: {keys}")
@@ -424,65 +394,59 @@ def main() -> None:
     # the middle-tier app has nothing to hand out downstream.
     print()
     print("→ Resolving Microsoft Graph delegated scope IDs...")
-    graph_sp_id, graph_scope_ids = resolve_graph_delegated_scope_ids(
-        graph, token, DELEGATED_GRAPH_SCOPES
-    )
+    graph_sp_id, graph_scope_ids = resolve_graph_delegated_scope_ids(graph, token, DELEGATED_GRAPH_SCOPES)
 
     print()
-    add_graph_delegated_permissions_to_app(
-        graph, token, object_id, graph_scope_ids
-    )
+    add_graph_delegated_permissions_to_app(graph, token, object_id, graph_scope_ids)
 
     print()
     print("→ Granting admin consent for Graph perms on the service app...")
-    grant_graph_admin_consent(
-        graph, token, sp_object_id, graph_sp_id, DELEGATED_GRAPH_SCOPES
-    )
+    grant_graph_admin_consent(graph, token, sp_object_id, graph_sp_id, DELEGATED_GRAPH_SCOPES)
 
     print()
     print("=" * 70)
     print("  Summary - step 02a: expose API + app role + admin consent")
     print("=" * 70)
-    print(f"  What is now configured on the service app:")
+    print("  What is now configured on the service app:")
     print(f"    identifierUris                    : ['api://{client_id}']")
     print(f"    appRoles[value]                   : ['{role_name}']  (Application, for M2M)")
     print(f"    oauth2PermissionScopes[value]     : ['{scope_name}']  (User, for OBO)")
     print(f"    requiredResourceAccess (self)     : {role_name} role granted")
     print(f"    requiredResourceAccess (Graph)    : {', '.join(DELEGATED_GRAPH_SCOPES)}")
-    print(f"    admin consent (m2m app role)      : granted for tenant")
-    print(f"    admin consent (Graph delegated)   : granted for tenant")
+    print("    admin consent (m2m app role)      : granted for tenant")
+    print("    admin consent (Graph delegated)   : granted for tenant")
     print()
-    print(f"  Where to inspect it in the Entra admin center:")
-    print(f"    App registrations → your service app → Expose an API")
+    print("  Where to inspect it in the Entra admin center:")
+    print("    App registrations → your service app → Expose an API")
     print(f"      (should show Application ID URI = api://{client_id})")
-    print(f"    App registrations → your service app → App roles")
+    print("    App registrations → your service app → App roles")
     print(f"      (should list '{role_name}' as Application-only)")
-    print(f"    App registrations → your service app → API permissions")
-    print(f"      (should show a green 'Granted for <tenant>' next to")
+    print("    App registrations → your service app → API permissions")
+    print("      (should show a green 'Granted for <tenant>' next to")
     print(f"       your own app's {role_name} permission)")
     print()
-    print(f"  Written to .env:")
-    print(f"    (no new keys - this step only mutates Entra)")
+    print("  Written to .env:")
+    print("    (no new keys - this step only mutates Entra)")
     print()
-    print(f"  Why this step matters:")
-    print(f"    Two grant paths, three pieces of Entra config:")
+    print("  Why this step matters:")
+    print("    Two grant paths, three pieces of Entra config:")
     print(f"      - M2M: requests 'api://{client_id}/.default'. Entra recognises")
-    print(f"        '.default' as 'give me every permission the caller is")
-    print(f"        consented for on this resource', and returns a token with")
+    print("        '.default' as 'give me every permission the caller is")
+    print("        consented for on this resource', and returns a token with")
     print(f"        roles=['{role_name}'] (from the '{role_name}' app role).")
     print(f"      - OBO subject: 3LO requests 'api://{client_id}/{scope_name}',")
-    print(f"        producing a user token audienced at your API. This is what")
-    print(f"        AgentCore Identity later exchanges in the OBO flow.")
-    print(f"      - OBO downstream: the delegated Graph perms let Entra honor")
-    print(f"        the exchange step with 'aud=https://graph.microsoft.com'.")
-    print(f"    Note: '.default' is not a scope you create - it's an Entra")
-    print(f"    OAuth 2.0 pattern. The scopes you actually create are")
+    print("        producing a user token audienced at your API. This is what")
+    print("        AgentCore Identity later exchanges in the OBO flow.")
+    print("      - OBO downstream: the delegated Graph perms let Entra honor")
+    print("        the exchange step with 'aud=https://graph.microsoft.com'.")
+    print("    Note: '.default' is not a scope you create - it's an Entra")
+    print("    OAuth 2.0 pattern. The scopes you actually create are")
     print(f"    '{scope_name}' (delegated, for OBO) and the '{role_name}' app role")
-    print(f"    (Application, for M2M).")
+    print("    (Application, for M2M).")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/02b_create_entra_login_web_app.py")
-    print(f"    (creates the 3LO web app used by the OBO subject-token flow)")
+    print("  Next step:")
+    print("    python setup/02b_create_entra_login_web_app.py")
+    print("    (creates the 3LO web app used by the OBO subject-token flow)")
 
 
 if __name__ == "__main__":

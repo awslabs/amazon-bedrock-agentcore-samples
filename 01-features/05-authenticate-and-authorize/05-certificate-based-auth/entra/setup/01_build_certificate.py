@@ -26,12 +26,12 @@ What this script does:
      exported.
   6. Assembles the final Certificate (TBS + signatureAlgorithm +
      signatureValue) and writes it as entra_cert.pem + entra_cert.der.
-  7. Computes the two thumbprint forms Entra recognises:
-       - x5t       = base64url( SHA-1  (cert-DER) )
-       - x5t#S256  = base64url( SHA-256(cert-DER) )
-     and writes X5T_S256_THUMBPRINT to .env. Modern Entra apps prefer
-     SHA-256; the SHA-1 form is printed for reference (some portal
-     screens show it in hex).
+  7. Computes the x5t#S256 thumbprint that Entra uses to match assertion
+     JWTs to the uploaded cert, and writes X5T_S256_THUMBPRINT to .env:
+       - x5t#S256 = base64url( SHA-256(cert-DER) )
+     The Entra admin portal displays a SHA-1 fingerprint on its
+     Certificates screen. If you want to compare it manually, run:
+       openssl x509 -in entra_cert.pem -noout -fingerprint -sha1
 
 Idempotency:
   If entra_cert.pem already exists and its embedded public key exactly
@@ -60,7 +60,6 @@ import boto3
 from asn1crypto import algos, keys, pem, x509
 from dotenv import load_dotenv
 
-
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 CERT_PEM_PATH = ROOT / "entra_cert.pem"
@@ -85,8 +84,7 @@ def get_kms_public_key_der(kms, key_arn: str) -> bytes:
     resp = kms.get_public_key(KeyId=key_arn)
     if resp.get("KeyUsage") != "SIGN_VERIFY":
         raise RuntimeError(
-            f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, "
-            f"expected SIGN_VERIFY. Rerun setup/00."
+            f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, expected SIGN_VERIFY. Rerun setup/00."
         )
     return resp["PublicKey"]
 
@@ -100,7 +98,7 @@ def existing_cert_matches_kms(cert_pem_path: Path, kms_spki_der: bytes) -> bool:
         cert = x509.Certificate.load(cert_der)
         cert_spki_der = cert["tbs_certificate"]["subject_public_key_info"].dump()
         return cert_spki_der == kms_spki_der
-    except Exception:
+    except (ValueError, KeyError, TypeError):
         return False
 
 
@@ -120,9 +118,7 @@ def build_tbs_certificate(spki_der: bytes) -> x509.TbsCertificate:
     validity = x509.Validity(
         {
             "not_before": x509.Time({"utc_time": now}),
-            "not_after": x509.Time(
-                {"utc_time": now + datetime.timedelta(days=CERT_VALIDITY_DAYS)}
-            ),
+            "not_after": x509.Time({"utc_time": now + datetime.timedelta(days=CERT_VALIDITY_DAYS)}),
         }
     )
     sig_algo = algos.SignedDigestAlgorithm({"algorithm": "sha256_rsa"})
@@ -152,15 +148,11 @@ def kms_sign_tbs(kms, key_arn: str, tbs_der: bytes) -> bytes:
     return resp["Signature"]
 
 
-def assemble_certificate(
-    tbs: x509.TbsCertificate, signature: bytes
-) -> x509.Certificate:
+def assemble_certificate(tbs: x509.TbsCertificate, signature: bytes) -> x509.Certificate:
     return x509.Certificate(
         {
             "tbs_certificate": tbs,
-            "signature_algorithm": algos.SignedDigestAlgorithm(
-                {"algorithm": "sha256_rsa"}
-            ),
+            "signature_algorithm": algos.SignedDigestAlgorithm({"algorithm": "sha256_rsa"}),
             "signature_value": signature,
         }
     )
@@ -179,23 +171,20 @@ def build_and_write_cert(kms, key_arn: str, spki_der: bytes) -> bytes:
     return cert_der
 
 
-def thumbprints(cert_der: bytes) -> tuple[str, str, str]:
-    """Return (x5t base64url, x5t#S256 base64url, SHA-1 hex for portal).
+def x5t_s256_thumbprint(cert_der: bytes) -> str:
+    """Return the x5t#S256 header value: base64url(SHA-256(DER)), unpadded.
 
-    The x5t thumbprint (RFC 7515 section 4.1.7) is defined as the SHA-1 hash
-    of the DER-encoded certificate. Microsoft Entra ID uses it as a
-    certificate identifier in the JWT header to match an assertion to the
-    uploaded cert, not as a cryptographic signature. The actual crypto
-    authentication uses RS256. SHA-1 is used here strictly as a lookup key,
-    hence usedforsecurity=False.
+    Microsoft Entra ID uses x5t#S256 in the JWT header to match an
+    assertion to the uploaded certificate. This is the modern (SHA-256)
+    form; the legacy SHA-1 x5t claim is not used by AgentCore Identity's
+    Entra provider. The actual crypto authentication uses RS256.
+
+    To view the SHA-1 fingerprint that the Entra admin portal displays,
+    run:
+        openssl x509 -in entra_cert.pem -noout -fingerprint -sha1
     """
-    # nosemgrep: python.lang.security.insecure-hash-algorithm-sha1
-    sha1_bytes = hashlib.sha1(cert_der, usedforsecurity=False).digest()
     sha256_bytes = hashlib.sha256(cert_der).digest()
-    x5t = base64.urlsafe_b64encode(sha1_bytes).rstrip(b"=").decode("ascii")
-    x5t_s256 = base64.urlsafe_b64encode(sha256_bytes).rstrip(b"=").decode("ascii")
-    sha1_hex = sha1_bytes.hex().upper()
-    return x5t, x5t_s256, sha1_hex
+    return base64.urlsafe_b64encode(sha256_bytes).rstrip(b"=").decode("ascii")
 
 
 def write_env_var(name: str, value: str) -> None:
@@ -228,9 +217,9 @@ def main() -> None:
     print()
     if existing_cert_matches_kms(CERT_PEM_PATH, spki_der):
         print(f"• Reusing existing cert at {CERT_PEM_PATH.name} - its public")
-        print(f"  key already matches this KMS key. No kms:Sign call issued.")
-        cert_der = CERT_DER_PATH.read_bytes() if CERT_DER_PATH.exists() else (
-            pem.unarmor(CERT_PEM_PATH.read_bytes())[2]
+        print("  key already matches this KMS key. No kms:Sign call issued.")
+        cert_der = (
+            CERT_DER_PATH.read_bytes() if CERT_DER_PATH.exists() else (pem.unarmor(CERT_PEM_PATH.read_bytes())[2])
         )
         # Ensure the .der is present alongside the .pem for consumers.
         if not CERT_DER_PATH.exists():
@@ -243,7 +232,7 @@ def main() -> None:
         cert_der = build_and_write_cert(kms, key_arn, spki_der)
         print(f"✓ Wrote {CERT_PEM_PATH.name} + {CERT_DER_PATH.name}")
 
-    x5t, x5t_s256, sha1_hex = thumbprints(cert_der)
+    x5t_s256 = x5t_s256_thumbprint(cert_der)
 
     print()
     write_env_var("X5T_S256_THUMBPRINT", x5t_s256)
@@ -252,42 +241,42 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 01: KMS-signed X.509 certificate")
     print("=" * 70)
-    print(f"  What was built (or reused):")
+    print("  What was built (or reused):")
     print(f"    File          : {CERT_PEM_PATH.relative_to(ROOT)}")
     print(f"    Also          : {CERT_DER_PATH.relative_to(ROOT)}")
     print(f"    Subject / CN  : {CERT_COMMON_NAME}")
     print(f"    Validity      : {CERT_VALIDITY_DAYS} days from creation")
-    print(f"    Signature alg : sha256WithRSAEncryption (RS256)")
-    print(f"    Public key    : matches KMS key (SPKI byte-identical)")
+    print("    Signature alg : sha256WithRSAEncryption (RS256)")
+    print("    Public key    : matches KMS key (SPKI byte-identical)")
     print()
-    print(f"  Thumbprints - for reference and for setup/02+:")
-    print(f"    x5t (SHA-1 base64url)  : {x5t}")
-    print(f"    x5t#S256 (SHA-256)     : {x5t_s256}")
-    print(f"    Portal thumbprint (hex): {sha1_hex}")
-    print(f"      ↳ Entra portal displays the SHA-1 thumbprint in hex; ")
-    print(f"        confirm this matches after upload in setup/02.")
+    print("  Thumbprint - written to .env and used in setup/03 and setup/04:")
+    print(f"    x5t#S256 (SHA-256 base64url) : {x5t_s256}")
     print()
-    print(f"  How to sanity-check the cert file yourself:")
+    print("  To see the SHA-1 fingerprint that the Entra portal displays")
+    print("  after upload (Certificates & Secrets tab), run:")
+    print(f"    openssl x509 -in {CERT_PEM_PATH.name} -noout -fingerprint -sha1")
+    print()
+    print("  How to sanity-check the cert file yourself:")
     print(f"    openssl x509 -in {CERT_PEM_PATH.name} -noout -text | head -20")
     print(f"    openssl verify -CAfile {CERT_PEM_PATH.name} {CERT_PEM_PATH.name}")
-    print(f"      (self-signature verifies against its own public key - 'OK')")
+    print("      (self-signature verifies against its own public key - 'OK')")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    X5T_S256_THUMBPRINT={x5t_s256}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    Entra ID does not accept a bare JWK. It requires an X.509")
-    print(f"    certificate uploaded to the app's keyCredentials, and the")
-    print(f"    assertion JWT header must carry the cert's thumbprint (x5t#S256)")
-    print(f"    so Entra can match assertion → cert → app. Because the KMS")
-    print(f"    private key never leaves KMS, the cert's TBS is signed by")
-    print(f"    calling kms:Sign - the resulting cert has an RS256 self-")
-    print(f"    signature just like a normal openssl-generated one.")
+    print("  Why this step matters:")
+    print("    Entra ID does not accept a bare JWK. It requires an X.509")
+    print("    certificate uploaded to the app's keyCredentials, and the")
+    print("    assertion JWT header must carry the cert's thumbprint (x5t#S256)")
+    print("    so Entra can match assertion → cert → app. Because the KMS")
+    print("    private key never leaves KMS, the cert's TBS is signed by")
+    print("    calling kms:Sign - the resulting cert has an RS256 self-")
+    print("    signature just like a normal openssl-generated one.")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/02_create_entra_service_app.py")
-    print(f"    (creates the Entra API-services app registration via Microsoft")
-    print(f"     Graph and uploads this certificate to its keyCredentials)")
+    print("  Next step:")
+    print("    python setup/02_create_entra_service_app.py")
+    print("    (creates the Entra API-services app registration via Microsoft")
+    print("     Graph and uploads this certificate to its keyCredentials)")
 
 
 if __name__ == "__main__":

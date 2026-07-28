@@ -56,7 +56,6 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 DEFAULT_USER_ID = "me"
 DEFAULT_DELEGATED_SCOPE_NAME = "obo_access"
@@ -83,7 +82,7 @@ def decode_jwt_claims(token: str) -> dict:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         return json.loads(base64.urlsafe_b64decode(payload))
-    except Exception:
+    except (ValueError, IndexError, TypeError):
         return {}
 
 
@@ -106,7 +105,7 @@ class _CallbackState:
 
 def make_handler(state: _CallbackState, redirect_path: str):
     class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802
+        def do_GET(self) -> None:
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path != redirect_path:
                 self.send_response(404)
@@ -165,8 +164,7 @@ def main() -> None:
         "--user-id",
         default=None,
         help=(
-            "User identifier passed to AgentCore Identity for session binding. "
-            "Defaults to USER_ID_3LO env var or 'me'."
+            "User identifier passed to AgentCore Identity for session binding. Defaults to USER_ID_3LO env var or 'me'."
         ),
     )
     args = parser.parse_args()
@@ -178,9 +176,7 @@ def main() -> None:
     provider_name = must_env("CLIENT_PROVIDER_NAME")
     local_url = must_env("LOCAL_CALLBACK_URL")
     service_client_id = must_env("ENTRA_SERVICE_CLIENT_ID")
-    scope_name = (
-        os.environ.get("ENTRA_DELEGATED_SCOPE_NAME") or DEFAULT_DELEGATED_SCOPE_NAME
-    )
+    scope_name = os.environ.get("ENTRA_DELEGATED_SCOPE_NAME") or DEFAULT_DELEGATED_SCOPE_NAME
 
     default_scopes = [
         *DEFAULT_OIDC_SCOPES,

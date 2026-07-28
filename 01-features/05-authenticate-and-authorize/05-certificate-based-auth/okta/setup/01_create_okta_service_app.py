@@ -49,7 +49,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 DEFAULT_LABEL = "AgentCore Identity Private Key JWT Sample"
 
@@ -85,10 +84,7 @@ def kms_public_key_to_jwk(der_public_key: bytes) -> dict:
     """
     pubkey = load_der_public_key(der_public_key)
     if not isinstance(pubkey, rsa.RSAPublicKey):
-        raise ValueError(
-            "This sample only supports RSA keys (RS256). "
-            "The KMS key returned a non-RSA public key."
-        )
+        raise TypeError("This sample only supports RSA keys (RS256). The KMS key returned a non-RSA public key.")
     numbers = pubkey.public_numbers()
     kid = hashlib.sha256(der_public_key).hexdigest()[:16]
     return {
@@ -104,10 +100,7 @@ def kms_public_key_to_jwk(der_public_key: bytes) -> dict:
 def get_kms_public_key_der(kms, key_arn: str) -> bytes:
     resp = kms.get_public_key(KeyId=key_arn)
     if resp.get("KeyUsage") != "SIGN_VERIFY":
-        raise RuntimeError(
-            f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, "
-            f"expected SIGN_VERIFY."
-        )
+        raise RuntimeError(f"KMS key {key_arn} has KeyUsage={resp.get('KeyUsage')!r}, expected SIGN_VERIFY.")
     return resp["PublicKey"]
 
 
@@ -133,9 +126,7 @@ def find_app_by_label(base_url: str, api_token: str, label: str) -> dict | None:
     return None
 
 
-def create_service_app_via_dcr(
-    base_url: str, api_token: str, label: str, jwk: dict
-) -> dict:
+def create_service_app_via_dcr(base_url: str, api_token: str, label: str, jwk: dict) -> dict:
     """Create an OIDC service app via RFC 7591 Dynamic Client Registration.
 
     Okta hosts DCR at /oauth2/v1/clients and accepts SSWS admin tokens for
@@ -165,8 +156,7 @@ def create_service_app_via_dcr(
     )
     if resp.status_code >= 400:
         print(
-            f"✗ Okta POST /oauth2/v1/clients returned HTTP {resp.status_code}:\n"
-            f"  {resp.text[:600]}",
+            f"✗ Okta POST /oauth2/v1/clients returned HTTP {resp.status_code}:\n  {resp.text[:600]}",
             file=sys.stderr,
         )
         resp.raise_for_status()
@@ -195,8 +185,7 @@ def grant_scope(base_url: str, api_token: str, client_id: str, scope: str) -> No
         print(f"• Scope already granted: {scope}")
     else:
         print(
-            f"⚠ Grant scope {scope} returned HTTP {resp.status_code}: "
-            f"{resp.text[:300]}",
+            f"⚠ Grant scope {scope} returned HTTP {resp.status_code}: {resp.text[:300]}",
             file=sys.stderr,
         )
 
@@ -236,8 +225,7 @@ def main() -> None:
 
     if "-admin." in domain:
         print(
-            f"✗ OKTA_DOMAIN={domain!r} looks like the Okta admin host.\n"
-            f"  Use the app-facing host (drop '-admin').",
+            f"✗ OKTA_DOMAIN={domain!r} looks like the Okta admin host.\n  Use the app-facing host (drop '-admin').",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -267,17 +255,15 @@ def main() -> None:
         client_id = existing["credentials"]["oauthClient"]["client_id"]
         app_id = existing["id"]
         print(f"• Okta service app already exists: {app_id} (label={label!r})")
-        print(f"  Skipping creation. If you need to rotate the JWK on this")
-        print(f"  app, run cleanup.py first, then re-run this script.")
+        print("  Skipping creation. If you need to rotate the JWK on this")
+        print("  app, run cleanup.py first, then re-run this script.")
     else:
         print()
         print("→ Creating Okta OIDC service app via Dynamic Client Registration...")
         created = create_service_app_via_dcr(base_url, api_token, label, jwk)
         client_id = created.get("client_id")
         if not client_id:
-            raise RuntimeError(
-                f"DCR response missing client_id:\n{json.dumps(created, indent=2)}"
-            )
+            raise RuntimeError(f"DCR response missing client_id:\n{json.dumps(created, indent=2)}")
         # For DCR-created clients, the OAuth client_id also serves as the
         # /api/v1/apps/{id} identifier.
         app_id = client_id
@@ -300,37 +286,37 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 01: Okta OIDC service app")
     print("=" * 70)
-    print(f"  What was created (or reused if label already existed):")
+    print("  What was created (or reused if label already existed):")
     print(f"    Label                     : {label}")
     print(f"    App / client ID           : {client_id}")
-    print(f"    Application type          : service")
-    print(f"    Grant types               : client_credentials,")
-    print(f"                                urn:ietf:params:oauth:grant-type:token-exchange")
-    print(f"    Client auth method        : private_key_jwt")
+    print("    Application type          : service")
+    print("    Grant types               : client_credentials,")
+    print("                                urn:ietf:params:oauth:grant-type:token-exchange")
+    print("    Client auth method        : private_key_jwt")
     print(f"    JWK kid                   : {jwk['kid']}  (RS256)")
     print()
-    print(f"  Where to inspect it in the Okta admin console:")
+    print("  Where to inspect it in the Okta admin console:")
     print(f"    Applications → Applications → search {label!r}")
-    print(f"    General tab → Client Credentials should show:")
-    print(f"      Client authentication : Public key / Private key")
+    print("    General tab → Client Credentials should show:")
+    print("      Client authentication : Public key / Private key")
     print(f"      Public Keys           : one JWK, kid = {jwk['kid']}")
-    print(f"    Direct URL:")
+    print("    Direct URL:")
     print(f"      {base_url}/admin/app/oidc_client/instance/{app_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    OKTA_SERVICE_APP_ID={app_id}")
     print(f"    OKTA_SERVICE_APP_CLIENT_ID={client_id}")
     print(f"    SIGNING_KID={jwk['kid']}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    This is the confidential client that authenticates to Okta's")
-    print(f"    /token endpoint on every M2M or OBO call. Its client_id is the")
-    print(f"    iss/sub of the KMS-signed JWT client assertion, and the JWK we")
-    print(f"    just published is what Okta uses to verify that assertion.")
+    print("  Why this step matters:")
+    print("    This is the confidential client that authenticates to Okta's")
+    print("    /token endpoint on every M2M or OBO call. Its client_id is the")
+    print("    iss/sub of the KMS-signed JWT client assertion, and the JWK we")
+    print("    just published is what Okta uses to verify that assertion.")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/01a_configure_okta_auth_server.py")
-    print(f"    (registers the M2M scope and creates the AS Access Policy)")
+    print("  Next step:")
+    print("    python setup/01a_configure_okta_auth_server.py")
+    print("    (registers the M2M scope and creates the AS Access Policy)")
 
 
 if __name__ == "__main__":

@@ -58,7 +58,6 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
@@ -75,7 +74,7 @@ def decode_jwt_claims(token: str) -> dict:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)
         return json.loads(base64.urlsafe_b64decode(payload))
-    except Exception:
+    except (ValueError, IndexError, TypeError):
         return {}
 
 
@@ -100,9 +99,7 @@ def check_user_jwt_not_expired(user_jwt: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Perform an OBO token exchange with Okta via PRIVATE_KEY_JWT."
-    )
+    parser = argparse.ArgumentParser(description="Perform an OBO token exchange with Okta via PRIVATE_KEY_JWT.")
     parser.add_argument(
         "--scope",
         default=None,
@@ -133,10 +130,7 @@ def main() -> None:
 
     user_claims = decode_jwt_claims(user_jwt)
     if user_claims:
-        print(
-            f"User:     sub={user_claims.get('sub')!r} "
-            f"cid={user_claims.get('cid')!r}"
-        )
+        print(f"User:     sub={user_claims.get('sub')!r} cid={user_claims.get('cid')!r}")
     print()
 
     print("→ GetWorkloadAccessTokenForJWT (embedding user JWT as subject)...")
@@ -147,10 +141,7 @@ def main() -> None:
     print("✓ Received workload access token (carries the user JWT as subject)")
 
     print()
-    print(
-        f"→ GetResourceOauth2Token "
-        f"(oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE, provider={provider_name})..."
-    )
+    print(f"→ GetResourceOauth2Token (oauth2Flow=ON_BEHALF_OF_TOKEN_EXCHANGE, provider={provider_name})...")
     # Two Okta-specific parameters that are load-bearing for OBO:
     #   audiences         → Okta requires 'api://default' for the Custom AS.
     #   subject_token_type→ Okta rejects the default 'jwt' type; needs

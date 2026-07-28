@@ -53,7 +53,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 DEFAULT_LOCAL_CALLBACK_URL = "http://localhost:8081/callback"
@@ -89,10 +88,7 @@ def write_env_var(name: str, value: str) -> None:
 
 
 def discovery_url(tenant_id: str) -> str:
-    return (
-        f"https://login.microsoftonline.com/{tenant_id}"
-        f"/v2.0/.well-known/openid-configuration"
-    )
+    return f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
 
 
 def build_provider_config(
@@ -148,9 +144,7 @@ def upsert_provider(control, *, name: str, config: dict) -> tuple[str, str]:
     return resp["credentialProviderArn"], resp.get("callbackUrl", "")
 
 
-def update_web_app_redirect_uri(
-    graph, token: str, object_id: str, callback_url: str
-) -> None:
+def update_web_app_redirect_uri(graph, token: str, object_id: str, callback_url: str) -> None:
     """PATCH the login web app's redirectUris to include AgentCore's callback."""
     app = graph.graph_get(
         f"applications/{object_id}",
@@ -195,10 +189,7 @@ def update_workload_return_url(control, workload_name: str, local_url: str) -> N
     except ClientError as e:
         code = e.response["Error"].get("Code", "")
         if code in {"ResourceNotFoundException", "NotFoundException"}:
-            print(
-                f"⚠ Workload identity {workload_name!r} not found. "
-                f"Run setup/03 or 04 first."
-            )
+            print(f"⚠ Workload identity {workload_name!r} not found. Run setup/03 or 04 first.")
             return
         raise
 
@@ -263,8 +254,7 @@ def main() -> None:
     arn, callback_url = upsert_provider(ac_control, name=provider_name, config=config)
     if not callback_url:
         print(
-            "✗ AgentCore did not return a callbackUrl for the client provider - "
-            "cannot wire the Entra redirectUri.",
+            "✗ AgentCore did not return a callbackUrl for the client provider - cannot wire the Entra redirectUri.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -276,9 +266,7 @@ def main() -> None:
     print("→ Wiring AgentCore callback URL onto Entra web app...")
     graph_token = _try_graph_token(graph)
     if graph_token:
-        update_web_app_redirect_uri(
-            graph, graph_token, login_app_object_id, callback_url
-        )
+        update_web_app_redirect_uri(graph, graph_token, login_app_object_id, callback_url)
     else:
         print("→ Manual Entra step required (`az login` not available)")
         print(_manual_redirect_uri_instructions(login_client_id, callback_url))
@@ -298,46 +286,46 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 04b: client (USER_FEDERATION) provider")
     print("=" * 70)
-    print(f"  What was created / updated:")
+    print("  What was created / updated:")
     print(f"    Provider name        : {provider_name}")
     print(f"    Provider ARN         : {arn}")
-    print(f"    Vendor               : CustomOauth2")
-    print(f"    Client auth          : PRIVATE_KEY_JWT (same KMS key as M2M/OBO)")
+    print("    Vendor               : CustomOauth2")
+    print("    Client auth          : PRIVATE_KEY_JWT (same KMS key as M2M/OBO)")
     print(f"    Client ID (Web app)  : {login_client_id}")
     print(f"    Assertion header     : x5t#S256 = {x5t_s256}")
     print(f"    AgentCore callback   : {callback_url}")
     if graph_token:
-        print(f"    Entra web app redirectUris updated to include the callback")
+        print("    Entra web app redirectUris updated to include the callback")
     else:
-        print(f"    Entra web app redirectUris update: PENDING MANUAL STEP")
-        print(f"      (paste the callback URL above into the web app -")
-        print(f"       see the instructions block earlier in this run)")
+        print("    Entra web app redirectUris update: PENDING MANUAL STEP")
+        print("      (paste the callback URL above into the web app -")
+        print("       see the instructions block earlier in this run)")
     print(f"    Workload allowed URL : {local_url}")
     print()
-    print(f"  Where to inspect it:")
-    print(f"    AgentCore Identity provider (control-plane API):")
-    print(f"      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
+    print("  Where to inspect it:")
+    print("    AgentCore Identity provider (control-plane API):")
+    print("      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
     print(f"        --name {provider_name} --region {region}")
-    print(f"    Entra web app redirectUris:")
-    print(f"      App registrations → your login web app → Authentication")
-    print(f"      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/")
+    print("    Entra web app redirectUris:")
+    print("      App registrations → your login web app → Authentication")
+    print("      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/")
     print(f"      ApplicationMenuBlade/~/Authentication/appId/{login_client_id}")
     print()
-    print(f"  Written to .env:")
+    print("  Written to .env:")
     print(f"    CLIENT_PROVIDER_NAME={provider_name}")
     print(f"    AGENTCORE_MANAGED_CALLBACK_URL={callback_url}")
     print(f"    LOCAL_CALLBACK_URL={local_url}")
     print()
-    print(f"  Why this step matters:")
-    print(f"    This provider handles the code-exchange call to Entra's /token")
-    print(f"    endpoint after you sign in through the browser. Same KMS key")
-    print(f"    signs the JWT client assertion - same private_key_jwt flow -")
-    print(f"    but the client_id is your web app (not the service app), and")
-    print(f"    the grant type is authorization_code (not client_credentials).")
+    print("  Why this step matters:")
+    print("    This provider handles the code-exchange call to Entra's /token")
+    print("    endpoint after you sign in through the browser. Same KMS key")
+    print("    signs the JWT client assertion - same private_key_jwt flow -")
+    print("    but the client_id is your web app (not the service app), and")
+    print("    the grant type is authorization_code (not client_credentials).")
     print()
-    print(f"  Next step:")
-    print(f"    python get_entra_user_jwt.py")
-    print(f"    (opens your browser, runs 3LO, writes ENTRA_USER_JWT to .env)")
+    print("  Next step:")
+    print("    python get_entra_user_jwt.py")
+    print("    (opens your browser, runs 3LO, writes ENTRA_USER_JWT to .env)")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,6 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
@@ -47,10 +46,7 @@ def must_env(name: str) -> str:
 
 
 def discovery_url(tenant_id: str) -> str:
-    return (
-        f"https://login.microsoftonline.com/{tenant_id}"
-        f"/v2.0/.well-known/openid-configuration"
-    )
+    return f"https://login.microsoftonline.com/{tenant_id}/v2.0/.well-known/openid-configuration"
 
 
 def build_provider_config(
@@ -161,37 +157,37 @@ def main() -> None:
     print("=" * 70)
     print("  Summary - step 03: M2M credential provider (Entra)")
     print("=" * 70)
-    print(f"  What was created / updated on AgentCore Identity:")
+    print("  What was created / updated on AgentCore Identity:")
     print(f"    Workload identity : {workload_name}")
     print(f"    Provider name     : {provider_name}")
     print(f"    Provider ARN      : {arn}")
-    print(f"    Vendor            : CustomOauth2")
-    print(f"    Client auth       : PRIVATE_KEY_JWT (KMS-signed)")
+    print("    Vendor            : CustomOauth2")
+    print("    Client auth       : PRIVATE_KEY_JWT (KMS-signed)")
     print(f"    Client ID         : {client_id}")
     print(f"    KMS key           : {key_arn}")
     print(f"    Assertion header  : x5t#S256 = {x5t_s256}")
     print(f"    Discovery URL     : {discovery_url(tenant_id)}")
-    print(f"    Grant type used   : client_credentials (M2M)")
+    print("    Grant type used   : client_credentials (M2M)")
     print()
-    print(f"  Where to inspect it:")
-    print(f"    No console UI in this preview. Verify with:")
-    print(f"      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
+    print("  Where to inspect it:")
+    print("    No console UI in this preview. Verify with:")
+    print("      aws bedrock-agentcore-control get-oauth2-credential-provider \\")
     print(f"        --name {provider_name} --region {region}")
     print()
-    print(f"  Written to .env:")
-    print(f"    (no new keys - provider name is user-supplied)")
+    print("  Written to .env:")
+    print("    (no new keys - provider name is user-supplied)")
     print()
-    print(f"  Why this step matters:")
-    print(f"    outbound_private_key_jwt_m2m.py points at this provider by name.")
-    print(f"    On every GetResourceOauth2Token call, AgentCore Identity builds")
-    print(f"    a JWT client assertion (iss=sub=clientId, aud=Entra's tenant")
-    print(f"    /token endpoint), signs it with kms:Sign, and posts it to Entra")
-    print(f"    with grant_type=client_credentials + scope=api://<clientId>/.default.")
-    print(f"    Entra verifies the assertion against the certificate uploaded")
-    print(f"    in setup/02 (matched by x5t#S256).")
+    print("  Why this step matters:")
+    print("    outbound_private_key_jwt_m2m.py points at this provider by name.")
+    print("    On every GetResourceOauth2Token call, AgentCore Identity builds")
+    print("    a JWT client assertion (iss=sub=clientId, aud=Entra's tenant")
+    print("    /token endpoint), signs it with kms:Sign, and posts it to Entra")
+    print("    with grant_type=client_credentials + scope=api://<clientId>/.default.")
+    print("    Entra verifies the assertion against the certificate uploaded")
+    print("    in setup/02 (matched by x5t#S256).")
     print()
-    print(f"  Next step:")
-    print(f"    python setup/04_create_provider_obo.py")
+    print("  Next step:")
+    print("    python setup/04_create_provider_obo.py")
 
 
 if __name__ == "__main__":

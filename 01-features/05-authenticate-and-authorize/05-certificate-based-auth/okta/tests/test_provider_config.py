@@ -20,7 +20,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 HERE = Path(__file__).resolve().parent
 SETUP_DIR = HERE.parent / "setup"
 
@@ -40,9 +39,7 @@ class M2MProviderConfigTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_setup_module(
-            "02_create_provider_m2m.py", "okta_m2m_provider"
-        )
+        cls.mod = load_setup_module("02_create_provider_m2m.py", "okta_m2m_provider")
         cls.config = cls.mod.build_provider_config(
             discovery_url="https://example.okta.com/oauth2/default/.well-known/openid-configuration",
             client_id="0oatest-client",
@@ -81,9 +78,7 @@ class OBOProviderConfigTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_setup_module(
-            "03_create_provider_obo.py", "okta_obo_provider"
-        )
+        cls.mod = load_setup_module("03_create_provider_obo.py", "okta_obo_provider")
         cls.config = cls.mod.build_provider_config(
             discovery_url="https://example.okta.com/oauth2/default/.well-known/openid-configuration",
             client_id="0oatest-client",
@@ -95,9 +90,7 @@ class OBOProviderConfigTests(unittest.TestCase):
     def test_shares_shape_with_m2m(self) -> None:
         self.assertEqual(self.inner["clientAuthenticationMethod"], "PRIVATE_KEY_JWT")
         self.assertNotIn("clientSecret", self.inner)
-        self.assertEqual(
-            self.inner["privateKeyJwtConfig"]["signingAlgorithm"], "RS256"
-        )
+        self.assertEqual(self.inner["privateKeyJwtConfig"]["signingAlgorithm"], "RS256")
         self.assertEqual(
             self.inner["privateKeyJwtConfig"]["additionalHeaderClaims"],
             {"kid": "testkid1234567890"},
@@ -109,9 +102,7 @@ class OBOProviderConfigTests(unittest.TestCase):
 
     def test_actor_token_content_is_none(self) -> None:
         obo = self.inner["onBehalfOfTokenExchangeConfig"]
-        self.assertEqual(
-            obo["tokenExchangeGrantTypeConfig"]["actorTokenContent"], "NONE"
-        )
+        self.assertEqual(obo["tokenExchangeGrantTypeConfig"]["actorTokenContent"], "NONE")
 
 
 class JwkConversionTests(unittest.TestCase):
@@ -129,9 +120,7 @@ class JwkConversionTests(unittest.TestCase):
         except ImportError:
             raise unittest.SkipTest("cryptography not installed")
 
-        cls.mod = load_setup_module(
-            "01_create_okta_service_app.py", "okta_create_app"
-        )
+        cls.mod = load_setup_module("01_create_okta_service_app.py", "okta_create_app")
 
         # Generate a real RSA_2048 key so we exercise the same DER path
         # as the KMS response.
@@ -180,10 +169,8 @@ class JwkConversionTests(unittest.TestCase):
             self.skipTest("cryptography EC support unavailable")
 
         ec_key = ec.generate_private_key(ec.SECP256R1())
-        ec_der = ec_key.public_key().public_bytes(
-            encoding=Encoding.DER, format=PublicFormat.SubjectPublicKeyInfo
-        )
-        with self.assertRaises(ValueError):
+        ec_der = ec_key.public_key().public_bytes(encoding=Encoding.DER, format=PublicFormat.SubjectPublicKeyInfo)
+        with self.assertRaises(TypeError):
             self.mod.kms_public_key_to_jwk(ec_der)
 
 
@@ -193,12 +180,10 @@ class DcrPayloadTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         try:
-            from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: F401
+            from cryptography.hazmat.primitives.asymmetric import rsa
         except ImportError:
             raise unittest.SkipTest("cryptography not installed")
-        cls.mod = load_setup_module(
-            "01_create_okta_service_app.py", "okta_create_app_dcr"
-        )
+        cls.mod = load_setup_module("01_create_okta_service_app.py", "okta_create_app_dcr")
 
     def test_dcr_endpoint_is_used_and_jwks_is_inline(self) -> None:
         # Verify the source explicitly targets the /oauth2/v1/clients DCR
