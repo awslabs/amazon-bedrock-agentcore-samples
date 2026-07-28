@@ -164,6 +164,8 @@ The incoming request does NOT contain a role or email in the headers. It contain
 4. Extracts the **group claim** — **`[COGNITO]`** `cognito:groups`, **`[OKTA]`** `groups` (e.g., `["administrators"]`)
 5. Looks up that group in `lakehouse_tenant_role_map` (partition key `claim_name` = the active IdP's group-claim name) and **assumes the mapped tenant IAM role via STS** — the assumed role's session (with tenant tags) is what scopes the downstream Athena/Lake Formation query. A separate RESPONSE interceptor then **filters the returned tool list** to the group's `allowed_tools`.
 
+On authorization failure the interceptors fail **CLOSED** — the RESPONSE interceptor returns an empty tool catalog (deny-all) and the REQUEST interceptor returns 403 if the tenant-role exchange fails; they never fall open to all-tools or to the runtime's default credentials.
+
 > The claims path carries identity via this group→role STS exchange (not a forwarded header). The **notes** path (GW2 / OpenSearch) differs: on Cognito a thin notes REQUEST interceptor injects the caller `sub` on the body-context channel (`params.arguments.context.user_id`, DR-9); on Okta the OBO-exchanged bearer carries it.
 
 ### Role-to-Tool Mapping (DynamoDB: `lakehouse_tenant_role_map`)

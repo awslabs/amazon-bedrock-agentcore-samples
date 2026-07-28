@@ -134,6 +134,12 @@ To keep the notebooks legible, provider-specific content follows one convention:
 
 ![Lakehouse Agent Architecture](Lakehouse-agent-architecture.png)
 
+> **Note:** These diagrams are simplified and show the original single-gateway
+> Cognito view. The shipped system deploys two gateways (claims GW1 + notes GW2)
+> with two MCP runtimes, supports both Cognito and Okta (`IDP_PROVIDER`), and
+> carries claims identity via a group→role STS exchange (not a forwarded
+> `X-User-Principal` header). See [scenarios.md](scenarios.md) for the accurate
+> mechanism.
 
 ### Authentication flow
 ```

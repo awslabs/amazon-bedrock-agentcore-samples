@@ -554,8 +554,9 @@ SSM Parameters created:
 Deploys the conversational AI agent to AgentCore Runtime. The agent is
 IdP-agnostic: it wires **two prefixed MCP clients** — `claims/*` → GW1
 (`gateway-url`) and `notes/*` → GW2 (`notes-gateway-url`) — authenticated by the
-same inbound user bearer. It holds **no OBO grant** (Finding 15); if
-`notes-gateway-url` is absent it falls back to claims-only.
+same inbound user bearer. It holds **no OBO grant** (Finding 15). GW2/notes is
+**REQUIRED**: the agent hard-fails (raises) if `notes-gateway-url` is absent or
+GW2 is unreachable — there is no claims-only fallback.
 
 ```bash
 cd ../6-lakehouse-agent
