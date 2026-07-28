@@ -22,7 +22,7 @@ dev = [
     "ruff>=0.15.8",
 ]
 oauth = [
-    "bedrock-agentcore>=1.2.1",
+    "bedrock-agentcore>=1.18.1",
     "cryptography>=44.0.0",
     "fastapi>=0.128.0",
     "httpx>=0.28.0",
@@ -32,7 +32,7 @@ oauth = [
     "uvicorn>=0.40.0",
 ]
 runtime = [
-    "bedrock-agentcore>=1.2.1",
+    "bedrock-agentcore>=1.18.1",
     "fastapi>=0.128.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
