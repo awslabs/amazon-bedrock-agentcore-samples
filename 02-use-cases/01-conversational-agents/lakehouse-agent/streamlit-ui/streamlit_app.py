@@ -726,17 +726,17 @@ with st.sidebar:
     user_email = st.session_state.user_email or ""
 
     if "admin" in user_email.lower():
-        # Admin: real admin-only tools (get_claims_analytics / text_to_sql).
+        # Admin: real admin-only tools (query_login_audit / text_to_sql).
         examples = [
             {
                 "label": "🧰 What tools do you have access to?",
                 "prompt": "What tools do you have access to?",
-                "note": "As admin the agent lists its broad toolset (portfolio analytics + "
+                "note": "As admin the agent lists its broad toolset (query_login_audit + "
                 "text_to_sql). Log in as a policyholder and ask the same — the list changes.",
             },
             {
-                "label": "📊 Claims analytics (all policyholders)",
-                "prompt": "Show me claims analytics across all policyholders",
+                "label": "🔎 Recent login audit (admin-only)",
+                "prompt": "Show me the recent user login audit",
                 "path": "interceptor",
             },
             {
@@ -785,14 +785,14 @@ with st.sidebar:
                 "label": "🧰 What tools do you have access to?",
                 "prompt": "What tools do you have access to?",
                 "note": "The agent enumerates its own (already group-filtered) toolset — a "
-                "policyholder won't see admin-only tools like get_claims_analytics. "
+                "policyholder won't see admin-only tools like query_login_audit or text_to_sql. "
                 "Tool-gating shows up here and in the 🧰 panel, not as a refusal.",
             },
             {
-                "label": "📊 Claims analytics across all policyholders",
-                "prompt": "Show me claims analytics across all policyholders",
+                "label": "🔎 Recent login audit (admin-only)",
+                "prompt": "Show me the recent user login audit",
                 "path": "interceptor",
-                "note": "get_claims_analytics isn't in a policyholder's toolset, so the agent "
+                "note": "query_login_audit isn't in a policyholder's toolset, so the agent "
                 "answers with the tools it does have — over your own claims only. "
                 "Access changed with your identity; nothing was 'refused'.",
             },
