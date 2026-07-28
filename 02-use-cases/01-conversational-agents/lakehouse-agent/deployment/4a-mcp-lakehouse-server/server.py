@@ -482,7 +482,10 @@ def query_login_audit(
 
         config = get_config()
 
-        # Use tenant credentials if available, otherwise use default credentials
+        # Use tenant credentials if available. Fail CLOSED otherwise: refuse to
+        # fall back to the runtime's default credentials (which would bypass the
+        # tenant-scoped access the interceptor enforces). The ONLY escape hatch is
+        # LOCAL_DEVELOPMENT for offline dev.
         if tenant_credentials:
             print("🔑 Using tenant credentials for DynamoDB access")
             dynamodb = boto3.resource(
@@ -492,9 +495,12 @@ def query_login_audit(
                 aws_secret_access_key=tenant_credentials["secret_access_key"],
                 aws_session_token=tenant_credentials["session_token"],
             )
-        else:
-            print("⚠️  No tenant credentials found, using default credentials")
+        elif config.get("local_development"):
+            print("⚠️  LOCAL_DEVELOPMENT: using default credentials for DynamoDB access")
             dynamodb = boto3.resource("dynamodb", region_name=config["region"])
+        else:
+            print("🚫 No tenant credentials found — refusing DynamoDB access (fail-closed)")
+            return {"success": False, "error": "Tenant credentials required for query_login_audit"}
         table_name = "lakehouse_user_login_audit"
 
         try:

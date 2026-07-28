@@ -14,6 +14,7 @@ Security Flow:
 """
 
 import boto3
+import os
 import time
 import json
 from typing import List, Dict, Any, Optional
@@ -83,8 +84,19 @@ class SecureAthenaClaimsTools:
                 aws_session_token=tenant_credentials["session_token"],
             )
 
-        # Default: Use default credentials (local development)
-        return boto3.client("athena", region_name=self.region)
+        # Fail CLOSED: no tenant credentials means the request bypassed the
+        # interceptor's role exchange. Refuse rather than silently using the
+        # runtime's own role (which would defeat Lake Formation RLS). The ONLY
+        # escape hatch is LOCAL_DEVELOPMENT for offline dev against default creds.
+        if os.environ.get("LOCAL_DEVELOPMENT", "false").lower() == "true":
+            print("⚠️  LOCAL_DEVELOPMENT: using default credentials (no tenant role)")
+            return boto3.client("athena", region_name=self.region)
+
+        raise PermissionError(
+            "No tenant credentials provided — refusing to build an Athena client with "
+            "runtime default credentials (Lake Formation RLS would be bypassed). This "
+            "request must carry interceptor-exchanged tenant credentials."
+        )
 
     def _execute_query(
         self,

@@ -499,7 +499,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     f"🔑 Obtained temporary credentials for role: {tenant_credentials['RoleName']}"
                 )  # codeql[py/clear-text-logging-sensitive-data]
             else:
-                logger.warning("⚠️  Failed to exchange JWT to IAM credentials")
+                # Fail CLOSED: a tenant role was required (the claim matched) but
+                # the STS exchange failed. DENY rather than forwarding identity
+                # with no tenant creds (which would let the downstream tool run
+                # under the runtime's default role and bypass Lake Formation RLS).
+                logger.error("🚫 Failed to exchange JWT to IAM credentials — denying request")
+                return build_error_response("tenant role exchange failed", body, 403)
         else:
             logger.warning("⚠️  No suitable claim found for token exchange")
 
