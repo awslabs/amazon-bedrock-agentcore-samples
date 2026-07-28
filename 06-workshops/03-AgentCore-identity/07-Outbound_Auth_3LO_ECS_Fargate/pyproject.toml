@@ -13,7 +13,7 @@ override-dependencies = [
 
 [dependency-groups]
 dev = [
-    "aws-cdk-lib>=2.237.1",
+    "aws-cdk-lib>=2.253.0",
     "cdk-nag>=2.30.0",
     "pytest>=8.0.0",
     "httpx>=0.27.0",
