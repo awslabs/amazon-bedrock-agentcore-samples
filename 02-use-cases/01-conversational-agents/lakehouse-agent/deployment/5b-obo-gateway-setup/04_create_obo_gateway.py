@@ -118,20 +118,13 @@ class SSMConfig:
             self.cognito_app_client_secret = self._get(f"{SSM_PREFIX}cognito-app-client-secret", secure=True)
             self.cognito_domain = self._get(f"{SSM_PREFIX}cognito-domain")
             self.notes_interceptor_lambda_arn = self._get(f"{SSM_PREFIX}notes-interceptor-lambda-arn")
-            # M2M client for the gateway→runtime leg; fall back to the app client
-            # (mirrors GW1's M2M/hybrid selection).
-            try:
-                self.cognito_m2m_client_id = self.ssm.get_parameter(Name=f"{SSM_PREFIX}cognito-m2m-client-id")[
-                    "Parameter"
-                ]["Value"]
-                self.cognito_m2m_client_secret = self.ssm.get_parameter(
-                    Name=f"{SSM_PREFIX}cognito-m2m-client-secret", WithDecryption=True
-                )["Parameter"]["Value"]
-                self.has_m2m_client = True
-            except Exception:
-                self.cognito_m2m_client_id = self.cognito_app_client_id
-                self.cognito_m2m_client_secret = self.cognito_app_client_secret
-                self.has_m2m_client = False
+            # M2M client for the gateway→runtime leg — REQUIRED (R4/m3). setup_cognito
+            # (notebook 01) always creates the dedicated M2M client, so require it
+            # (fail-fast via _get) rather than silently falling back to the USER app
+            # client — consistent with 4b-mcp-opensearch-server/deploy_runtime.py.
+            self.cognito_m2m_client_id = self._get(f"{SSM_PREFIX}cognito-m2m-client-id")
+            self.cognito_m2m_client_secret = self._get(f"{SSM_PREFIX}cognito-m2m-client-secret", secure=True)
+            self.has_m2m_client = True
             print(f"   ✅ OpenSearch MCP Runtime ARN: {self.opensearch_mcp_runtime_arn}")
             print(f"   ✅ Cognito User Pool ARN: {self.cognito_user_pool_arn}")
             print(f"   ✅ Notes Interceptor Lambda ARN: {self.notes_interceptor_lambda_arn}")
