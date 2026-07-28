@@ -48,7 +48,7 @@
   "dependencies": {
     "@aws-cdk/aws-bedrock-agentcore-alpha": "2.236.0-alpha.0",
     "@aws-lambda-powertools/logger": "^2.0.0",
-    "aws-cdk-lib": "^2.236.0",
+    "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.4.2",
     "dotenv": "^16.3.1",
     "source-map-support": "^0.5.21"
