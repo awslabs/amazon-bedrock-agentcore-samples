@@ -110,11 +110,12 @@ def get_config() -> Dict[str, Optional[str]]:
     else:
         logger.info(f"✅ Gateway ARN from environment: {config['gateway_arn']}")
 
-    # GW2 (notes / OpenSearch) URL. Read straight from SSM `notes-gateway-url`
-    # (written by 5b/04 on BOTH IdP paths — Okta OBO gateway and Cognito notes
-    # interceptor gateway share the GW2 SSM keys, so this is IdP-agnostic).
-    # Optional: if absent, the agent runs claims-only so the GW1 path never
-    # regresses when the GW2 substrate isn't deployed.
+    # GW2 (notes / OpenSearch) URL — REQUIRED (R6/R10). Read from env or SSM
+    # `notes-gateway-url` (written by 5b/04 on BOTH IdP paths — Okta OBO gateway
+    # and Cognito notes interceptor gateway share the GW2 SSM keys, so this is
+    # IdP-agnostic). GW2 is mandatory: the agent must expose notes/* alongside
+    # claims/*, so a missing URL is a hard error surfaced at connect time (no
+    # silent claims-only degradation).
     config["obo_gateway_url"] = os.environ.get("OBO_GATEWAY_URL")
     if not config["obo_gateway_url"]:
         try:
@@ -123,7 +124,7 @@ def get_config() -> Dict[str, Optional[str]]:
             config["obo_gateway_url"] = response["Parameter"]["Value"]
             logger.info(f"✅ GW2 (notes) Gateway URL from SSM: {config['obo_gateway_url']}")
         except Exception as e:
-            logger.warning(f"⚠️  GW2 (notes) Gateway URL not found in SSM: {e}")
+            logger.error(f"❌ GW2 (notes) Gateway URL not found in SSM (required): {e}")
             config["obo_gateway_url"] = None
     else:
         logger.info(f"✅ GW2 (notes) Gateway URL from environment: {config['obo_gateway_url']}")
@@ -230,25 +231,26 @@ def handle_request(payload: Dict[str, Any]) -> Dict[str, Any]:
         tools += claims_tools
         logger.info(f"✅ Loaded {len(claims_tools)} tools from GW1")
 
-        # ── GW2 Notes_Gateway → notes/* tools ───────────────────────────────
-        # Optional: only wire the second client if GW2 is deployed. A missing/
-        # unreachable GW2 degrades to claims-only so GW1 never regresses.
-        if obo_gateway_url:
-            logger.info(f"🔗 Connecting to GW2 (notes): {obo_gateway_url}")
-            try:
-                notes_client = MCPClient(
-                    lambda: streamablehttp_client(obo_gateway_url, headers=auth_headers),
-                    prefix="notes",
-                )
-                notes_client.__enter__()
-                open_clients.append(notes_client)
-                notes_tools = notes_client.list_tools_sync()
-                tools += notes_tools
-                logger.info(f"✅ Loaded {len(notes_tools)} tools from GW2")
-            except Exception as e:
-                logger.warning(f"⚠️  GW2 notes gateway unreachable — running claims-only ({e})")
-        else:
-            logger.warning("⚠️  GW2 notes gateway not found (no notes-gateway-url) — running claims-only")
+        # ── GW2 Notes_Gateway → notes/* tools (REQUIRED, R6/R10) ────────────
+        # GW2 is mandatory: the agent must expose notes/* alongside claims/*.
+        # Fail LOUD (symmetric with GW1, which has no try/except) rather than
+        # silently degrading to claims-only — a missing URL or a connect/
+        # list_tools failure is a hard error the operator must fix.
+        if not obo_gateway_url:
+            raise RuntimeError(
+                "notes gateway required — run notebook 05b to deploy it and ensure "
+                "notes-gateway-url is set in SSM (/app/lakehouse-agent/notes-gateway-url)."
+            )
+        logger.info(f"🔗 Connecting to GW2 (notes): {obo_gateway_url}")
+        notes_client = MCPClient(
+            lambda: streamablehttp_client(obo_gateway_url, headers=auth_headers),
+            prefix="notes",
+        )
+        notes_client.__enter__()
+        open_clients.append(notes_client)
+        notes_tools = notes_client.list_tools_sync()
+        tools += notes_tools
+        logger.info(f"✅ Loaded {len(notes_tools)} tools from GW2")
 
         logger.info(f"✅ Total tools available to the agent: {len(tools)}")
 
