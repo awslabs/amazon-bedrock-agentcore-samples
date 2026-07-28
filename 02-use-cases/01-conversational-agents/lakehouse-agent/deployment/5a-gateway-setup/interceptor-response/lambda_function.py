@@ -524,10 +524,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Extract and validate JWT token
         auth_header = request_headers.get("Authorization") or request_headers.get("authorization", "")
 
+        # Fail CLOSED on every auth-failure path: return an EMPTY tool list
+        # (deny-all), never the unfiltered catalog. Same shape as the existing
+        # no-DDB-mapping branch. The IdP-specific logic lives inside
+        # validate_and_decode_jwt / get_claim_for_authorization (dual-IdP
+        # preserved); these failure branches are IdP-invariant.
         if not auth_header.startswith("Bearer "):
-            logger.warning("⚠️  No Bearer token found, returning all tools (minus system tools)")
-            # Still filter system tools even without auth
-            filtered_tools = [t for t in tools if t.get("name", "").split("___")[-1] not in SYSTEM_TOOLS_TO_FILTER]
+            logger.warning("🚫 No Bearer token found — failing closed (empty tool list)")
+            filtered_tools = []
         else:
             token = auth_header.replace("Bearer ", "", 1)
 
@@ -535,18 +539,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             claims = validate_and_decode_jwt(token)
 
             if not claims:
-                logger.warning("⚠️  JWT validation failed, returning all tools (minus system tools)")
-                # Still filter system tools even with invalid token
-                filtered_tools = [t for t in tools if t.get("name", "").split("___")[-1] not in SYSTEM_TOOLS_TO_FILTER]
+                logger.warning("🚫 JWT validation failed — failing closed (empty tool list)")
+                filtered_tools = []
             else:
                 # Get claim for authorization
                 claim_for_auth = get_claim_for_authorization(claims)
 
                 if not claim_for_auth:
-                    logger.warning("⚠️  No suitable claim found, returning all tools (minus system tools)")
-                    filtered_tools = [
-                        t for t in tools if t.get("name", "").split("___")[-1] not in SYSTEM_TOOLS_TO_FILTER
-                    ]
+                    logger.warning("🚫 No suitable claim found — failing closed (empty tool list)")
+                    filtered_tools = []
                 else:
                     claim_name, claim_value = claim_for_auth
 
@@ -555,7 +556,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
                     if not allowed_tools:
                         logger.warning(
-                            f"⚠️  No allowed tools found for {claim_name}={claim_value}, returning empty list"
+                            f"🚫 No allowed tools found for {claim_name}={claim_value} — failing closed (empty list)"
                         )
                         filtered_tools = []
                     else:
@@ -587,19 +588,26 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return response
 
     except Exception as e:
-        logger.error(f"❌ Error in response interceptor: {str(e)}")
+        logger.error(f"❌ Error in response interceptor: {str(e)} — failing closed (empty tool list)")
         import traceback
 
         logger.error(f"Stack trace: {traceback.format_exc()}")
 
-        # Return original response on error
+        # Fail CLOSED on any error: never return the unfiltered catalog. Rebuild a
+        # minimal valid tools/list response with an EMPTY tool list, re-derived
+        # defensively from the event so this never depends on partially-set locals.
+        safe_gw_response = event.get("mcp", {}).get("gatewayResponse", {})
+        safe_body = safe_gw_response.get("body", {})
+        empty_body = safe_body.copy() if isinstance(safe_body, dict) else {}
+        result_obj = empty_body.get("result")
+        empty_body["result"] = {**result_obj, "tools": []} if isinstance(result_obj, dict) else {"tools": []}
         return {
             "interceptorOutputVersion": "1.0",
             "mcp": {
                 "transformedGatewayResponse": {
-                    "statusCode": gateway_response.get("statusCode", 200),
-                    "headers": response_headers,
-                    "body": response_body,
+                    "statusCode": safe_gw_response.get("statusCode", 200),
+                    "headers": safe_gw_response.get("headers", {}),
+                    "body": empty_body,
                 }
             },
         }
