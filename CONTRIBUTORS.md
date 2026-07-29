@@ -128,3 +128,4 @@
 - Fabio Balancin (balancin)
 - Varun Gunda (vvargu)
 - Anil Nadiminti (aniloncloud)
+- Bent Krause (krausexb)
