@@ -4,7 +4,10 @@ set -euo pipefail
 ROLE_NAME="TypescriptExecutionRole"
 POLICY_NAME="TypescriptExecutionPolicy"
 
-TRUST_POLICY='{
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+TRUST_POLICY=$(cat <<EOTRUST
+{
   "Version": "2012-10-17",
   "Statement": [
     {
@@ -12,10 +15,17 @@ TRUST_POLICY='{
       "Principal": {
         "Service": "bedrock-agentcore.amazonaws.com"
       },
-      "Action": "sts:AssumeRole"
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "$ACCOUNT_ID"
+        }
+      }
     }
   ]
-}'
+}
+EOTRUST
+)
 
 PERMISSIONS_POLICY='{
   "Version": "2012-10-17",
@@ -24,7 +34,7 @@ PERMISSIONS_POLICY='{
       "Sid": "BedrockInvokeModel",
       "Effect": "Allow",
       "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-      "Resource": "*"
+      "Resource": ["arn:aws:bedrock:*::foundation-model/*", "arn:aws:bedrock:*:*:inference-profile/*"]
     },
     {
       "Sid": "ECRPull",
@@ -59,20 +69,26 @@ PERMISSIONS_POLICY='{
       "Sid": "CloudWatchLogs",
       "Effect": "Allow",
       "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-      "Resource": "*"
+      "Resource": ["arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/runtimes/*", "arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"]
     },
     {
       "Sid": "AgentCore",
       "Effect": "Allow",
       "Action": [
-        "bedrock-agentcore:*Memory*",
-        "bedrock-agentcore:*Browser*",
-        "bedrock-agentcore:*Gateway*",
-        "bedrock-agentcore:*CodeInterpreter*",
         "bedrock-agentcore:RetrieveMemoryRecords",
         "bedrock-agentcore:CreateEvent",
         "bedrock-agentcore:ListEvents",
-        "bedrock-agentcore:GetEvent"
+        "bedrock-agentcore:GetEvent",
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:ListBrowserSessions",
+        "bedrock-agentcore:StartCodeInterpreterSession",
+        "bedrock-agentcore:StopCodeInterpreterSession",
+        "bedrock-agentcore:GetCodeInterpreterSession",
+        "bedrock-agentcore:ListCodeInterpreterSessions",
+        "bedrock-agentcore:InvokeCodeInterpreter",
+        "bedrock-agentcore:InvokeGateway"
       ],
       "Resource": "*"
     },

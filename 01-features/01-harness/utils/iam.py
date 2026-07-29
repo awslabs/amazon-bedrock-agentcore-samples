@@ -7,16 +7,18 @@ from typing import Optional
 ROLE_NAME = "HarnessExecutionRole"
 POLICY_NAME = "HarnessExecutionPolicy"
 
-TRUST_POLICY = {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {"Service": ["bedrock-agentcore.amazonaws.com"]},
-            "Action": "sts:AssumeRole",
-        }
-    ],
-}
+def _build_trust_policy():
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": ["bedrock-agentcore.amazonaws.com"]},
+                "Action": "sts:AssumeRole",
+                "Condition": {"StringEquals": {"aws:SourceAccount": get_account_id()}},
+            }
+        ],
+    }
 
 PERMISSIONS_POLICY = {
     "Version": "2012-10-17",
@@ -25,7 +27,10 @@ PERMISSIONS_POLICY = {
             "Sid": "BedrockInvokeModel",
             "Effect": "Allow",
             "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-            "Resource": "*",
+            "Resource": [
+                "arn:aws:bedrock:*::foundation-model/*",
+                "arn:aws:bedrock:*:*:inference-profile/*",
+            ],
         },
         {
             "Sid": "ECRPull",
@@ -64,20 +69,29 @@ PERMISSIONS_POLICY = {
                 "logs:CreateLogStream",
                 "logs:PutLogEvents",
             ],
-            "Resource": "*",
+            "Resource": [
+                "arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/runtimes/*",
+                "arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*",
+            ],
         },
         {
             "Sid": "AgentCore",
             "Effect": "Allow",
             "Action": [
-                "bedrock-agentcore:*Memory*",
-                "bedrock-agentcore:*Browser*",
-                "bedrock-agentcore:*Gateway*",
-                "bedrock-agentcore:*CodeInterpreter*",
                 "bedrock-agentcore:RetrieveMemoryRecords",
                 "bedrock-agentcore:CreateEvent",
                 "bedrock-agentcore:ListEvents",
                 "bedrock-agentcore:GetEvent",
+                "bedrock-agentcore:StartBrowserSession",
+                "bedrock-agentcore:StopBrowserSession",
+                "bedrock-agentcore:GetBrowserSession",
+                "bedrock-agentcore:ListBrowserSessions",
+                "bedrock-agentcore:StartCodeInterpreterSession",
+                "bedrock-agentcore:StopCodeInterpreterSession",
+                "bedrock-agentcore:GetCodeInterpreterSession",
+                "bedrock-agentcore:ListCodeInterpreterSessions",
+                "bedrock-agentcore:InvokeCodeInterpreter",
+                "bedrock-agentcore:InvokeGateway",
             ],
             "Resource": "*",
         },
@@ -112,7 +126,7 @@ def create_harness_role(role_name: str = ROLE_NAME) -> Optional[str]:
 
     resp = iam.create_role(
         RoleName=role_name,
-        AssumeRolePolicyDocument=json.dumps(TRUST_POLICY),
+        AssumeRolePolicyDocument=json.dumps(_build_trust_policy()),
         Description="Execution role for Amazon Bedrock AgentCore Harness",
     )
     arn = resp["Role"]["Arn"]
