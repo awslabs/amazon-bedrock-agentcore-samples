@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
 MEMORY_ROLE_ARN = os.environ.get("MEMORY_EXECUTION_ROLE_ARN", "")
-MODEL_ID = os.getenv("OVERRIDE_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
+MODEL_ID = os.getenv("OVERRIDE_MODEL_ID", "global.anthropic.claude-opus-4-6-v1")
 ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
 EXTRACTION_WAIT_SECONDS = 75

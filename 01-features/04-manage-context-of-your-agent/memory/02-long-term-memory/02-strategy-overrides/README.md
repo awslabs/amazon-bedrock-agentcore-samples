@@ -52,11 +52,11 @@ aws bedrock-agentcore-control create-memory \
         "semanticOverride": {
           "extraction": {
             "appendToPrompt": "Focus only on health-related facts.",
-            "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+            "modelId": "global.anthropic.claude-opus-4-6-v1"
           },
           "consolidation": {
             "appendToPrompt": "Prefer the more recent record on conflict.",
-            "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+            "modelId": "global.anthropic.claude-opus-4-6-v1"
           }
         }
       }

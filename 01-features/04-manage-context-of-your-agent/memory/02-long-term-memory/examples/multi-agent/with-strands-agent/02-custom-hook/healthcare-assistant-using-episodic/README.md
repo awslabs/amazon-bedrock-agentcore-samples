@@ -204,7 +204,7 @@ allergy_agent = Agent(
 Change the `model` parameter in agent creation:
 ```python
 Agent(
-    model="anthropic.claude-3-5-sonnet-20241022-v2:0",  # Different model
+    model="global.anthropic.claude-opus-4-6-v1",  # Different model
     system_prompt="...",
     tools=[...]
 )
