@@ -159,4 +159,3 @@ while True:
     time.sleep(5)
 control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
 print("Deleted:", memory_id)
-
