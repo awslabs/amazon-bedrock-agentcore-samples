@@ -31,7 +31,7 @@ import uuid
 from datetime import datetime, timezone
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
-EXTRACTION_WAIT_SECONDS = 60
+EXTRACTION_WAIT_SECONDS = 180  # polling budget; semantic extraction measured ~93s
 SDK_EXTRACTION_WAIT_SECONDS = 90  # semantic extraction surfaces ~60-90s; extra margin
 FACTS_TEMPLATE = "/facts/{actorId}/"
 
@@ -107,8 +107,19 @@ def run_with_boto3(cleanup: bool = False) -> None:
                 },
             ],
         )
-    print(f"[boto3] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
-    time.sleep(EXTRACTION_WAIT_SECONDS)
+    # Extraction is asynchronous and its latency varies — poll on the broadest query
+    # instead of sleeping a fixed amount, so a slow run still shows records.
+    print(f"[boto3] Polling up to {EXTRACTION_WAIT_SECONDS}s for extraction...")
+    deadline = time.time() + EXTRACTION_WAIT_SECONDS
+    _, probe_query, probe_scope = QUERIES[-1]
+    while time.time() < deadline:
+        if data.retrieve_memory_records(
+            memoryId=memory_id,
+            searchCriteria={"searchQuery": probe_query, "topK": 20},
+            **probe_scope,
+        )["memoryRecordSummaries"]:
+            break
+        time.sleep(10)
 
     for label, query, scope in QUERIES:
         hits = data.retrieve_memory_records(
