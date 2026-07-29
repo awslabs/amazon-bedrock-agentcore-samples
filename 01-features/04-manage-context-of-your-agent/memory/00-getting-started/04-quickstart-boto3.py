@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import boto3
 
-REGION = os.getenv("AWS_REGION", "us-east-1")
+REGION = input("Enter AWS region [us-west-2]: ").strip() or os.getenv("AWS_REGION", "us-west-2")
 ACTOR_ID = "user-42"
 
 # Get or create a minimal IAM role for AgentCore Memory execution
@@ -58,6 +58,8 @@ except _iam.exceptions.NoSuchEntityException:
             }
         ),
     )
+    print("Waiting for IAM role to propagate...")
+    time.sleep(10)
 SESSION_ID = f"sess-{int(time.time())}"
 
 control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -149,4 +151,12 @@ hits = data.retrieve_memory_records(
 for h in hits:
     print(h["content"]["text"])
 
+# Wait for memory to leave UPDATING state before deleting
+while True:
+    status = control.get_memory(memoryId=memory_id)["memory"]["status"]
+    if status == "ACTIVE":
+        break
+    time.sleep(5)
 control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+print("Deleted:", memory_id)
+
