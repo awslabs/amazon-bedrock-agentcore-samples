@@ -168,6 +168,7 @@ def create_gateway_role(iam: object, lambda_arn: str) -> str:
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
                 }
             ],
         }

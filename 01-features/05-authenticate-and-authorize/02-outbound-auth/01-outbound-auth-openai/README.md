@@ -59,6 +59,15 @@ and injects it into the function as a keyword argument. The LLM never sees the r
 
 ## Sample Prompts
 
+> **Note:** These prompts describe what the agent does **once deployed to
+> AgentCore Runtime**. The setup script (`outbound_auth_runtime.py`) only
+> creates the API-key credential provider, prints the required IAM
+> permissions, and saves the agent code for reference — it does **not**
+> invoke the agent or make a live OpenAI/Azure call. A placeholder key is
+> acceptable for this exercise. The teaching point is that
+> `@requires_api_key` fetches the secret from Secrets Manager at runtime
+> instead of hardcoding it in the agent.
+
 **Prompt**: `Hello, how are you?`
 **Expected Behavior**: Agent responds using Azure OpenAI GPT-4.1-mini
 

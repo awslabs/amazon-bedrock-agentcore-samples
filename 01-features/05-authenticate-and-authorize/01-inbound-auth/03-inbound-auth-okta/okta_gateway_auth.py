@@ -315,6 +315,7 @@ def create_gateway(lambda_arn: str) -> dict:
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
                 }
             ],
         }
@@ -473,6 +474,7 @@ def deploy_agent(gateway_url: str) -> dict:
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
                 }
             ],
         }

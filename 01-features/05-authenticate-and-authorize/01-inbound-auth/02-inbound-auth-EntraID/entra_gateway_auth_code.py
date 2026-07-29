@@ -136,6 +136,7 @@ def create_execution_role(role_name: str) -> str:
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
                 }
             ],
         }

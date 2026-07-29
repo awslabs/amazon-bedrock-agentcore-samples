@@ -121,15 +121,28 @@ Your AWS credentials need permissions to:
         {
             "Effect": "Allow",
             "Action": [
-                "bedrock-agentcore:*",
-                "ecr:*",
+                "bedrock-agentcore:CreateAgentRuntime",
+                "bedrock-agentcore:GetAgentRuntime",
+                "bedrock-agentcore:InvokeAgentRuntime",
+                "bedrock-agentcore:DeleteAgentRuntime",
+                "bedrock-agentcore:GetWorkloadAccessToken",
+                "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+                "bedrock-agentcore:GetResourceOauth2Token",
+                "bedrock-agentcore:CreateOauth2CredentialProvider",
+                "bedrock-agentcore:GetOauth2CredentialProvider",
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchCheckLayerAvailability",
                 "iam:CreateRole",
                 "iam:AttachRolePolicy",
                 "iam:PassRole",
                 "iam:GetRole",
                 "secretsmanager:GetSecretValue",
                 "secretsmanager:CreateSecret",
-                "logs:*"
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
             ],
             "Resource": "*"
         }
