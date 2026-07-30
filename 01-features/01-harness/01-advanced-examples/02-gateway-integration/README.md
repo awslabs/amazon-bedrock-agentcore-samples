@@ -73,8 +73,11 @@ changing your agent code.
 ### Issue: Target `FAILED` status
 **Solution**: Check the MCP endpoint is reachable. The default Exa endpoint (`https://mcp.exa.ai/mcp`) requires public internet access from the gateway.
 
-### Issue: `HARNESS_POLL_TIMEOUT` exceeded
-**Solution**: Increase `HARNESS_POLL_TIMEOUT` constant or retry after a few minutes.
+### Issue: `Harness not READY after 600s`
+**Solution**: Harness provisioning is measured at ~150s on the public network and ~255s in VPC mode, so the shared poller in `utils/harness.py` allows 600s. Exceeding that usually means the harness is genuinely stuck rather than slow — check `get_harness` for a `CREATE_FAILED` status and its `failureReason`.
+
+### Issue: cleanup logs `Harness still provisioning, retrying delete`
+**Solution**: Expected. A harness cannot be deleted while it is still `CREATING`, so cleanup waits for provisioning to finish before deleting. It gives up after the same 600s and warns rather than failing the run.
 
 ## AgentCore CLI
 

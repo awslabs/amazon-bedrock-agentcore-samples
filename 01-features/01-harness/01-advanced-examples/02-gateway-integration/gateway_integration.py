@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.iam import create_harness_role
 from utils.client import get_agentcore_client, get_agentcore_control_client
+from utils.harness import HARNESS_POLL_INTERVAL, HARNESS_POLL_TIMEOUT, poll_harness_status
 
 REGION = os.getenv("AWS_DEFAULT_REGION")
 
@@ -62,7 +63,6 @@ DEFAULT_PROMPT = (
 
 GATEWAY_POLL_INTERVAL = 5
 GATEWAY_POLL_TIMEOUT = 120
-HARNESS_POLL_TIMEOUT = 120
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser(
@@ -110,21 +110,6 @@ def poll_target_status(control, gateway_id, target_id, target_status="READY", ti
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
-    deadline = time.monotonic() + timeout
-    while True:
-        resp = control.get_harness(harnessId=harness_id)
-        status = resp["harness"]["status"]
-        print(f"  Harness status: {status}")
-        if status == target_status:
-            return resp
-        if status in ("FAILED", "DELETE_FAILED"):
-            raise RuntimeError(f"Harness {status}")
-        if time.monotonic() > deadline:
-            raise TimeoutError(f"Harness not {target_status} after {timeout}s")
-        time.sleep(GATEWAY_POLL_INTERVAL)
-
-
 def stream_response(client, harness_arn, session_id, message, model_id, gateway_arn, raw=False):
     response = client.invoke_harness(
         harnessArn=harness_arn,
@@ -164,13 +149,35 @@ def stream_response(client, harness_arn, session_id, message, model_id, gateway_
     return full_text
 
 
-def _cleanup(gw_control, harness_control, gateway_id, target_id, harness_id):
-    if harness_id:
+def _delete_harness(harness_control, harness_id, timeout=HARNESS_POLL_TIMEOUT):
+    """Delete a Harness, waiting out the ConflictException raised while it is still CREATING.
+
+    A harness cannot be deleted until it leaves CREATING, and cleanup runs at
+    precisely the moment that is most likely to be true: the `finally` block
+    after a step failed mid-provisioning. Without this wait the delete is
+    rejected on its only attempt and the harness is left behind — which then
+    counts against the account's harness quota with nothing pointing at why.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
         try:
             harness_control.delete_harness(harnessId=harness_id)
             print(f"  Deleted harness: {harness_id}")
-        except Exception as e:
-            print(f"  Warning: {e}")
+            return
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] != "ConflictException":
+                print(f"  Warning: could not delete harness {harness_id}: {e}")
+                return
+            if time.monotonic() > deadline:
+                print(f"  Warning: harness {harness_id} still not deletable after {timeout}s: {e}")
+                return
+            print(f"  Harness still provisioning, retrying delete in {HARNESS_POLL_INTERVAL}s...")
+            time.sleep(HARNESS_POLL_INTERVAL)
+
+
+def _cleanup(gw_control, harness_control, gateway_id, target_id, harness_id):
+    if harness_id:
+        _delete_harness(harness_control, harness_id)
     if gateway_id and target_id:
         try:
             gw_control.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
