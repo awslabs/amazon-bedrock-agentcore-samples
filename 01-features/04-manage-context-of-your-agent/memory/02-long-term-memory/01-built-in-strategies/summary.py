@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
-EXTRACTION_WAIT_SECONDS = 180  # polling budget; semantic-class latency measured ~93s
+EXTRACTION_WAIT_SECONDS = 100  # polling budget; summary consolidation measured 75-104s
 # Summary consolidation is semantic-class; the high-level sdk run waits
 # 90s (with margin) — consolidation surfaced ~64s in semantic-class testing.
 SESSION_EXTRACTION_WAIT_SECONDS = 90
