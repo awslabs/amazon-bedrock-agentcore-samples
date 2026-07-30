@@ -39,9 +39,9 @@ python self-managed-strategy.py sdk     # documents the SDK gap (no selfManagedC
 
 The execution role must allow:
 
-- `s3:PutObject` on `arn:aws:s3:::$PAYLOAD_BUCKET/*`
-- `sns:Publish` on `$TOPIC_ARN`
-- be assumable by `bedrock-agentcore.amazonaws.com`
+- `s3:PutObject` and `s3:GetBucketLocation` on `arn:aws:s3:::$PAYLOAD_BUCKET` and `arn:aws:s3:::$PAYLOAD_BUCKET/*`
+- `sns:Publish` and `sns:GetTopicAttributes` on `$TOPIC_ARN`
+- be assumable by `bedrock-agentcore.amazonaws.com` with condition `ArnLike: aws:SourceArn: arn:aws:bedrock-agentcore:<region>:<account>:memory/*`
 
 A working extraction subscriber (Lambda) is provided under [`../examples/single-agent/with-strands-agent/02-custom-hook/culinary-assistant-self-managed-strategy/lambda_function.py`](../examples/single-agent/with-strands-agent/02-custom-hook/culinary-assistant-self-managed-strategy/lambda_function.py).
 
@@ -59,7 +59,7 @@ The same flow expressed with the AWS CLI:
 
 ```bash
 # 1. Create the memory with a self-managed strategy. The role must allow
-#    PutObject to the bucket and Publish to the topic.
+#    PutObject + GetBucketLocation to the bucket and Publish + GetTopicAttributes to the topic.
 aws bedrock-agentcore-control create-memory \
   --region "$AWS_REGION" --name "SelfManagedCli-$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
@@ -68,7 +68,6 @@ aws bedrock-agentcore-control create-memory \
     \"customMemoryStrategy\": {
       \"name\": \"MyOwnExtractor\",
       \"description\": \"Custom extraction owned by my Lambda\",
-      \"namespaces\": [\"/users/{actorId}/custom/\"],
       \"configuration\": {
         \"selfManagedConfiguration\": {
           \"invocationConfiguration\": {
@@ -94,12 +93,15 @@ aws bedrock-agentcore create-event \
   --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --payload '[{"conversational":{"role":"USER","content":{"text":"hello"}}}]'
 
-# 3. Your subscriber writes records back via batch APIs:
+# 3. Your subscriber writes records back via batch APIs.
+#    Each record requires: requestIdentifier, namespaces (array), content, timestamp, memoryStrategyId.
 aws bedrock-agentcore batch-create-memory-records \
   --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
   --records '[{
-    "namespace":"/users/user-alex/custom/",
+    "requestIdentifier":"unique-id-1",
+    "namespaces":["/users/user-alex/custom/"],
     "content":{"text":"User likes Python"},
+    "timestamp":1785424000,
     "memoryStrategyId":"<strategy-id-from-create-memory-response>"
   }]'
 
