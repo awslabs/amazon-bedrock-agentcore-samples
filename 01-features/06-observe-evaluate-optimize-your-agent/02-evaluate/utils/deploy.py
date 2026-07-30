@@ -181,7 +181,7 @@ try:
             CreateBucketConfiguration={"LocationConstraint": REGION},
         )
     print(f"  Created bucket: {_S3_BUCKET}")
-except Exception:
+except Exception:  # noqa: BLE001 — bucket may already exist; proceed with upload
     print(f"  Bucket exists: {_S3_BUCKET}")
 _s3.upload_file(str(_ZIP), _S3_BUCKET, _S3_KEY)
 print(f"  Uploaded: s3://{_S3_BUCKET}/{_S3_KEY}")

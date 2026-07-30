@@ -36,11 +36,12 @@ Prerequisites:
 import argparse
 import logging
 import os
+from typing import ClassVar
 
 from opentelemetry import baggage, context, trace
+from opentelemetry.processor.baggage import ALLOW_ALL_BAGGAGE_KEYS, BaggageSpanProcessor
 from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
 from opentelemetry.trace import get_tracer_provider
-from opentelemetry.processor.baggage import BaggageSpanProcessor, ALLOW_ALL_BAGGAGE_KEYS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class SensitiveDataRedactor(SpanProcessor):
       - user.email              : PII propagated via OTel baggage
     """
 
-    SENSITIVE_ATTRS = [
+    SENSITIVE_ATTRS: ClassVar[list[str]] = [
         "llm.prompts",
         "gen_ai.input.messages",
         "llm.completions",
@@ -119,9 +120,9 @@ def set_user_context(session_id: str, tenant_id: str, user_email: str):
 
 # ── Travel Agent ──────────────────────────────────────────────────────────────
 
-from strands import Agent, tool  # noqa: E402
-from strands.models import BedrockModel  # noqa: E402
-from ddgs import DDGS  # noqa: E402
+from ddgs import DDGS
+from strands import Agent, tool
+from strands.models import BedrockModel
 
 
 @tool
@@ -141,7 +142,7 @@ def web_search(query: str) -> str:
             span.set_attribute("search.results_count", len(results))
             span.set_status(trace.Status(trace.StatusCode.OK))
             return result_text
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — demo tool surfaces any search failure as text
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             return f"Search error: {e}"
 
