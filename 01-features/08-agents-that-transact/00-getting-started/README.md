@@ -29,7 +29,7 @@ the SDK to build paying agents on top of it.**
 
 ## Start here
 
-Start with Tutorial 00; then work through 01–07 (in order, or dip into any that interests you — each
+Start with Tutorial 00; then work through 01–08 (in order, or dip into any that interests you — each
 stands alone). Each folder's `README.md` is a self-contained walkthrough — you run the `agentcore`
 commands and Python snippets yourself and learn each piece as you go.
 
@@ -53,7 +53,7 @@ numbered walkthrough, an inspect step, troubleshooting, and clean-up — so once
 
 ## Tutorials
 
-Run Tutorial 00 first; then 01–07 in any order. Each folder's README opens with a **Reads / Does**
+Run Tutorial 00 first; then 01–08 in any order. Each folder's README opens with a **Reads / Does**
 strip so you can see its inputs and outputs at a glance.
 
 | # | Folder | What you build | Provisioning |
@@ -66,6 +66,7 @@ strip so you can see its inputs and outputs at a glance.
 | 05 | [`05-agent-with-browser-tool-pay-for-content/`](05-agent-with-browser-tool-pay-for-content/) | Pay 402 paywalls inside a browser session | SDK |
 | 06 | [`06-research-agent-with-payment-memory/`](06-research-agent-with-payment-memory/) | Add AgentCore Memory to skip redundant paid calls | SDK |
 | 07 | [`07-multi-agent-payment-orchestrator/`](07-multi-agent-payment-orchestrator/) | Multiple agents, separate wallets, per-agent budgets | CLI + SDK |
+| 08 | [`08-openai-paid-research-agent/`](08-openai-paid-research-agent/) | OpenAI Agents SDK financial research with approved x402 merchants and bounded budgets | SDK |
 
 ## Which tutorial do I need?
 
@@ -75,6 +76,7 @@ strip so you can see its inputs and outputs at a glance.
 - **Paying for web/article content?** → 05 (Browser).
 - **Personalized agentic payments with memory?** → 06 (Memory).
 - **Several agents with independent budgets?** → 07 (needs multi-provider setup).
+- **OpenAI model buying approved premium research?** → 08.
 
 ## Shared files
 

@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.egg-info/
+dist/
