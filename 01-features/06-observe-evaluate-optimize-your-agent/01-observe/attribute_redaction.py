@@ -71,11 +71,21 @@ class SensitiveDataRedactor(SpanProcessor):
     ]
 
     def on_end(self, span: ReadableSpan):
-        if span.attributes:
-            for attr in self.SENSITIVE_ATTRS:
-                if attr in span.attributes:
-                    span._attributes[attr] = "[REDACTED]"  # pylint: disable=protected-access
-                    logger.debug("Redacted attribute '%s' in span '%s'", attr, span.name)
+        if not span.attributes:
+            return
+        present = [attr for attr in self.SENSITIVE_ATTRS if attr in span.attributes]
+        if not present:
+            return
+        # span.attributes is a BoundedAttributes instance that is immutable once
+        # the span has ended (item assignment raises TypeError). Rebuild a plain
+        # dict with the sensitive values masked and reassign the private slot.
+        # Reassigning the attribute avoids depending on the internal storage name,
+        # which differs across OTel SDK versions (_dict vs _attributes).
+        redacted = dict(span.attributes)
+        for attr in present:
+            redacted[attr] = "[REDACTED]"
+            logger.debug("Redacted attribute '%s' in span '%s'", attr, span.name)
+        span._attributes = redacted  # pylint: disable=protected-access
 
 
 # ── Register processors at startup ───────────────────────────────────────────
