@@ -112,7 +112,7 @@ def gateway_role_trust_policy(account_id: str, region: str) -> dict:
 def gateway_role_permission_policy(
     account_id: str,
     region: str,
-    kb_id: Optional[str] = None,
+    kb_id: str | None = None,
 ) -> dict:
     """Least-privilege policy for the gateway execution role.
 

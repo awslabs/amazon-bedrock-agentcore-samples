@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from utils import gateway as gw  # noqa: E402
+from utils import gateway as gw
 
 
 def load_env() -> None:
@@ -27,8 +27,7 @@ def load_env() -> None:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        if line.startswith("export "):
-            line = line[len("export ") :]
+        line = line.removeprefix("export ")
         if "=" not in line:
             continue
         k, v = line.split("=", 1)

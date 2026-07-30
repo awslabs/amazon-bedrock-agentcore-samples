@@ -21,8 +21,8 @@ from botocore.exceptions import ClientError
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from utils.managed_kb import assert_kb_active  # noqa: E402
-from utils import gateway as gw  # noqa: E402
+from utils import gateway as gw
+from utils.managed_kb import assert_kb_active
 
 
 def get_or_create_gateway_role(name: str, account_id: str, region: str, kb_id: str) -> str:

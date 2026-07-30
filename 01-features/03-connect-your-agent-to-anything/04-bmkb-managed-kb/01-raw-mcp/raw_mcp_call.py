@@ -17,40 +17,42 @@ from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 
 async def run(prompt: str, gateway_url: str, region: str, target_name: str) -> int:
     tool_name = f"{target_name}___Retrieve"
-    async with aws_iam_streamablehttp_client(
-        endpoint=gateway_url,
-        aws_service="bedrock-agentcore",
-        aws_region=region,
-    ) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-            names = [t.name for t in tools.tools]
-            if tool_name not in names:
-                print(f"tool {tool_name!r} not found. Available: {names}", file=sys.stderr)
-                return 2
-            result = await session.call_tool(tool_name, {"retrievalQuery": {"text": prompt}})
-            for c in result.content:
-                if hasattr(c, "text"):
-                    try:
-                        parsed = json.loads(c.text)
-                    except json.JSONDecodeError:
-                        print(c.text)
-                        continue
-                    for hit in parsed.get("retrievalResults", [])[:5]:
-                        score = hit.get("score")
-                        score_str = f"{score:.4f}" if isinstance(score, (int, float)) else "  n/a"
-                        content = hit.get("content") or {}
-                        # `content` is a tagged union — only TEXT chunks have `.text`.
-                        if content.get("type") == "TEXT" or "text" in content:
-                            text = (content.get("text") or "")[:300].replace("\n", " ")
-                        else:
-                            text = f"<{content.get('type', 'UNKNOWN')} chunk; not previewable>"
-                        loc = hit.get("location") or {}
-                        print(f"  score={score_str}  {text}…")
-                        if loc:
-                            print(f"    from: {json.dumps(loc)[:200]}")
-            return 0
+    async with (
+        aws_iam_streamablehttp_client(
+            endpoint=gateway_url,
+            aws_service="bedrock-agentcore",
+            aws_region=region,
+        ) as (read, write, _),
+        ClientSession(read, write) as session,
+    ):
+        await session.initialize()
+        tools = await session.list_tools()
+        names = [t.name for t in tools.tools]
+        if tool_name not in names:
+            print(f"tool {tool_name!r} not found. Available: {names}", file=sys.stderr)
+            return 2
+        result = await session.call_tool(tool_name, {"retrievalQuery": {"text": prompt}})
+        for c in result.content:
+            if hasattr(c, "text"):
+                try:
+                    parsed = json.loads(c.text)
+                except json.JSONDecodeError:
+                    print(c.text)
+                    continue
+                for hit in parsed.get("retrievalResults", [])[:5]:
+                    score = hit.get("score")
+                    score_str = f"{score:.4f}" if isinstance(score, (int, float)) else "  n/a"
+                    content = hit.get("content") or {}
+                    # `content` is a tagged union — only TEXT chunks have `.text`.
+                    if content.get("type") == "TEXT" or "text" in content:
+                        text = (content.get("text") or "")[:300].replace("\n", " ")
+                    else:
+                        text = f"<{content.get('type', 'UNKNOWN')} chunk; not previewable>"
+                    loc = hit.get("location") or {}
+                    print(f"  score={score_str}  {text}…")
+                    if loc:
+                        print(f"    from: {json.dumps(loc)[:200]}")
+        return 0
 
 
 def main() -> int:
