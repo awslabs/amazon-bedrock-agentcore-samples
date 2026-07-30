@@ -1,5 +1,5 @@
 .env
-.env.fmkb-gateway
+.env.bmkb-gateway
 .bedrock_agentcore.yaml
 .bedrock_agentcore/
 __pycache__/

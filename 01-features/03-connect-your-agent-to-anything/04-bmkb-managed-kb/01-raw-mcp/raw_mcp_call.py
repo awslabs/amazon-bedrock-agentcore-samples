@@ -1,4 +1,4 @@
-"""Call the FMKB Retrieve tool through the gateway via raw MCP+SigV4.
+"""Call the BMKB Retrieve tool through the gateway via raw MCP+SigV4.
 
 No agent in the loop. Useful as a smoke test before deploying anything to Runtime.
 """
@@ -60,7 +60,7 @@ def main() -> int:
 
     missing = [k for k in ("GATEWAY_URL", "REGION", "TARGET_NAME") if not os.environ.get(k)]
     if missing:
-        sys.exit(f"missing env vars {missing}; did you `source .env.fmkb-gateway`?")
+        sys.exit(f"missing env vars {missing}; did you `source .env.bmkb-gateway`?")
 
     return asyncio.run(
         run(

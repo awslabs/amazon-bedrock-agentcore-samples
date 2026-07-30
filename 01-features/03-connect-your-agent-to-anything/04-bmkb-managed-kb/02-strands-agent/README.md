@@ -7,7 +7,7 @@ Same shape as the upstream `bedrock-samples / managed-knowledge-bases / 03-use-c
 ```
 02-strands-agent/
 ├── README.md
-├── fmkb_gateway_strands.py     # the agent — BedrockAgentCoreApp + @app.entrypoint
+├── bmkb_gateway_strands.py     # the agent — BedrockAgentCoreApp + @app.entrypoint
 ├── requirements.txt            # in-folder copy required by `agentcore configure`
 └── iam/
     ├── runtime-trust-policy.json
@@ -16,14 +16,14 @@ Same shape as the upstream `bedrock-samples / managed-knowledge-bases / 03-use-c
 
 ## Prereqs
 
-1. You've run `01-raw-mcp/setup_gateway.py` and `source ../.env.fmkb-gateway` — that gives you `GATEWAY_URL`, `GATEWAY_ID`, `REGION`, `ACCOUNT_ID`.
+1. You've run `01-raw-mcp/setup_gateway.py` and `source ../.env.bmkb-gateway` — that gives you `GATEWAY_URL`, `GATEWAY_ID`, `REGION`, `ACCOUNT_ID`.
 2. `pip install bedrock-agentcore-starter-toolkit` for the `agentcore` CLI.
 
 ## Provision the runtime execution role
 
 ```bash
 # from 02-strands-agent/
-export AGENT_NAME=fmkb_gateway_agent
+export AGENT_NAME=bmkb_gateway_agent
 ROLE_NAME=AmazonBedrockAgentCoreRuntimeRole-${AGENT_NAME}
 
 # trust policy
@@ -50,7 +50,7 @@ The IAM policies use `${REGION}`, `${ACCOUNT_ID}`, `${AGENT_NAME}`, `${GATEWAY_I
 ```bash
 agentcore configure \
   --name "$AGENT_NAME" \
-  --entrypoint fmkb_gateway_strands.py \
+  --entrypoint bmkb_gateway_strands.py \
   --execution-role "$EXECUTION_ROLE_ARN" \
   --requirements-file requirements.txt \
   --region "$REGION" \
@@ -109,7 +109,7 @@ aws iam delete-role --role-name "$ROLE_NAME"
 
 ## What the agent does
 
-`fmkb_gateway_strands.py` is the Runtime entrypoint. It:
+`bmkb_gateway_strands.py` is the Runtime entrypoint. It:
 
 - Builds an MCP client over the gateway URL with `mcp_proxy_for_aws.aws_iam_streamablehttp_client` — every MCP request is SigV4-signed using the runtime execution role.
 - Calls `mcp_client.list_tools_sync()` to discover the gateway's KB Retrieve tool.

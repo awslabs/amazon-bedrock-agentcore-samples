@@ -1,6 +1,6 @@
 """Tear down the gateway, KB target, and gateway IAM role created by setup_gateway.py.
 
-Reads ../.env.fmkb-gateway. Does NOT delete the KB.
+Reads ../.env.bmkb-gateway. Does NOT delete the KB.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from utils import gateway as gw  # noqa: E402
 
 
 def load_env() -> None:
-    env = ROOT / ".env.fmkb-gateway"
+    env = ROOT / ".env.bmkb-gateway"
     if not env.exists():
         sys.exit(f"{env} not found; nothing to clean up")
     for line in env.read_text().splitlines():
@@ -77,7 +77,7 @@ def main() -> int:
         except ClientError as e:
             print(f"delete_role: {e}")
 
-    env = ROOT / ".env.fmkb-gateway"
+    env = ROOT / ".env.bmkb-gateway"
     env.unlink(missing_ok=True)
     print(f"removed {env}")
     return 0
