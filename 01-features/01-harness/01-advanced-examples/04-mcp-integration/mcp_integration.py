@@ -170,9 +170,10 @@ try:
                 },
             }
         ]
-        print(
-            f"✅ MCP configured with API key (first 8 chars): {api_key[:8]}..."
-        )  # codeql[py/clear-text-logging-sensitive-data]
+        # Never echo the key itself, not even a prefix — sample output routinely
+        # ends up in terminal scrollback, CI logs and screenshots. Confirm that
+        # the variable was picked up and stop there.
+        print(f"✅ MCP configured with the API key from MCP_API_KEY ({len(api_key)} chars, value not logged)")
         print(f"Tool config: {json.dumps(tools_config, indent=2)}")
     else:
         print("⚠️  No MCP_API_KEY found. Skipping authenticated example.")
