@@ -1,13 +1,13 @@
 # Connect your agent to a Bedrock Managed Knowledge Base via AgentCore Gateway
 
-This sample shows how to expose a Bedrock **Managed Knowledge Base (FMKB)** as an MCP tool through **AgentCore Gateway**, then have an agent — running on **AgentCore Runtime** — query that tool. Follows the same shape as the other folders under `01-features/03-connect-your-agent-to-anything`.
+This sample shows how to expose a Bedrock **Managed Knowledge Base (BMKB)** as an MCP tool through **AgentCore Gateway**, then have an agent — running on **AgentCore Runtime** — query that tool. Follows the same shape as the other folders under `01-features/03-connect-your-agent-to-anything`.
 
-![Architecture: caller → AgentCore Runtime (Strands agent) → SigV4-signed MCP → AgentCore Gateway → bedrock-knowledge-bases connector → FMKB](images/architecture.png)
+![Architecture: caller → AgentCore Runtime (Strands agent) → SigV4-signed MCP → AgentCore Gateway → bedrock-knowledge-bases connector → BMKB](images/architecture.png)
 
 ## What's in here
 
 ```
-04-fmkb-managed-kb/
+04-bmkb-managed-kb/
 ├── README.md
 ├── requirements.txt              # deps for 01-raw-mcp (02-strands-agent has its own copy)
 ├── utils/
@@ -20,7 +20,7 @@ This sample shows how to expose a Bedrock **Managed Knowledge Base (FMKB)** as a
 │   └── cleanup.py
 ├── 02-strands-agent/             # Strands agent on AgentCore Runtime, deployed via CLI
 │   ├── README.md
-│   ├── fmkb_gateway_strands.py   # the @app.entrypoint
+│   ├── bmkb_gateway_strands.py   # the @app.entrypoint
 │   └── iam/
 │       ├── runtime-trust-policy.json
 │       └── runtime-execution-policy.json
@@ -45,11 +45,11 @@ This sample shows how to expose a Bedrock **Managed Knowledge Base (FMKB)** as a
 # from this folder
 pip install -r requirements.txt
 
-# 1. Create the gateway + KB target (writes .env.fmkb-gateway).
+# 1. Create the gateway + KB target (writes .env.bmkb-gateway).
 # `--name-prefix` controls the gateway-side resource names (gateway role,
 # gateway, KB target); the runtime/agent name is set separately in step 3.
-python 01-raw-mcp/setup_gateway.py --kb-id <YOUR_KB_ID> --name-prefix fmkb-sample
-source .env.fmkb-gateway
+python 01-raw-mcp/setup_gateway.py --kb-id <YOUR_KB_ID> --name-prefix bmkb-sample
+source .env.bmkb-gateway
 
 # 2. Verify the gateway path with a raw MCP call (no agent)
 python 01-raw-mcp/raw_mcp_call.py "What does the knowledge base say about X?"
@@ -57,22 +57,22 @@ python 01-raw-mcp/raw_mcp_call.py "What does the knowledge base say about X?"
 # 3. Deploy the agent to Runtime and invoke it
 cd 02-strands-agent
 agentcore configure \
-  --name fmkb_gateway_agent \
-  --entrypoint fmkb_gateway_strands.py \
+  --name bmkb_gateway_agent \
+  --entrypoint bmkb_gateway_strands.py \
   --requirements-file requirements.txt \
   --region "$REGION" \
   --non-interactive
-agentcore deploy --agent fmkb_gateway_agent --auto-update-on-conflict \
+agentcore deploy --agent bmkb_gateway_agent --auto-update-on-conflict \
   -env "GATEWAY_URL=$GATEWAY_URL" \
   -env "AWS_REGION=$REGION" \
   -env "MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-agentcore invoke --agent fmkb_gateway_agent \
+agentcore invoke --agent bmkb_gateway_agent \
   '{"prompt":"What does the knowledge base say about X?"}'
 
 # 4. Tear down
 cd ..
 python 01-raw-mcp/cleanup.py
-agentcore destroy --agent fmkb_gateway_agent --force --delete-ecr-repo
+agentcore destroy --agent bmkb_gateway_agent --force --delete-ecr-repo
 ```
 
 The gateway uses `authorizerType=AWS_IAM`. The agent reaches it with SigV4-signed MCP via the `mcp-proxy-for-aws` library; the runtime execution role must allow `bedrock-agentcore:InvokeGateway` on the gateway ARN.

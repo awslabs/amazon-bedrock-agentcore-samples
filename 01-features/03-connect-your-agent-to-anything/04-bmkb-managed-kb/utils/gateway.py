@@ -1,4 +1,4 @@
-"""Helpers to create / tear down an AgentCore Gateway with an FMKB target."""
+"""Helpers to create / tear down an AgentCore Gateway with an BMKB target."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def create_kb_target(gateway_id: str, kb_id: str, name: str, region: str, num_re
     created = control.create_gateway_target(
         gatewayIdentifier=gateway_id,
         name=name,
-        description=f"FMKB Retrieve target for {kb_id}",
+        description=f"BMKB Retrieve target for {kb_id}",
         credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         targetConfiguration=target_config,
     )
@@ -112,7 +112,7 @@ def gateway_role_trust_policy(account_id: str, region: str) -> dict:
 def gateway_role_permission_policy(
     account_id: str,
     region: str,
-    kb_id: Optional[str] = None,
+    kb_id: str | None = None,
 ) -> dict:
     """Least-privilege policy for the gateway execution role.
 
