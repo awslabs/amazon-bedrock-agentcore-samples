@@ -98,12 +98,19 @@ session, then fund the wallet.
 ### Step 1 — Capture wallet-provider credentials (pick ONE provider)
 
 These scripts walk you through the provider portal and write the credential keys into `../.env`.
+For Coinbase, the helper uses the portal-downloaded files and the official CDP CLI, so secret
+values are never pasted into the terminal or printed.
 
 ```bash
-python providers/coinbase_cdp_account_setup.py     # Coinbase CDP
+python providers/coinbase_cdp_account_setup.py --open-portal  # Coinbase CDP
 #   or
 python providers/stripe_privy_account_setup.py     # Stripe (Privy)
 ```
+
+Coinbase requires the project owner to create the root API key and Wallet Secret in the CDP Portal.
+There is currently no supported OAuth or CLI command that mints them. The helper opens the exact
+portal pages, imports the downloaded files, verifies them with `@coinbase/cdp-cli`, and saves the
+AgentCore fields locally. It never handles your Coinbase password or MFA code.
 
 Then set `AWS_REGION`, `CREDENTIAL_PROVIDER_TYPE` (`CoinbaseCDP` or `StripePrivy`), `USER_ID`,
 `LINKED_EMAIL` (a real inbox — used for the wallet and provider OTP), and `NETWORK`
@@ -247,6 +254,9 @@ IDs. Downstream tutorials read them all via `utils.load_tutorial_env()`.
 
 Until delegated signing is granted, payment attempts report
 `Delegated signing grant is not active for the end user wallet.`
+
+The session budget is only a spending ceiling; it does not fund the wallet. The wallet needs
+testnet USDC, but no real money is required and the testnet tokens have no monetary value.
 
 ## What this setup does
 

@@ -183,6 +183,22 @@ delegation, and checks that the configured merchant returns an x402 challenge.
 Add `--payment` only with a funded, delegated testnet instrument and a fresh
 payment session; that path spends testnet USDC.
 
+For the Coinbase path, first run Tutorial 00's file-based onboarding helper:
+
+```bash
+cd ../00-setup-agentcore-payments
+npm install -g @coinbase/cdp-cli
+python providers/coinbase_cdp_account_setup.py --open-portal
+python setup_agentcore_payments.py
+```
+
+Coinbase requires two portal actions to establish project root trust: create and
+download the Secret API Key, then generate and download the Wallet Secret. The
+helper securely imports and verifies those files; it does not request a Coinbase
+password, MFA code, or pasted secret. After AgentCore prints the embedded-wallet
+address and WalletHub URL, fund the address with free Base Sepolia USDC and grant
+delegated signing. No real funds are needed.
+
 The guided notebook is at
 [`notebooks/agentcore_openai_paid_research.ipynb`](notebooks/agentcore_openai_paid_research.ipynb).
 

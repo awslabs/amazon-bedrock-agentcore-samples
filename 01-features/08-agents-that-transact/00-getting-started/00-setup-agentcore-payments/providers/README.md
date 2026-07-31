@@ -23,18 +23,39 @@ python providers/coinbase_cdp_account_setup.py
 python providers/stripe_privy_account_setup.py
 ```
 
-Each script prints step-by-step instructions for the manual browser steps, then prompts for the credentials to save to `.env`.
+The Coinbase helper opens the exact CDP Portal pages, consumes the two downloaded
+credential files without printing their contents, verifies them with Coinbase's
+official CDP CLI, and writes the values needed by AgentCore to `.env`.
 
 ## Coinbase CDP Setup Summary
 
-1. Create a Coinbase account at [coinbase.com](https://coinbase.com/)
-2. Enable CDP at [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com/)
-3. Create an API Key → copy `API Key ID` + `API Key Secret`
-4. Under Wallets → ServerWallet → copy `Wallet Secret`
-5. Enable **Delegated Signing** under Wallets → Embedded Wallet → Policies
-6. Run `coinbase_cdp_account_setup.py` and paste the three values when prompted
+Coinbase does not currently expose a supported OAuth or CLI bootstrap that can
+mint a project's root API key and Wallet Secret. The project owner creates those
+credentials in the portal; the helper automates the safe handoff from there.
 
-The Wallet Secret is shown **only once** — save it before closing the dialog.
+1. Install the official CDP CLI: `npm install -g @coinbase/cdp-cli`
+2. Run `python providers/coinbase_cdp_account_setup.py --open-portal`
+3. Sign in to the CDP Portal in the browser tab that opens
+4. Create and download a **Secret API Key** JSON file
+5. Generate and download the **Wallet Secret** file
+6. Enable **Delegated Signing** on the same Wallet Security page
+7. Return to the terminal and provide the two downloaded file paths
+
+The Wallet Secret is shown **only once**. Store both downloads in a secure
+location and delete unnecessary copies after AgentCore has ingested them.
+
+For a non-interactive import after downloading the files:
+
+```bash
+python providers/coinbase_cdp_account_setup.py \
+  --api-key-file ~/Downloads/cdp_api_key.json \
+  --wallet-secret-file ~/Downloads/cdp_wallet_secret.txt
+```
+
+The embedded wallet created by AgentCore must hold enough testnet USDC to pay
+the x402 endpoint. For Base Sepolia, request free testnet USDC from
+[Circle's faucet](https://faucet.circle.com/). Testnet USDC has no monetary
+value, so no real Coinbase balance or purchase is required.
 
 ## Stripe (Privy) Setup Summary
 
