@@ -20,7 +20,7 @@ model.
 
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/mccartnick/agentcore-samples/80a71996536c045e7ec36d9b7767829ef4216213/01-features/08-agents-that-transact/00-getting-started/08-openai-paid-research-agent/assets/diagrams/paid-research-architecture%402x.png"
+    src="https://raw.githubusercontent.com/mccartnick/agentcore-samples/40a1969651f4f94be83f8b6d2b20844f16aaa872/01-features/08-agents-that-transact/00-getting-started/08-openai-paid-research-agent/assets/diagrams/paid-research-architecture%402x.png"
     alt="Budget-bounded paid research architecture"
     width="1200"
   />
