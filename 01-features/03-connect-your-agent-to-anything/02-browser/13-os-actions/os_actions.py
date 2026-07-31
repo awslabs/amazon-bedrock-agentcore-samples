@@ -276,7 +276,7 @@ def main():
     print(f"Created browser: {browser_id}")
 
     # Setup endpoint and credentials
-    base_url = f"https://bedrock-agentcore.{region}.amazonaws.com/"
+    base_url = f"https://bedrock-agentcore.{region}.amazonaws.com"
     credentials, _ = get_credentials(region)
 
     # Start session
