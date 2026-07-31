@@ -1,0 +1,358 @@
+<mxfile host="Electron" version="29.6.1">
+  <diagram name="Reference architecture" id="agentcore-openai-paid-research">
+    <mxGraphModel dx="2440" dy="980" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="2460" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        
+        <mxCell id="title-group" connectable="0" style="group;fontFamily=Helvetica;" value="" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="2380" height="83" as="geometry" />
+        </mxCell>
+        <mxCell id="title-text" style="text;html=1;resizable=1;points=[];autosize=1;align=left;verticalAlign=top;spacingTop=-4;fontSize=30;fontStyle=1;fontFamily=Helvetica;" value="Budget-bounded multi-agent paid research" vertex="1" parent="title-group">
+          <mxGeometry width="1200" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle-text" style="text;html=1;resizable=0;points=[];autosize=1;align=left;verticalAlign=top;spacingTop=-4;fontSize=16;fontFamily=Helvetica;" value="OpenAI Agents SDK with Amazon Bedrock-hosted OpenAI models and Amazon Bedrock AgentCore Payments" vertex="1" parent="title-group">
+          <mxGeometry x="5" y="40" width="1500" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="title-separator" style="line;strokeWidth=2;html=1;fontSize=14;strokeColor=#FF9900;fontFamily=Helvetica;" value="" vertex="1" parent="title-group">
+          <mxGeometry x="5" y="70" width="2370" height="10" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="agents-sdk-boundary" style="rounded=0;whiteSpace=wrap;html=1;fillColor=light-dark(#F7F7F7,#1F2933);fillStyle=auto;strokeColor=#687078;dashed=1;dashPattern=6 4;verticalAlign=top;align=left;spacingLeft=16;spacingTop=8;fontSize=14;fontStyle=1;fontColor=light-dark(#232F3E,#F2F3F3);fontFamily=Helvetica;container=0;pointerEvents=0;collapsible=0;" value="Python application · OpenAI Agents SDK" vertex="1" parent="1">
+          <mxGeometry x="180" y="160" width="700" height="700" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="aws-cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#232F3E;fillColor=light-dark(#232F3E0D,#232F3E0D);fillStyle=auto;verticalAlign=top;align=left;spacingLeft=30;fontColor=light-dark(#232F3E,#F2F3F3);dashed=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;fontFamily=Helvetica;" value="AWS Cloud · us-east-1" vertex="1" parent="1">
+          <mxGeometry x="930" y="160" width="620" height="700" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="researcher-container" style="fillColor=light-dark(#F5F5F5,#202B33);fillStyle=auto;strokeColor=light-dark(#666666,#D4D4D4);rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=light-dark(#333333,#F2F3F3);fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1;perimeterSpacing=0;" value="Researcher" vertex="1" parent="1">
+          <mxGeometry x="30" y="360" width="110" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="researcher-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#232F3D;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;fontFamily=Helvetica;" value="" vertex="1" parent="researcher-container">
+          <mxGeometry x="31" y="31" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="app-container" style="fillColor=light-dark(#FFF2E8,#4A2C15);fillStyle=auto;strokeColor=#ED7100;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#ED7100;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Application" vertex="1" parent="1">
+          <mxGeometry x="220" y="350" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="app-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.generic_application;fontFamily=Helvetica;shadow=1;" value="Python entry point&lt;div&gt;&lt;i&gt;binds approved URL&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="app-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="lead-container" style="fillColor=light-dark(#FCE4EC,#4A2030);fillStyle=auto;strokeColor=#E7157B;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#E7157B;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Orchestration" vertex="1" parent="1">
+          <mxGeometry x="430" y="350" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lead-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.generic_application;fontFamily=Helvetica;shadow=1;" value="Research lead&lt;div&gt;&lt;i&gt;plans and synthesizes&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="lead-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="public-container" style="fillColor=light-dark(#EDE7F6,#342B4A);fillStyle=auto;strokeColor=#8C4FFF;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#8C4FFF;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Public research" vertex="1" parent="1">
+          <mxGeometry x="680" y="220" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="public-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.generic_application;fontFamily=Helvetica;shadow=1;" value="Public evidence analyst&lt;div&gt;&lt;i&gt;free sources first&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="public-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="premium-container" style="fillColor=light-dark(#FFF2E8,#4A2C15);fillStyle=auto;strokeColor=#ED7100;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#ED7100;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Privileged tool" vertex="1" parent="1">
+          <mxGeometry x="680" y="540" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="premium-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.generic_application;fontFamily=Helvetica;shadow=1;" value="Premium evidence analyst&lt;div&gt;&lt;i&gt;sole payment authority&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="premium-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="bedrock-container" style="fillColor=light-dark(#E0F2F1,#173C38);fillStyle=auto;strokeColor=#01A88D;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#01A88D;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Model inference" vertex="1" parent="aws-cloud">
+          <mxGeometry x="80" y="60" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fontFamily=Helvetica;shadow=1;" value="Amazon Bedrock&lt;div&gt;&lt;i&gt;OpenAI model endpoint&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="bedrock-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="payments-container" style="fillColor=light-dark(#E0F2F1,#173C38);fillStyle=auto;strokeColor=#01A88D;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#01A88D;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Payments" vertex="1" parent="aws-cloud">
+          <mxGeometry x="80" y="380" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="payments-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fontFamily=Helvetica;shadow=1;" value="AgentCore Payments&lt;div&gt;&lt;i&gt;manager + capped session&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="payments-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="identity-container" style="fillColor=light-dark(#E0F2F1,#E0F2F1);fillStyle=auto;strokeColor=#01A88D;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#01A88D;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Credential boundary" vertex="1" parent="aws-cloud">
+          <mxGeometry x="340" y="380" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="identity-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fontFamily=Helvetica;shadow=1;" value="AgentCore Identity&lt;div&gt;&lt;i&gt;provider credentials&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="identity-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="auxiliary-boundary" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#687078;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=5;fontSize=12;fontStyle=1;fontColor=light-dark(#545B64,#D5DBDB);fontFamily=Helvetica;container=1;pointerEvents=0;collapsible=0;" value="Auxiliary observability" vertex="1" parent="aws-cloud">
+          <mxGeometry x="310" y="60" width="270" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudwatch-container" style="fillColor=light-dark(#FCE4EC,#4A2030);fillStyle=auto;strokeColor=#E7157B;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=11;fontColor=#E7157B;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.2;" value="Telemetry" vertex="1" parent="auxiliary-boundary">
+          <mxGeometry x="15" y="42" width="110" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudwatch-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch_2;fontFamily=Helvetica;shadow=1;" value="Amazon CloudWatch" vertex="1" parent="cloudwatch-container">
+          <mxGeometry x="31" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="xray-container" style="fillColor=light-dark(#EDE7F6,#EDE7F6);fillStyle=auto;strokeColor=#8C4FFF;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=11;fontColor=#8C4FFF;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.2;" value="Tracing" vertex="1" parent="auxiliary-boundary">
+          <mxGeometry x="145" y="42" width="110" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="xray-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.xray;fontFamily=Helvetica;shadow=1;" value="AWS X-Ray" vertex="1" parent="xray-container">
+          <mxGeometry x="31" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="public-sources-container" style="fillColor=light-dark(#EDE7F6,#342B4A);fillStyle=auto;strokeColor=#8C4FFF;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#8C4FFF;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="External sources" vertex="1" parent="1">
+          <mxGeometry x="1600" y="220" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="public-sources-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.internet_alt2;fontFamily=Helvetica;shadow=1;" value="Public evidence&lt;div&gt;&lt;i&gt;web search when enabled&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="public-sources-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="merchant-container" style="fillColor=light-dark(#EDE7F6,#342B4A);fillStyle=auto;strokeColor=#8C4FFF;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#8C4FFF;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Paid data provider" vertex="1" parent="1">
+          <mxGeometry x="1600" y="430" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="merchant-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.internet_alt2;fontFamily=Helvetica;shadow=1;" value="x402 merchant&lt;div&gt;&lt;i&gt;HTTP 402 + premium data&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="merchant-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="wallet-container" style="fillColor=light-dark(#FCE4EC,#4A2030);fillStyle=auto;strokeColor=#E7157B;rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#E7157B;fontFamily=Helvetica;container=1;collapsible=0;shadow=1;strokeWidth=1.5;" value="Wallet integration" vertex="1" parent="1">
+          <mxGeometry x="1600" y="700" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="wallet-icon" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#FFFFFF;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.generic_application;fontFamily=Helvetica;shadow=1;" value="Coinbase CDP or Stripe Privy&lt;div&gt;&lt;i&gt;delegated wallet signing&lt;/i&gt;&lt;/div&gt;" vertex="1" parent="wallet-container">
+          <mxGeometry x="36" y="30" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="edge-question" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=none;endFill=1;strokeColor=#545B64;strokeWidth=2;rounded=0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;" edge="1" parent="1" source="researcher-container" target="app-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-question-label" value="research question" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];strokeColor=none;fillColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="1">
+          <mxGeometry x="60" y="330" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge-app-lead" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=none;endFill=1;strokeColor=#545B64;strokeWidth=2;rounded=0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;" edge="1" parent="1" source="app-icon" target="lead-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-app-lead-label" value="start team run" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-app-lead">
+          <mxGeometry relative="1" x="0" y="-24" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lead-app-return" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=none;endFill=1;strokeColor=#545B64;strokeWidth=2;rounded=0;exitX=0.5;exitY=1;entryX=0.5;entryY=1;fontFamily=Helvetica;" edge="1" parent="1" source="lead-icon" target="app-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="490" y="500" />
+              <mxPoint x="280" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lead-app-return-label" value="cited brief + paid-data ledger" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-lead-app-return">
+          <mxGeometry relative="1" x="0" y="22" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-lead-public" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#545B64;strokeWidth=2;rounded=0;exitX=1;exitY=0.25;entryX=0;entryY=0.75;fontFamily=Helvetica;" edge="1" parent="1" source="lead-icon" target="public-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="392" />
+              <mxPoint x="620" y="304" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lead-public-label" value="delegate / cited evidence" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-lead-public">
+          <mxGeometry relative="1" x="0" y="-22" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-public-sources" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#8C4FFF;strokeWidth=2;rounded=0;dashed=1;dashPattern=6 4;exitX=0.5;exitY=0;entryX=0.5;entryY=0;fontFamily=Helvetica;" edge="1" parent="1" source="public-icon" target="public-sources-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="140" />
+              <mxPoint x="1660" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-public-sources-label" value="[when web search is enabled]" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontStyle=2;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-public-sources">
+          <mxGeometry relative="1" x="0" y="-24" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-shared-inference" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#01A88D;strokeWidth=2;rounded=0;exitX=1;exitY=0.2;entryX=0;entryY=0.75;fontFamily=Helvetica;" edge="1" parent="1" source="lead-icon" target="bedrock-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="392" />
+              <mxPoint x="900" y="304" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-shared-inference-label" value="OpenAI Responses API" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-shared-inference">
+          <mxGeometry relative="1" x="0.15" y="24" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-lead-premium" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#ED7100;strokeWidth=2;rounded=0;exitX=1;exitY=0.8;entryX=0;entryY=0.25;fontFamily=Helvetica;" edge="1" parent="1" source="lead-icon" target="premium-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="448" />
+              <mxPoint x="620" y="582" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lead-premium-label" value="[material gap remains]" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontStyle=2;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-lead-premium">
+          <mxGeometry relative="1" x="0" y="-24" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-premium-merchant" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#8C4FFF;strokeWidth=2;rounded=0;exitX=1;exitY=0.15;entryX=0;entryY=0.75;fontFamily=Helvetica;" edge="1" parent="1" source="premium-icon" target="merchant-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="850" y="577" />
+              <mxPoint x="850" y="526" />
+              <mxPoint x="1570" y="526" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-premium-merchant-label" value="GET ⇄ 402 / paid evidence" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-premium-merchant">
+          <mxGeometry relative="1" x="0.28" y="22" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-premium-payments" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#01A88D;strokeWidth=2;rounded=0;exitX=1;exitY=0.75;entryX=0;entryY=0.75;fontFamily=Helvetica;" edge="1" parent="1" source="premium-icon" target="payments-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-premium-payments-label" value="challenge / payment header" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-premium-payments">
+          <mxGeometry relative="1" x="0" y="22" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-payments-identity" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#DD344C;strokeWidth=2;rounded=0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontFamily=Helvetica;" edge="1" parent="aws-cloud" source="payments-icon" target="identity-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-payments-identity-label" value="delegated credentials" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-payments-identity">
+          <mxGeometry relative="1" x="0" y="-24" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge-identity-wallet" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#E7157B;strokeWidth=2;rounded=0;exitX=1;exitY=0.75;entryX=0;entryY=0.5;fontFamily=Helvetica;" edge="1" parent="1" source="identity-icon" target="wallet-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1570" y="622" />
+              <mxPoint x="1570" y="754" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-identity-wallet-label" value="signing request / proof" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontSize=11;fontFamily=Helvetica;" connectable="0" vertex="1" parent="edge-identity-wallet">
+          <mxGeometry relative="1" x="0.2" y="-24" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        
+        <mxCell id="step-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="1" vertex="1" parent="1">
+          <mxGeometry x="143.0" y="378.0" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="2" vertex="1" parent="1">
+          <mxGeometry x="365" y="378" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="3" vertex="1" parent="1">
+          <mxGeometry x="584" y="300" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="4" vertex="1" parent="1">
+          <mxGeometry x="584" y="500" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="5" vertex="1" parent="1">
+          <mxGeometry x="1535" y="488" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="6" vertex="1" parent="1">
+          <mxGeometry x="932.0" y="624.0" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-7" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="7" vertex="1" parent="1">
+          <mxGeometry x="1534" y="680" width="28" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="step-8" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=16;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="8" vertex="1" parent="1">
+          <mxGeometry x="395" y="486" width="28" height="28" as="geometry" />
+        </mxCell>
+
+        
+        <mxCell id="legend-bg" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;fillColor=light-dark(#EDF3FF,#305363);fillStyle=auto;strokeColor=#6C8EBF;fontFamily=Helvetica;" value="" vertex="1" parent="1">
+          <mxGeometry x="1780" y="130" width="640" height="730" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" style="text;html=1;align=left;verticalAlign=top;fontSize=18;fontStyle=1;fontColor=light-dark(#232F3E,#FFFFFF);fontFamily=Helvetica;whiteSpace=wrap;strokeColor=none;fillColor=none;" value="How the paid research flow works" vertex="1" parent="1">
+          <mxGeometry x="1810" y="155" width="560" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-1-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="1" vertex="1" parent="1">
+          <mxGeometry x="1810" y="200" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-1-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Submit the research question&lt;/b&gt;&lt;div&gt;The application receives the question and an optional, exact premium URL.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="198" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-2-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="2" vertex="1" parent="1">
+          <mxGeometry x="1810" y="268" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-2-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Start the manager-style agent team&lt;/b&gt;&lt;div&gt;The lead owns delegation and the final answer; specialists are exposed as tools.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="266" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-3-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="3" vertex="1" parent="1">
+          <mxGeometry x="1810" y="336" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-3-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Research public evidence first&lt;/b&gt;&lt;div&gt;The public analyst uses model inference and web search when the configured endpoint supports it.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="334" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-4-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="4" vertex="1" parent="1">
+          <mxGeometry x="1810" y="404" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-4-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Delegate one material gap&lt;/b&gt;&lt;div&gt;Only the premium analyst receives the bound x402 fetch and read-only session-status tools.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="402" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-5-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="5" vertex="1" parent="1">
+          <mxGeometry x="1810" y="472" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-5-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Receive the x402 challenge&lt;/b&gt;&lt;div&gt;The approved merchant returns HTTP 402 payment requirements; redirects and unapproved hosts are rejected.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="470" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-6-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="6" vertex="1" parent="1">
+          <mxGeometry x="1810" y="540" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-6-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Enforce the financial boundary&lt;/b&gt;&lt;div&gt;AgentCore Payments checks the active session's remaining spend and expiry outside model context.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="538" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-7-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="7" vertex="1" parent="1">
+          <mxGeometry x="1810" y="608" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-7-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Sign and retry the request&lt;/b&gt;&lt;div&gt;Identity supplies provider credentials; the delegated wallet returns proof for the version-correct payment header.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="606" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-step-8-badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#007CBD;strokeColor=default;fontColor=#FFFFFF;fontStyle=1;fontSize=20;labelBackgroundColor=none;fontFamily=Helvetica;shadow=1;glass=0;strokeWidth=2;" value="8" vertex="1" parent="1">
+          <mxGeometry x="1810" y="676" width="40" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-step-8-text" style="text;html=1;align=left;verticalAlign=top;fontSize=14;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#000000,#FFFFFF);" value="&lt;b&gt;Return evidence and synthesize&lt;/b&gt;&lt;div&gt;The premium analyst reports evidence, payment outcome, and remaining budget; the lead produces the cited brief and ledger.&lt;/div&gt;" vertex="1" parent="1">
+          <mxGeometry x="1865" y="674" width="520" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-note" style="text;html=1;align=left;verticalAlign=top;fontSize=12;fontStyle=2;labelBackgroundColor=none;whiteSpace=wrap;fontFamily=Helvetica;fontColor=light-dark(#545B64,#F2F3F3);" value="CloudWatch and X-Ray provide auxiliary payment and trace telemetry; they are not part of the numbered request path." vertex="1" parent="1">
+          <mxGeometry x="1810" y="758" width="560" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-line-solid" style="line;html=1;strokeColor=#545B64;strokeWidth=2;fontFamily=Helvetica;" value="" vertex="1" parent="1">
+          <mxGeometry x="1810" y="816" width="58" height="10" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-line-solid-label" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=light-dark(#545B64,#F2F3F3);fontFamily=Helvetica;strokeColor=none;fillColor=none;" value="Required request / response" vertex="1" parent="1">
+          <mxGeometry x="1880" y="806" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-line-dashed" style="line;html=1;strokeColor=#8C4FFF;strokeWidth=2;dashed=1;dashPattern=6 4;fontFamily=Helvetica;" value="" vertex="1" parent="1">
+          <mxGeometry x="2110" y="816" width="58" height="10" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-line-dashed-label" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=light-dark(#545B64,#F2F3F3);fontFamily=Helvetica;strokeColor=none;fillColor=none;" value="Optional capability" vertex="1" parent="1">
+          <mxGeometry x="2180" y="806" width="170" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
