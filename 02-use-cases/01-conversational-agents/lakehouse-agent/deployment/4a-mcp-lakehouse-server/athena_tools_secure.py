@@ -117,6 +117,7 @@ class SecureAthenaClaimsTools:
         query: str,
         wait_for_results: bool = True,
         tenant_credentials: Optional[Dict[str, str]] = None,
+        execution_parameters: Optional[List[str]] = None,
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Execute Athena query with tenant-scoped credentials.
@@ -129,6 +130,10 @@ class SecureAthenaClaimsTools:
             query: SQL query WITHOUT user filtering
             wait_for_results: Whether to wait for completion
             tenant_credentials: Temporary credentials from interceptor
+            execution_parameters: Optional positional values for Athena "?" query
+                parameters, applied in order. String values must be single-quoted
+                per Athena convention (e.g. "'alice@example.com'"). When None/empty,
+                the query is executed with no bound parameters (unchanged behavior).
 
         Returns:
             Query results
@@ -162,11 +167,17 @@ class SecureAthenaClaimsTools:
             if self.catalog_name:
                 query_context["Catalog"] = self.catalog_name
 
-            response = athena_client.start_query_execution(
-                QueryString=query,
-                QueryExecutionContext=query_context,
-                ResultConfiguration={"OutputLocation": self.s3_output_location},
-            )
+            start_params: Dict[str, Any] = {
+                "QueryString": query,
+                "QueryExecutionContext": query_context,
+                "ResultConfiguration": {"OutputLocation": self.s3_output_location},
+            }
+            # Only attach ExecutionParameters when values are present, so callers
+            # that pass no params (e.g. text_to_sql) execute exactly as before.
+            if execution_parameters:
+                start_params["ExecutionParameters"] = execution_parameters
+
+            response = athena_client.start_query_execution(**start_params)
 
             query_execution_id = response["QueryExecutionId"]
 
@@ -238,33 +249,50 @@ class SecureAthenaClaimsTools:
             User's claims (automatically filtered by Lake Formation or tenant role)
         """
         try:
+            # Bind all caller-derived values as Athena "?" execution parameters
+            # (injection-safe) rather than interpolating them into the SQL string.
+            # The identity group is parenthesized so the optional filters below AND
+            # against BOTH the policyholder and adjuster branches (fixes the prior
+            # unparenthesized-OR precedence bug that silently dropped a
+            # policyholder's status/type filter). Params are pushed in the exact
+            # positional order the "?" placeholders appear in the query.
+            params: List[str] = [
+                f"'{user_id}'",  # role_exp CTE: WHERE user_id = ?
+                f"'{user_id}'",  # c.user_id = ?
+                f"'{user_id}'",  # c.adjuster_user_id = ?
+            ]
             query = f"""
                 WITH role_exp AS (
                     SELECT user_role FROM {self.table_prefix}.users
-                    WHERE user_id='{user_id}'
+                    WHERE user_id = ?
                 )
                 SELECT
                     *
                 FROM {self.table_prefix}.claims as c
-                WHERE 1=1
-                    AND c.user_id='{user_id}'
+                WHERE (
+                    c.user_id = ?
                     OR ('adjuster' in (SELECT user_role FROM role_exp)
-                        AND c.adjuster_user_id='{user_id}')
+                        AND c.adjuster_user_id = ?)
+                )
             """
 
-            # Add optional filters (safely)
+            # Add optional filters (bound as parameters, appended OUTSIDE the
+            # parenthesized identity group so they apply to every returned row).
             if filters:
                 if "claim_status" in filters and filters["claim_status"]:
-                    # Use parameterization instead of string interpolation
-                    query += f" AND claim_status = '{filters['claim_status']}'"
+                    query += " AND claim_status = ?"
+                    params.append(f"'{filters['claim_status']}'")
 
                 if "claim_type" in filters and filters["claim_type"]:
-                    query += f" AND claim_type = '{filters['claim_type']}'"
+                    query += " AND claim_type = ?"
+                    params.append(f"'{filters['claim_type']}'")
 
             query += " ORDER BY submitted_date DESC LIMIT 50"
 
             # Execute with tenant-scoped credentials
-            results = self._execute_query(user_id, query, tenant_credentials=tenant_credentials)
+            results = self._execute_query(
+                user_id, query, tenant_credentials=tenant_credentials, execution_parameters=params
+            )
 
             return {
                 "success": True,
@@ -302,22 +330,28 @@ class SecureAthenaClaimsTools:
         try:
             is_policyholder = self._is_policyholder_role(tenant_credentials)
 
+            # Bind caller-derived values as Athena "?" params (injection-safe);
+            # push params in positional "?" order.
             if is_policyholder:
                 query = f"""
                     SELECT *
                     FROM {self.table_prefix}.claims
-                    WHERE claim_id = '{claim_id}'
-                        AND user_id='{user_id}'
+                    WHERE claim_id = ?
+                        AND user_id = ?
                 """
+                params: List[str] = [f"'{claim_id}'", f"'{user_id}'"]
             else:
                 query = f"""
                     SELECT *
                     FROM {self.table_prefix}.claims
-                    WHERE claim_id = '{claim_id}'
-                        AND (user_id='{user_id}' OR adjuster_user_id='{user_id}')
+                    WHERE claim_id = ?
+                        AND (user_id = ? OR adjuster_user_id = ?)
                 """
+                params = [f"'{claim_id}'", f"'{user_id}'", f"'{user_id}'"]
 
-            results = self._execute_query(user_id, query, tenant_credentials=tenant_credentials)
+            results = self._execute_query(
+                user_id, query, tenant_credentials=tenant_credentials, execution_parameters=params
+            )
 
             if results and len(results) > 0:
                 return {
@@ -354,10 +388,15 @@ class SecureAthenaClaimsTools:
         try:
             is_policyholder = self._is_policyholder_role(tenant_credentials)
 
+            # Bind caller identity as Athena "?" params (injection-safe); the
+            # CASE-WHEN status strings are fixed literals (not caller input), so
+            # they stay inline. Push params in positional "?" order.
             if is_policyholder:
-                where_clause = f"user_id='{user_id}'"
+                where_clause = "user_id = ?"
+                params: List[str] = [f"'{user_id}'"]
             else:
-                where_clause = f"(user_id='{user_id}' OR adjuster_user_id='{user_id}')"
+                where_clause = "(user_id = ? OR adjuster_user_id = ?)"
+                params = [f"'{user_id}'", f"'{user_id}'"]
 
             query = f"""
                 SELECT
@@ -371,7 +410,9 @@ class SecureAthenaClaimsTools:
                 WHERE {where_clause}
             """
 
-            results = self._execute_query(user_id, query, tenant_credentials=tenant_credentials)
+            results = self._execute_query(
+                user_id, query, tenant_credentials=tenant_credentials, execution_parameters=params
+            )
 
             if results and len(results) > 0:
                 summary = results[0]
