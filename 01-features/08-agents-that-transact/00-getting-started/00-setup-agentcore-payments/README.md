@@ -117,17 +117,21 @@ AgentCore fields locally. It never handles your Coinbase password or MFA code.
 > 1. Open [CDP Portal → Secret API Keys](https://portal.cdp.coinbase.com/api-keys/secret), sign in,
 >    and select the project you will use for AgentCore.
 > 2. Choose **Create API Key**, give it a descriptive name such as
->    `agentcore-payments-demo`, and download the JSON key file. Create a **Secret API Key**, not a
->    Client API Key.
+>    `agentcore-payments-demo`, select **Opt-out of IP allowlisting** for this demo, and leave the
+>    advanced permissions at their defaults: **View (read-only)** only; no Trade, Transfer,
+>    Receive, Export, or Manage. Keep **Ed25519 (Recommended)** and download the JSON key file.
+>    Create a **Secret API Key**, not a Client API Key.
 > 3. Open
 >    [CDP Portal → Wallets → Non-custodial Wallet → Security](https://portal.cdp.coinbase.com/wallets/non-custodial/security).
 > 4. Choose **Generate Wallet Secret** and download the Wallet Secret file. Coinbase shows this
->    value only once.
+>    value only once. Turn **Delegated signing** on; no project or account policy is needed for
+>    this demo.
 > 5. Return to `coinbase_cdp_account_setup.py` and provide the two downloaded file paths. Do not
 >    paste either secret into the repository, documentation, chat, or shell history.
 >
-> These steps create project credentials only. After AgentCore creates the embedded wallet, use
-> its returned WalletHub `redirectUrl` to grant delegated signing for that wallet.
+> The project toggle enables delegated signing, but does not grant consent for an individual
+> wallet. After AgentCore creates the embedded wallet, use its returned WalletHub `redirectUrl`
+> to grant delegated signing for that wallet.
 
 Then set `AWS_REGION`, `CREDENTIAL_PROVIDER_TYPE` (`CoinbaseCDP` or `StripePrivy`), `USER_ID`,
 `LINKED_EMAIL` (a real inbox — used for the wallet and provider OTP), and `NETWORK`

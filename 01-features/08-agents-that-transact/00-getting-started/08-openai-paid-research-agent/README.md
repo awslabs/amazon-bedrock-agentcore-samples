@@ -203,15 +203,19 @@ For the two manual portal actions:
 
 1. Go to [CDP Portal → Secret API Keys](https://portal.cdp.coinbase.com/api-keys/secret),
    select the demo project, choose **Create API Key**, and download the JSON file.
-   Use a Secret API Key, not a Client API Key.
+   Use a Secret API Key, not a Client API Key. For this demo, turn on
+   **Opt-out of IP allowlisting**, keep only **View (read-only)**, leave Trade,
+   Transfer, Receive, Export, and Manage off, and keep **Ed25519 (Recommended)**.
 2. Go to
    [CDP Portal → Wallets → Non-custodial Wallet → Security](https://portal.cdp.coinbase.com/wallets/non-custodial/security),
-   choose **Generate Wallet Secret**, and download the one-time Wallet Secret file.
+   choose **Generate Wallet Secret**, download the one-time Wallet Secret file,
+   and turn **Delegated signing** on. No project or account policy is needed.
 3. Give the helper the two local file paths. Never paste their contents into the
    repository, documentation, chat, or shell history.
 
-These are project credentials. Delegated signing is granted later for the
-AgentCore-created embedded wallet through its returned WalletHub `redirectUrl`.
+The project toggle enables delegated signing. Consent is still granted later
+for the specific AgentCore-created embedded wallet through its returned
+WalletHub `redirectUrl`.
 
 The guided notebook is at
 [`notebooks/agentcore_openai_paid_research.ipynb`](notebooks/agentcore_openai_paid_research.ipynb).

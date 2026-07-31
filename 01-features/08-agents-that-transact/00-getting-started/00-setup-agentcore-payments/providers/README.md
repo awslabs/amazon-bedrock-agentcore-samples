@@ -37,15 +37,20 @@ credentials in the portal; the helper automates the safe handoff from there.
 2. Run `python providers/coinbase_cdp_account_setup.py --open-portal`
 3. Sign in to the CDP Portal in the browser tab that opens
 4. At [Secret API Keys](https://portal.cdp.coinbase.com/api-keys/secret), select the demo project,
-   choose **Create API Key**, and download the JSON key file. Do not create a Client API Key.
+   choose **Create API Key**, and use these settings:
+   **Opt-out of IP allowlisting** on; **View (read-only)** only; Trade, Transfer, Receive, Export,
+   and Manage off; **Ed25519 (Recommended)** selected. Download the JSON key file. Do not create a
+   Client API Key.
 5. At
    [Wallets → Non-custodial Wallet → Security](https://portal.cdp.coinbase.com/wallets/non-custodial/security),
-   choose **Generate Wallet Secret** and download the Wallet Secret file.
+   choose **Generate Wallet Secret**, download the Wallet Secret file, and turn
+   **Delegated signing** on. Do not create a project or account policy for this demo.
 6. Return to the terminal and provide the two downloaded file paths
 
-Delegated signing is a later, per-wallet consent step. After AgentCore creates
-the embedded wallet, open the returned WalletHub `redirectUrl`, sign in as the
-linked user, and grant signing permission.
+The project toggle enables delegated signing but does not grant per-wallet
+consent. After AgentCore creates the embedded wallet, open the returned
+WalletHub `redirectUrl`, sign in as the linked user, and grant signing
+permission for that wallet.
 
 The Wallet Secret is shown **only once**. Store both downloads in a secure
 location and delete unnecessary copies after AgentCore has ingested them. Never
