@@ -138,9 +138,11 @@ def stream_invoke(harness_arn, session_id, message, model_id=args.model):
         except client.exceptions.RuntimeClientError as e:
             if attempt == INVOKE_MAX_ATTEMPTS:
                 raise
-            print(f"  Runtime not ready yet ({e.response['Error']['Code']}); "
-                  f"retrying in {INVOKE_RETRY_DELAY}s "
-                  f"[attempt {attempt}/{INVOKE_MAX_ATTEMPTS}]")
+            print(
+                f"  Runtime not ready yet ({e.response['Error']['Code']}); "
+                f"retrying in {INVOKE_RETRY_DELAY}s "
+                f"[attempt {attempt}/{INVOKE_MAX_ATTEMPTS}]"
+            )
             time.sleep(INVOKE_RETRY_DELAY)
     for event in response["stream"]:
         if "contentBlockStart" in event:
