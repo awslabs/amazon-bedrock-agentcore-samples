@@ -130,4 +130,5 @@
 - Anil Nadiminti (aniloncloud)
 - Deepak Singh (deepaxs)
 - rmncardoso
+- Bryan Conklin (thor4)
 - mccartnick

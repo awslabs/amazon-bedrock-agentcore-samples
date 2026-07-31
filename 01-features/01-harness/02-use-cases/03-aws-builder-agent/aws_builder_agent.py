@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AWS Builder Agent — building agents with the harness + AWS Skills
 
@@ -55,8 +54,9 @@ import botocore.exceptions
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from utils.iam import create_harness_role
 from utils.client import get_agentcore_client, get_agentcore_control_client
+from utils.harness import poll_harness_status
+from utils.iam import create_harness_role, delete_harness_role
 
 REGION = os.getenv("AWS_DEFAULT_REGION")
 
@@ -77,9 +77,6 @@ SCAFFOLD_PROMPT = (
     "README.md, and a package.json. Write real, runnable starter code — not "
     "placeholders. When done, list the files you created."
 )
-
-HARNESS_POLL_INTERVAL = 5
-HARNESS_POLL_TIMEOUT = 180
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────
@@ -125,23 +122,6 @@ parser.add_argument(
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
-    """Poll until a Harness reaches the target status or times out."""
-    deadline = time.monotonic() + timeout
-    while True:
-        resp = control.get_harness(harnessId=harness_id)
-        status = resp["harness"]["status"]
-        print(f"  Harness status: {status}")
-        if status == target_status:
-            return resp
-        if status in ("FAILED", "DELETE_FAILED"):
-            reason = resp["harness"].get("failureReason", "")
-            raise RuntimeError(f"Harness entered {status}. {reason}")
-        if time.monotonic() > deadline:
-            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
-        time.sleep(HARNESS_POLL_INTERVAL)
-
-
 def stream_turn(client, harness_arn, session_id, message, model_id, raw=False):
     """Invoke the harness for one conversational turn and stream the response."""
     response = client.invoke_harness(
@@ -208,6 +188,7 @@ def main(args=None):
     design_prompt = args.message or DESIGN_PROMPT
     skills = [{"awsSkills": {"paths": args.skill_paths}}]
     harness_id = None
+    created_role = False
 
     try:
         # ── Step 0: IAM role ──────────────────────────────────────────
@@ -219,6 +200,7 @@ def main(args=None):
             print(f"  Using provided role: {role_arn}")
         else:
             role_arn = create_harness_role()
+            created_role = True
             print("  Waiting for IAM propagation...")
             time.sleep(10)
 
@@ -276,13 +258,21 @@ def main(args=None):
         print("=" * 60)
 
     finally:
-        if not args.skip_cleanup and harness_id:
+        if not args.skip_cleanup:
             print("\nCleaning up...")
-            try:
-                control.delete_harness(harnessId=harness_id)
-                print(f"  Deleted harness: {harness_id}")
-            except Exception as e:
-                print(f"  Warning: failed to delete harness: {e}")
+            if harness_id:
+                try:
+                    control.delete_harness(harnessId=harness_id)
+                    print(f"  Deleted harness: {harness_id}")
+                except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
+                    print(f"  Warning: failed to delete harness: {e}")
+            # Delete the execution role too, but only the one we created — the
+            # role name is shared by every sample in this folder, so deleting a
+            # role the caller passed in with --role-arn would destroy something
+            # we don't own. Without this the role outlived the script and was
+            # left behind on any failure before Step 1 completed.
+            if created_role:
+                delete_harness_role()
 
 
 if __name__ == "__main__":
