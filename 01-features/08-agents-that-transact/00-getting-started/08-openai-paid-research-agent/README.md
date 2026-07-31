@@ -20,8 +20,8 @@ model.
 
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/mccartnick/agentcore-samples/40a1969651f4f94be83f8b6d2b20844f16aaa872/01-features/08-agents-that-transact/00-getting-started/08-openai-paid-research-agent/assets/diagrams/paid-research-architecture%402x.png"
-    alt="Budget-bounded paid research architecture"
+    src="https://raw.githubusercontent.com/mccartnick/agentcore-samples/44384ae14d1547e0cba311e9c14bd51124eb1251/01-features/08-agents-that-transact/00-getting-started/08-openai-paid-research-agent/assets/diagrams/agentcore-openai-paid-research.drawio.png"
+    alt="AWS reference architecture for budget-bounded multi-agent paid research"
     width="1200"
   />
 </p>
