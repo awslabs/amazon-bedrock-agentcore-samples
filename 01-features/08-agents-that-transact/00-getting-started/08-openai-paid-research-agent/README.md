@@ -1,4 +1,13 @@
-# Budget-Bounded Multi-Agent Research with AgentCore and OpenAI
+# Tutorial 08 — Budget-Bounded Multi-Agent Research with AgentCore and OpenAI
+
+| Information         | Details                                                                     |
+|:--------------------|:----------------------------------------------------------------------------|
+| Tutorial type       | Task-based, advanced                                                        |
+| Agent type          | Multi-agent (research lead + 2 specialists, agents-as-tools)                |
+| Framework           | OpenAI Agents SDK                                                           |
+| LLM model           | OpenAI models (direct API or Amazon Bedrock; verified with `openai.gpt-5.5`) |
+| Components          | AgentCore Payments, AgentCore Identity, `PaymentManager`, x402, delegated wallets |
+| Example complexity  | Advanced                                                                    |
 
 ## Introduction
 
