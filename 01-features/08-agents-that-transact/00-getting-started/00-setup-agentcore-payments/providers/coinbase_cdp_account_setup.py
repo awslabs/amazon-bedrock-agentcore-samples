@@ -102,19 +102,12 @@ def read_wallet_secret_file(path: Path) -> str:
         wallet_secret = _first_string(data, ("walletSecret", "wallet_secret", "secret"))
         if wallet_secret:
             return wallet_secret
-    raise CredentialFileError(
-        "Could not find a Wallet Secret in the downloaded file."
-    )
+    raise CredentialFileError("Could not find a Wallet Secret in the downloaded file.")
 
 
 def _dotenv_quote(value: str) -> str:
     """Encode a value for a double-quoted python-dotenv assignment."""
-    escaped = (
-        value.replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-    )
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
     return f'"{escaped}"'
 
 
@@ -158,9 +151,7 @@ def _open_portal_pages() -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Import Coinbase CDP credential downloads for AgentCore payments."
-    )
+    parser = argparse.ArgumentParser(description="Import Coinbase CDP credential downloads for AgentCore payments.")
     parser.add_argument(
         "--api-key-file",
         type=Path,
@@ -211,9 +202,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     api_key_file = args.api_key_file or _prompt_for_file("Secret API Key JSON path")
-    wallet_secret_file = args.wallet_secret_file or _prompt_for_file(
-        "Wallet Secret file path"
-    )
+    wallet_secret_file = args.wallet_secret_file or _prompt_for_file("Wallet Secret file path")
 
     try:
         api_key_id, api_key_secret = read_api_key_file(api_key_file)

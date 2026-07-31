@@ -5,9 +5,7 @@ from pathlib import Path
 import pytest
 from dotenv import dotenv_values
 
-MODULE_PATH = (
-    Path(__file__).resolve().parents[1] / "coinbase_cdp_account_setup.py"
-)
+MODULE_PATH = Path(__file__).resolve().parents[1] / "coinbase_cdp_account_setup.py"
 SPEC = importlib.util.spec_from_file_location("coinbase_cdp_account_setup", MODULE_PATH)
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
