@@ -302,6 +302,38 @@ Until delegated signing is granted, payment attempts report
 The session budget is only a spending ceiling; it does not fund the wallet. The wallet needs
 testnet USDC, but no real money is required and the testnet tokens have no monetary value.
 
+### If WalletHub still shows zero
+
+Check the chain before waiting or requesting more tokens. The Circle faucet can default to
+**Arc Testnet**, but this tutorial's Ethereum path requires **Base Sepolia**. A successful Arc
+transaction funds the same address on Arc only; it does not fund the Base Sepolia wallet.
+
+<p align="center">
+  <img
+    src="images/circle-faucet-arc-testnet-selected.png"
+    alt="Circle faucet with the wrong Arc Testnet network selected"
+    width="520"
+  />
+</p>
+
+*Wrong-network example: change **Arc Testnet** to **Base Sepolia** before sending USDC.*
+
+<p align="center">
+  <img
+    src="images/circle-faucet-arc-testnet-confirmation.png"
+    alt="Circle faucet confirmation linking to an Arc Testnet transaction"
+    width="760"
+  />
+</p>
+
+*The `testnet.arcscan.app` confirmation proves the transfer settled on Arc, not Base Sepolia.*
+
+WalletHub's **USDC on Base** card reports Base mainnet and can remain at zero while the testnet
+wallet is correctly funded. For this tutorial, verify the authoritative Base Sepolia balance with
+the SDK snippet in [Inspect / verify](#inspect--verify), or inspect
+`https://sepolia.basescan.org/address/<WALLET_ADDRESS>`. After the correct-chain balance is non-zero,
+no additional faucet wait is required.
+
 ## What this setup does
 
 All resource IDs now live in the shared `../.env`, so Tutorials 01–07 reuse the same manager,
@@ -368,6 +400,8 @@ print(f"balance: {micro / 1_000_000:.2f} USDC")
 | Payment Manager stuck in `CREATING` | IAM propagation | Wait ~2 min; if `CREATE_FAILED`, check the service role |
 | Instrument status stays `CREATING` | Wallet provisioning is async | Ensure `LINKED_EMAIL` is a real address; keep polling |
 | `Delegated signing grant is not active` | Consent step not completed | Do Step 4 (funding + signing) |
+| `Delegated signing is not enabled for your Coinbase project` | Project-level CDP switch is off | In CDP Portal, open Wallets → Non-custodial Wallet → Security, enable **Delegated signing**, and complete Coinbase 2-step verification |
+| WalletHub shows `0 USDC` after funding | WalletHub shows Base mainnet, or the faucet used Arc Testnet | Select **Base Sepolia** at the faucet and verify with the AgentCore SDK balance call |
 | Deploy fails with CDK bootstrap error | Account/region not bootstrapped | `cdk bootstrap aws://<account-id>/<region>` |
 
 ## Clean Up

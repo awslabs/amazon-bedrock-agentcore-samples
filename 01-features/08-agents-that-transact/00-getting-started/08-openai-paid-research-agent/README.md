@@ -199,6 +199,13 @@ password, MFA code, or pasted secret. After AgentCore prints the embedded-wallet
 address and WalletHub URL, fund the address with free Base Sepolia USDC and grant
 delegated signing. No real funds are needed.
 
+At the Circle faucet, explicitly select **Base Sepolia**. The faucet can default
+to Arc Testnet, whose successful transaction will not fund this sample. Also,
+WalletHub's **USDC on Base** card is a Base-mainnet balance; verify the testnet
+balance with Tutorial 00's AgentCore SDK check. See
+[If WalletHub still shows zero](../00-setup-agentcore-payments/#if-wallethub-still-shows-zero)
+for screenshots and diagnosis.
+
 For the two manual portal actions:
 
 1. Go to [CDP Portal → Secret API Keys](https://portal.cdp.coinbase.com/api-keys/secret),
