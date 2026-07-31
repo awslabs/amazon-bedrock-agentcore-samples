@@ -36,8 +36,9 @@ import boto3
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from utils.client import get_agentcore_client, get_agentcore_control_client
+from utils.harness import poll_harness_status
 from utils.iam import create_harness_role, delete_harness_role
-from utils.client import get_agentcore_control_client, get_agentcore_client
 
 # ── Language Presets ───────────────────────────────────────────────────────────
 LANGUAGE_PRESETS = {
@@ -155,6 +156,7 @@ def run_command(harness_arn, session_id, command):
 
 
 harness_id = None
+created_role = False
 try:
     # ── Step 0: IAM role ──────────────────────────────────────────────────────
     print("\n=== Step 0: IAM Role ===")
@@ -163,6 +165,7 @@ try:
         print(f"Using provided role: {role_arn}")
     else:
         role_arn = create_harness_role()
+        created_role = True
         print("Waiting for IAM propagation...")
         time.sleep(10)
 
@@ -176,13 +179,12 @@ try:
     print(f"Harness ID:  {harness_id}")
     print(f"Harness ARN: {harness_arn}")
 
-    for i in range(12):
-        status = control.get_harness(harnessId=harness_id)["harness"]["status"]
-        print(f"  [{i + 1}] {status}")
-        if status == "READY":
-            print("✅ Harness ready")
-            break
-        time.sleep(5)
+    # A harness routinely takes ~2-3 minutes to reach READY, so this has to wait
+    # for the real thing rather than a fixed number of polls: falling through
+    # while the harness is still CREATING made the update_harness call below fail
+    # with "Cannot update agent ... while it is CREATING".
+    poll_harness_status(control, harness_id)
+    print("✅ Harness ready")
 
     # ── Step 2: Attach Custom Container ──────────────────────────────────────
     print(f"\n=== Step 2: Attach Custom Container ({container_uri}) ===")
@@ -192,13 +194,8 @@ try:
         systemPrompt=[{"text": system_prompt}],
     )
     print("Waiting for container update...")
-    for i in range(24):
-        status = control.get_harness(harnessId=harness_id)["harness"]["status"]
-        print(f"  [{i + 1}] {status}")
-        if status == "READY":
-            print("✅ Harness updated with custom container")
-            break
-        time.sleep(5)
+    poll_harness_status(control, harness_id)
+    print("✅ Harness updated with custom container")
 
     # ── Step 3: Invoke Agent ─────────────────────────────────────────────────
     print("\n=== Step 3: Invoke Agent ===")
@@ -260,11 +257,17 @@ try:
     print("\n=== Done! ===")
 
 finally:
-    if harness_id and not args.skip_cleanup:
+    if not args.skip_cleanup:
         print("\n=== Cleanup ===")
-        try:
-            control.delete_harness(harnessId=harness_id)
-            print(f"Deleted harness: {harness_id}")
-        except Exception as e:
-            print(f"Warning: cleanup failed: {e}")
-        delete_harness_role()
+        if harness_id:
+            try:
+                control.delete_harness(harnessId=harness_id)
+                print(f"Deleted harness: {harness_id}")
+            except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
+                print(f"Warning: cleanup failed: {e}")
+        # Only delete the role if we created it: --role-arn lets the caller pass
+        # in their own role, and deleting that would destroy something we don't
+        # own. Guarding on `harness_id` alone also meant a failure before the
+        # harness existed skipped cleanup entirely and leaked the role.
+        if created_role:
+            delete_harness_role()

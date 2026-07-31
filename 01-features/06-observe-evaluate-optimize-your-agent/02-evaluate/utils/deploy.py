@@ -8,7 +8,7 @@ Usage:
     python deploy.py [--region REGION]
 
 Output:
-    utils/agent_config.json  — AGENT_ID, AGENT_ARN, CW_LOG_GROUP, REGION
+    utils/agent_config.json  — AGENT_ID, AGENT_ARN, CW_LOG_GROUP, OTEL_SERVICE_NAME, REGION
 
 Deployment steps:
   1. Create an IAM execution role for the runtime
@@ -181,7 +181,7 @@ try:
             CreateBucketConfiguration={"LocationConstraint": REGION},
         )
     print(f"  Created bucket: {_S3_BUCKET}")
-except Exception:
+except Exception:  # noqa: BLE001 — bucket may already exist; proceed with upload
     print(f"  Bucket exists: {_S3_BUCKET}")
 _s3.upload_file(str(_ZIP), _S3_BUCKET, _S3_KEY)
 print(f"  Uploaded: s3://{_S3_BUCKET}/{_S3_KEY}")
@@ -224,6 +224,9 @@ else:
 
 AGENT_ARN = _ctrl.get_agent_runtime(agentRuntimeId=AGENT_ID)["agentRuntimeArn"]
 CW_LOG_GROUP = f"/aws/bedrock-agentcore/runtimes/{AGENT_ID}-DEFAULT"
+# AgentCore emits OTel spans under the service name "<agentRuntimeName>.<endpoint>".
+# start_batch_evaluation requires this in dataSourceConfig.cloudWatchLogs.serviceNames.
+OTEL_SERVICE_NAME = f"{_AGENT_NAME}.DEFAULT"
 
 # ---------------------------------------------------------------------------
 # 6. Save agent_config.json
@@ -233,6 +236,7 @@ _config = {
     "agent_id": AGENT_ID,
     "agent_arn": AGENT_ARN,
     "cw_log_group": CW_LOG_GROUP,
+    "otel_service_name": OTEL_SERVICE_NAME,
     "region": REGION,
     "role_arn": _ROLE_ARN,
     "s3_bucket": _S3_BUCKET,
@@ -244,4 +248,5 @@ print("\nDeploy complete.")
 print(f"  AGENT_ID     : {AGENT_ID}")
 print(f"  AGENT_ARN    : {AGENT_ARN}")
 print(f"  CW_LOG_GROUP : {CW_LOG_GROUP}")
+print(f"  OTel Service : {OTEL_SERVICE_NAME}")
 print(f"  Config saved : {_CONFIG_FILE}")
