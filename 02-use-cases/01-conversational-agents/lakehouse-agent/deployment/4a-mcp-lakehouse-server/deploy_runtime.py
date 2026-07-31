@@ -4,12 +4,16 @@ Deploy MCP Athena Server to AgentCore Runtime
 
 This script deploys the MCP server to Amazon Bedrock AgentCore Runtime using
 the Bedrock AgentCore Starter Toolkit. The server provides secure Athena query
-tools with Lake Formation RLS.
+tools. Access control: Lake Formation governs column-level masking + tenant-role
+table grants; per-user row scope is the bound identity SQL predicate
+(WHERE user_id = ?). LF row-level data-cell filters are not configured
+(documented tutorial limitation).
 
 Prerequisites:
 - AWS credentials configured
 - Docker running
-- Lake Formation RLS configured (run setup_lake_formation.py)
+- Lake Formation column masking + tenant-role table grants configured
+  (run integrate_s3tables_lakeformation.py, then setup_lakeformation_permissions.py)
 - Configuration in SSM Parameter Store
 - bedrock-agentcore-starter-toolkit installed
 

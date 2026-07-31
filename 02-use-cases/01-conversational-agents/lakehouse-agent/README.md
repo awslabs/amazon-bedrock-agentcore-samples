@@ -283,10 +283,10 @@ Key Points:
 ### Security Features
 
 - **🔒 End-to-End OAuth**: JWT bearer tokens with multi-layer validation
-- **� Row-Level Security**: Agentcore Lambda interceptor translates JWT tokens on federated user identity to user principals 
-- **� Fine-Grained Access Control**: JWT scopes determine which tools users can access
-- **�  Token Propagation**: User identity flows through entire system
-- **� Full AudiIt Trail**: CloudTrail logs all data access with user identity
+- **🔐 Row-Level Security**: Agentcore Lambda interceptor translates JWT tokens on federated user identity to user principals 
+- **🎯 Fine-Grained Access Control**: JWT scopes determine which tools users can access
+- **🔁 Token Propagation**: User identity flows through entire system
+- **📋 Full AudiIt Trail**: CloudTrail logs all data access with user identity
 - **🛡️ Gateway Interceptor**: Policy-based tool access enforcement
 
 ### Application Features
@@ -529,8 +529,8 @@ Deployment, verification, and cleanup steps are in
 
 - **Cognito User Pool**: OAuth authentication with test users and groups
 - **IAM Tenant Roles**: Per-group roles with Athena/S3/Lake Formation permissions
-- **S3 Tables**: `claims` and `users` tables in Apache Iceberg format with Lake Formation row-level security
-- **Lake Formation Integration**: Federated catalog (`s3tablescatalog`) with column-level and row-level access control
+- **S3 Tables**: `claims` and `users` tables in Apache Iceberg format; Lake Formation governs column-level masking + tenant-role table grants (per-user row scope is the bound identity SQL predicate, `WHERE user_id = ?`; LF row-cell filters are not configured)
+- **Lake Formation Integration**: Federated catalog (`s3tablescatalog`) with column-level masking and tenant-role table grants (LF row-level data-cell filters not configured — documented tutorial limitation)
 - **S3 Bucket**: Athena query results storage
 - **MCP Server**: Athena tool execution layer on AgentCore Runtime (5 tools: `query_claims`, `get_claim_details`, `get_claims_summary`, `query_login_audit`, `text_to_sql`)
 - **Gateway**: Request routing with JWT validation and request/response interceptors
@@ -649,7 +649,7 @@ Test queries:
 
 ### User-Specific Data Access Demo
 
-The lakehouse agent implements row-level security (RLS) and column-level security through Lake Formation and AgentCore Lambda interceptors, ensuring users only see data they're authorized to access.
+The lakehouse agent enforces per-user row scope via a bound identity SQL predicate (`WHERE user_id = ?`, supplied by the AgentCore Lambda interceptor after a group→role STS exchange), while Lake Formation governs column-level masking + tenant-role table grants — together ensuring users only see data they're authorized to access. (LF row-level data-cell filters are not configured; row scope is the bound predicate.)
 
 #### Scenario 1: Policyholder Sees Own PII (Date of Birth)
 ![Policyholder PII Access](screenshots/policyholder-access-to-PII.png)
@@ -874,7 +874,7 @@ lakehouse-agent/
 │   ├── 3-s3tables-setup/
 │   │   ├── integrate_s3tables_lakeformation.py  # Lake Formation integration
 │   │   ├── setup_s3tables.py               #   S3 Tables bucket + tables
-│   │   ├── setup_lakeformation_permissions.py   # Row-level security
+│   │   ├── setup_lakeformation_permissions.py   # LF column masking + table grants (not per-user row filtering)
 │   │   ├── load_sample_data.py             #   Sample claims/users data
 │   │   ├── verify_setup.py                 #   Verify deployment
 │   │   └── cleanup_s3tables.py

@@ -4,13 +4,15 @@
 
 The MCP server now uses tenant-specific AWS credentials passed from the Gateway interceptor Lambda function. This provides secure, tenant-isolated access to Athena queries.
 
+> **Both identity providers.** This mechanism is identity-provider-agnostic — it applies whether `IDP_PROVIDER` is `cognito` or `okta`. The only per-IdP difference is the group-claim name the interceptor reads from the JWT (`cognito:groups` vs `groups`); the tenant-role exchange and credential-passing below are identical.
+
 ## Architecture Flow
 
 ```
 User → Gateway → Interceptor Lambda → DynamoDB Lookup → Assume Tenant Role → MCP Server → Athena
 ```
 
-1. **User authenticates** with Cognito JWT token
+1. **User authenticates** with a JWT from the active identity provider (`IDP_PROVIDER` = `cognito` or `okta`)
 2. **Gateway** validates JWT and forwards to Interceptor Lambda
 3. **Interceptor Lambda**:
    - Extracts user principal from JWT
@@ -28,9 +30,8 @@ User → Gateway → Interceptor Lambda → DynamoDB Lookup → Assume Tenant Ro
 
 **Updated `_get_athena_client()` method:**
 - Now accepts `tenant_credentials` parameter
-- Priority 1: Use tenant credentials from interceptor (if provided)
-- Priority 2: Assume role with session tags (fallback)
-- Priority 3: Use default credentials (local development)
+- Tenant credentials from the interceptor are **required**: when they are absent the method raises `PermissionError` (fail-closed, DR-14) rather than falling back to broader credentials
+- `LOCAL_DEVELOPMENT=true` is the **sole** escape hatch — dev-only, uses default credentials (never enable in a deployed environment)
 
 **Updated `_execute_query()` method:**
 - Accepts `tenant_credentials` parameter
@@ -65,8 +66,8 @@ The interceptor passes credentials in this format:
         "access_key_id": "ASIA...",
         "secret_access_key": "...",
         "session_token": "...",
-        "role_arn": "arn:aws:iam::ACCOUNT:role/lakehouse-tenant-1",
-        "role_name": "lakehouse-tenant-1",
+        "role_arn": "arn:aws:iam::ACCOUNT:role/lakehouse-policyholders-role",
+        "role_name": "lakehouse-policyholders-role",
         "expiration": "2024-01-01T13:00:00"
     }
 }
@@ -87,23 +88,24 @@ The interceptor passes credentials in this format:
 When tenant credentials are provided:
 ```
 👤 USER ID: policyholder001@example.com
-🔑 TENANT CREDENTIALS: Role lakehouse-tenant-1
+🔑 TENANT CREDENTIALS: Role lakehouse-policyholders-role
 ```
 
-### Without Tenant Credentials (Fallback)
+### Without Tenant Credentials (`LOCAL_DEVELOPMENT` only)
 
-When no credentials provided (local development):
+Only when `LOCAL_DEVELOPMENT=true` (dev-only escape hatch — **not** a production fallback):
 ```
 👤 USER ID: policyholder001@example.com
 ⚠️  Using test user for local development
 ```
+In a deployed environment, missing tenant credentials are **denied** (`PermissionError`), not silently downgraded.
 
-## Backward Compatibility
+## Failure Behavior (fail-closed, DR-14)
 
-The implementation maintains backward compatibility:
-- If `tenant_credentials` not in context, falls back to session tags
-- If no RLS role configured, uses default credentials
-- Local development mode still works without tenant credentials
+Authorization failures **deny by default** — there is no fail-open fallback:
+- If `tenant_credentials` are absent from the context, the Athena tool raises `PermissionError` and the request is refused (the REQUEST interceptor also returns 403 when the tenant-role STS exchange fails).
+- The tenant roles carry **no per-user session tags** (`sts:TagSession` is not used). Per-user **row** scope is the bound identity SQL predicate (`WHERE user_id = ?`); Lake Formation governs **column**-level masking + tenant-role table grants (LF row-level data-cell filters are not configured — documented tutorial limitation).
+- `LOCAL_DEVELOPMENT=true` is the **sole** dev-only escape hatch (uses default credentials; never enable in a deployed environment).
 
 ## Deployment
 
@@ -112,7 +114,7 @@ No additional deployment steps required. The MCP server automatically uses tenan
 ## Monitoring
 
 Check CloudWatch logs for:
-- Tenant credential usage: `🔑 TENANT CREDENTIALS: Role lakehouse-tenant-X`
+- Tenant credential usage: `🔑 TENANT CREDENTIALS: Role lakehouse-<group>-role` (e.g. `lakehouse-policyholders-role`)
 - Athena query execution with tenant role
 - Any credential-related errors
 

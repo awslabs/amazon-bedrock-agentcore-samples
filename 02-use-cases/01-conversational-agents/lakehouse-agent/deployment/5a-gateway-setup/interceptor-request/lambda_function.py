@@ -305,7 +305,9 @@ def extract_user_principal(claims: Dict[str, Any]) -> Optional[str]:
     """
     Extract user principal (identity) from JWT claims.
 
-    The principal is used for Lake Formation row-level security.
+    The principal scopes the per-user row filter — the bound identity SQL
+    predicate (WHERE user_id = ?) applied by the claims tools; it is not
+    enforced by Lake Formation (LF governs column masking + table grants).
     Priority order:
     1. email (preferred for user identification)
     2. username

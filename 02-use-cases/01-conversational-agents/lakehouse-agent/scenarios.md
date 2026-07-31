@@ -162,7 +162,7 @@ The incoming request does NOT contain a role or email in the headers. It contain
 2. Validates the JWT against the active IdP's JWKS public keys (Cognito user pool **or** Okta authorization server)
 3. Decodes the JWT claims to extract user identity — **`[COGNITO]`** priority `email` → `username` → `cognito:username` → `sub`; **`[OKTA]`** the `sub`/`email` claim
 4. Extracts the **group claim** — **`[COGNITO]`** `cognito:groups`, **`[OKTA]`** `groups` (e.g., `["administrators"]`)
-5. Looks up that group in `lakehouse_tenant_role_map` (partition key `claim_name` = the active IdP's group-claim name) and **assumes the mapped tenant IAM role via STS** — the assumed role's session (with tenant tags) is what scopes the downstream Athena/Lake Formation query. A separate RESPONSE interceptor then **filters the returned tool list** to the group's `allowed_tools`.
+5. Looks up that group in `lakehouse_tenant_role_map` (partition key `claim_name` = the active IdP's group-claim name) and **assumes the mapped tenant IAM role via STS** — the assumed role scopes **column**-/table-level access via Lake Formation grants (there are **no** per-user session tags); per-user **row** scope is the bound identity SQL predicate (see the Security Controls in each scenario, e.g. `WHERE user_id = ?`). A separate RESPONSE interceptor then **filters the returned tool list** to the group's `allowed_tools`.
 
 On authorization failure the interceptors fail **CLOSED** — the RESPONSE interceptor returns an empty tool catalog (deny-all) and the REQUEST interceptor returns 403 if the tenant-role exchange fails; they never fall open to all-tools or to the runtime's default credentials.
 
