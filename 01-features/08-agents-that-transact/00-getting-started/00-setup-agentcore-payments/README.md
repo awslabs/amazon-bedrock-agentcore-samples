@@ -151,10 +151,12 @@ AgentCore fields locally. It never handles your Coinbase password or MFA code.
 *Figure: Create the Secret API Key with IP allowlisting opted out, read-only
 access, no non-custodial export or policy-management permissions, and Ed25519.*
 
-![Coinbase Non-custodial Wallet Security page showing the Wallet Secret and delegated-signing controls](images/coinbase-wallet-security-settings.png)
+![Coinbase Non-custodial Wallet Security page with delegated signing enabled](images/coinbase-delegated-signing-enabled.png)
 
-*Figure: Generate the Wallet Secret here, then turn **Delegated signing on**.
-The screenshot shows the switch before it is enabled; do not leave it off.*
+*Figure: Generate the Wallet Secret here, then turn **Delegated signing on**
+and complete Coinbase 2-step verification. The blue switch confirms that the
+project-level setting is enabled. No project or account policy is required for
+this testnet demo.*
 
 Then set `AWS_REGION`, `CREDENTIAL_PROVIDER_TYPE` (`CoinbaseCDP` or `StripePrivy`), `USER_ID`,
 `LINKED_EMAIL` (a real inbox — used for the wallet and provider OTP), and `NETWORK`
@@ -292,12 +294,25 @@ IDs. Downstream tutorials read them all via `utils.load_tutorial_env()`.
    `https://sepolia.basescan.org/address/<WALLET_ADDRESS>` for Ethereum.
 2. Grant delegated signing so the agent can pay on the user's behalf:
    - **Coinbase** — open the WalletHub `REDIRECT_URL` printed in Step 3, sign in as
-     `LINKED_EMAIL`, and grant signing.
+     `LINKED_EMAIL`, choose **Grant permission**, and select an expiry. Use **7 days** for this
+     short-lived demo and revoke it sooner when testing is complete.
    - **Stripe/Privy** — open the Privy reference frontend (`http://localhost:3000`), log in as
      `LINKED_EMAIL`, and choose **Connect agent → Give access**.
 
 Until delegated signing is granted, payment attempts report
 `Delegated signing grant is not active for the end user wallet.`
+
+<p align="center">
+  <img
+    src="images/coinbase-wallethub-permission-active.png"
+    alt="Coinbase WalletHub showing an active, time-limited app permission"
+    width="720"
+  />
+</p>
+
+*Figure: WalletHub confirms that the app can pay from the specific wallet and
+shows the permission expiry and revocation control. This is separate from the
+project-level CDP switch.*
 
 The session budget is only a spending ceiling; it does not fund the wallet. The wallet needs
 testnet USDC, but no real money is required and the testnet tokens have no monetary value.
@@ -399,7 +414,7 @@ print(f"balance: {micro / 1_000_000:.2f} USDC")
 | `add payment-connector` fails on a missing credential | Required provider flag not provided | Re-check the credential keys in `../.env`; re-run with all flags |
 | Payment Manager stuck in `CREATING` | IAM propagation | Wait ~2 min; if `CREATE_FAILED`, check the service role |
 | Instrument status stays `CREATING` | Wallet provisioning is async | Ensure `LINKED_EMAIL` is a real address; keep polling |
-| `Delegated signing grant is not active` | Consent step not completed | Do Step 4 (funding + signing) |
+| `Delegated signing grant is not active` | The project switch is on, but this wallet has not granted consent | Open the instrument's WalletHub `redirectUrl`, choose **Grant permission**, and select a short expiry |
 | `Delegated signing is not enabled for your Coinbase project` | Project-level CDP switch is off | In CDP Portal, open Wallets → Non-custodial Wallet → Security, enable **Delegated signing**, and complete Coinbase 2-step verification |
 | WalletHub shows `0 USDC` after funding | WalletHub shows Base mainnet, or the faucet used Arc Testnet | Select **Base Sepolia** at the faucet and verify with the AgentCore SDK balance call |
 | Deploy fails with CDK bootstrap error | Account/region not bootstrapped | `cdk bootstrap aws://<account-id>/<region>` |

@@ -222,14 +222,52 @@ For the two manual portal actions:
 
 The project toggle enables delegated signing. Consent is still granted later
 for the specific AgentCore-created embedded wallet through its returned
-WalletHub `redirectUrl`.
+WalletHub `redirectUrl`. In WalletHub, choose **Grant permission** and a
+time-limited expiry; **7 days** is sufficient for this demo.
 
 ![Coinbase Secret API Key settings for the paid-research demo](../00-setup-agentcore-payments/images/coinbase-secret-api-key-settings.png)
 
-![Coinbase Wallet Security page for the paid-research demo](../00-setup-agentcore-payments/images/coinbase-wallet-security-settings.png)
+![Coinbase Wallet Security page with delegated signing enabled](../00-setup-agentcore-payments/images/coinbase-delegated-signing-enabled.png)
 
-The second screenshot shows the delegated-signing switch before it is enabled.
-Turn it **on** before continuing; leave project and account policies unset.
+The blue switch confirms that project-level delegated signing is enabled. Leave
+project and account policies unset for the testnet demo.
+
+![Coinbase WalletHub showing active wallet permission](../00-setup-agentcore-payments/images/coinbase-wallethub-permission-active.png)
+
+WalletHub must separately confirm that the app can pay from the specific
+wallet. Its **USDC on Base** card is Base mainnet, not the Base Sepolia balance
+used by this demo.
+
+### Verified live output
+
+On July 31, 2026, the sample completed the full path with a Bedrock-hosted
+OpenAI model and AgentCore Payments:
+
+```json
+{
+  "model": {
+    "provider": "bedrock",
+    "model": "openai.gpt-5.5",
+    "delegated_tools": "research_public_evidence",
+    "status": "passed"
+  },
+  "merchant_challenge": {
+    "status_code": 402,
+    "x402_version": 2,
+    "status": "passed"
+  },
+  "payment": {
+    "payment_attempts": 1,
+    "payment_made": true,
+    "status_code": 200,
+    "status": "passed"
+  }
+}
+```
+
+The settlement spent `0.002` testnet USDC. A separate
+`RUN_PAYMENT_LIVE=true` notebook execution also completed the three-agent path
+and recorded the paid-source result in its final ledger.
 
 The guided notebook is at
 [`notebooks/agentcore_openai_paid_research.ipynb`](notebooks/agentcore_openai_paid_research.ipynb).
