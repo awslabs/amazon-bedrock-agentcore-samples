@@ -1,4 +1,4 @@
-"""OpenAI Agents SDK financial research agent with an AgentCore payment tool."""
+"""Three-agent financial research workflow with isolated payment authority."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import os
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from agents import Agent, ModelSettings, Runner, WebSearchTool, function_tool, trace
 from dotenv import load_dotenv
@@ -13,19 +14,20 @@ from dotenv import load_dotenv
 from .model_runtime import configure_model_runtime
 from .x402 import X402PaymentClient
 
-INSTRUCTIONS = """Role: Financial research analyst.
+LEAD_INSTRUCTIONS = """Role: Research lead.
 
-Goal: Produce an evidence-backed research brief. Use public sources first and buy
-premium evidence only when it materially closes a named evidence gap.
+Goal: Produce an evidence-backed financial research brief by managing two bounded
+specialists while retaining ownership of the final answer.
 
-Payment rules:
-- Use paid_research_fetch only for the exact premium URL supplied in the task.
-- Before buying, state internally which evidence gap the purchase should close.
-- Never invent a price, source, payment result, or remaining budget.
-- A payment failure or budget rejection is final for that source. Do not seek a
-  trial URL, alternate merchant, redirect, or workaround.
-- Call payment_session_status after a successful paid fetch so the final brief can
-  report the remaining session budget.
+Workflow:
+- Always call research_public_evidence first.
+- Review its residual evidence gaps before considering premium evidence.
+- Call research_premium_evidence only when it is available and a named, material
+  gap remains. Pass that gap and the public evidence it should corroborate.
+- Treat a payment failure or budget rejection as final. Never seek another merchant,
+  trial URL, redirect, or payment workaround.
+- Do not claim that a specialist ran, a source was checked, or a payment occurred
+  unless the corresponding specialist output says so.
 
 Evidence and output:
 - Cite URLs next to the claims they support.
@@ -38,59 +40,160 @@ Evidence and output:
 Stop when the requested brief is supported by useful evidence, or when the
 remaining evidence gap cannot be closed within the available tools and budget."""
 
+PUBLIC_EVIDENCE_INSTRUCTIONS = """Role: Public evidence analyst.
+
+Research the supplied financial question using public sources only.
+
+- Use web search when it is available.
+- Return a compact evidence report with claim-level URLs.
+- Distinguish direct evidence from inference and note source dates.
+- Name conflicts, stale observations, and material residual evidence gaps.
+- Never recommend a purchase and never claim access to paid evidence.
+- Do not provide personalized investment advice or execute trades."""
+
+PREMIUM_EVIDENCE_INSTRUCTIONS = """Role: Premium evidence analyst.
+
+Investigate the specific material evidence gap supplied by the research lead.
+You are the only specialist with payment capability.
+
+- Use fetch_approved_premium_source for the single source bound by the application.
+  The tool intentionally accepts no URL argument.
+- Never seek another merchant, path, redirect, trial, or workaround.
+- Treat a payment failure or budget rejection as final.
+- After a successful fetch, call payment_session_status.
+- Return the source URL, evidence obtained, the gap it closes, conflicts with public
+  evidence, payment outcome, and remaining budget.
+- Do not execute trades or provide personalized investment advice."""
+
+
+@dataclass(frozen=True)
+class ResearchAgentTeam:
+    """The manager and specialists, exposed for testing and inspection."""
+
+    lead: Agent
+    public_evidence: Agent
+    premium_evidence: Agent | None
+
+
+def _model_settings() -> ModelSettings:
+    return ModelSettings(
+        reasoning={"effort": os.getenv("OPENAI_REASONING_EFFORT", "medium")},
+        verbosity="medium",
+        parallel_tool_calls=False,
+    )
+
+
+def build_agent_team(
+    payment_client: X402PaymentClient | None,
+    *,
+    approved_paid_url: str | None = None,
+    require_payment_approval: bool = False,
+    model: str | None = None,
+    include_web_search: bool = True,
+) -> ResearchAgentTeam:
+    """Build a manager-style team with payment authority isolated to one specialist."""
+    resolved_model = model or os.getenv("OPENAI_MODEL", "gpt-5.6-sol")
+    public_tools = [WebSearchTool(search_context_size="medium")] if include_web_search else []
+    public_evidence = Agent(
+        name="Public evidence analyst",
+        instructions=PUBLIC_EVIDENCE_INSTRUCTIONS,
+        model=resolved_model,
+        model_settings=_model_settings(),
+        tools=public_tools,
+    )
+
+    lead_tools = [
+        public_evidence.as_tool(
+            tool_name="research_public_evidence",
+            tool_description=(
+                "Research the question using public sources and return cited evidence, "
+                "conflicts, and residual gaps. Always call this specialist first."
+            ),
+        )
+    ]
+    premium_evidence = None
+
+    if approved_paid_url:
+        if payment_client is None:
+            raise ValueError("payment_client is required when approved_paid_url is set")
+
+        async def fetch_approved_premium_source() -> str:
+            """Fetch the one premium source approved and bound by the application."""
+            return await asyncio.to_thread(payment_client.fetch, approved_paid_url)
+
+        async def payment_session_status() -> str:
+            """Return the maximum and remaining AgentCore payment-session budget."""
+            return await asyncio.to_thread(payment_client.session_status)
+
+        premium_evidence = Agent(
+            name="Premium evidence analyst",
+            instructions=PREMIUM_EVIDENCE_INSTRUCTIONS,
+            model=resolved_model,
+            model_settings=_model_settings(),
+            tools=[
+                function_tool(
+                    fetch_approved_premium_source,
+                    needs_approval=require_payment_approval,
+                    timeout=90.0,
+                ),
+                function_tool(payment_session_status, timeout=30.0),
+            ],
+        )
+        lead_tools.append(
+            premium_evidence.as_tool(
+                tool_name="research_premium_evidence",
+                tool_description=(
+                    "Investigate one named material evidence gap using the application-bound "
+                    "premium source. Use only after public research leaves that gap."
+                ),
+            )
+        )
+
+    lead = Agent(
+        name="Financial research lead",
+        instructions=LEAD_INSTRUCTIONS,
+        model=resolved_model,
+        model_settings=_model_settings(),
+        tools=lead_tools,
+    )
+    return ResearchAgentTeam(
+        lead=lead,
+        public_evidence=public_evidence,
+        premium_evidence=premium_evidence,
+    )
+
 
 def build_agent(
-    payment_client: X402PaymentClient,
+    payment_client: X402PaymentClient | None,
     *,
+    approved_paid_url: str | None = None,
     require_payment_approval: bool = False,
     model: str | None = None,
     include_web_search: bool = True,
 ) -> Agent:
-    async def paid_research_fetch(url: str) -> str:
-        """Fetch one approved premium research URL and settle an x402 payment if required."""
-        return await asyncio.to_thread(payment_client.fetch, url)
-
-    async def payment_session_status() -> str:
-        """Return the current maximum and remaining AgentCore payment-session budget."""
-        return await asyncio.to_thread(payment_client.session_status)
-
-    paid_tool = function_tool(
-        paid_research_fetch,
-        needs_approval=require_payment_approval,
-        timeout=90.0,
-    )
-    status_tool = function_tool(payment_session_status, timeout=30.0)
-
-    reasoning_effort = os.getenv("OPENAI_REASONING_EFFORT", "medium")
-    tools = []
-    if include_web_search:
-        tools.append(WebSearchTool(search_context_size="medium"))
-    tools.extend([paid_tool, status_tool])
-
-    return Agent(
-        name="Budget-bounded financial research analyst",
-        instructions=INSTRUCTIONS,
-        model=model or os.getenv("OPENAI_MODEL", "gpt-5.6-sol"),
-        model_settings=ModelSettings(
-            reasoning={"effort": reasoning_effort},
-            verbosity="medium",
-            parallel_tool_calls=False,
-        ),
-        tools=tools,
-    )
+    """Return the research lead for callers that do not need to inspect the team."""
+    return build_agent_team(
+        payment_client,
+        approved_paid_url=approved_paid_url,
+        require_payment_approval=require_payment_approval,
+        model=model,
+        include_web_search=include_web_search,
+    ).lead
 
 
 def build_prompt(query: str, paid_url: str | None) -> str:
     paid_context = (
-        f"\nApproved premium URL for this task: {paid_url}"
+        "\nAn approved premium source is available through research_premium_evidence. "
+        "Its exact URL is bound by the application and cannot be changed by an agent."
         if paid_url
-        else "\nNo premium URL was supplied. Do not call paid_research_fetch."
+        else "\nNo premium source was supplied; the premium specialist is unavailable."
     )
     return (
         f"Research request: {query}\n"
         f"{paid_context}\n\n"
-        "Use premium data only if public evidence leaves a material gap. "
-        "Record whether a payment was made and what evidence it added."
+        "Delegate public research first. Use premium evidence only if that work leaves "
+        "a material gap. Record each specialist used, whether payment occurred, and what "
+        "the paid evidence added."
     )
 
 
@@ -101,23 +204,24 @@ async def run_research(
     require_payment_approval: bool = False,
     approve_interactively: bool = True,
 ) -> str:
-    payment_client = X402PaymentClient.from_env()
+    payment_client = X402PaymentClient.from_env() if paid_url else None
     runtime = configure_model_runtime()
     agent = build_agent(
         payment_client,
+        approved_paid_url=paid_url,
         require_payment_approval=require_payment_approval,
         model=runtime.model,
         include_web_search=runtime.include_web_search,
     )
     prompt = build_prompt(query, paid_url)
 
-    with trace("AgentCore paid financial research"):
+    with trace("AgentCore multi-agent paid financial research"):
         result = await Runner.run(agent, prompt)
         if result.interruptions:
             if not approve_interactively:
                 return "Payment approval required; run paused before the paid tool call."
 
-            print("\nThe run paused before spending. Pending paid tool call(s):")
+            print("\nThe team paused before spending. Pending paid tool call(s):")
             for interruption in result.interruptions:
                 print(f"- {interruption}")
             approved = input("Approve all pending paid calls? [y/N] ").strip().lower() == "y"
@@ -134,7 +238,9 @@ async def run_research(
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run a budget-bounded OpenAI financial research agent")
+    parser = argparse.ArgumentParser(
+        description="Run a budget-bounded OpenAI multi-agent financial research team"
+    )
     parser.add_argument("query", help="Research question, company, or market topic")
     parser.add_argument(
         "--paid-url",

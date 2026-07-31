@@ -10,7 +10,7 @@ import os
 from typing import NoReturn
 
 import httpx
-from agents import Runner
+from agents import Runner, ToolCallItem
 from dotenv import load_dotenv
 
 from paid_research.agent import build_agent
@@ -30,21 +30,36 @@ async def model_smoke() -> dict[str, str | bool | None]:
     runtime = configure_model_runtime()
     agent = build_agent(
         DisabledPaymentClient(),
+        approved_paid_url=os.getenv(
+            "PAID_RESEARCH_URL",
+            "https://sandbox.node4all.com/v1/x402-test",
+        ),
         model=runtime.model,
         include_web_search=runtime.include_web_search,
     )
     result = await Runner.run(
         agent,
-        "Do not call tools. Reply with exactly PAID_RESEARCH_MODEL_OK.",
+        """Call research_public_evidence exactly once. Ask it to return the token
+PUBLIC_SPECIALIST_OK and no other text. Do not call research_premium_evidence.
+After the public specialist returns, reply with exactly PAID_RESEARCH_MODEL_OK.""",
     )
     output = str(result.final_output).strip()
     if output != "PAID_RESEARCH_MODEL_OK":
         raise RuntimeError(f"Unexpected model smoke-test output: {output!r}")
+    delegated_tools = [
+        item.tool_name
+        for item in result.new_items
+        if isinstance(item, ToolCallItem) and item.tool_name is not None
+    ]
+    if delegated_tools != ["research_public_evidence"]:
+        raise RuntimeError(f"Unexpected specialist delegation: {delegated_tools!r}")
     return {
         "provider": runtime.provider,
         "model": runtime.model,
         "region": runtime.region,
         "web_search_enabled": runtime.include_web_search,
+        "architecture": "manager-with-two-specialists",
+        "delegated_tools": ",".join(delegated_tools),
         "status": "passed",
     }
 

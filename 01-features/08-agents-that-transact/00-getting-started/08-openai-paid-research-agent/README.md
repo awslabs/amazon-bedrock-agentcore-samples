@@ -1,14 +1,16 @@
-# Budget-Bounded Paid Research with AgentCore and OpenAI
+# Budget-Bounded Multi-Agent Research with AgentCore and OpenAI
 
 ## Introduction
 
 This sample pairs the OpenAI Agents SDK with Amazon Bedrock AgentCore Payments
-(preview) to build a financial research agent that can buy x402-protected
-evidence without controlling its own budget.
+(preview) to build a three-agent financial research workflow that can buy
+x402-protected evidence without giving every agent payment authority.
 
-The model chooses whether premium evidence is useful. The application constrains
-the merchant. AgentCore enforces the payment session's maximum spend and expiry
-outside the model.
+The research lead delegates free-source discovery to a public evidence analyst.
+Only when that work leaves a material gap can it call a premium evidence
+analyst. The application binds that specialist to one exact merchant URL, and
+AgentCore enforces the payment session's maximum spend and expiry outside every
+model.
 
 > This is an educational testnet sample, not investment advice. AgentCore
 > Payments is in preview; verify APIs, regions, pricing, and model availability
@@ -18,16 +20,32 @@ outside the model.
 
 ![Budget-bounded paid research architecture](assets/diagrams/paid-research-architecture.svg)
 
+The sample uses the OpenAI Agents SDK manager pattern: the lead retains the
+conversation and final answer while specialists are exposed through
+`Agent.as_tool()`.
+
+| Agent | Responsibility | Capabilities |
+|---|---|---|
+| Research lead | Plans delegation and synthesizes the cited brief | Public and premium specialists as tools |
+| Public evidence analyst | Searches free sources and identifies residual gaps | OpenAI hosted web search, when supported |
+| Premium evidence analyst | Acquires one approved source and reports remaining budget | Bound x402 fetch and read-only session status |
+
+The lead and public analyst have no payment function tool. If the application
+does not supply a premium URL, it omits the premium specialist from the lead's
+tool list entirely.
+
 ## Control Boundaries
 
 | Question | Control |
 |---|---|
-| Is premium evidence useful? | OpenAI model instructions and tool selection |
-| Which merchant may be called? | Exact host allowlist in `X402PaymentClient` |
-| May a person approve each purchase? | Optional OpenAI Agents SDK tool approval |
+| What public evidence is available? | Public evidence analyst |
+| Is a remaining evidence gap material? | Research lead |
+| Which agent can spend? | Premium evidence analyst only |
+| Which merchant may be called? | Application-bound URL plus exact host allowlist |
+| May a person approve the purchase? | Optional nested Agents SDK tool approval |
 | How much and for how long? | AgentCore payment session budget and TTL |
 | Who may raise a budget vs. spend it? | Separate application and payment execution roles |
-| What happened? | OpenAI traces plus AgentCore CloudWatch/X-Ray telemetry |
+| What happened across agents and payment? | OpenAI traces plus AgentCore CloudWatch/X-Ray telemetry |
 
 ## Prerequisites
 
@@ -106,7 +124,8 @@ export BEDROCK_OPENAI_MODEL=openai.gpt-5.5
 
 The Bedrock Responses endpoint currently rejects the `filters` field emitted by
 the Agents SDK hosted web-search tool, so this mode disables hosted web search
-by default. The payment function tools remain available. Set
+for the public evidence analyst by default. The manager and premium specialist
+still run. Set
 `BEDROCK_OPENAI_WEB_SEARCH_ENABLED=true` only after confirming the endpoint
 supports the current Agents SDK schema.
 
@@ -135,9 +154,10 @@ Create a session with a cap below the endpoint price:
 python scripts/create_payment_session.py --budget 0.01 --expiry-minutes 15
 ```
 
-The model may still request the paid tool, but AgentCore rejects a payment that
-would exceed the session limit. This is the important property: prompt
-injection cannot edit an infrastructure-enforced budget.
+The research lead may still delegate the gap and the premium specialist may
+still request the bound source, but AgentCore rejects a payment that would
+exceed the session limit. This is the important property: prompt injection
+cannot edit an infrastructure-enforced budget.
 
 ## Verify
 
@@ -147,14 +167,15 @@ ruff check .
 paid-research-e2e
 ```
 
-Offline tests cover the free path, x402 v2 header handoff, bounded retries with
-a stable idempotency token, merchant allowlisting, private-address blocking,
-and budget-status redaction.
+Offline tests cover the three-agent topology, payment-tool isolation, removal
+of the premium specialist when no URL is approved, the free path, x402 v2
+header handoff, bounded retries with a stable idempotency token, merchant
+allowlisting, private-address blocking, and budget-status redaction.
 
-`paid-research-e2e` makes a live model call and verifies that the configured
-merchant returns an x402 challenge. Add `--payment` only with a funded,
-delegated testnet instrument and a fresh payment session; that path spends
-testnet USDC.
+`paid-research-e2e` makes a live model call, verifies lead-to-public-specialist
+delegation, and checks that the configured merchant returns an x402 challenge.
+Add `--payment` only with a funded, delegated testnet instrument and a fresh
+payment session; that path spends testnet USDC.
 
 The guided notebook is at
 [`notebooks/agentcore_openai_paid_research.ipynb`](notebooks/agentcore_openai_paid_research.ipynb).

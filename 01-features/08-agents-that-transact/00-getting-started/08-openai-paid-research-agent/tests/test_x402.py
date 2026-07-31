@@ -73,6 +73,7 @@ def test_returns_free_content_without_payment() -> None:
     result = json.loads(client.fetch("https://merchant.example/data"))
 
     assert result["ok"] is True
+    assert result["source_url"] == "https://merchant.example/data"
     assert result["payment_made"] is False
     assert manager.header_calls == []
 

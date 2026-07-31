@@ -211,13 +211,14 @@ class X402PaymentClient:
         """GET an approved URL, settle an x402 challenge, and return structured JSON."""
         validation_error = self._validate_url(url)
         if validation_error:
-            return self._json({"ok": False, "error": validation_error})
+            return self._json({"ok": False, "source_url": url, "error": validation_error})
 
         response = self.transport.get(url)
         if 300 <= response.status_code < 400:
             return self._json(
                 {
                     "ok": False,
+                    "source_url": url,
                     "status_code": response.status_code,
                     "error": "Redirects are not followed by the paid research tool",
                 }
@@ -226,6 +227,7 @@ class X402PaymentClient:
             return self._json(
                 {
                     "ok": 200 <= response.status_code < 300,
+                    "source_url": url,
                     "status_code": response.status_code,
                     "body": self._body(response),
                     "payment_made": False,
@@ -255,6 +257,7 @@ class X402PaymentClient:
                 return self._json(
                     {
                         "ok": False,
+                        "source_url": url,
                         "status_code": 402,
                         "error": f"Payment failed: {type(exc).__name__}: {exc}",
                         "challenge": challenge,
@@ -266,6 +269,7 @@ class X402PaymentClient:
                 return self._json(
                     {
                         "ok": 200 <= response.status_code < 300,
+                        "source_url": url,
                         "status_code": response.status_code,
                         "body": self._body(response),
                         "payment_made": 200 <= response.status_code < 300,
@@ -277,6 +281,7 @@ class X402PaymentClient:
         return self._json(
             {
                 "ok": False,
+                "source_url": url,
                 "status_code": 402,
                 "error": "Merchant still returned 402 after the bounded settlement retries",
                 "payment_made": False,

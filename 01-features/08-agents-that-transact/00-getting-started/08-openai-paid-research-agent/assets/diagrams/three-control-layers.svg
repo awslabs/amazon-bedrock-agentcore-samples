@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Three control layers for an agent purchase</title>
-  <desc id="desc">An OpenAI model proposes a purchase, application policy permits an approved request, and AgentCore Payments enforces budget and expiry before a paid source returns evidence. A payment denial returns a bounded answer instead.</desc>
+  <title id="title">Three control layers for a specialist purchase</title>
+  <desc id="desc">A premium evidence analyst proposes a purchase, application policy permits an approved request, and AgentCore Payments enforces budget and expiry before a paid source returns evidence. A payment denial returns a bounded answer to the research lead instead.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
       <path d="M0 0L10 5L0 10Z" fill="#30343B"/>
@@ -32,7 +32,7 @@
   <!-- Participants -->
   <g>
     <rect x="55" y="24" width="260" height="76" rx="6" class="participant"/>
-    <text x="185" y="58" text-anchor="middle" class="participant-text">OpenAI model</text>
+    <text x="185" y="58" text-anchor="middle" class="participant-text">Premium analyst</text>
     <text x="185" y="80" text-anchor="middle" class="participant-text">PROPOSE</text>
     <line x1="185" y1="100" x2="185" y2="800" class="lane"/>
 
@@ -105,13 +105,13 @@
   <text x="815" y="735" text-anchor="middle" class="message-text">budget or session limit exceeded</text>
   <path d="M1130 743H500" class="denial"/>
 
-  <text x="343" y="778" text-anchor="middle" class="message-text">bounded answer + disclosed evidence gap</text>
+  <text x="343" y="778" text-anchor="middle" class="message-text">bounded result + disclosed evidence gap</text>
   <path d="M500 786H185" class="denial"/>
 
   <!-- Repeated participants -->
   <g>
     <rect x="55" y="800" width="260" height="76" rx="6" class="participant"/>
-    <text x="185" y="834" text-anchor="middle" class="participant-text">OpenAI model</text>
+    <text x="185" y="834" text-anchor="middle" class="participant-text">Premium analyst</text>
     <text x="185" y="856" text-anchor="middle" class="participant-text">PROPOSE</text>
 
     <rect x="370" y="800" width="260" height="76" rx="6" class="participant"/>
@@ -131,5 +131,5 @@
     <text x="1430" y="856" text-anchor="middle" class="participant-text">SIGN</text>
   </g>
 
-  <text x="800" y="894" text-anchor="middle" class="note">The model proposes. Deterministic controls permit or deny.</text>
+  <text x="800" y="894" text-anchor="middle" class="note">The specialist proposes. Deterministic controls permit or deny.</text>
 </svg>

@@ -6,9 +6,10 @@ displays and publishing systems that do not accept SVG.
 
 ## Assets
 
-- `paid-research-architecture`: end-to-end technical architecture.
+- `paid-research-architecture`: three-agent manager workflow and end-to-end
+  x402 payment sequence.
 - `three-control-layers`: editorial overview of research, merchant, and
-  financial policy.
+  financial policy around the premium specialist.
 
 ## Export
 
@@ -22,7 +23,7 @@ rsvg-convert -w 3200 -h 1800 \
   -o assets/diagrams/three-control-layers@2x.png
 ```
 
-The palette uses AWS orange and dark navy for the payment boundary, OpenAI
-green for model-led research, blue for application policy, and purple for the
-reader-facing research workflow. All essential distinctions are also expressed
-with labels and structure rather than color alone.
+The palette uses AWS orange for the payment boundary, green for the research
+lead, blue for public research, and purple for premium research. All essential
+distinctions are also expressed with labels and structure rather than color
+alone.
