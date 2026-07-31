@@ -64,34 +64,27 @@ class SSMConfig:
         )
 
         if self.idp_provider == "cognito":
-            # [COGNITO] upstream verbatim (user-pool authorizer + M2M/hybrid provider)
+            # [COGNITO] user-pool authorizer + dedicated M2M provider (DR-17)
             self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
             self.cognito_app_client_id = self._get_parameter("/app/lakehouse-agent/cognito-app-client-id")
-            self.cognito_app_client_secret = self._get_parameter(
-                "/app/lakehouse-agent/cognito-app-client-secret", secure=True
-            )
             self.cognito_domain = self._get_parameter("/app/lakehouse-agent/cognito-domain")
 
-            # Load M2M client credentials for Gateway-to-Runtime authentication
-            try:
-                self.cognito_m2m_client_id = self._get_parameter("/app/lakehouse-agent/cognito-m2m-client-id")
-                self.cognito_m2m_client_secret = self._get_parameter(
-                    "/app/lakehouse-agent/cognito-m2m-client-secret", secure=True
-                )
-                print(f"   ✅ M2M Client ID: {self.cognito_m2m_client_id}")
-                print("   ✅ M2M Client Secret: ****** (loaded)")
-                self.has_m2m_client = True
-            except Exception:
-                print("   ⚠️  M2M client not found, will use hybrid client for Gateway-to-Runtime auth")
-                self.cognito_m2m_client_id = self.cognito_app_client_id
-                self.cognito_m2m_client_secret = self.cognito_app_client_secret
-                self.has_m2m_client = False
+            # M2M client for the Gateway-to-Runtime leg — REQUIRED (DR-17). setup_cognito
+            # (notebook 01) unconditionally creates the dedicated M2M client, so require it
+            # (fail-fast via _get_parameter, which sys.exit(1)s on ParameterNotFound) rather
+            # than silently falling back to the USER app client — symmetric with
+            # 5b-obo-gateway-setup/04_create_obo_gateway.py and 4b-.../deploy_runtime.py.
+            self.cognito_m2m_client_id = self._get_parameter("/app/lakehouse-agent/cognito-m2m-client-id")
+            self.cognito_m2m_client_secret = self._get_parameter(
+                "/app/lakehouse-agent/cognito-m2m-client-secret", secure=True
+            )
+            print(f"   ✅ M2M Client ID: {self.cognito_m2m_client_id}")
+            print("   ✅ M2M Client Secret: ****** (loaded)")
 
             print(f"   ✅ MCP Server Runtime ARN: {self.mcp_server_runtime_arn}")
             print(f"   ✅ Interceptor Lambda ARN: {self.interceptor_lambda_arn}")
             print(f"   ✅ Cognito User Pool ARN: {self.cognito_user_pool_arn}")
             print(f"   ✅ Cognito App Client ID: {self.cognito_app_client_id}")
-            print("   ✅ Cognito Client Secret: ****** (loaded)")
             print(f"   ✅ Cognito Domain: {self.cognito_domain}")
         else:  # okta
             # [OKTA] custom-auth-server authorizer + single-client provider (canonical §6)
@@ -739,8 +732,8 @@ def main():
             mcp_url = get_runtime_mcp_url(config.mcp_server_runtime_arn, config.region)
 
             # OAuth2 provider for the Gateway→MCP-runtime M2M leg differs by IdP
-            # (DR-8): Cognito needs a manual auth-server-metadata envelope + an
-            # M2M/hybrid client choice; Okta uses discovery + its single app client.
+            # (DR-8): Cognito needs a manual auth-server-metadata envelope + the
+            # dedicated M2M client (DR-17); Okta uses discovery + its single app client.
             # Target scopes: Cognito [] (client_credentials); Okta ['claims.query'].
             if config.idp_provider == "cognito":
                 # [COGNITO] upstream verbatim
@@ -748,16 +741,13 @@ def main():
                 cognito_issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
                 cognito_token_endpoint = f"{config.cognito_domain}/oauth2/token"
 
-                if config.has_m2m_client:
-                    print("\n🔐 Using M2M client for Gateway-to-Runtime authentication")
-                    auth_client_id = config.cognito_m2m_client_id
-                    auth_client_secret = config.cognito_m2m_client_secret
-                    provider_name = "lakehouse-mcp-m2m-oauth-provider"
-                else:
-                    print("\n🔐 Using hybrid client for Gateway-to-Runtime authentication")
-                    auth_client_id = config.cognito_app_client_id
-                    auth_client_secret = config.cognito_app_client_secret
-                    provider_name = "lakehouse-mcp-oauth-provider"
+                # M2M client is REQUIRED (DR-17) — the user-app-client hybrid fallback
+                # (provider "lakehouse-mcp-oauth-provider") has been removed; always use
+                # the dedicated M2M provider, symmetric with GW2.
+                print("\n🔐 Using M2M client for Gateway-to-Runtime authentication")
+                auth_client_id = config.cognito_m2m_client_id
+                auth_client_secret = config.cognito_m2m_client_secret
+                provider_name = "lakehouse-mcp-m2m-oauth-provider"
 
                 oauth_provider_arn = setup.create_oauth_provider(
                     provider_name=provider_name,

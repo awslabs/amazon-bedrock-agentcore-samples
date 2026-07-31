@@ -86,8 +86,10 @@ class GatewayCleanup:
         # deleted the GW2 notes/OBO providers — those are owned by
         # 06_cleanup_obo_gateway.py and are intentionally NOT deleted here.
         if self.idp_provider == "cognito":
-            # Either the dedicated-M2M or the hybrid provider exists (depends on
-            # has_m2m_client at deploy time); both are safe-if-absent.
+            # DR-17: create_gateway.py now REQUIRES the dedicated M2M client and no
+            # longer creates the hybrid "lakehouse-mcp-oauth-provider". We KEEP the
+            # hybrid name in the delete list anyway (safe-if-absent) so teardown still
+            # cleans up any provider left behind by a pre-hardening deploy.
             provider_names = ["lakehouse-mcp-m2m-oauth-provider", "lakehouse-mcp-oauth-provider"]
         else:  # okta
             provider_names = ["lakehouse-mcp-okta-oauth-provider"]
