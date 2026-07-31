@@ -18,7 +18,13 @@ model.
 
 ## Architecture
 
-![Budget-bounded paid research architecture](assets/diagrams/paid-research-architecture.svg)
+<p align="center">
+  <img
+    src="https://raw.githubusercontent.com/mccartnick/agentcore-samples/80a71996536c045e7ec36d9b7767829ef4216213/01-features/08-agents-that-transact/00-getting-started/08-openai-paid-research-agent/assets/diagrams/paid-research-architecture%402x.png"
+    alt="Budget-bounded paid research architecture"
+    width="1200"
+  />
+</p>
 
 The sample uses the OpenAI Agents SDK manager pattern: the lead retains the
 conversation and final answer while specialists are exposed through
