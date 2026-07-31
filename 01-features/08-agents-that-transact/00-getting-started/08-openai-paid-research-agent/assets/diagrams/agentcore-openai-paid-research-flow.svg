@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1000" viewBox="0 0 1800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">How the paid research workflow runs</title>
+  <desc id="desc">Eight numbered steps move left to right through public research, then right to left through payment and synthesis. The turn between steps four and five is routed outside all labels.</desc>
+  <defs>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#687078" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ED7100" />
+    </marker>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#232F3E" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <rect width="1800" height="1000" fill="#FFFFFF" />
+  <text x="40" y="64" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" fill="#161E2D">How the paid research workflow runs</text>
+  <text x="44" y="102" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#3F4855">The team discovers evidence first, then enters the budget-controlled payment path only for a material gap</text>
+  <line x1="44" y1="126" x2="1756" y2="126" stroke="#FF9900" stroke-width="4" />
+
+  <rect x="44" y="158" width="1712" height="310" fill="#F7F7F7" />
+  <rect x="44" y="522" width="1712" height="310" fill="#F3F7FC" />
+  <text x="66" y="194" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#545B64">DISCOVER AND DECIDE</text>
+  <text x="66" y="558" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#545B64">PAY AND SYNTHESIZE</text>
+
+  <line x1="216" y1="305" x2="564" y2="305" stroke="#687078" stroke-width="3" marker-end="url(#arrow-gray)" />
+  <line x1="636" y1="305" x2="984" y2="305" stroke="#687078" stroke-width="3" marker-end="url(#arrow-gray)" />
+  <line x1="1056" y1="305" x2="1404" y2="305" stroke="#687078" stroke-width="3" marker-end="url(#arrow-gray)" />
+
+  <path d="M1476 305 H1720 V685 H1476" fill="none" stroke="#ED7100" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  <line x1="1404" y1="685" x2="1056" y2="685" stroke="#687078" stroke-width="3" marker-end="url(#arrow-gray)" />
+  <line x1="984" y1="685" x2="636" y2="685" stroke="#687078" stroke-width="3" marker-end="url(#arrow-gray)" />
+  <line x1="564" y1="685" x2="216" y2="685" stroke="#687078" stroke-width="3" marker-end="url(#arrow-gray)" />
+
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <text x="180" y="228" font-size="18" font-weight="700" fill="#232F3E">Submit the question</text>
+    <circle cx="180" cy="305" r="36" fill="#ED7100" stroke="#C45500" stroke-width="2" filter="url(#shadow)" />
+    <text x="180" y="316" font-size="27" font-weight="700" fill="#FFFFFF">1</text>
+    <text x="180" y="386" font-size="14" fill="#545B64">
+      <tspan x="180" dy="0">The application receives the research task and</tspan>
+      <tspan x="180" dy="20">one exact approved premium URL.</tspan>
+    </text>
+
+    <text x="600" y="228" font-size="18" font-weight="700" fill="#232F3E">Start the agent team</text>
+    <circle cx="600" cy="305" r="36" fill="#E7157B" stroke="#B0084D" stroke-width="2" filter="url(#shadow)" />
+    <text x="600" y="316" font-size="27" font-weight="700" fill="#FFFFFF">2</text>
+    <text x="600" y="386" font-size="14" fill="#545B64">
+      <tspan x="600" dy="0">The research lead owns delegation and</tspan>
+      <tspan x="600" dy="20">the final cited brief.</tspan>
+    </text>
+
+    <text x="1020" y="228" font-size="18" font-weight="700" fill="#232F3E">Research public evidence</text>
+    <circle cx="1020" cy="305" r="36" fill="#8C4FFF" stroke="#5A30B5" stroke-width="2" filter="url(#shadow)" />
+    <text x="1020" y="316" font-size="27" font-weight="700" fill="#FFFFFF">3</text>
+    <text x="1020" y="386" font-size="14" fill="#545B64">
+      <tspan x="1020" dy="0">The public analyst searches free sources and</tspan>
+      <tspan x="1020" dy="20">names any material evidence gap.</tspan>
+    </text>
+
+    <text x="1440" y="228" font-size="18" font-weight="700" fill="#232F3E">Request one premium source</text>
+    <circle cx="1440" cy="305" r="36" fill="#ED7100" stroke="#C45500" stroke-width="2" filter="url(#shadow)" />
+    <text x="1440" y="316" font-size="27" font-weight="700" fill="#FFFFFF">4</text>
+    <text x="1440" y="386" font-size="14" fill="#545B64">
+      <tspan x="1440" dy="0">Only the premium analyst can invoke the</tspan>
+      <tspan x="1440" dy="20">application-bound x402 tool.</tspan>
+    </text>
+
+    <text x="1440" y="608" font-size="18" font-weight="700" fill="#232F3E">Receive HTTP 402</text>
+    <circle cx="1440" cy="685" r="36" fill="#8C4FFF" stroke="#5A30B5" stroke-width="2" filter="url(#shadow)" />
+    <text x="1440" y="696" font-size="27" font-weight="700" fill="#FFFFFF">5</text>
+    <text x="1440" y="766" font-size="14" fill="#545B64">
+      <tspan x="1440" dy="0">The approved merchant returns versioned</tspan>
+      <tspan x="1440" dy="20">payment requirements.</tspan>
+    </text>
+
+    <text x="1020" y="608" font-size="18" font-weight="700" fill="#232F3E">Enforce budget and expiry</text>
+    <circle cx="1020" cy="685" r="36" fill="#01A88D" stroke="#007A6A" stroke-width="2" filter="url(#shadow)" />
+    <text x="1020" y="696" font-size="27" font-weight="700" fill="#FFFFFF">6</text>
+    <text x="1020" y="766" font-size="14" fill="#545B64">
+      <tspan x="1020" dy="0">AgentCore Payments checks the session and</tspan>
+      <tspan x="1020" dy="20">reserves the amount outside model context.</tspan>
+    </text>
+
+    <text x="600" y="608" font-size="18" font-weight="700" fill="#232F3E">Sign, retry, and settle</text>
+    <circle cx="600" cy="685" r="36" fill="#E7157B" stroke="#B0084D" stroke-width="2" filter="url(#shadow)" />
+    <text x="600" y="696" font-size="27" font-weight="700" fill="#FFFFFF">7</text>
+    <text x="600" y="766" font-size="14" fill="#545B64">
+      <tspan x="600" dy="0">Identity and the delegated wallet produce proof;</tspan>
+      <tspan x="600" dy="20">the merchant returns paid evidence.</tspan>
+    </text>
+
+    <text x="180" y="608" font-size="18" font-weight="700" fill="#232F3E">Synthesize and report</text>
+    <circle cx="180" cy="685" r="36" fill="#E7157B" stroke="#B0084D" stroke-width="2" filter="url(#shadow)" />
+    <text x="180" y="696" font-size="27" font-weight="700" fill="#FFFFFF">8</text>
+    <text x="180" y="766" font-size="14" fill="#545B64">
+      <tspan x="180" dy="0">The lead returns a cited brief, payment outcome,</tspan>
+      <tspan x="180" dy="20">and remaining budget.</tspan>
+    </text>
+  </g>
+
+  <rect x="430" y="886" width="940" height="52" rx="6" fill="#FFF2E8" stroke="#ED7100" stroke-width="1.5" />
+  <text x="900" y="919" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#C45500">No model can raise the cap, extend the session, or choose a different merchant.</text>
+</svg>

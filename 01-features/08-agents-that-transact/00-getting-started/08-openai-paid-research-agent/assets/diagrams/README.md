@@ -6,13 +6,16 @@ displays and publishing systems that do not accept SVG.
 
 ## Assets
 
-- `paid-research-architecture`: three-agent manager workflow and end-to-end
-  x402 payment sequence.
 - `agentcore-openai-paid-research.drawio`: AWS reference architecture with
-  official service icons, external provider boundaries, and a numbered flow
-  legend. The editable source is in `../../docs/`.
-- `three-control-layers`: editorial overview of research, merchant, and
-  financial policy around the premium specialist.
+  official service icons and clearly separated application, AWS Cloud, and
+  external-service boundaries. The editable source is in `../../docs/`.
+- `agentcore-openai-paid-research-flow`: eight-step editorial workflow. The
+  right-side turn keeps the request and payment phases readable without
+  crossing labels.
+- `paid-research-architecture`: earlier editorial overview of the three-agent
+  manager workflow and x402 sequence.
+- `three-control-layers`: research, merchant, and financial policy around the
+  premium specialist.
 
 ## Export
 
@@ -32,6 +35,10 @@ drawio -x -f png -e -b 20 -s 2 \
 drawio -x -f svg -e -b 20 \
   -o assets/diagrams/agentcore-openai-paid-research.drawio.svg \
   docs/agentcore-openai-paid-research.drawio
+
+rsvg-convert -w 3600 -h 2000 \
+  assets/diagrams/agentcore-openai-paid-research-flow.svg \
+  -o assets/diagrams/agentcore-openai-paid-research-flow.png
 ```
 
 The palette uses AWS orange for the payment boundary, green for the research

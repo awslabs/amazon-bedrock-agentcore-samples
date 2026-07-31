@@ -20,15 +20,28 @@ model.
 
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/mccartnick/agentcore-samples/44384ae14d1547e0cba311e9c14bd51124eb1251/01-features/08-agents-that-transact/00-getting-started/08-openai-paid-research-agent/assets/diagrams/agentcore-openai-paid-research.drawio.png"
-    alt="AWS reference architecture for budget-bounded multi-agent paid research"
+    src="./assets/diagrams/agentcore-openai-paid-research.drawio.png"
+    alt="Architecture for budget-bounded multi-agent paid research"
     width="1200"
   />
 </p>
 
+*Figure 1 - Application, AWS Cloud, and approved external-service boundaries.*
+
 The sample uses the OpenAI Agents SDK manager pattern: the lead retains the
 conversation and final answer while specialists are exposed through
 `Agent.as_tool()`.
+
+<p align="center">
+  <img
+    src="./assets/diagrams/agentcore-openai-paid-research-flow.png"
+    alt="Eight-step workflow for public research, payment, and synthesis"
+    width="1200"
+  />
+</p>
+
+*Figure 2 - Public evidence comes first; the payment path begins only for a
+material gap.*
 
 | Agent | Responsibility | Capabilities |
 |---|---|---|
