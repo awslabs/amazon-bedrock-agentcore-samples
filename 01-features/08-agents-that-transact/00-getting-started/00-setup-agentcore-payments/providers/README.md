@@ -38,8 +38,11 @@ credentials in the portal; the helper automates the safe handoff from there.
 3. Sign in to the CDP Portal in the browser tab that opens
 4. Create and download a **Secret API Key** JSON file
 5. Generate and download the **Wallet Secret** file
-6. Enable **Delegated Signing** on the same Wallet Security page
-7. Return to the terminal and provide the two downloaded file paths
+6. Return to the terminal and provide the two downloaded file paths
+
+Delegated signing is a later, per-wallet consent step. After AgentCore creates
+the embedded wallet, open the returned WalletHub `redirectUrl`, sign in as the
+linked user, and grant signing permission.
 
 The Wallet Secret is shown **only once**. Store both downloads in a secure
 location and delete unnecessary copies after AgentCore has ingested them.

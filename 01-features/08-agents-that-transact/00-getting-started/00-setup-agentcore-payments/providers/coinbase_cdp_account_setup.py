@@ -204,7 +204,10 @@ def main(argv: list[str] | None = None) -> int:
             "\nIn the portal, create and download a Secret API Key JSON file, "
             "then generate and download a Wallet Secret file."
         )
-        print("Enable Delegated Signing on the Wallet Security page as well.\n")
+        print(
+            "Delegated signing is granted later through the WalletHub URL that "
+            "AgentCore returns for the embedded wallet.\n"
+        )
 
     api_key_file = args.api_key_file or _prompt_for_file("Secret API Key JSON path")
     wallet_secret_file = args.wallet_secret_file or _prompt_for_file(
