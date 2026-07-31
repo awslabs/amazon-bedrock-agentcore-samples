@@ -1,16 +1,28 @@
 """
 Secure Athena Tools
 
-This implementation uses user based filtering for row-level security:
-- User identity passed as session tags when assuming IAM role
-- NO application-level SQL manipulation
-- NO SQL injection risk
+Per-user ROW scoping is enforced by a SQL predicate binding the interceptor-propagated
+caller identity (``WHERE user_id = ?``, passed as a bound Athena execution parameter in
+the scoped claims tools) — NOT by Lake Formation row filters. Lake Formation governs
+COLUMN-level masking (per-role) and the tenant-role TABLE grants; LF row-level data-cell
+filters are not configured in this tutorial (a documented future enhancement — the setup
+script's machinery exists but is uninvoked).
 
-Security Flow:
-1. Gateway interceptor extracts user_id from JWT
-2. MCP server receives user_id in headers
-3. MCP server assumes IAM role WITH session tag: user_id=<actual_user>
-4. Athena queries use those credentials
+Tenant roles are per-GROUP (policyholders / adjusters / administrators), not per-user, and
+share a single Athena/S3 access policy; there are no per-user IAM session tags. Per-user
+isolation therefore rides on the bound identity predicate above, not on IAM or LF row rules.
+
+Security flow:
+1. The request interceptor validates the user JWT, maps the ``groups`` claim to a tenant
+   IAM role, and propagates the caller's identity (email) to the MCP server.
+2. The MCP server runs Athena queries under that tenant role's temporary credentials;
+   Lake Formation applies the role's column/table grants.
+3. The scoped claims tools add a bound ``WHERE`` predicate on the caller's identity, so
+   each caller only ever queries their own rows.
+
+Note: values bound into the SQL are server-derived identity/role values (from the validated
+JWT) plus agent-supplied filters, all passed as Athena execution parameters (not string-
+interpolated); the only tool that runs model-authored SQL is the admin-only ``text_to_sql``.
 """
 
 import boto3
@@ -22,7 +34,8 @@ from typing import List, Dict, Any, Optional
 
 class SecureAthenaClaimsTools:
     """
-    Secure tools for querying health lakehouse data with Lake Formation RBAC and .
+    Secure tools for querying health lakehouse data: per-role Lake Formation
+    column masking + a bound identity SQL predicate for per-user row scoping.
     """
 
     def __init__(
@@ -86,8 +99,9 @@ class SecureAthenaClaimsTools:
 
         # Fail CLOSED: no tenant credentials means the request bypassed the
         # interceptor's role exchange. Refuse rather than silently using the
-        # runtime's own role (which would defeat Lake Formation RLS). The ONLY
-        # escape hatch is LOCAL_DEVELOPMENT for offline dev against default creds.
+        # runtime's own role (which would defeat tenant-scoped access — LF column
+        # grants + the bound row predicate). The ONLY escape hatch is
+        # LOCAL_DEVELOPMENT for offline dev against default creds.
         #
         # ⚠️  FOOTGUN: LOCAL_DEVELOPMENT is an unguarded manual override — anyone who
         # sets this env var (e.g. on the deployed runtime) disables tenant isolation
@@ -107,8 +121,9 @@ class SecureAthenaClaimsTools:
 
         raise PermissionError(
             "No tenant credentials provided — refusing to build an Athena client with "
-            "runtime default credentials (Lake Formation RLS would be bypassed). This "
-            "request must carry interceptor-exchanged tenant credentials."
+            "runtime default credentials (tenant-scoped access — LF column grants + the "
+            "bound row predicate — would be bypassed). This request must carry "
+            "interceptor-exchanged tenant credentials."
         )
 
     def _execute_query(
@@ -122,12 +137,16 @@ class SecureAthenaClaimsTools:
         """
         Execute Athena query with tenant-scoped credentials.
 
-        IMPORTANT: This query does NOT include user_id filter in SQL!
-        The filtering is applied by Lake Formation based on session tags or tenant role.
+        Row scoping is the CALLER's responsibility: the scoped claims tools already
+        embed a bound ``WHERE`` predicate on the interceptor-propagated caller identity
+        (passed here as execution_parameters). This method just runs the given SQL;
+        Lake Formation then applies the tenant role's column/table grants (per-role
+        masking + admin full-table). LF row-level data-cell filters are NOT configured,
+        so this method adds no row filter itself.
 
         Args:
-            user_id: User email/ID (for session tag)
-            query: SQL query WITHOUT user filtering
+            user_id: Caller email/ID (used by callers to build the bound WHERE predicate)
+            query: SQL to run (the scoped tools already embed the caller's WHERE predicate)
             wait_for_results: Whether to wait for completion
             tenant_credentials: Temporary credentials from interceptor
             execution_parameters: Optional positional values for Athena "?" query
@@ -162,7 +181,9 @@ class SecureAthenaClaimsTools:
                 except Exception:
                     print("🔐 Executing query with DEFAULT CREDENTIALS")
 
-            # Execute query - Lake Formation will automatically apply row filter
+            # Run under tenant-role creds: Lake Formation applies the role's column/
+            # table grants; row scoping is the caller's bound WHERE predicate (not an LF
+            # row filter — LF data-cell filters are not configured).
             query_context = {"Database": self.database_name}
             if self.catalog_name:
                 query_context["Catalog"] = self.catalog_name
@@ -238,15 +259,19 @@ class SecureAthenaClaimsTools:
         """
         Query claims
 
-        NOTICE: No user_id in WHERE clause! Lake Formation adds it automatically.
+        Row scope: query_claims embeds ``WHERE c.user_id = ?`` — the row-scope identity
+        SQL predicate, where the caller identity is supplied by the request interceptor
+        and passed as a bound Athena execution parameter (not string-interpolated).
 
         Args:
-            user_id: User email (passed as session tag, not SQL parameter)
-            filters: Optional additional filters
+            user_id: Caller identity (server-derived from the validated JWT by the request
+                interceptor); bound into the SQL predicate as a parameter, not a session tag
+            filters: Optional additional filters (also bound as parameters)
             tenant_credentials: Temporary credentials from interceptor
 
         Returns:
-            User's claims (automatically filtered by Lake Formation or tenant role)
+            User's claims — row-scoped by the bound SQL predicate; Lake Formation provides
+            column masking (per-role), not row filtering
         """
         try:
             # Bind all caller-derived values as Athena "?" execution parameters
@@ -300,7 +325,7 @@ class SecureAthenaClaimsTools:
                 "claims": results or [],
                 "count": len(results) if results else 0,
                 "message": f"Found {len(results) if results else 0} claims",
-                "security": "Row-level filtering enforced by AWS Lake Formation",
+                "security": "Row scope via bound identity SQL predicate (WHERE user_id=<caller>); Lake Formation does column masking, not row filtering",
             }
 
         except Exception as e:
@@ -317,10 +342,11 @@ class SecureAthenaClaimsTools:
         tenant_credentials: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
-        Get claim details - Lake Formation ensures user can only see their claims.
+        Get claim details - row-scoped by the bound identity SQL predicate so a caller
+        only sees their own claims (Lake Formation does column masking, not row filtering).
 
         Args:
-            user_id: User email (for session tag)
+            user_id: Caller email (bound into the WHERE predicate as a parameter)
             claim_id: Claim ID
             tenant_credentials: Temporary credentials from interceptor
 
@@ -358,13 +384,13 @@ class SecureAthenaClaimsTools:
                     "success": True,
                     "claim": results[0],
                     "message": f"Retrieved claim {claim_id}",
-                    "security": "Access validated by AWS Lake Formation",
+                    "security": "Row scope via bound identity SQL predicate (caller's own claim)",
                 }
             else:
                 return {
                     "success": False,
                     "message": f"Claim {claim_id} not found or access denied",
-                    "security": "Lake Formation filtered this claim (not owned by user)",
+                    "security": "Not returned by the bound identity SQL predicate — this claim isn't owned by the caller",
                 }
 
         except Exception as e:
@@ -376,10 +402,11 @@ class SecureAthenaClaimsTools:
 
     def get_claims_summary(self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
-        Get claims summary - automatically scoped to user by Lake Formation.
+        Get claims summary - row-scoped to the caller by the bound identity SQL predicate
+        (Lake Formation does column masking, not row filtering).
 
         Args:
-            user_id: User email
+            user_id: Caller email (bound into the WHERE predicate as a parameter)
             tenant_credentials: Temporary credentials from interceptor
 
         Returns:
@@ -428,7 +455,7 @@ class SecureAthenaClaimsTools:
                         "denied_claims": int(summary.get("denied_claims", 0)),
                     },
                     "message": "Claims summary retrieved successfully",
-                    "security": "Automatically scoped to user by Lake Formation",
+                    "security": "Row scope via bound identity SQL predicate (caller's own claims)",
                 }
 
             return {
@@ -443,7 +470,7 @@ class SecureAthenaClaimsTools:
                     "denied_claims": 0,
                 },
                 "message": "No claims found",
-                "security": "Lake Formation enforced row-level security",
+                "security": "Row scope via bound identity SQL predicate; column masking via Lake Formation grants",
             }
 
         except Exception as e:
@@ -574,7 +601,9 @@ class SecureAthenaClaimsTools:
         3. Executes the generated SQL with tenant credentials
         4. Returns results with the generated SQL for transparency
 
-        SECURITY: Row-level filtering is enforced by Lake Formation based on tenant role.
+        SECURITY: admin-only tool. It is intentionally unscoped — the administrators
+        role holds a full-table Lake Formation grant (admin sees all rows by design);
+        there is no LF row filter and no per-user predicate is added here.
 
         Args:
             user_id: User email (for session context)
@@ -625,7 +654,7 @@ Database Schema:
 
 Important Rules:
 1. Use the table prefix "{self.table_prefix}" for all table references (e.g., {self.table_prefix}.claims)
-2. DO NOT add any WHERE clause filtering by user_id - Lake Formation handles row-level security automatically
+2. DO NOT add any WHERE clause filtering by user_id - admin/text_to_sql is intentionally unscoped because the administrators role holds a full-table Lake Formation grant (admin sees all rows by design); there is no LF row filter
 3. Generate ONLY the SQL query, no explanations or markdown formatting
 4. Use standard SQL syntax compatible with Amazon Athena
 5. Limit results to 100 rows unless the user specifies otherwise
@@ -670,7 +699,7 @@ SQL Query:"""
                 "results": results or [],
                 "count": len(results) if results else 0,
                 "message": f"Query executed successfully, returned {len(results) if results else 0} rows",
-                "security": "Row-level filtering enforced by AWS Lake Formation",
+                "security": "Admin-only, unscoped: full-table access via the administrators Lake Formation grant (no per-user row filter)",
             }
 
         except Exception as e:

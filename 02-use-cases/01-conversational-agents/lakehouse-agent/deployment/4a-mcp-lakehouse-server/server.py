@@ -1,17 +1,23 @@
 """
-MCP Server for Health Lakehouse Data - Production Security with Lake Formation
+MCP Server for Health Lakehouse Data - Production Security
 
 This MCP server provides tools for querying and managing health lakehouse data
-with enterprise-grade row-level security enforced by AWS Lake Formation.
+with per-user row scoping via a bound identity SQL predicate and Lake Formation
+column masking.
 
 Security Architecture:
 - OAuth authentication (Cognito JWT tokens)
 - User identity extraction from Gateway interceptor
-- Lake Formation session tag-based row-level security
-- No SQL string interpolation (eliminates SQL injection risk)
+- Row scope = bound identity SQL predicate (interceptor-supplied caller); LF row-level
+  data-cell filters are not configured (a documented future enhancement)
+- Lake Formation = per-role column masking + tenant-role table grants
+- Query values are bound as Athena execution parameters (AWS-documented SQL-injection
+  mitigation) rather than string-interpolated; the admin-only text_to_sql runs
+  LLM-generated SQL and is not parameterized
 
-IMPORTANT: This server ONLY supports Lake Formation security mode.
-Application-level SQL filtering has been removed for security reasons.
+IMPORTANT: per-user row scope is the application-level bound SQL predicate; Lake
+Formation adds per-role column masking (not row filtering). The admin-only text_to_sql
+runs model-authored SQL and is intentionally unscoped (admin full-table grant).
 
 Configuration:
 - Reads from SSM Parameter Store
@@ -48,11 +54,11 @@ sys.stderr.reconfigure(line_buffering=True)
 # Initialize MCP server
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
-# PRODUCTION ONLY: Use Lake Formation row-level security
+# PRODUCTION ONLY: row scope via bound identity SQL predicate (interceptor-supplied caller) + Lake Formation column masking
 from athena_tools_secure import SecureAthenaClaimsTools as AthenaTools
 
-logger.info("🔒 Using Lake Formation row-level security (production mode)")
-print("🔒 Using Lake Formation row-level security (production mode)")
+logger.info("🔒 Using bound identity SQL predicate row scope + Lake Formation column masking (production mode)")
+print("🔒 Using bound identity SQL predicate row scope + Lake Formation column masking (production mode)")
 
 # Global Athena tools instance
 athena_tools = None
@@ -169,11 +175,11 @@ def get_athena_tools():
     if athena_tools is None:
         config = get_config()
 
-        logger.info("Initializing Athena tools with Lake Formation RLS...")
+        logger.info("Initializing Athena tools (bound identity predicate + Lake Formation column masking)...")
         logger.info(f"  Region: {config['region']}")
         logger.info(f"  Database: {config['database_name']}")
         logger.info(f"  S3 Output: {config['s3_output_location']}")
-        print("Initializing Athena tools with Lake Formation RLS...")
+        print("Initializing Athena tools (bound identity predicate + Lake Formation column masking)...")
         print(f"  Region: {config['region']}")
         print(f"  Database: {config['database_name']}")
         print(f"  Catalog: {config.get('catalog_name', 'default')}")
@@ -186,7 +192,7 @@ def get_athena_tools():
             catalog_name=config.get("catalog_name"),
         )
 
-        print("✅ Athena tools initialized with Lake Formation RLS")
+        print("✅ Athena tools initialized (bound identity predicate + Lake Formation column masking)")
 
     return athena_tools
 
@@ -690,9 +696,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     logger.info("✅ Configuration validated")
-    logger.info("🔒 Lake Formation row-level security enabled")
+    logger.info("🔒 Row scope via bound identity SQL predicate; Lake Formation column masking enabled")
     print("✅ Configuration validated")
-    print("🔒 Lake Formation row-level security enabled")
+    print("🔒 Row scope via bound identity SQL predicate; Lake Formation column masking enabled")
 
     startup_msg = f"""
 Starting MCP Server for data lakehouse access:

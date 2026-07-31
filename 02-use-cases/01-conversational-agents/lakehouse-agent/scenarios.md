@@ -74,8 +74,8 @@
 _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is group→role STS + tool-list filtering — see below.)_
 
 **Security Controls**:
-- **Row-Level**: `WHERE user_id = '{authenticated_user}'` (application-level via tool parameters)
-- **Column-Level**: Lake Formation masks `adjuster_id` for `patient` role
+- **Row-Level**: `WHERE user_id = '{authenticated_user}'` (application-level predicate, bound as an Athena execution parameter)
+- **Column-Level**: Lake Formation masks `adjuster_user_id` for `patient` role
 - **Tool Parameters**: Interceptor ensures `user_id` parameter matches authenticated user
 
 ---
@@ -144,7 +144,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 **Security Controls**:
 - **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the assumed IAM role, not by a distinct tool)
-- **Row-Level**: `WHERE adjuster_id = '{authenticated_adjuster}'`
+- **Row-Level**: `WHERE adjuster_user_id = '{authenticated_adjuster}'` (application-level predicate, bound as an Athena execution parameter)
 - **Column-Level**: Lake Formation masks `patient_dob` for `adjuster` role
 
 ---
