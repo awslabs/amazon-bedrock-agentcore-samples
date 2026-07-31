@@ -66,6 +66,9 @@ tool list entirely.
 Complete [Tutorial 00](../00-setup-agentcore-payments/) first, or use the
 official
 [AgentCore Payments skill](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-build/references/payments.md).
+Coinbase users should follow the dedicated
+[Coinbase CDP setup guide](../00-setup-agentcore-payments/coinbase-cdp-setup/)
+for credential settings, screenshots, wallet consent, and Base Sepolia funding.
 Do not put provider credentials in this repository. The skill's interactive
 connector wizard writes provider secrets to `agentcore/.env.local` before
 deploying them to AgentCore Identity, so keep that file gitignored.
@@ -183,60 +186,11 @@ delegation, and checks that the configured merchant returns an x402 challenge.
 Add `--payment` only with a funded, delegated testnet instrument and a fresh
 payment session; that path spends testnet USDC.
 
-For the Coinbase path, first run Tutorial 00's file-based onboarding helper:
-
-```bash
-cd ../00-setup-agentcore-payments
-npm install -g @coinbase/cdp-cli
-python providers/coinbase_cdp_account_setup.py --open-portal
-python setup_agentcore_payments.py
-```
-
-Coinbase requires two portal actions to establish project root trust: create and
-download the Secret API Key, then generate and download the Wallet Secret. The
-helper securely imports and verifies those files; it does not request a Coinbase
-password, MFA code, or pasted secret. After AgentCore prints the embedded-wallet
-address and WalletHub URL, fund the address with free Base Sepolia USDC and grant
-delegated signing. No real funds are needed.
-
-At the Circle faucet, explicitly select **Base Sepolia**. The faucet can default
-to Arc Testnet, whose successful transaction will not fund this sample. Also,
-WalletHub's **USDC on Base** card is a Base-mainnet balance; verify the testnet
-balance with Tutorial 00's AgentCore SDK check. See
-[If WalletHub still shows zero](../00-setup-agentcore-payments/#if-wallethub-still-shows-zero)
-for screenshots and diagnosis.
-
-For the two manual portal actions:
-
-1. Go to [CDP Portal → Secret API Keys](https://portal.cdp.coinbase.com/api-keys/secret),
-   select the demo project, choose **Create API Key**, and download the JSON file.
-   Use a Secret API Key, not a Client API Key. For this demo, turn on
-   **Opt-out of IP allowlisting**, keep only **View (read-only)**, leave Trade,
-   Transfer, Receive, Export, and Manage off, and keep **Ed25519 (Recommended)**.
-2. Go to
-   [CDP Portal → Wallets → Non-custodial Wallet → Security](https://portal.cdp.coinbase.com/wallets/non-custodial/security),
-   choose **Generate Wallet Secret**, download the one-time Wallet Secret file,
-   and turn **Delegated signing** on. No project or account policy is needed.
-3. Give the helper the two local file paths. Never paste their contents into the
-   repository, documentation, chat, or shell history.
-
-The project toggle enables delegated signing. Consent is still granted later
-for the specific AgentCore-created embedded wallet through its returned
-WalletHub `redirectUrl`. In WalletHub, choose **Grant permission** and a
-time-limited expiry; **7 days** is sufficient for this demo.
-
-![Coinbase Secret API Key settings for the paid-research demo](../00-setup-agentcore-payments/images/coinbase-secret-api-key-settings.png)
-
-![Coinbase Wallet Security page with delegated signing enabled](../00-setup-agentcore-payments/images/coinbase-delegated-signing-enabled.png)
-
-The blue switch confirms that project-level delegated signing is enabled. Leave
-project and account policies unset for the testnet demo.
-
-![Coinbase WalletHub showing active wallet permission](../00-setup-agentcore-payments/images/coinbase-wallethub-permission-active.png)
-
-WalletHub must separately confirm that the app can pay from the specific
-wallet. Its **USDC on Base** card is Base mainnet, not the Base Sepolia balance
-used by this demo.
+For Coinbase, complete the
+[canonical Coinbase CDP setup guide](../00-setup-agentcore-payments/coinbase-cdp-setup/)
+before running the live payment command. It contains every portal setting and
+screenshot, explains the two delegated-signing layers, and diagnoses Arc
+Testnet versus Base Sepolia balances.
 
 ### Verified live output
 
