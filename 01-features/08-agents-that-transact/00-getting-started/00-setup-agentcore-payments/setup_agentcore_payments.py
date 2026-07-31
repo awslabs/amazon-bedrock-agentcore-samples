@@ -411,7 +411,6 @@ if CREDENTIAL_PROVIDER_TYPE == "CoinbaseCDP":
     1. Open the WalletHub URL printed above.
     2. Log in with your email.
     3. Grant signing permission.
-    OR: CDP Portal → Wallets → Embedded Wallet → Policies → enable Delegated Signing
 """)
 else:
     print("""

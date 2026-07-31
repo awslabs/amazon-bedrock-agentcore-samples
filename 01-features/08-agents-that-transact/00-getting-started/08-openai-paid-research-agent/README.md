@@ -199,6 +199,20 @@ password, MFA code, or pasted secret. After AgentCore prints the embedded-wallet
 address and WalletHub URL, fund the address with free Base Sepolia USDC and grant
 delegated signing. No real funds are needed.
 
+For the two manual portal actions:
+
+1. Go to [CDP Portal → Secret API Keys](https://portal.cdp.coinbase.com/api-keys/secret),
+   select the demo project, choose **Create API Key**, and download the JSON file.
+   Use a Secret API Key, not a Client API Key.
+2. Go to
+   [CDP Portal → Wallets → Non-custodial Wallet → Security](https://portal.cdp.coinbase.com/wallets/non-custodial/security),
+   choose **Generate Wallet Secret**, and download the one-time Wallet Secret file.
+3. Give the helper the two local file paths. Never paste their contents into the
+   repository, documentation, chat, or shell history.
+
+These are project credentials. Delegated signing is granted later for the
+AgentCore-created embedded wallet through its returned WalletHub `redirectUrl`.
+
 The guided notebook is at
 [`notebooks/agentcore_openai_paid_research.ipynb`](notebooks/agentcore_openai_paid_research.ipynb).
 
