@@ -28,6 +28,7 @@
       .return{stroke:#30343B;stroke-width:2;stroke-dasharray:6 6;fill:none;marker-end:url(#arrow)}
       .synthesis{stroke:#0E8F72;stroke-width:2.5;fill:none;marker-end:url(#arrow-green)}
       .payment{stroke:#E88B00;stroke-width:2;fill:none;marker-end:url(#arrow-orange)}
+      .label-bg{fill:#FFFFFF}
       .message-text{font:500 14px Arial,Helvetica,sans-serif;fill:#30343B;letter-spacing:0}
       .phase{font:700 12px Arial,Helvetica,sans-serif;fill:#FFFFFF;letter-spacing:.7px}
       .note{font:600 13px Arial,Helvetica,sans-serif;fill:#665E78;letter-spacing:.6px}
@@ -39,37 +40,37 @@
   <g>
     <rect x="20" y="22" width="190" height="78" rx="6" class="researcher"/>
     <text x="115" y="67" text-anchor="middle" class="participant-text">Researcher</text>
-    <line x1="115" y1="100" x2="115" y2="810" class="lane-neutral"/>
+    <line x1="115" y1="100" x2="115" y2="835" class="lane-neutral"/>
 
     <rect x="240" y="22" width="190" height="78" rx="6" class="lead"/>
     <text x="335" y="56" text-anchor="middle" class="participant-text">Research lead</text>
     <text x="335" y="79" text-anchor="middle" class="participant-text">SYNTHESIZE</text>
-    <line x1="335" y1="100" x2="335" y2="810" class="lane-lead"/>
+    <line x1="335" y1="100" x2="335" y2="835" class="lane-lead"/>
 
     <rect x="460" y="22" width="190" height="78" rx="6" class="public"/>
     <text x="555" y="56" text-anchor="middle" class="participant-text">Public evidence</text>
     <text x="555" y="79" text-anchor="middle" class="participant-text">SEARCH</text>
-    <line x1="555" y1="100" x2="555" y2="810" class="lane-public"/>
+    <line x1="555" y1="100" x2="555" y2="835" class="lane-public"/>
 
     <rect x="680" y="22" width="190" height="78" rx="6" class="premium"/>
     <text x="775" y="56" text-anchor="middle" class="participant-text">Premium evidence</text>
     <text x="775" y="79" text-anchor="middle" class="participant-text">ACQUIRE</text>
-    <line x1="775" y1="100" x2="775" y2="810" class="lane-premium"/>
+    <line x1="775" y1="100" x2="775" y2="835" class="lane-premium"/>
 
     <rect x="900" y="22" width="190" height="78" rx="6" class="source"/>
     <text x="995" y="56" text-anchor="middle" class="participant-text">Paid data source</text>
     <text x="995" y="79" text-anchor="middle" class="participant-text">EXCHANGE</text>
-    <line x1="995" y1="100" x2="995" y2="810" class="lane-neutral"/>
+    <line x1="995" y1="100" x2="995" y2="835" class="lane-neutral"/>
 
     <rect x="1120" y="22" width="190" height="78" rx="6" class="aws"/>
     <text x="1215" y="56" text-anchor="middle" class="participant-text">AgentCore</text>
     <text x="1215" y="79" text-anchor="middle" class="participant-text">ENFORCE</text>
-    <line x1="1215" y1="100" x2="1215" y2="810" class="lane-aws"/>
+    <line x1="1215" y1="100" x2="1215" y2="835" class="lane-aws"/>
 
     <rect x="1340" y="22" width="190" height="78" rx="6" class="aws"/>
     <text x="1435" y="56" text-anchor="middle" class="participant-text">Delegated wallet</text>
     <text x="1435" y="79" text-anchor="middle" class="participant-text">SIGN</text>
-    <line x1="1435" y1="100" x2="1435" y2="810" class="lane-aws"/>
+    <line x1="1435" y1="100" x2="1435" y2="835" class="lane-aws"/>
   </g>
 
   <rect x="257" y="116" width="156" height="25" rx="4" fill="#0E8F72"/>
@@ -87,6 +88,7 @@
   <text x="445" y="296" text-anchor="middle" class="message-text">evidence + residual gap</text>
   <path d="M555 304H335" class="return"/>
 
+  <rect x="463" y="319" width="184" height="23" rx="3" class="label-bg"/>
   <text x="555" y="337" text-anchor="middle" class="message-text">delegate one material gap</text>
   <path d="M335 345H775" class="message"/>
 
@@ -96,6 +98,7 @@
   <text x="885" y="417" text-anchor="middle" class="message-text">402 Payment Required</text>
   <path d="M995 425H775" class="return"/>
 
+  <rect x="907" y="439" width="176" height="23" rx="3" class="label-bg"/>
   <text x="995" y="457" text-anchor="middle" class="message-text">generate payment header</text>
   <path d="M775 465H1215" class="payment"/>
 
@@ -108,6 +111,7 @@
   <text x="1325" y="595" text-anchor="middle" class="message-text">payment proof</text>
   <path d="M1435 603H1215" class="return"/>
 
+  <rect x="918" y="617" width="154" height="23" rx="3" class="label-bg"/>
   <text x="995" y="635" text-anchor="middle" class="message-text">version-aware header</text>
   <path d="M1215 643H775" class="return"/>
 
@@ -117,40 +121,13 @@
   <text x="885" y="715" text-anchor="middle" class="message-text">premium evidence</text>
   <path d="M995 723H775" class="return"/>
 
+  <rect x="425" y="737" width="260" height="23" rx="3" class="label-bg"/>
   <text x="555" y="755" text-anchor="middle" class="message-text">evidence + payment outcome + budget</text>
   <path d="M775 763H335" class="return"/>
 
   <text x="225" y="795" text-anchor="middle" class="message-text">cited brief + paid-data ledger</text>
-  <path d="M335 803H115" class="synthesis"/>
+  <path d="M335 807H115" class="synthesis"/>
 
-  <g>
-    <rect x="20" y="810" width="190" height="74" rx="6" class="researcher"/>
-    <text x="115" y="853" text-anchor="middle" class="participant-text">Researcher</text>
-
-    <rect x="240" y="810" width="190" height="74" rx="6" class="lead"/>
-    <text x="335" y="842" text-anchor="middle" class="participant-text">Research lead</text>
-    <text x="335" y="864" text-anchor="middle" class="participant-text">SYNTHESIZE</text>
-
-    <rect x="460" y="810" width="190" height="74" rx="6" class="public"/>
-    <text x="555" y="842" text-anchor="middle" class="participant-text">Public evidence</text>
-    <text x="555" y="864" text-anchor="middle" class="participant-text">SEARCH</text>
-
-    <rect x="680" y="810" width="190" height="74" rx="6" class="premium"/>
-    <text x="775" y="842" text-anchor="middle" class="participant-text">Premium evidence</text>
-    <text x="775" y="864" text-anchor="middle" class="participant-text">ACQUIRE</text>
-
-    <rect x="900" y="810" width="190" height="74" rx="6" class="source"/>
-    <text x="995" y="842" text-anchor="middle" class="participant-text">Paid data source</text>
-    <text x="995" y="864" text-anchor="middle" class="participant-text">EXCHANGE</text>
-
-    <rect x="1120" y="810" width="190" height="74" rx="6" class="aws"/>
-    <text x="1215" y="842" text-anchor="middle" class="participant-text">AgentCore</text>
-    <text x="1215" y="864" text-anchor="middle" class="participant-text">ENFORCE</text>
-
-    <rect x="1340" y="810" width="190" height="74" rx="6" class="aws"/>
-    <text x="1435" y="842" text-anchor="middle" class="participant-text">Delegated wallet</text>
-    <text x="1435" y="864" text-anchor="middle" class="participant-text">SIGN</text>
-  </g>
-
-  <text x="800" y="898" text-anchor="middle" class="note">ONLY THE PREMIUM SPECIALIST CAN ENTER THE PAYMENT FLOW</text>
+  <rect x="445" y="852" width="710" height="30" rx="4" fill="#F7F5FC"/>
+  <text x="800" y="872" text-anchor="middle" class="note">ONLY THE PREMIUM SPECIALIST CAN ENTER THE PAYMENT FLOW</text>
 </svg>

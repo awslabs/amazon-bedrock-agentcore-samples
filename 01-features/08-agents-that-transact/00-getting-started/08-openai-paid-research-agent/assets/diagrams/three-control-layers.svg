@@ -21,6 +21,9 @@
       .return{stroke:#30343B;stroke-width:2;stroke-dasharray:6 6;fill:none;marker-end:url(#arrow)}
       .success{stroke:#0E8F72;stroke-width:2;fill:none;marker-end:url(#arrow-green)}
       .denial{stroke:#D14343;stroke-width:2;stroke-dasharray:7 6;fill:none;marker-end:url(#arrow-red)}
+      .label-bg{fill:#FFFFFF}
+      .label-bg-success{fill:#F0FAF7}
+      .label-bg-denial{fill:#FFF3F3}
       .message-text{font:500 16px Arial,Helvetica,sans-serif;fill:#30343B;letter-spacing:0}
       .phase{font:700 13px Arial,Helvetica,sans-serif;letter-spacing:1px}
       .note{font:500 14px Arial,Helvetica,sans-serif;fill:#665E78;letter-spacing:0}
@@ -71,6 +74,7 @@
   <path d="M815 309H500" class="return"/>
 
   <!-- Enforce -->
+  <rect x="748" y="324" width="134" height="26" rx="3" class="label-bg"/>
   <text x="815" y="344" text-anchor="middle" class="message-text">process payment</text>
   <path d="M500 352H1130" class="message"/>
 
@@ -88,12 +92,14 @@
   <rect x="50" y="552" width="88" height="28" rx="4" fill="#0E8F72"/>
   <text x="94" y="571" text-anchor="middle" class="phase" fill="#FFFFFF">ALLOWED</text>
 
+  <rect x="702" y="550" width="226" height="26" rx="3" class="label-bg-success"/>
   <text x="815" y="570" text-anchor="middle" class="message-text">version-aware payment header</text>
   <path d="M1130 578H500" class="success"/>
 
   <text x="658" y="613" text-anchor="middle" class="message-text">retry with proof</text>
   <path d="M500 621H815" class="success"/>
 
+  <rect x="361" y="636" width="278" height="26" rx="3" class="label-bg-success"/>
   <text x="500" y="656" text-anchor="middle" class="message-text">premium evidence + payment metadata</text>
   <path d="M815 664H185" class="success"/>
 
@@ -102,34 +108,13 @@
   <rect x="50" y="720" width="84" height="28" rx="4" fill="#D14343"/>
   <text x="92" y="739" text-anchor="middle" class="phase" fill="#FFFFFF">DENIED</text>
 
+  <rect x="692" y="715" width="246" height="26" rx="3" class="label-bg-denial"/>
   <text x="815" y="735" text-anchor="middle" class="message-text">budget or session limit exceeded</text>
   <path d="M1130 743H500" class="denial"/>
 
   <text x="343" y="778" text-anchor="middle" class="message-text">bounded result + disclosed evidence gap</text>
   <path d="M500 786H185" class="denial"/>
 
-  <!-- Repeated participants -->
-  <g>
-    <rect x="55" y="800" width="260" height="76" rx="6" class="participant"/>
-    <text x="185" y="834" text-anchor="middle" class="participant-text">Premium analyst</text>
-    <text x="185" y="856" text-anchor="middle" class="participant-text">PROPOSE</text>
-
-    <rect x="370" y="800" width="260" height="76" rx="6" class="participant"/>
-    <text x="500" y="834" text-anchor="middle" class="participant-text">Application policy</text>
-    <text x="500" y="856" text-anchor="middle" class="participant-text">PERMIT</text>
-
-    <rect x="685" y="800" width="260" height="76" rx="6" class="participant"/>
-    <text x="815" y="834" text-anchor="middle" class="participant-text">Paid data source</text>
-    <text x="815" y="856" text-anchor="middle" class="participant-text">EXCHANGE</text>
-
-    <rect x="1000" y="800" width="260" height="76" rx="6" class="participant-accent"/>
-    <text x="1130" y="834" text-anchor="middle" class="participant-text">AgentCore Payments</text>
-    <text x="1130" y="856" text-anchor="middle" class="participant-text">ENFORCE</text>
-
-    <rect x="1315" y="800" width="230" height="76" rx="6" class="participant-accent"/>
-    <text x="1430" y="834" text-anchor="middle" class="participant-text">Wallet provider</text>
-    <text x="1430" y="856" text-anchor="middle" class="participant-text">SIGN</text>
-  </g>
-
-  <text x="800" y="894" text-anchor="middle" class="note">The specialist proposes. Deterministic controls permit or deny.</text>
+  <rect x="520" y="844" width="560" height="32" rx="4" fill="#F7F5FC"/>
+  <text x="800" y="865" text-anchor="middle" class="note">The specialist proposes. Deterministic controls permit or deny.</text>
 </svg>
