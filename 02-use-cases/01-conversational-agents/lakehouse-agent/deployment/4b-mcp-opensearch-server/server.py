@@ -142,7 +142,6 @@ def get_config() -> Dict[str, Optional[str]]:
         "opensearch-collection-endpoint", "OPENSEARCH_COLLECTION_ENDPOINT"
     )
     config["log_level"] = os.environ.get("LOG_LEVEL", "INFO")
-    config["local_development"] = os.environ.get("LOCAL_DEVELOPMENT", "false").lower() == "true"
 
     _config_cache = config
     return config

@@ -88,8 +88,21 @@ class SecureAthenaClaimsTools:
         # interceptor's role exchange. Refuse rather than silently using the
         # runtime's own role (which would defeat Lake Formation RLS). The ONLY
         # escape hatch is LOCAL_DEVELOPMENT for offline dev against default creds.
+        #
+        # ⚠️  FOOTGUN: LOCAL_DEVELOPMENT is an unguarded manual override — anyone who
+        # sets this env var (e.g. on the deployed runtime) disables tenant isolation
+        # and the query runs under the runtime's default role. Deploy never sets it
+        # (see deploy_runtime.py), but nothing here detects a "real" environment. A
+        # stronger option would be to REFUSE when live IdP/SSM config is present
+        # (e.g. an idp-provider param exists) so the hatch only works truly offline;
+        # left as an explicit tutorial-simplicity tradeoff (documented, not enforced).
         if os.environ.get("LOCAL_DEVELOPMENT", "false").lower() == "true":
-            print("⚠️  LOCAL_DEVELOPMENT: using default credentials (no tenant role)")
+            print("=" * 72)
+            print("⚠️  LOCAL_DEVELOPMENT=true — TENANT ISOLATION DISABLED")
+            print("⚠️  Building an Athena client with the runtime's DEFAULT credentials")
+            print("⚠️  (no tenant role; Lake Formation row/column scoping is bypassed).")
+            print("⚠️  NEVER set LOCAL_DEVELOPMENT in a deployed environment.")
+            print("=" * 72)
             return boto3.client("athena", region_name=self.region)
 
         raise PermissionError(

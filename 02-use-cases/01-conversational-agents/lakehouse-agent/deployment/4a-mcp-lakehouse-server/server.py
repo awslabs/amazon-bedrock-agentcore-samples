@@ -127,7 +127,19 @@ def get_config() -> Dict[str, Optional[str]]:
         config["s3_output_location"] = None
 
     config["test_user"] = os.environ.get("TEST_USER_1", "policyholder001@example.com")
+    # LOCAL_DEVELOPMENT is an unguarded manual escape hatch: when true, tools fall back
+    # to the runtime's DEFAULT credentials (no tenant role) — tenant isolation is
+    # disabled. Deploy never sets it (deploy_runtime.py). Warn LOUD if it is ever on.
+    # Stronger option (not taken, tutorial-simplicity tradeoff): refuse when live
+    # IdP/SSM config is present so the hatch only works truly offline.
     config["local_development"] = os.environ.get("LOCAL_DEVELOPMENT", "false").lower() == "true"
+    if config["local_development"]:
+        print("=" * 72)
+        print("⚠️  LOCAL_DEVELOPMENT=true — TENANT ISOLATION DISABLED for this MCP server")
+        print("⚠️  Tools will use the runtime's DEFAULT credentials (no tenant role);")
+        print("⚠️  Lake Formation row/column scoping is bypassed.")
+        print("⚠️  NEVER set LOCAL_DEVELOPMENT in a deployed environment.")
+        print("=" * 72)
 
     _config_cache = config
     return config
@@ -469,12 +481,10 @@ def query_login_audit(
         if not authenticated_user:
             return {"success": False, "error": "User identity not found in request"}
 
-        # Check if user is in administrators group
-        # Note: This is a secondary check. Primary access control should be at Gateway level.
-        user_groups = []
-        if context and "user_groups" in context:
-            user_groups = context.get("user_groups", [])
-            print(f"👥 USER GROUPS: {user_groups}")
+        # Access control (admin-only tool gating) is enforced upstream at the gateway
+        # REQUEST interceptor (JWT group claim → tenant-role STS) and RESPONSE interceptor
+        # (tool-list filter). The MCP server does not re-check group membership; the
+        # interceptor injects only user_id + scopes into request context.
 
         # Validate limit
         if limit < 1 or limit > 100:
@@ -496,7 +506,11 @@ def query_login_audit(
                 aws_session_token=tenant_credentials["session_token"],
             )
         elif config.get("local_development"):
-            print("⚠️  LOCAL_DEVELOPMENT: using default credentials for DynamoDB access")
+            print("=" * 72)
+            print("⚠️  LOCAL_DEVELOPMENT=true — TENANT ISOLATION DISABLED for DynamoDB access")
+            print("⚠️  Using the runtime's DEFAULT credentials (no tenant role).")
+            print("⚠️  NEVER set LOCAL_DEVELOPMENT in a deployed environment.")
+            print("=" * 72)
             dynamodb = boto3.resource("dynamodb", region_name=config["region"])
         else:
             print("🚫 No tenant credentials found — refusing DynamoDB access (fail-closed)")
