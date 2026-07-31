@@ -133,6 +133,29 @@ AgentCore fields locally. It never handles your Coinbase password or MFA code.
 > wallet. After AgentCore creates the embedded wallet, use its returned WalletHub `redirectUrl`
 > to grant delegated signing for that wallet.
 
+#### Coinbase settings reference
+
+| Screen | Setting | Demo value |
+|:--|:--|:--|
+| Secret API Key | API key nickname | `ACPayments` or another descriptive name |
+| Secret API Key | IP allowlist | **Opt-out of IP allowlisting: On** |
+| Secret API Key | Coinbase App & Advanced Trade | **View (read-only): On**; Trade, Transfer, Receive: Off |
+| Secret API Key | Account / Non-custodial | Export, Manage: Off |
+| Secret API Key | Signature algorithm | **Ed25519 (Recommended)** |
+| Wallet Security | Generate Wallet Secret | Generate and download once |
+| Wallet Security | Delegated signing | **On** |
+| Wallet Security | Project and account policies | None for this demo |
+
+![Coinbase Secret API Key dialog configured for the AgentCore Payments demo](images/coinbase-secret-api-key-settings.png)
+
+*Figure: Create the Secret API Key with IP allowlisting opted out, read-only
+access, no non-custodial export or policy-management permissions, and Ed25519.*
+
+![Coinbase Non-custodial Wallet Security page showing the Wallet Secret and delegated-signing controls](images/coinbase-wallet-security-settings.png)
+
+*Figure: Generate the Wallet Secret here, then turn **Delegated signing on**.
+The screenshot shows the switch before it is enabled; do not leave it off.*
+
 Then set `AWS_REGION`, `CREDENTIAL_PROVIDER_TYPE` (`CoinbaseCDP` or `StripePrivy`), `USER_ID`,
 `LINKED_EMAIL` (a real inbox — used for the wallet and provider OTP), and `NETWORK`
 (`ETHEREUM` or `SOLANA`) in `../.env`.

@@ -52,6 +52,16 @@ consent. After AgentCore creates the embedded wallet, open the returned
 WalletHub `redirectUrl`, sign in as the linked user, and grant signing
 permission for that wallet.
 
+![Coinbase Secret API Key settings for the demo](../images/coinbase-secret-api-key-settings.png)
+
+Use **Opt-out of IP allowlisting**, View (read-only) only, no Export or Manage
+permissions, and Ed25519.
+
+![Coinbase Wallet Security settings for the demo](../images/coinbase-wallet-security-settings.png)
+
+Generate the Wallet Secret, then turn **Delegated signing on**. The screenshot
+shows the switch before it is enabled; no project or account policy is needed.
+
 The Wallet Secret is shown **only once**. Store both downloads in a secure
 location and delete unnecessary copies after AgentCore has ingested them. Never
 paste either secret into documentation, source control, chat, or shell history.

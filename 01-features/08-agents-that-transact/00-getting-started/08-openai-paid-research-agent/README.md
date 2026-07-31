@@ -217,6 +217,13 @@ The project toggle enables delegated signing. Consent is still granted later
 for the specific AgentCore-created embedded wallet through its returned
 WalletHub `redirectUrl`.
 
+![Coinbase Secret API Key settings for the paid-research demo](../00-setup-agentcore-payments/images/coinbase-secret-api-key-settings.png)
+
+![Coinbase Wallet Security page for the paid-research demo](../00-setup-agentcore-payments/images/coinbase-wallet-security-settings.png)
+
+The second screenshot shows the delegated-signing switch before it is enabled.
+Turn it **on** before continuing; leave project and account policies unset.
+
 The guided notebook is at
 [`notebooks/agentcore_openai_paid_research.ipynb`](notebooks/agentcore_openai_paid_research.ipynb).
 
