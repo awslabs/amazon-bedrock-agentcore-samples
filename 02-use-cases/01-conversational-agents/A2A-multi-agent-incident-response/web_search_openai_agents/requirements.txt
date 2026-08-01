@@ -173,7 +173,7 @@ protobuf==6.32.1
     #   proto-plus
 py-openapi-schema-to-json-schema==0.0.3
     # via bedrock-agentcore-starter-toolkit
-pyasn1==0.6.1
+pyasn1==0.6.4
     # via
     #   pyasn1-modules
     #   rsa
