@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
-EXTRACTION_WAIT_SECONDS = 180  # polling budget; preference extraction measured ~93s
+EXTRACTION_WAIT_SECONDS = 100  # polling budget; preference extraction measured ~93s
 # Preference extraction is semantic-class; it surfaced ~64s in testing, so the
 # high-level sdk run waits 90s (with margin) rather than the 60s above.
 SESSION_EXTRACTION_WAIT_SECONDS = 90

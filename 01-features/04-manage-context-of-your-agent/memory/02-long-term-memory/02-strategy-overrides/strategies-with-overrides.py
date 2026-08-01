@@ -35,7 +35,7 @@ MEMORY_ROLE_ARN = os.environ.get("MEMORY_EXECUTION_ROLE_ARN", "")
 MODEL_ID = os.getenv("OVERRIDE_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
 ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
-EXTRACTION_WAIT_SECONDS = 180  # polling budget; override extraction measured ~73s
+EXTRACTION_WAIT_SECONDS = 100  # polling budget; override extraction measured ~73s
 NAMESPACE_TEMPLATE = "/users/{actorId}/medical-facts/"
 
 EXTRACTION_ADDENDUM = (

@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
-EXTRACTION_WAIT_SECONDS = 180  # polling budget; semantic extraction measured ~93s
+EXTRACTION_WAIT_SECONDS = 100  # polling budget; semantic extraction measured ~93s
 SESSION_EXTRACTION_WAIT_SECONDS = 90  # semantic extraction surfaces ~60-90s; extra margin
 NAMESPACE_TEMPLATE = "/users/{actorId}/facts/"
 
