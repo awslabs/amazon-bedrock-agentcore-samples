@@ -109,7 +109,7 @@ protobuf==6.32.1
     #   google-api-core
     #   googleapis-common-protos
     #   proto-plus
-pyasn1==0.6.1
+pyasn1==0.6.4
     # via
     #   pyasn1-modules
     #   rsa
