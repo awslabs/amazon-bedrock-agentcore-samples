@@ -53,6 +53,25 @@ skills=[
 set on the harness resource (so they apply to every invocation) or passed per
 `invoke_harness` call.
 
+Each `skills` entry is a *tagged union*, so set exactly one of `path`, `s3`, `git`
+or `awsSkills` per entry — combining two in one entry is rejected before the call
+is sent. To use several sources, add one entry each, as `--mode mixed` does.
+
+`paths` accepts `*` as a wildcard; `?` and character classes such as `[abc]` are
+not part of the accepted pattern.
+
+## Prerequisites
+
+- **AWS credentials** for a region where AgentCore Harness is available, and
+  **model access** to `global.anthropic.claude-haiku-4-5-20251001-v1:0` (or pass
+  another model with `--model`).
+- **boto3 ≥ 1.43.32** — the first release whose `bedrock-agentcore` model knows
+  the `awsSkills` skill source. On anything older this sample fails with
+  `ParamValidationError: Unknown parameter in skills[0]: "awsSkills"`.
+  `../../requirements.txt` already pins this floor.
+- The script creates the shared `HarnessExecutionRole` and deletes it again on
+  exit, unless you pass `--role-arn` (a role you supply is never deleted).
+
 ## Sample Prompts
 
 **Prompt** (`--mode glob`, default): "What AWS skills do you have available? Give a short bulleted summary by category."
@@ -99,4 +118,17 @@ python aws_skills.py --mode specific \
 # Combine serverless + CDK skills with a build task
 python aws_skills.py --mode mixed \
     -m "Design a Step Functions state machine for order processing and outline the CDK stack."
+
+# Reuse an existing execution role (it is then left in place on cleanup)
+python aws_skills.py --role-arn arn:aws:iam::111122223333:role/MyHarnessRole
+
+# Print the raw streaming events instead of just the assistant text
+python aws_skills.py --raw-events
+
+# Keep the harness after the demo
+python aws_skills.py --skip-cleanup
 ```
+
+A harness that enables AWS Skills takes roughly **2–3 minutes** to reach `READY`
+while the runtime loads them, so expect a wait on `Step 1` before the agent
+replies. `python aws_skills.py --help` lists every option.
