@@ -38,11 +38,16 @@ echo ""
 
 # Optional: Empty DynamoDB first
 if [ ! -z "$DYNAMO_TABLE" ] && [ "$DYNAMO_TABLE" != "null" ]; then
+  # `jq` on empty stdin exits 0, so `|| echo 0` never fires when the scan
+  # itself fails — that would leave ITEM_COUNT empty and make the numeric
+  # test below abort with "integer expected". Default any empty/non-numeric
+  # result to 0 explicitly.
   ITEM_COUNT=$(aws dynamodb scan \
     --table-name "$DYNAMO_TABLE" \
     --region $REGION \
     --select COUNT \
-    --output json 2>/dev/null | jq -r '.Count' || echo "0")
+    --output json 2>/dev/null | jq -r '.Count // 0')
+  [[ "$ITEM_COUNT" =~ ^[0-9]+$ ]] || ITEM_COUNT=0
 
   if [ "$ITEM_COUNT" -gt 0 ]; then
     echo "DynamoDB table has $ITEM_COUNT items"
@@ -69,14 +74,16 @@ aws cloudformation delete-stack \
   --region $REGION
 
 echo "Waiting for deletion..."
-aws cloudformation wait stack-delete-complete \
+# `set -e` would abort here on a failed wait, so the `[ $? -eq 0 ]` check that
+# used to follow could only ever see 0 — the "check the console" branch was
+# unreachable. Test the command inline and keep going either way, so the local
+# state file is still cleaned up and the warning is really shown.
+if aws cloudformation wait stack-delete-complete \
   --stack-name "$STACK_NAME" \
-  --region $REGION 2>&1
-
-if [ $? -eq 0 ]; then
+  --region $REGION 2>&1; then
   echo -e "${GREEN}✓ Stack deleted${NC}"
 else
-  echo -e "${YELLOW}⚠ Check AWS Console for status${NC}"
+  echo -e "${YELLOW}⚠ Stack deletion did not complete — check the AWS Console for status${NC}"
 fi
 
 # Clean up local files
