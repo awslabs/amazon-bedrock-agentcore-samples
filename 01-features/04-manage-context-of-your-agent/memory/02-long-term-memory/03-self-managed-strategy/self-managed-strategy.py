@@ -50,6 +50,7 @@ def _strategy(payload_bucket: str, topic_arn: str) -> dict:
         "customMemoryStrategy": {
             "name": "MyOwnExtractor",
             "description": "Custom extraction owned by my Lambda",
+            "namespaceTemplates": [NAMESPACE_TEMPLATE],
             "configuration": {
                 "selfManagedConfiguration": {
                     "invocationConfiguration": {
