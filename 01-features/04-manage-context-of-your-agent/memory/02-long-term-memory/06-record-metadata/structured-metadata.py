@@ -34,7 +34,7 @@ import uuid
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "tenant-acme"
 NAMESPACE = f"/tenants/{ACTOR_ID}/notes/"
-SEARCHABLE_WAIT_SECONDS = 180  # polling budget; records became searchable at 75-97s across runs
+SEARCHABLE_WAIT_SECONDS = 100  # polling budget; records became searchable at 75-97s across runs
 EXPECTED_EU_RECORDS = 2  # of the 3 records written below, 2 carry region=EU
 
 
