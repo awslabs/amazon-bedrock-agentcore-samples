@@ -23,9 +23,11 @@ sessions.
 |---|---|
 | [`s3_filesystem.py`](s3_filesystem.py) | **The mechanism.** Session A writes a file under the mount; Session B (a brand-new microVM) reads it back — only possible because the file lives in S3, not on the VM disk. |
 | [`s3_llm_wiki.py`](s3_llm_wiki.py) | **The use case: a persistent LLM wiki.** The agent builds and maintains a compounding markdown wiki on the S3 mount across sessions (ingest → query → lint). |
+| [`provision_s3_filesystem.py`](provision_s3_filesystem.py) | **Optional setup.** Creates the prerequisites below (bucket, file system, access point, mount targets) and prints the command line to paste into either script. `--teardown` removes exactly what it created. |
 
 The first script proves the persistence boundary; the second shows *why you'd
-want it*.
+want it*. Both mount an **existing** access point — if you don't have one yet,
+[`provision_s3_filesystem.py`](provision_s3_filesystem.py) will make one.
 
 ## Configuration
 
@@ -94,6 +96,61 @@ condition, used when the microVM mounts the access point).
 **Mount path format**: `mountPath` must match `/mnt/<name>` (validated by the script before the call).
 
 **IAM scope**: The execution role only needs access to the single access point — the script attaches a narrowly scoped policy.
+
+## Optional: provisioning the prerequisites
+
+Both sample scripts mount an **existing** access point — they don't create
+infrastructure, so on a fresh account there is nothing for `--access-point-arn`
+to point at. [`provision_s3_filesystem.py`](provision_s3_filesystem.py) closes
+that gap:
+
+```bash
+# Create the S3 Files layer and print the command line to run the sample with
+python provision_s3_filesystem.py
+
+# See what it would do first, without creating anything
+python provision_s3_filesystem.py --dry-run
+
+# Delete everything it created
+python provision_s3_filesystem.py --teardown
+```
+
+It creates a bucket (versioning enabled), the IAM service role S3 Files assumes,
+a file system and access point over that bucket, a mount target per subnet, and a
+security group allowing NFS 2049. Each resource is written to
+`provision_state.json` as it is created, and `--teardown` deletes **only** what is
+recorded there — a bucket or VPC you brought yourself is never touched.
+
+**Networking: bring your own by default.** The script does *not* create a VPC. It
+looks for private subnets that already have NAT-gateway egress and uses those,
+because a NAT gateway bills hourly whether or not you're using it and is the
+resource people forget to delete. Pass `--create-vpc` only if the account has no
+suitable subnets; it then builds the VPC, subnets, internet gateway and NAT
+gateway too, and `--teardown` removes them.
+
+| Flag | What it does |
+|---|---|
+| `--bucket NAME` | Reuse a bucket you already have. It must have versioning enabled, and it is **never** deleted on teardown. |
+| `--prefix PREFIX` | Key prefix the file system is scoped to (default: `harness-sample/`). |
+| `--subnet-ids` | Use these subnets instead of discovering private ones with NAT egress. |
+| `--security-group-ids` | Use these security groups instead of creating one that allows NFS 2049. |
+| `--create-vpc` | Also create a VPC, subnets and a **NAT gateway** (bills hourly). |
+| `--dry-run` | Report what would be created, and what was discovered, without creating it. Combine with `--teardown` to preview a deletion. |
+| `--teardown` | Delete everything in `provision_state.json`, then remove the file. |
+
+Two things worth knowing about teardown:
+
+- **Expect to run it twice.** AgentCore reclaims the harness microVM's network
+  interfaces on its own schedule *after* the harness is deleted — well over an
+  hour in testing — and the security group can't be deleted until they're
+  released. Rather than make you wait, the first run deletes everything that
+  bills, reports the security group as still held, and exits 0. Re-run it later
+  and it removes just what's left.
+- It is **safe to re-run** as often as you like. Anything already gone is skipped,
+  and the state file shrinks as each resource is deleted.
+
+`--teardown --dry-run` lists what would be deleted, and what it would leave alone,
+without touching anything.
 
 ## Use case: a persistent LLM wiki
 
