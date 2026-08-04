@@ -23,8 +23,48 @@ This sample complements the existing Databricks integrations in this folder:
 
 1. AWS credentials configured (`aws configure`) with permissions to create AgentCore resources and IAM roles, plus Bedrock foundation-model access in your region (Claude, Nova, or your preferred model)
 2. Databricks workspace on AWS with Unity Catalog enabled and at least one [Genie Space](https://docs.databricks.com/en/genie/index.html) with Trusted Assets defined
-3. Databricks service principal with an [OAuth M2M secret](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html); the service principal needs `CAN RUN` on the Genie space and `USE CATALOG` / `USE SCHEMA` / `SELECT` on the tables behind it
+3. Databricks service principal with an [OAuth M2M secret](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html). The service principal needs **all three** of the following — see [Service principal permissions](#service-principal-permissions) below, as a missing grant does not surface until the first real query:
+   - `CAN RUN` on the Genie space
+   - `CAN USE` on the SQL warehouse that backs the Genie space
+   - `USE CATALOG` / `USE SCHEMA` / `SELECT` on the tables behind it
 4. Python 3.10+
+
+### Service principal permissions
+
+Grant all three before running the notebook. The warehouse grant is easy to miss: `tools/list`
+succeeds without it and the gateway target still reaches `READY`, so the integration looks
+healthy right up until the first query fails.
+
+Find the warehouse backing your Genie space:
+
+```bash
+databricks api get /api/2.0/genie/spaces/$GENIE_SPACE_ID   # returns warehouse_id
+```
+
+Then grant, replacing `$SP_APP_ID` with the service principal's **application ID**:
+
+```bash
+# 1. Genie space
+databricks api patch /api/2.0/permissions/genie/$GENIE_SPACE_ID \
+  --json '{"access_control_list":[{"service_principal_name":"'$SP_APP_ID'","permission_level":"CAN_RUN"}]}'
+
+# 2. SQL warehouse behind the space
+databricks api patch /api/2.0/permissions/warehouses/$WAREHOUSE_ID \
+  --json '{"access_control_list":[{"service_principal_name":"'$SP_APP_ID'","permission_level":"CAN_USE"}]}'
+
+# 3. Unity Catalog objects (repeat per schema the space reads)
+databricks api patch /api/2.1/unity-catalog/permissions/catalog/$CATALOG \
+  --json '{"changes":[{"principal":"'$SP_APP_ID'","add":["USE_CATALOG"]}]}'
+databricks api patch /api/2.1/unity-catalog/permissions/schema/$CATALOG.$SCHEMA \
+  --json '{"changes":[{"principal":"'$SP_APP_ID'","add":["USE_SCHEMA","SELECT"]}]}'
+```
+
+Symptoms of each missing grant, as returned inside the Genie message payload:
+
+| Missing grant | Error |
+|---|---|
+| Warehouse `CAN_USE` | `PERMISSION_DENIED: <sp-id> is not authorized to use or monitor this SQL Endpoint` |
+| UC `SELECT` / `USE SCHEMA` | `PERMISSION_DENIED: No access to '<catalog>.<schema>.<table>' … you must have SELECT on each data asset` |
 
 ## Getting Started
 
