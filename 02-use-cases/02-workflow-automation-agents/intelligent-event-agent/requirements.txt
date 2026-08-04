@@ -1,4 +1,4 @@
-cryptography==46.0.3
+cryptography==50.0.0
 typing-extensions
 strands-agents==1.20.0
 strands-agents-tools==0.2.15
