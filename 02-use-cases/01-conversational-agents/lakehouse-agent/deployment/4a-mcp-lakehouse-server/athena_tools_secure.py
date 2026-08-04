@@ -277,29 +277,50 @@ class SecureAthenaClaimsTools:
             # Bind all caller-derived values as Athena "?" execution parameters
             # (injection-safe) rather than interpolating them into the SQL string.
             # The identity group is parenthesized so the optional filters below AND
-            # against BOTH the policyholder and adjuster branches (fixes the prior
-            # unparenthesized-OR precedence bug that silently dropped a
-            # policyholder's status/type filter). Params are pushed in the exact
-            # positional order the "?" placeholders appear in the query.
-            params: List[str] = [
-                f"'{user_id}'",  # role_exp CTE: WHERE user_id = ?
-                f"'{user_id}'",  # c.user_id = ?
-                f"'{user_id}'",  # c.adjuster_user_id = ?
-            ]
-            query = f"""
-                WITH role_exp AS (
-                    SELECT user_role FROM {self.table_prefix}.users
-                    WHERE user_id = ?
-                )
-                SELECT
-                    *
-                FROM {self.table_prefix}.claims as c
-                WHERE (
-                    c.user_id = ?
-                    OR ('adjuster' in (SELECT user_role FROM role_exp)
-                        AND c.adjuster_user_id = ?)
-                )
-            """
+            # against it (fixes the prior unparenthesized-OR precedence bug that
+            # silently dropped a policyholder's status/type filter). Params are pushed
+            # in the exact positional order the "?" placeholders appear in the query.
+            #
+            # Role-branch (mirrors get_claim_details._is_policyholder_role): the
+            # policyholder LF grant does NOT include adjuster_user_id, so a query that
+            # references that column fails with COLUMN_NOT_FOUND for policyholders.
+            # Policyholders get a query that references ONLY caller-visible columns
+            # (row scope = c.user_id = ?, no adjuster branch); adjusters/admins keep
+            # the adjuster-assignment branch (they ARE LF-granted adjuster_user_id).
+            is_policyholder = self._is_policyholder_role(tenant_credentials)
+
+            if is_policyholder:
+                params: List[str] = [
+                    f"'{user_id}'",  # c.user_id = ?
+                ]
+                query = f"""
+                    SELECT
+                        *
+                    FROM {self.table_prefix}.claims as c
+                    WHERE (
+                        c.user_id = ?
+                    )
+                """
+            else:
+                params = [
+                    f"'{user_id}'",  # role_exp CTE: WHERE user_id = ?
+                    f"'{user_id}'",  # c.user_id = ?
+                    f"'{user_id}'",  # c.adjuster_user_id = ?
+                ]
+                query = f"""
+                    WITH role_exp AS (
+                        SELECT user_role FROM {self.table_prefix}.users
+                        WHERE user_id = ?
+                    )
+                    SELECT
+                        *
+                    FROM {self.table_prefix}.claims as c
+                    WHERE (
+                        c.user_id = ?
+                        OR ('adjuster' in (SELECT user_role FROM role_exp)
+                            AND c.adjuster_user_id = ?)
+                    )
+                """
 
             # Add optional filters (bound as parameters, appended OUTSIDE the
             # parenthesized identity group so they apply to every returned row).
