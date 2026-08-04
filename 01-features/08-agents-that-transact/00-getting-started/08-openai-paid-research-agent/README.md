@@ -83,14 +83,14 @@ tool list entirely.
 - AgentCore CLI `0.20.0` or later
 - AWS credentials in a supported preview region
 - An AgentCore Payment Manager, connector, active instrument, and delegated
-  testnet wallet
+  testnet wallet configured with a supported wallet provider
 
 Complete [Tutorial 00](../00-setup-agentcore-payments/) first, or use the
 official
 [AgentCore Payments skill](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-build/references/payments.md).
-Coinbase users should follow the dedicated
-[Coinbase CDP setup guide](../00-setup-agentcore-payments/coinbase-cdp-setup/)
-for credential settings, screenshots, wallet consent, and Base Sepolia funding.
+Choose a supported wallet provider and follow the
+[shared wallet-provider setup guide](../00-setup-agentcore-payments/providers/)
+for provider-specific credentials, delegation, and testnet funding.
 Do not put provider credentials in this repository. The skill's interactive
 connector wizard writes provider secrets to `agentcore/.env.local` before
 deploying them to AgentCore Identity, so keep that file gitignored.
@@ -208,11 +208,10 @@ delegation, and checks that the configured merchant returns an x402 challenge.
 Add `--payment` only with a funded, delegated testnet instrument and a fresh
 payment session; that path spends testnet USDC.
 
-For Coinbase, complete the
-[canonical Coinbase CDP setup guide](../00-setup-agentcore-payments/coinbase-cdp-setup/)
-before running the live payment command. It contains every portal setting and
-screenshot, explains the two delegated-signing layers, and diagnoses Arc
-Testnet versus Base Sepolia balances.
+Before running the live payment command, complete the
+[shared wallet-provider setup guide](../00-setup-agentcore-payments/providers/).
+Follow the instructions for your selected provider to configure credentials,
+complete end-user delegation, and fund the testnet wallet.
 
 ### Verified live output
 
