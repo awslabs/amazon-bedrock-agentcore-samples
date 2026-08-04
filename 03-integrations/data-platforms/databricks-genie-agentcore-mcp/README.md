@@ -27,11 +27,11 @@ This sample complements the existing Databricks integrations in this folder:
    - `CAN RUN` on the Genie space
    - `CAN USE` on the SQL warehouse that backs the Genie space
    - `USE CATALOG` / `USE SCHEMA` / `SELECT` on the tables behind it
-4. Python 3.10+
+4. Python 3.10+ (`pip install -r requirements.txt`)
 
 ### Service principal permissions
 
-Grant all three before running the notebook. The warehouse grant is easy to miss: `tools/list`
+Grant all three before running `deploy.py`. The warehouse grant is easy to miss: `tools/list`
 succeeds without it and the gateway target still reaches `READY`, so the integration looks
 healthy right up until the first query fails.
 
@@ -66,19 +66,100 @@ Symptoms of each missing grant, as returned inside the Genie message payload:
 | Warehouse `CAN_USE` | `PERMISSION_DENIED: <sp-id> is not authorized to use or monitor this SQL Endpoint` |
 | UC `SELECT` / `USE SCHEMA` | `PERMISSION_DENIED: No access to '<catalog>.<schema>.<table>' … you must have SELECT on each data asset` |
 
+## Configuration
+
+All configuration comes from environment variables — nothing is stored in the repo:
+
+```bash
+export DATABRICKS_HOST="https://dbc-xxxxxxxx-xxxx.cloud.databricks.com"
+export DATABRICKS_CLIENT_ID="<service principal application ID>"
+export DATABRICKS_CLIENT_SECRET="<OAuth M2M secret>"
+export GENIE_SPACE_ID="<Genie space ID, from the space URL>"
+export AWS_REGION="us-east-1"          # optional, defaults to us-east-1
+```
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `config.py` | Shared configuration and resource names, read from environment variables. Fails fast with an actionable message if a required Databricks value is missing. |
+| `deploy.py` | Creates the gateway, the Databricks credential provider and the Genie target. Writes `gateway_config.json`. |
+| `invoke.py` | Runs a Strands agent locally against the gateway — the quickest way to confirm the whole chain works. |
+| `genie_agent.py` | The agent entrypoint hosted on **AgentCore Runtime** (`BedrockAgentCoreApp`). Deployed with the `agentcore` CLI, not run directly. |
+| `invoke_runtime.py` | Invokes the deployed Runtime agent via `invoke_agent_runtime`. |
+| `cleanup.py` | Deletes the target, credential provider and gateway. |
+
 ## Getting Started
 
-The notebook covers:
+### 1. Deploy the gateway
 
-1. Configure Databricks + AWS credentials
-2. Create (or reuse) an AgentCore Gateway with Cognito inbound auth
-3. Register a Databricks OAuth2 credential provider for outbound auth via `CreateOauth2CredentialProvider`
-4. Grant the gateway role the IAM permissions it needs to fetch tokens and read the stored secret
-5. Add the Databricks Genie MCP endpoint as a Gateway target and synchronize tools
-6. Verify the gateway locally with a Strands agent + MCP client, using sample prompts
-7. Deploy the agent to AgentCore Runtime and invoke it end-to-end
-8. Validate governance via Unity Catalog audit logs and CloudWatch traces
-9. Clean up — destroy the runtime deployment, then delete the target, credential provider, and gateway
+```bash
+pip install -r requirements.txt
+python deploy.py
+```
+
+`deploy.py` performs six steps, printing progress for each:
+
+1. **Verify AWS credentials** — prints the account, ARN and region in use.
+2. **Create the gateway** — `create_oauth_authorizer_with_cognito()` sets up Cognito
+   for inbound auth, then `create_mcp_gateway()` creates the gateway with semantic
+   search enabled. Waits 30s for IAM propagation.
+3. **Create the Databricks credential provider** — registers the service principal's
+   OAuth2 client credentials via `create_oauth2_credential_provider()`, pointing
+   discovery at your workspace's `/oidc/v1/token` endpoint. This is the outbound auth
+   Gateway uses when it calls Databricks.
+4. **Grant the gateway role permissions** — attaches an inline policy allowing
+   `GetWorkloadAccessToken`, `GetResourceOauth2Token` on the provider, and
+   `secretsmanager:GetSecretValue` on the stored secret. Without this the target
+   reaches `READY` but every tool call fails.
+5. **Register the Genie target** — adds the Databricks-managed Genie MCP endpoint
+   (`/api/2.0/mcp/genie/{space_id}`) as an `mcpServer` target with
+   `grantType: CLIENT_CREDENTIALS` and the token scoped to `genie`. Waits for the
+   target, then calls `synchronize_gateway_targets()` to pull the tool surface.
+6. **Save configuration** — writes `gateway_config.json` (gateway id and URL, target
+   id, provider ARN, Cognito client info) for the other scripts to read.
+
+### 2. Verify locally
+
+```bash
+python invoke.py --list-tools                 # confirm the tool surface
+python invoke.py                              # ask the default question
+python invoke.py "Break down sales by region for the last fiscal year."
+```
+
+`invoke.py` mints a Cognito token, opens an MCP session to the gateway over
+streamable-HTTP, hands the discovered tools to a Strands `Agent`, and asks your
+question. Run this before deploying — it isolates auth and grant problems from
+deployment problems.
+
+### 3. Deploy to AgentCore Runtime
+
+```bash
+agentcore configure --entrypoint genie_agent.py
+agentcore deploy
+python invoke_runtime.py
+```
+
+`genie_agent.py` wraps the same MCP client in a `BedrockAgentCoreApp` entrypoint,
+resolving the tool surface once at cold start rather than per request.
+
+> **Check the region.** `agentcore configure` may default to a different region than
+> the one you created the gateway in. The deployed agent must run in the **same
+> region as the gateway**, otherwise it cannot reach the gateway endpoint. Verify the
+> `region:` value in the generated `.bedrock_agentcore.yaml` before deploying.
+
+### 4. Validate governance
+
+Unity Catalog audit logs attribute the SQL execution to the service principal, and
+AgentCore Runtime and Gateway emit CloudWatch traces for each tool invocation — so a
+single question can be followed from agent prompt through to the SQL that answered it.
+
+### 5. Clean up
+
+```bash
+agentcore destroy      # remove the deployed Runtime agent
+python cleanup.py      # remove the target, credential provider and gateway
+```
 
 ## Resources
 
