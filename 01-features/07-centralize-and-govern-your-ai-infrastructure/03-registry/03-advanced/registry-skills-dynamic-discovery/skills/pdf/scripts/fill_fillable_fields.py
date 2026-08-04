@@ -1,9 +1,8 @@
 import json
 import sys
 
-from pypdf import PdfReader, PdfWriter
-
 from extract_form_field_info import get_field_info
+from pypdf import PdfReader, PdfWriter
 
 
 def fill_pdf_fields(input_pdf_path: str, fields_json_path: str, output_pdf_path: str):
@@ -74,8 +73,8 @@ def validation_error_for_field_value(field_info, field_value):
 
 
 def monkeypatch_pydpf_method():
-    from pypdf.generic import DictionaryObject
     from pypdf.constants import FieldDictionaryAttributes
+    from pypdf.generic import DictionaryObject
 
     original_get_inherited = DictionaryObject.get_inherited
 

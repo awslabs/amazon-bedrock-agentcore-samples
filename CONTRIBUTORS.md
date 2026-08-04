@@ -128,6 +128,4 @@
 - Fabio Balancin (balancin)
 - Varun Gunda (vvargu)
 - Anil Nadiminti (aniloncloud)
-- Deepak Singh (deepaxs)
-- rmncardoso
-- Bryan Conklin (thor4)
+- ach1ntya
