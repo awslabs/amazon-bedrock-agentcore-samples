@@ -61,7 +61,7 @@ click==8.3.0
     #   uvicorn
 cloudpickle==3.1.1
     # via google-cloud-aiplatform
-cryptography==46.0.3
+cryptography==50.0.0
     # via
     #   authlib
     #   pyjwt
