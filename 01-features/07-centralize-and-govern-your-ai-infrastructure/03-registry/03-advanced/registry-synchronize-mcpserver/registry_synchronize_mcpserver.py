@@ -547,14 +547,14 @@ try:
     for rec in records["registryRecords"]:
         registry_client.delete_registry_record(registryId=REGISTRY_ID, recordId=rec["recordId"])
         print(f"✓ Deleted record: {rec['recordId']}")
-except Exception as e: # noqa: BLE001
+except Exception as e:  # noqa: BLE001
     print(f"  Records cleanup: {e}")
 
 # Delete registry
 try:
     registry_client.delete_registry(registryId=REGISTRY_ID)
     print(f"✓ Deleted registry: {REGISTRY_ID}")
-except Exception as e: # noqa: BLE001
+except Exception as e:  # noqa: BLE001
     print(f"  Registry cleanup: {e}")
 
 # Delete AgentCore Runtimes
@@ -562,14 +562,14 @@ for rid, rname in [(RUNTIME_ID, "OAuth"), (RUNTIME_ID2, "IAM")]:
     try:
         rg_client.delete_agent_runtime(agentRuntimeId=rid)
         print(f"✓ Deleted {rname} runtime: {rid}")
-    except Exception as e: # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
         print(f"  {rname} runtime cleanup: {e}")
 
 # Delete OAuth2 Credential Provider
 try:
     rg_client.delete_oauth2_credential_provider(name=f"mcp_json_provider_{TIMESTAMP}")
     print("✓ Deleted OAuth provider")
-except Exception as e: # noqa: BLE001
+except Exception as e:  # noqa: BLE001
     print(f"  OAuth provider cleanup: {e}")
 
 # Delete Cognito resources
@@ -578,7 +578,7 @@ try:
     print("✓ Deleted Cognito domain")
     cognito.delete_user_pool(UserPoolId=USER_POOL_ID)
     print(f"✓ Deleted Cognito pool: {USER_POOL_ID}")
-except Exception as e: # noqa: BLE001
+except Exception as e:  # noqa: BLE001
     print(f"  Cognito cleanup: {e}")
 
 # Delete IAM role
@@ -586,7 +586,7 @@ try:
     iam_client.delete_role_policy(RoleName=IAM_ROLE_NAME, PolicyName="InvokeAgentCoreRuntime")
     iam_client.delete_role(RoleName=IAM_ROLE_NAME)
     print(f"✓ Deleted IAM role: {IAM_ROLE_NAME}")
-except Exception as e: # noqa: BLE001
+except Exception as e:  # noqa: BLE001
     print(f"  IAM role cleanup: {e}")
 
 # Delete local server files

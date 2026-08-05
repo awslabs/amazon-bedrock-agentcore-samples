@@ -478,7 +478,13 @@ for query in [
     print(f"\n'{query}' -> {len(hits)} results:")
     for h in hits:
         descriptors = h.get("descriptors", {})
-        dtype = "MCP" if "mcpServer" in descriptors else "AGENT" if "a2aAgentCard" in descriptors else h.get("recordType", "?")
+        dtype = (
+            "MCP"
+            if "mcpServer" in descriptors
+            else "AGENT"
+            if "a2aAgentCard" in descriptors
+            else h.get("recordType", "?")
+        )
         print(f"  - {h['name']} ({dtype})")
 
 # ── 3. Deploy Orchestrator Agent ──────────────────────────────────────────────

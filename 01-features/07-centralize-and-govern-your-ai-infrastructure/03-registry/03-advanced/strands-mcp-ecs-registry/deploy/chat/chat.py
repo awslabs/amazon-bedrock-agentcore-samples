@@ -161,12 +161,15 @@ async def chat_stream(
 
     async def generate():
         try:
-            async with httpx.AsyncClient(timeout=180.0) as client, client.stream(
-                "POST",
-                f"{AGENT_URL}/invoke/stream",
-                json={"message": req.message, "history": req.history},
-                headers=headers,
-            ) as resp:
+            async with (
+                httpx.AsyncClient(timeout=180.0) as client,
+                client.stream(
+                    "POST",
+                    f"{AGENT_URL}/invoke/stream",
+                    json={"message": req.message, "history": req.history},
+                    headers=headers,
+                ) as resp,
+            ):
                 resp.raise_for_status()
                 # Pass raw bytes straight through — do NOT use aiter_lines()
                 # because it strips blank lines, destroying \n\n SSE delimiters.

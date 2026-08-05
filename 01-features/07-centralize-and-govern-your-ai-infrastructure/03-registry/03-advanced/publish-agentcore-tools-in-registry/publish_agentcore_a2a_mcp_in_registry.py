@@ -580,7 +580,9 @@ for query in [
     "track shipment status",
     "create new order for customer",
 ]:
-    response = search_client.search_discoverable_registry_records(registryIds=[REGISTRY_ARN], searchQuery=query, maxResults=3)
+    response = search_client.search_discoverable_registry_records(
+        registryIds=[REGISTRY_ARN], searchQuery=query, maxResults=3
+    )
     records = response.get("registryRecords", [])
     print(f"{C.BOLD}'{query}'{C.RESET} → {len(records)} result(s)")
     for rec in records:

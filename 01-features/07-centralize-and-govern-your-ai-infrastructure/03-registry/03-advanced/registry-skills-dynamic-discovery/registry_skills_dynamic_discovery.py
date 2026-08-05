@@ -57,7 +57,7 @@ def wait_for_record_draft(registry_id, record_id, interval=3):
         if status == "DRAFT":
             return resp
         if status.endswith("_FAILED"):
-            raise Exception(f"Record failed: {status}") # noqa: TRY002
+            raise Exception(f"Record failed: {status}")  # noqa: TRY002
         time.sleep(interval)
 
 
@@ -72,7 +72,7 @@ def wait_for_registry(registry_id, interval=5):
             return resp
         if status.endswith("_FAILED"):
             print(f"  {C.RED}❌ Registry Status: {status}{C.RESET}")
-            raise Exception(f"Registry failed: {status} - {resp.get('statusReason')}") # noqa: TRY002
+            raise Exception(f"Registry failed: {status} - {resp.get('statusReason')}")  # noqa: TRY002
         print(f"  {C.YELLOW}⏳ Registry Status: {status}{C.RESET}")
         time.sleep(interval)
 
@@ -251,7 +251,9 @@ agent = Agent(
     system_prompt=(
         "You are an agent with access to the AWS Agent Registry. "
         "When asked to perform a task, search the registry for a relevant skill. "
-        "If a skill is found and loaded, you MUST follow its SKILL.md instructions exactly " "to complete the task. Use only the libraries and approach described in the skill instructions. " "Do NOT improvise or use alternative libraries."
+        "If a skill is found and loaded, you MUST follow its SKILL.md instructions exactly "
+        "to complete the task. Use only the libraries and approach described in the skill instructions. "
+        "Do NOT improvise or use alternative libraries."
     ),
 )
 

@@ -350,10 +350,7 @@ def _build_static_tools() -> None:
         skill_records = [r for r in all_records if r.get("recordType") == "SKILL"]
 
         if not skill_records:
-            return (
-                f"No SKILL records found for query: '{query}'. "
-                "The registry may have no approved skill records yet."
-            )
+            return f"No SKILL records found for query: '{query}'. The registry may have no approved skill records yet."
 
         log.info(
             "Registry search: %d SKILL result(s) for '%s'",
