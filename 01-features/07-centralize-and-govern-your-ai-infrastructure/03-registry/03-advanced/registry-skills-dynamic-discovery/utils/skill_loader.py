@@ -13,9 +13,8 @@ Usage:
 import json
 import os
 import subprocess
-import urllib.request
 import urllib.error
-
+import urllib.request
 
 # GitHub API base
 GITHUB_API = "https://api.github.com/repos"
@@ -152,7 +151,7 @@ def load_skill_from_registry(search_response, record_index=0, base_dir="./skills
 
         contents = _fetch_github_contents(owner, repo, remote_path, branch)
         for item in contents:
-            # Skip SKILL.md since we already wrote it from inlineContent
+            # Skip SKILL.md since we already wrote it from registry data
             if item["name"].upper() == "SKILL.MD":
                 continue
 
