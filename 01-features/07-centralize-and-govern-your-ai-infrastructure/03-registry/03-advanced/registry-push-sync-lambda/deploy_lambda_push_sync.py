@@ -86,7 +86,7 @@ try:
     )
     REGISTRY_ID = reg_resp["registryArn"].split("/")[-1]
     print(f"Created registry: {REGISTRY_NAME} → ID: {REGISTRY_ID}")
-except Exception as e:  # noqa: BLE001
+except Exception as e:
     if "already exists" in str(e).lower() or "conflict" in str(e).lower():
         regs = registry_cp.list_registries()
         for r in regs.get("registries", []):

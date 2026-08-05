@@ -740,7 +740,7 @@ def invoke_stream(
                 _step("Agent reasoning complete — preparing response", "✅")
                 result_holder.append(str(r))
             except Exception as exc:
-                log.exception("Stream agent error: %s", exc)
+                log.exception("Stream agent error")
                 error_holder.append(str(exc))
             finally:
                 # Always stop the per-request MCP client to release the session
