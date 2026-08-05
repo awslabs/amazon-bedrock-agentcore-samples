@@ -1,0 +1,12 @@
+# Test-time dependencies only.
+#
+# Both service models now come from the SDK rather than from this repository, which makes the
+# runtime's boto3 a real prerequisite: it must carry `bedrock-agentcore-control` (the Preview
+# source) and `agent-registry-control` (the GA target), or building a client raises
+# `UnknownServiceError`. See registry_client.py. These pins exist so `python -m unittest` can
+# import botocore locally and in CI.
+#
+# Pinned below botocore 1.43 on purpose: 1.43+ requires Python 3.10, and Glue Python shell runs
+# 3.9, so CI validates against the same interpreter the jobs run on.
+boto3<1.40
+botocore<1.43
