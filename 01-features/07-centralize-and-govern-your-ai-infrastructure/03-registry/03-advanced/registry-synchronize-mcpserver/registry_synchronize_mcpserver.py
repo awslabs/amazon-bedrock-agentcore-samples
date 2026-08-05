@@ -38,14 +38,16 @@ import boto3
 os.environ["AWS_SDK_LOAD_CONFIG"] = "1"
 
 AWS_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-west-2")
+
 session = boto3.Session(region_name=AWS_REGION)
-registry_client = session.client(
-    "agent-registry-control",
-)
-rg_client = session.client("bedrock-agentcore-control")
+registry_client = session.client("agent-registry-control")
+
+# AgentCore Identity client (for OAuth credential providers and runtime management)
+identity_client = session.client("bedrock-agentcore-control")
 iam_client = session.client("iam")
 
 ACCOUNT_ID = session.client("sts").get_caller_identity()["Account"]
+
 TIMESTAMP = int(time.time())
 
 print(f"Session ready | Account: {ACCOUNT_ID} | Region: {AWS_REGION}")
@@ -262,7 +264,7 @@ print(f"✓ Discovery URL: {COGNITO_DISCOVERY_URL}")
 
 # 4.4 Create AgentCore OAuth2 Credential Provider
 print("\n4.4 Create AgentCore OAuth2 Credential Provider...")
-oauth_resp = rg_client.create_oauth2_credential_provider(
+oauth_resp = identity_client.create_oauth2_credential_provider(
     name=f"mcp_json_provider_{TIMESTAMP}",
     credentialProviderVendor="CustomOauth2",
     oauth2ProviderConfigInput={
@@ -560,14 +562,14 @@ except Exception as e:  # noqa: BLE001
 # Delete AgentCore Runtimes
 for rid, rname in [(RUNTIME_ID, "OAuth"), (RUNTIME_ID2, "IAM")]:
     try:
-        rg_client.delete_agent_runtime(agentRuntimeId=rid)
+        identity_client.delete_agent_runtime(agentRuntimeId=rid)
         print(f"✓ Deleted {rname} runtime: {rid}")
     except Exception as e:  # noqa: BLE001
         print(f"  {rname} runtime cleanup: {e}")
 
 # Delete OAuth2 Credential Provider
 try:
-    rg_client.delete_oauth2_credential_provider(name=f"mcp_json_provider_{TIMESTAMP}")
+    identity_client.delete_oauth2_credential_provider(name=f"mcp_json_provider_{TIMESTAMP}")
     print("✓ Deleted OAuth provider")
 except Exception as e:  # noqa: BLE001
     print(f"  OAuth provider cleanup: {e}")
