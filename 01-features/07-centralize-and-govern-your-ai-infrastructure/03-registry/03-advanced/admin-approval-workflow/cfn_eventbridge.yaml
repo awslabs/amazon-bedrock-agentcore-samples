@@ -126,7 +126,7 @@ Resources:
   
               print(f"Search parameters: {kwargs}")
               
-              resp = registry_dp_client.search_registry_records(**kwargs)
+              resp = registry_dp_client.search_discoverable_registry_records(**kwargs)
               metadata = resp.get("ResponseMetadata", {})
               aws_request_id = metadata['HTTPHeaders']['x-amzn-requestid']
               timestamp = metadata.get("HTTPHeaders", {}).get("date", datetime.now(timezone.utc).isoformat())
