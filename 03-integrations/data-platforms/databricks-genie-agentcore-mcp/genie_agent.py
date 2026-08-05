@@ -16,11 +16,12 @@ Requires gateway_config.json in the same directory (written by deploy.py).
 import json
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
+
+from gateway_setup import GatewaySetup
 
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 SYSTEM_PROMPT = (
@@ -34,12 +35,10 @@ app = BedrockAgentCoreApp()
 with open("gateway_config.json") as f:
     config = json.load(f)
 
-gw_client = GatewayClient(region_name=config["region"])
-
 
 def _get_tools():
     """Connect to the gateway over MCP and return (client, tools)."""
-    token = gw_client.get_access_token_for_cognito(config["client_info"])
+    token = GatewaySetup.get_access_token(config["client_info"])
     mcp = MCPClient(
         lambda: streamablehttp_client(
             config["gateway_url"],

@@ -14,11 +14,9 @@ Usage:
 """
 
 import json
-import logging
 import time
 
 import boto3
-from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
 
 from config import (
     AWS_REGION,
@@ -34,6 +32,7 @@ from config import (
     genie_mcp_url,
     require_databricks_config,
 )
+from gateway_setup import GatewaySetup
 
 
 def banner(step: str) -> None:
@@ -42,25 +41,19 @@ def banner(step: str) -> None:
     print("=" * 60)
 
 
-def create_gateway(client: GatewayClient) -> dict:
-    """Create the MCP gateway fronted by a Cognito authorizer."""
+def create_gateway(setup: GatewaySetup) -> dict:
+    """Create the Cognito authorizer, the IAM role and the MCP gateway."""
     print("Creating Cognito authorizer (inbound auth)...")
-    cognito = client.create_oauth_authorizer_with_cognito(GATEWAY_NAME)
+    client_info = setup.create_cognito_authorizer(GATEWAY_NAME)
+
+    print("Creating gateway execution role...")
+    role_arn = setup.create_gateway_role(GATEWAY_NAME)
 
     print("Creating gateway...")
-    gateway = client.create_mcp_gateway(
-        name=GATEWAY_NAME,
-        role_arn=None,
-        authorizer_config=cognito["authorizer_config"],
-        enable_semantic_search=True,
-    )
-    client.fix_iam_permissions(gateway)
-
-    print(f"  Gateway URL: {gateway['gatewayUrl']}")
-    print(f"  Gateway ID:  {gateway['gatewayId']}")
+    gateway = setup.create_mcp_gateway(GATEWAY_NAME, role_arn, client_info)
     print("  Waiting 30s for IAM propagation...")
     time.sleep(30)
-    return {"gateway": gateway, "cognito": cognito}
+    return {"gateway": gateway, "client_info": client_info, "role_arn": role_arn}
 
 
 def create_credential_provider(agentcore) -> tuple:
@@ -94,47 +87,11 @@ def create_credential_provider(agentcore) -> tuple:
 
 
 def grant_gateway_permissions(
-    agentcore, gateway_id: str, provider_arn: str, secret_arn: str
+    setup: GatewaySetup, role_arn: str, provider_arn: str, secret_arn: str
 ) -> None:
     """Allow the gateway role to mint workload tokens and read the DB secret."""
     print("Updating gateway role permissions...")
-    role_arn = agentcore.get_gateway(gatewayIdentifier=gateway_id)["roleArn"]
-    role_name = role_arn.split("/")[-1]
-
-    policy_doc = json.dumps(
-        {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": "bedrock-agentcore:GetWorkloadAccessToken",
-                    "Resource": [
-                        f"arn:aws:bedrock-agentcore:{AWS_REGION}:*:workload-identity-directory/default",
-                        f"arn:aws:bedrock-agentcore:{AWS_REGION}:*:workload-identity-directory/default"
-                        f"/workload-identity/{GATEWAY_NAME}-*",
-                    ],
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": "bedrock-agentcore:GetResourceOauth2Token",
-                    "Resource": provider_arn,
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": "secretsmanager:GetSecretValue",
-                    "Resource": secret_arn,
-                },
-            ],
-        }
-    )
-
-    boto3.client("iam").put_role_policy(
-        RoleName=role_name,
-        PolicyName=IAM_POLICY_NAME,
-        PolicyDocument=policy_doc,
-    )
-    print(f"  Updated role: {role_name}")
-    time.sleep(10)
+    setup.grant_oauth_permissions(role_arn, IAM_POLICY_NAME, provider_arn, secret_arn)
 
 
 def register_genie_target(agentcore, gateway_id: str, provider_arn: str) -> str:
@@ -205,12 +162,11 @@ def deploy() -> None:
     print(f"  ARN:     {identity['Arn']}")
     print(f"  Region:  {AWS_REGION}")
 
-    agentcore = boto3.client("bedrock-agentcore-control", region_name=AWS_REGION)
-    client = GatewayClient(region_name=AWS_REGION)
-    client.logger.setLevel(logging.INFO)
+    setup = GatewaySetup(AWS_REGION)
+    agentcore = setup.client
 
     banner("STEP 2: Create AgentCore Gateway")
-    created = create_gateway(client)
+    created = create_gateway(setup)
     gateway = created["gateway"]
     gateway_id = gateway["gatewayId"]
 
@@ -218,7 +174,7 @@ def deploy() -> None:
     provider_arn, secret_arn = create_credential_provider(agentcore)
 
     banner("STEP 4: Grant Gateway Role Permissions")
-    grant_gateway_permissions(agentcore, gateway_id, provider_arn, secret_arn)
+    grant_gateway_permissions(setup, created["role_arn"], provider_arn, secret_arn)
 
     banner("STEP 5: Register Databricks Genie MCP Target")
     target_id = register_genie_target(agentcore, gateway_id, provider_arn)
@@ -232,7 +188,8 @@ def deploy() -> None:
         "genie_space_id": GENIE_SPACE_ID,
         "region": AWS_REGION,
         # Cognito inbound-auth client; mints the gateway bearer token.
-        "client_info": created["cognito"]["client_info"],
+        "client_info": created["client_info"],
+        "role_arn": created["role_arn"],
         "databricks_host": DATABRICKS_HOST,
     }
     with open(STATE_FILE, "w") as f:

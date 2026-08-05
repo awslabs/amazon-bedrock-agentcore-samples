@@ -13,13 +13,13 @@ Usage:
 import argparse
 import json
 
-from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
 
 from config import MODEL_ID, STATE_FILE, SYSTEM_PROMPT
+from gateway_setup import GatewaySetup
 
 DEFAULT_PROMPT = "What were our top 5 products by revenue last quarter?"
 
@@ -45,10 +45,9 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config()
-    gw_client = GatewayClient(region_name=config["region"])
 
     print("Obtaining Cognito access token (inbound auth)...")
-    token = gw_client.get_access_token_for_cognito(config["client_info"])
+    token = GatewaySetup.get_access_token(config["client_info"])
 
     mcp_client = MCPClient(
         lambda: streamablehttp_client(

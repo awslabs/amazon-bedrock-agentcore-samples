@@ -1,18 +1,18 @@
 # Databricks Genie via Amazon Bedrock AgentCore Gateway (MCP)
 
-Expose a [Databricks Genie](https://docs.databricks.com/en/genie/index.html) space as a governed MCP tool to Amazon Bedrock agents through [Amazon Bedrock AgentCore Gateway](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html), with the agent hosted on [AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html). Bedrock agents ask plain-English business questions; Genie returns lakehouse-native SQL answers grounded in Unity Catalog. The gateway authenticates to Databricks as a service principal (machine-to-machine), so queries run with — and are audited under — that service principal's Unity Catalog permissions. For per-user identity and attribution, see the [per-user delegation sample](../databricks-dbsql-per-user-delegation).
+Expose a [Databricks Genie](https://docs.databricks.com/en/genie/index.html) space as a governed MCP tool to AI agents through [Amazon Bedrock AgentCore Gateway](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html), with the agent hosted on [AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime.html). Agents ask plain-English business questions; Genie returns lakehouse-native SQL answers grounded in Unity Catalog. The gateway authenticates to Databricks as a service principal (machine-to-machine), so queries run with — and are audited under — that service principal's Unity Catalog permissions. For per-user identity and attribution, see the [per-user delegation sample](../databricks-dbsql-per-user-delegation).
 
 ![Databricks Genie via Amazon Bedrock AgentCore Gateway architecture](images/architecture.png)
 
 ## Overview
 
-This sample registers the [Databricks-managed Genie MCP endpoint](https://docs.databricks.com/en/generative-ai/mcp/managed-mcp.html) (`/api/2.0/mcp/genie/{space_id}`) as a target in Amazon Bedrock AgentCore Gateway. Once registered, any Bedrock agent associated with the gateway can call Genie as a tool — no custom NL-to-SQL chain, no data copy into Knowledge Bases, no parallel metric definitions. The gateway manages:
+This sample registers the [Databricks-managed Genie MCP endpoint](https://docs.databricks.com/en/generative-ai/mcp/managed-mcp.html) (`/api/2.0/mcp/genie/{space_id}`) as a target in Amazon Bedrock AgentCore Gateway. Once registered, any agent authorized to the gateway can call Genie as a tool — no custom NL-to-SQL chain, no data copy into Knowledge Bases, no parallel metric definitions. The gateway manages:
 
 - **Inbound auth** — AgentCore Identity (fronted by Amazon Cognito in this sample) authorizes agent → tool calls
 - **Outbound auth** — Databricks OAuth2 M2M credentials, registered via `CreateOauth2CredentialProvider` (scoped to `genie`) and retrieved by Gateway at tool-invocation time
 - **Audit** — Unity Catalog audit logs attribute SQL execution to the service principal; AgentCore Runtime and Gateway emit CloudWatch traces for each tool invocation
 
-> **Auth model.** This sample uses machine-to-machine (client-credentials) auth end to end, so Genie runs as the service principal — the right model for a shared, application-level integration. Per-user Unity Catalog attribution (Authorization Code / OBO) is **not** available on a managed `mcpServer` gateway target; use the [`databricks-dbsql-per-user-delegation`](../databricks-dbsql-per-user-delegation) sample (RFC 8693 token exchange) when you need each end user's own permissions.
+> **Auth model.** This sample uses machine-to-machine (client-credentials) auth end to end, so Genie runs as the service principal — the right model for a shared, application-level integration where every caller shares one permission set. The same `mcpServer` target also supports per-user access via OAuth token exchange (`grantType: TOKEN_EXCHANGE`) or authorization code, in which case Unity Catalog enforces each end user's own permissions; see the [outbound authorization matrix](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-outbound-auth.html) for what each target type supports, and [`databricks-dbsql-per-user-delegation`](../databricks-dbsql-per-user-delegation) for the RFC 8693 setup.
 
 This sample complements the existing Databricks integrations in this folder:
 
@@ -83,11 +83,12 @@ export AWS_REGION="us-east-1"          # optional, defaults to us-east-1
 | File | Purpose |
 |---|---|
 | `config.py` | Shared configuration and resource names, read from environment variables. Fails fast with an actionable message if a required Databricks value is missing. |
+| `gateway_setup.py` | Gateway, IAM and Cognito helpers built directly on the `bedrock-agentcore-control`, `iam` and `cognito-idp` boto3 clients. |
 | `deploy.py` | Creates the gateway, the Databricks credential provider and the Genie target. Writes `gateway_config.json`. |
 | `invoke.py` | Runs a Strands agent locally against the gateway — the quickest way to confirm the whole chain works. |
 | `genie_agent.py` | The agent entrypoint hosted on **AgentCore Runtime** (`BedrockAgentCoreApp`). Deployed with the `agentcore` CLI, not run directly. |
 | `invoke_runtime.py` | Invokes the deployed Runtime agent via `invoke_agent_runtime`. |
-| `cleanup.py` | Deletes the target, credential provider and gateway. |
+| `cleanup.py` | Deletes the target, credential provider, gateway, IAM role and Cognito user pool. |
 
 ## Getting Started
 
@@ -101,17 +102,18 @@ python deploy.py
 `deploy.py` performs six steps, printing progress for each:
 
 1. **Verify AWS credentials** — prints the account, ARN and region in use.
-2. **Create the gateway** — `create_oauth_authorizer_with_cognito()` sets up Cognito
-   for inbound auth, then `create_mcp_gateway()` creates the gateway with semantic
-   search enabled. Waits 30s for IAM propagation.
+2. **Create the gateway** — creates a Cognito user pool, domain, resource server and
+   machine-to-machine app client for inbound auth; creates a least-privilege gateway
+   execution role; then calls `CreateGateway` with a `CUSTOM_JWT` authorizer pointed at
+   the pool's OIDC discovery URL. Waits 30s for IAM propagation.
 3. **Create the Databricks credential provider** — registers the service principal's
    OAuth2 client credentials via `create_oauth2_credential_provider()`, pointing
    discovery at your workspace's `/oidc/v1/token` endpoint. This is the outbound auth
    Gateway uses when it calls Databricks.
 4. **Grant the gateway role permissions** — attaches an inline policy allowing
-   `GetWorkloadAccessToken`, `GetResourceOauth2Token` on the provider, and
-   `secretsmanager:GetSecretValue` on the stored secret. Without this the target
-   reaches `READY` but every tool call fails.
+   `GetWorkloadAccessToken` / `GetWorkloadAccessTokenForJWT`, `GetResourceOauth2Token`
+   on the provider, and `secretsmanager:GetSecretValue` on the stored secret. Without
+   this the target reaches `READY` but every tool call fails.
 5. **Register the Genie target** — adds the Databricks-managed Genie MCP endpoint
    (`/api/2.0/mcp/genie/{space_id}`) as an `mcpServer` target with
    `grantType: CLIENT_CREDENTIALS` and the token scoped to `genie`. Waits for the
@@ -158,7 +160,7 @@ single question can be followed from agent prompt through to the SQL that answer
 
 ```bash
 agentcore destroy      # remove the deployed Runtime agent
-python cleanup.py      # remove the target, credential provider and gateway
+python cleanup.py      # remove the target, credential provider, gateway, IAM role and Cognito pool
 ```
 
 ## Resources
