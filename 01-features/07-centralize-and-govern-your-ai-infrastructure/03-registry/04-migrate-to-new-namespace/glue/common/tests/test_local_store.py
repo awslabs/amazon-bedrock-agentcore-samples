@@ -8,6 +8,7 @@ Two of those promises carry the whole design:
 
 The rest is round-tripping and ordering. Everything here is real; there is no fake in this module.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,9 +21,9 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.local_store import LocalStore  # noqa: E402
-from migration_common.storage import JsonArrayWriter  # noqa: E402
-from migration_common.util import json_dumps  # noqa: E402
+from migration_common.local_store import LocalStore
+from migration_common.storage import JsonArrayWriter
+from migration_common.util import json_dumps
 
 
 class LocalStoreBasics(unittest.TestCase):
@@ -129,12 +130,9 @@ class StagedBytesArePinned(unittest.TestCase):
             self.store.inspect_json_lines_object(self.manifest)
 
     def test_records_are_yielded_in_manifest_order_across_objects(self):
-        second = self.store.put_json_lines(
-            "runs/run_id=r1/raw/mapping=m/part-00001.jsonl", [{"recordId": "rec-4"}]
-        )
+        second = self.store.put_json_lines("runs/run_id=r1/raw/mapping=m/part-00001.jsonl", [{"recordId": "rec-4"}])
         pairs = list(self.store.iter_json_lines_objects([self.manifest, second]))
-        self.assertEqual([record["recordId"] for _key, record in pairs],
-                         ["rec-1", "rec-2", "rec-3", "rec-4"])
+        self.assertEqual([record["recordId"] for _key, record in pairs], ["rec-1", "rec-2", "rec-3", "rec-4"])
         self.assertEqual([key for key, _record in pairs].count(self.key), 3)
 
     def test_read_ahead_is_accepted_and_changes_nothing(self):

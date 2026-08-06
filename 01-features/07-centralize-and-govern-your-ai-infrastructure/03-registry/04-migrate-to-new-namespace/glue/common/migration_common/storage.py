@@ -4,14 +4,16 @@ Every write is SSE-AES256 encrypted. JSONL writers return the object's content h
 byte size, record count, and S3 version id so the transform/load stage can reconcile
 the immutable staged data against the extract manifest before it processes anything.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 from collections import OrderedDict
+from collections.abc import Iterable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -60,7 +62,7 @@ class S3Store:
         return f"s3://{self.bucket}/{key}" if key else f"s3://{self.bucket}"
 
     @classmethod
-    def from_boto3(cls, boto3_module: Any, bucket: str, region: str | None = None) -> "S3Store":
+    def from_boto3(cls, boto3_module: Any, bucket: str, region: str | None = None) -> S3Store:
         """Create a store backed by an adaptively-retrying S3 client.
 
         ``region`` is the region the staging bucket lives in. Passed explicitly because the caller's
@@ -131,9 +133,7 @@ class S3Store:
             status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
             code = error.response.get("Error", {}).get("Code")
             if status == 412 or code in {"PreconditionFailed", "ConditionalRequestConflict"}:
-                raise RuntimeError(
-                    f"Immutable S3 key already exists: s3://{self.bucket}/{key}"
-                ) from error
+                raise RuntimeError(f"Immutable S3 key already exists: s3://{self.bucket}/{key}") from error
             raise
         finally:
             self._client.meta.events.unregister(event_name, unique_id=event_id)
@@ -170,12 +170,8 @@ class S3Store:
         """
         try:
             return self.get_json(key)
-        except Exception as error:  # noqa: BLE001 - narrowed immediately below
-            code = (
-                error.response.get("Error", {}).get("Code")
-                if hasattr(error, "response")
-                else None
-            )
+        except Exception as error:
+            code = error.response.get("Error", {}).get("Code") if hasattr(error, "response") else None
             if code in {"NoSuchKey", "404", "NotFound"}:
                 return None
             no_such_key = getattr(getattr(self._client, "exceptions", None), "NoSuchKey", None)
@@ -263,7 +259,7 @@ class S3Store:
 
         workers = min(int(read_ahead), len(pinned) - 1)
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="staged-read") as pool:
-            prefetched: "OrderedDict[int, Future[bytes]]" = OrderedDict()
+            prefetched: OrderedDict[int, Future[bytes]] = OrderedDict()
             next_to_submit = 0
             for index, expected in enumerate(pinned):
                 # Keep the window full: submit the upcoming small objects, skip the big ones.
@@ -332,7 +328,7 @@ class JsonArrayWriter:
     ``chunk_size`` records so memory stays bounded no matter how many records a registry holds.
     """
 
-    def __init__(self, store: "S3Store", prefix: str, *, basename: str, chunk_size: int = 500) -> None:
+    def __init__(self, store: S3Store, prefix: str, *, basename: str, chunk_size: int = 500) -> None:
         self._store = store
         self._prefix = prefix.rstrip("/")
         self._basename = basename

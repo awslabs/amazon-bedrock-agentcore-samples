@@ -4,6 +4,7 @@ Covers the grouped one-parameter-per-concern layout (<prefix>/config, <prefix>/r
 <prefix>/adapter), the legacy per-knob / per-endpoint-field layout that older deployments still
 have, knob type coercion, and validation failures.
 """
+
 from __future__ import annotations
 
 import json
@@ -12,10 +13,11 @@ import re
 import sys
 import tempfile
 import unittest
+from typing import ClassVar
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.settings import (  # noqa: E402
+from migration_common.settings import (
     DEFAULT_CONFIG_PREFIX,
     ConfigurationError,
     _build_load,
@@ -24,14 +26,14 @@ from migration_common.settings import (  # noqa: E402
     load_configuration,
     load_configuration_from_file,
     optional_argument,
-    replay_configuration_fingerprint,
-    resolve_staging_bucket,
     parse_job_arguments,
     parse_key_value_document,
     parse_registry_document,
+    replay_configuration_fingerprint,
     required_argument,
     resolve_configuration,
     resolve_run_id,
+    resolve_staging_bucket,
     validate_runtime_configuration,
 )
 
@@ -66,19 +68,19 @@ class FakeSsm:
     def __init__(self, parameters: dict[str, str]):
         self._parameters = parameters
 
-    def get_parameter(self, Name: str, WithDecryption: bool = False):  # noqa: N803 - boto3 casing
+    def get_parameter(self, Name: str, WithDecryption: bool = False):
         if Name not in self._parameters:
             raise ParameterNotFound(Name)
         return {"Parameter": {"Name": Name, "Value": self._parameters[Name]}}
 
-    def get_parameters_by_path(self, **kwargs):  # noqa: N803 - boto3 casing
+    def get_parameters_by_path(self, **kwargs):
         base = kwargs["Path"].rstrip("/")
         recursive = kwargs.get("Recursive", False)
         found = []
         for name, value in self._parameters.items():
             if not name.startswith(f"{base}/"):
                 continue
-            relative = name[len(base) + 1:]
+            relative = name[len(base) + 1 :]
             if not recursive and "/" in relative:
                 continue
             found.append({"Name": name, "Value": value})
@@ -285,14 +287,14 @@ class KeyValueDocumentLayout(unittest.TestCase):
         self.assertEqual(target["externalId"], "ext-42")
 
     def test_adding_a_registry_line_adds_a_mapping(self):
-        extended = REGISTRIES_DOCUMENT + "map-c = source=111122223333/us-east-2/src-3, target=111122223333/us-east-2/tgt-3\n"
+        extended = (
+            REGISTRIES_DOCUMENT + "map-c = source=111122223333/us-east-2/src-3, target=111122223333/us-east-2/tgt-3\n"
+        )
         _, mappings = load_configuration(FakeSsm(self._parameters(registries_text=extended)), PREFIX)
         self.assertEqual([m["id"] for m in mappings], ["map-a", "map-b", "map-c"])
 
     def test_removing_a_registry_line_removes_a_mapping(self):
-        only_first = "\n".join(
-            line for line in REGISTRIES_DOCUMENT.splitlines() if not line.startswith("map-b")
-        )
+        only_first = "\n".join(line for line in REGISTRIES_DOCUMENT.splitlines() if not line.startswith("map-b"))
         _, mappings = load_configuration(FakeSsm(self._parameters(registries_text=only_first)), PREFIX)
         self.assertEqual([m["id"] for m in mappings], ["map-a"])
 
@@ -498,7 +500,7 @@ class PublishedRunKnobsCoverEveryKnobTheJobReads(unittest.TestCase):
 
     #: Read from `_build_load`, which is the only thing that turns the published document into the
     #: settings a job uses. Written out rather than introspected so the test states the contract.
-    KNOBS_THE_JOB_READS = {
+    KNOBS_THE_JOB_READS: ClassVar[set[str]] = {
         "dryRun",
         "loadMode",
         "changedAfter",
@@ -513,7 +515,11 @@ class PublishedRunKnobsCoverEveryKnobTheJobReads(unittest.TestCase):
     def _stack_source(self) -> str:
         stack_source = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "..", "lib", "migration-engine-stack.ts",
+            "..",
+            "..",
+            "..",
+            "lib",
+            "migration-engine-stack.ts",
         )
         if not os.path.isfile(stack_source):
             self.skipTest("CDK sources are not present (running from an installed wheel)")
@@ -539,15 +545,7 @@ class PublishedRunKnobsCoverEveryKnobTheJobReads(unittest.TestCase):
 
     def test_match_source_status_survives_the_round_trip(self):
         """The specific value that used to be dropped, through the real parser."""
-        document = "\n".join(
-            [
-                "# comment",
-                "dryRun = true",
-                "loadMode = FULL",
-                "changedAfter =",
-                "matchSourceStatus = false",
-            ]
-        )
+        document = "# comment\ndryRun = true\nloadMode = FULL\nchangedAfter =\nmatchSourceStatus = false"
         load = _build_load(_parse_config_value(document, "ssm"))
         self.assertFalse(load["matchSourceStatus"])
 
@@ -589,9 +587,7 @@ class NumericKnobsRejectBooleans(unittest.TestCase):
                 validate_runtime_configuration(self._settings(**load), [])
 
     def test_valid_values_pass(self):
-        validate_runtime_configuration(
-            self._settings(recordsPerObject=500, loadConcurrency=8), []
-        )
+        validate_runtime_configuration(self._settings(recordsPerObject=500, loadConcurrency=8), [])
 
 
 class BooleanFlags(unittest.TestCase):
@@ -668,9 +664,7 @@ class FileBackedConfiguration(unittest.TestCase):
         settings, mappings = load_configuration_from_file(self._write(document))
 
         self.assertEqual([m["id"] for m in mappings], ["map-a"])
-        self.assertEqual(
-            settings["api"]["preview"]["serviceName"], "bedrock-agentcore-control"
-        )
+        self.assertEqual(settings["api"]["preview"]["serviceName"], "bedrock-agentcore-control")
         self.assertEqual(settings["api"]["ga"]["serviceName"], "agent-registry-control")
         # The transform rules must be complete, including the implementation hash the replay
         # fingerprint depends on -- without it a local extract could not be safely re-loaded.
@@ -756,8 +750,9 @@ class FileBackedConfiguration(unittest.TestCase):
         self.assertIn("registries", message)
 
     def test_missing_file_is_reported(self):
+        missing = os.path.join(tempfile.gettempdir(), "definitely-not-here-12345.json")
         with self.assertRaises(ConfigurationError):
-            load_configuration_from_file("/tmp/definitely-not-here-12345.json")
+            load_configuration_from_file(missing)
 
     def test_resolve_configuration_prefers_the_file_and_needs_no_ssm(self):
         path = self._write(self._document())

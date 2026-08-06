@@ -20,21 +20,20 @@ So this creates:
 
 Usage: python3 tools/seed_live_parity_fixture.py [--preview-region us-east-1] [--ga-region us-west-2]
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 import uuid
 from threading import Event
 
 import boto3
-from botocore.exceptions import ClientError
-
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
+from botocore.exceptions import ClientError
 
 # A never-set event provides the same interruptible bounded delay as sleep while making it explicit
 # that these waits exist only between state-machine polls.
@@ -80,12 +79,8 @@ def ga_request(region: str, method: str, path: str, body: dict | None = None) ->
         data=payload,
         headers={"Content-Type": "application/json"},
     )
-    SigV4Auth(session.get_credentials().get_frozen_credentials(), "agent-registry", region).add_auth(
-        request
-    )
-    prepared = urllib.request.Request(
-        url, data=payload or None, method=method, headers=dict(request.headers)
-    )
+    SigV4Auth(session.get_credentials().get_frozen_credentials(), "agent-registry", region).add_auth(request)
+    prepared = urllib.request.Request(url, data=payload or None, method=method, headers=dict(request.headers))
     try:
         # An explicit timeout, because the default is the global socket timeout -- normally None,
         # which means an unresponsive endpoint hangs the seeder with no bound at all.
@@ -93,12 +88,13 @@ def ga_request(region: str, method: str, path: str, body: dict | None = None) ->
             prepared, timeout=_HTTP_TIMEOUT_SECONDS
         ) as response:
             raw = response.read()
-    except urllib.error.HTTPError as error:  # noqa: PERF203 - surfacing the service message
+    except urllib.error.HTTPError as error:
         raise RuntimeError(f"GA {method} {path} failed: {error.code} {error.read().decode()}") from error
     except OSError as error:
         # URLError (DNS, connection refused) and socket.timeout both land here.
         raise RuntimeError(f"GA {method} {path} could not be reached: {error}") from error
     return json.loads(raw) if raw else {}
+
 
 # name, status to drive it to, and whether it shares its name with another record.
 FIXTURE_RECORDS = [
@@ -155,9 +151,7 @@ def main() -> int:
                 request["nextToken"] = next_token
             page = preview.list_registry_records(**request)
             for record in page.get("registryRecords", []):
-                seeded.append(
-                    (record.get("name", ""), record["recordId"], record.get("status", ""))
-                )
+                seeded.append((record.get("name", ""), record["recordId"], record.get("status", "")))
             next_token = page.get("nextToken")
             if not next_token:
                 break
@@ -201,9 +195,7 @@ def main() -> int:
             # the whole seeder with a traceback, abandoning the records already created -- and this
             # is a fixture, so a partial one is worse than a reported failure.
             try:
-                preview.submit_registry_record_for_approval(
-                    registryId=preview_registry_id, recordId=record_id
-                )
+                preview.submit_registry_record_for_approval(registryId=preview_registry_id, recordId=record_id)
                 settled = wait_for_record(preview, preview_registry_id, record_id)
                 if desired_status == "DEPRECATED":
                     preview.update_registry_record_status(

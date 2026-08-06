@@ -71,6 +71,7 @@ Usage:
 Requires AWS credentials with bedrock-agentcore registry create permissions. Records are created
 with the Preview API shapes (descriptorType + descriptors.<variant> + inlineContent).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -222,9 +223,7 @@ A2A_CARD_UNICODE = json.dumps(
     },
     ensure_ascii=False,
 )
-SKILL_DEFINITION = json.dumps(
-    {"name": "summarize-doc", "description": "Summarize a document", "version": "1.0.0"}
-)
+SKILL_DEFINITION = json.dumps({"name": "summarize-doc", "description": "Summarize a document", "version": "1.0.0"})
 SKILL_MD = """---
 name: summarize-doc
 description: Summarize a document
@@ -251,7 +250,9 @@ CUSTOM_JSON = json.dumps({"kind": "internal-tool", "owner": "platform", "tier": 
 CUSTOM_JSON_ARRAY = json.dumps([{"id": 1, "kind": "entry"}, {"id": 2, "kind": "entry"}])
 LARGE_TEXT = json.dumps({"blob": "x" * 60000, "note": "large payload scenario"})
 
-OAUTH_PROVIDER_ARN_TEMPLATE = "arn:aws:bedrock-agentcore:{region}:{account}:token-vault/default/oauth2credentialprovider/migration-test"
+OAUTH_PROVIDER_ARN_TEMPLATE = (
+    "arn:aws:bedrock-agentcore:{region}:{account}:token-vault/default/oauth2credentialprovider/migration-test"
+)
 IAM_ROLE_ARN_TEMPLATE = "arn:aws:iam::{account}:role/AgentRegistryMigrationSyncTest"
 
 
@@ -313,7 +314,9 @@ def build_matrix(
             "target_status": "PENDING_APPROVAL",
             "name": "mcp-server-only",
             "descriptorType": "MCP",
-            "descriptors": {"mcp": {"server": {"inlineContent": MCP_SERVER_MINIMAL, "schemaVersion": MCP_SCHEMA_VERSION}}},
+            "descriptors": {
+                "mcp": {"server": {"inlineContent": MCP_SERVER_MINIMAL, "schemaVersion": MCP_SCHEMA_VERSION}}
+            },
         },
         {
             "scenario": "mcp-server-with-tools",
@@ -413,7 +416,9 @@ def build_matrix(
             "name": "skills-definition-only",
             "descriptorType": "AGENT_SKILLS",
             "descriptors": {
-                "agentSkills": {"skillDefinition": {"inlineContent": SKILL_DEFINITION, "schemaVersion": SKILL_SCHEMA_VERSION}}
+                "agentSkills": {
+                    "skillDefinition": {"inlineContent": SKILL_DEFINITION, "schemaVersion": SKILL_SCHEMA_VERSION}
+                }
             },
         },
         {
@@ -486,9 +491,7 @@ def build_matrix(
             "name": "custom-unicode",
             "description": f"Custom unicode {UNICODE_TEXT}",
             "descriptorType": "CUSTOM",
-            "descriptors": {
-                "custom": {"inlineContent": json.dumps({"note": UNICODE_TEXT}, ensure_ascii=False)}
-            },
+            "descriptors": {"custom": {"inlineContent": json.dumps({"note": UNICODE_TEXT}, ensure_ascii=False)}},
         },
         {
             "scenario": "custom-dotted-slashed-name-versioned",
@@ -533,8 +536,7 @@ def build_matrix(
         # restoring distinct names after creation for how the remaining sync fixtures avoid it.
         {
             "scenario": "B2-case-only-name-difference-upper",
-            "why": "the name pattern is case-sensitive, but nothing states whether GA's (name, "
-            "recordVersion) key is",
+            "why": "the name pattern is case-sensitive, but nothing states whether GA's (name, recordVersion) key is",
             "expect": "the migration treats these as two distinct records and issues two creates. If "
             "the GA key is case-insensitive the second create collides at the service",
             "name": "B2-Payments-MCP",
@@ -551,10 +553,8 @@ def build_matrix(
         },
         {
             "scenario": "B3-name-without-trailing-slash",
-            "why": "the name pattern permits a trailing '/', so two names can differ only by a "
-            "separator",
-            "expect": "the migration treats these as distinct. If GA normalizes separators the "
-            "second create collides",
+            "why": "the name pattern permits a trailing '/', so two names can differ only by a separator",
+            "expect": "the migration treats these as distinct. If GA normalizes separators the second create collides",
             "name": "b3-team/svc",
             "descriptorType": "CUSTOM",
             "descriptors": {"custom": {"inlineContent": json.dumps({"variant": "no-trailing-slash"})}},
@@ -683,9 +683,7 @@ def build_matrix(
                 "mcp": {
                     "server": {"inlineContent": MCP_SERVER, "schemaVersion": MCP_SCHEMA_VERSION},
                     "tools": {
-                        "inlineContent": json.dumps(
-                            {"tools": json.loads(_tools(220))["tools"], "pad": "x" * 30000}
-                        ),
+                        "inlineContent": json.dumps({"tools": json.loads(_tools(220))["tools"], "pad": "x" * 30000}),
                         "protocolVersion": MCP_PROTOCOL_VERSION,
                     },
                 }
@@ -712,9 +710,7 @@ def build_matrix(
                 "on the descriptor. Note the sync overwrites the name from the fetched card",
                 "name": "a2a-card-sync-url",
                 "descriptorType": "A2A",
-                "descriptors": {
-                    "a2a": {"agentCard": {"inlineContent": A2A_CARD, "schemaVersion": A2A_SCHEMA_VERSION}}
-                },
+                "descriptors": {"a2a": {"agentCard": {"inlineContent": A2A_CARD, "schemaVersion": A2A_SCHEMA_VERSION}}},
                 **from_url(a2a_sync_url),
             }
         )
@@ -744,7 +740,9 @@ def build_matrix(
                     "(requires an assumable AgentRegistryMigrationSyncTest role)",
                     "name": "mcp-sync-url-iam-credentials",
                     "descriptorType": "MCP",
-                    "descriptors": {"mcp": {"server": {"inlineContent": MCP_SERVER, "schemaVersion": MCP_SCHEMA_VERSION}}},
+                    "descriptors": {
+                        "mcp": {"server": {"inlineContent": MCP_SERVER, "schemaVersion": MCP_SCHEMA_VERSION}}
+                    },
                     **from_url(mcp_sync_url, iam_creds),
                 },
             ]
@@ -760,13 +758,10 @@ def _error_code(error: ClientError) -> str:
 
 #: Codes that mean "the state machine does not allow this transition from here", as opposed to a
 #: permissions problem or a throttle. Only these are worth retrying the long way round.
-_STATE_MACHINE_REFUSALS = frozenset(
-    {"ValidationException", "ConflictException", "InvalidRequestException"}
-)
+_STATE_MACHINE_REFUSALS = frozenset({"ValidationException", "ConflictException", "InvalidRequestException"})
 
 
-def wait_until_stable(client, registry_id: str, record_id: str,
-                      attempts: int = 30, delay: int = 5) -> str:
+def wait_until_stable(client, registry_id: str, record_id: str, attempts: int = 30, delay: int = 5) -> str:
     """Poll a record until it leaves CREATING/UPDATING and returns its settled status."""
     status = "UNKNOWN"
     for _ in range(attempts):
@@ -806,8 +801,10 @@ def apply_status(client, registry_id: str, record_id: str, target_status: str) -
         if target_status == "DEPRECATED":
             try:
                 client.update_registry_record_status(
-                    registryId=registry_id, recordId=record_id,
-                    status=target_status, statusReason=reason,
+                    registryId=registry_id,
+                    recordId=record_id,
+                    status=target_status,
+                    statusReason=reason,
                 )
                 return True, "updateStatus=DEPRECATED"
             except ClientError as error:
@@ -821,13 +818,17 @@ def apply_status(client, registry_id: str, record_id: str, target_status: str) -
                 client.submit_registry_record_for_approval(registryId=registry_id, recordId=record_id)
                 wait_until_stable(client, registry_id, record_id)
                 client.update_registry_record_status(
-                    registryId=registry_id, recordId=record_id,
-                    status="APPROVED", statusReason=reason,
+                    registryId=registry_id,
+                    recordId=record_id,
+                    status="APPROVED",
+                    statusReason=reason,
                 )
                 wait_until_stable(client, registry_id, record_id)
                 client.update_registry_record_status(
-                    registryId=registry_id, recordId=record_id,
-                    status=target_status, statusReason=reason,
+                    registryId=registry_id,
+                    recordId=record_id,
+                    status=target_status,
+                    statusReason=reason,
                 )
                 return True, "submit -> APPROVED -> DEPRECATED"
 
@@ -836,8 +837,10 @@ def apply_status(client, registry_id: str, record_id: str, target_status: str) -
             return True, "submitForApproval"
         wait_until_stable(client, registry_id, record_id)
         client.update_registry_record_status(
-            registryId=registry_id, recordId=record_id,
-            status=target_status, statusReason=reason,
+            registryId=registry_id,
+            recordId=record_id,
+            status=target_status,
+            statusReason=reason,
         )
         return True, f"submit -> updateStatus={target_status}"
     except ClientError as error:
@@ -1001,13 +1004,10 @@ def main(argv: list[str] | None = None) -> int:
             stable = wait_until_stable(client, registry_id, fixture["recordId"])
             if stable != "DRAFT":
                 print(
-                    f"  SKIP  {fixture['scenario']} (status={stable}, cannot transition to "
-                    f"{fixture['target_status']})"
+                    f"  SKIP  {fixture['scenario']} (status={stable}, cannot transition to {fixture['target_status']})"
                 )
                 continue
-            ok, detail = apply_status(
-                client, registry_id, fixture["recordId"], str(fixture["target_status"])
-            )
+            ok, detail = apply_status(client, registry_id, fixture["recordId"], str(fixture["target_status"]))
             print(f"  {'->  ' if ok else 'FAIL'}  {fixture['target_status']:<18} {fixture['scenario']}: {detail}")
 
     print("\nFinal record states:")
@@ -1019,11 +1019,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {status:<18} {count}")
 
     print("\nPoint the migration source at this registry to test:")
-    print(f'  "source": {{ "accountId": "{matrix_account}", "region": "{args.region}", "registryId": "{registry_id}" }}')
+    print(
+        f'  "source": {{ "accountId": "{matrix_account}", "region": "{args.region}", "registryId": "{registry_id}" }}'
+    )
     print("\nB5 follow-up -- does the list summary synthesize a recordVersion the create did not set?")
     print(f"  aws bedrock-agentcore-control list-registry-records --registry-id {registry_id} \\")
-    print("    --name b5-no-record-version --region " + args.region
-          + (f" --profile {args.profile}" if args.profile else ""))
+    print(
+        "    --name b5-no-record-version --region "
+        + args.region
+        + (f" --profile {args.profile}" if args.profile else "")
+    )
     return 2 if rejected else 0
 
 

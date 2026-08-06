@@ -13,6 +13,7 @@ Nothing here writes to any registry. The migration calls only record-level opera
 the registry is one ``aws agent-registry-control create-registry`` call the operator makes with the
 payload below.
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,11 +43,7 @@ def derive_create_registry_inputs(
     one unreachable registry does not hide the others.
     """
     api_config = settings["api"]["preview"]
-    selected = [
-        mapping
-        for mapping in mappings
-        if not mapping_ids or str(mapping.get("id")) in set(mapping_ids)
-    ]
+    selected = [mapping for mapping in mappings if not mapping_ids or str(mapping.get("id")) in set(mapping_ids)]
     results: list[dict[str, Any]] = []
     for mapping in selected:
         mapping_id = str(mapping.get("id"))
@@ -78,7 +75,7 @@ def derive_create_registry_inputs(
                 source_registry_id=str(source["registryId"]),
             )
             entry["warnings"] = warnings
-        except Exception as error:  # noqa: BLE001 - reported per mapping, including TransformError
+        except Exception as error:
             entry["error"] = str(error)
             # The message goes in the report; the traceback goes to the log. Without it an
             # unexpected failure here is a one-line string with no way to find out what raised it.

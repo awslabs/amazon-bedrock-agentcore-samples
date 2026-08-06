@@ -9,6 +9,7 @@ These are the functions whose silent failure would corrupt a migration rather th
 
 Each test states the failure it prevents.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -19,17 +20,17 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.jobs.transform_load import (  # noqa: E402
+from migration_common.jobs.transform_load import (
     _approval_summary,
     _process_record,
     _validate_extract_manifest,
     _validate_replay_configuration,
     _verify_mapping_has_not_changed,
 )
-from migration_common.registry_api import LoadResult  # noqa: E402
-from migration_common.settings import replay_configuration_fingerprint  # noqa: E402
-from migration_common.storage import S3Store  # noqa: E402
-from migration_common.transform import RecordTransformer  # noqa: E402
+from migration_common.registry_api import LoadResult
+from migration_common.settings import replay_configuration_fingerprint
+from migration_common.storage import S3Store
+from migration_common.transform import RecordTransformer
 
 RUN_ID = "run-2026-07-26-01"
 SOURCE = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-src"}
@@ -64,8 +65,7 @@ class _Body:
             yield self._data[start : start + chunk_size]
 
     def iter_lines(self):
-        for line in self._data.split(b"\n"):
-            yield line
+        yield from self._data.split(b"\n")
 
     def read(self):
         return self._data
@@ -88,7 +88,7 @@ class FakeS3:
             "sizeBytes": len(body),
         }
 
-    def get_object(self, Bucket: str, Key: str, VersionId: str = "v1"):  # noqa: N803 - boto3 casing
+    def get_object(self, Bucket: str, Key: str, VersionId: str = "v1"):
         return {"Body": _Body(self.objects[(Key, VersionId)])}
 
 

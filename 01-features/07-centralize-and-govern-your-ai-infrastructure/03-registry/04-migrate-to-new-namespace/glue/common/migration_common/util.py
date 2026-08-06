@@ -4,6 +4,7 @@ Covers logging setup, dotted-path access into nested dicts, timestamp parsing, d
 path-segment sanitization, and JSON serialization that tolerates the datetime,
 Decimal, bytes, and set values that appear in registry payloads.
 """
+
 from __future__ import annotations
 
 import base64
@@ -27,9 +28,7 @@ USER_AGENT_EXTRA = f"agent-registry-migration/{VERSION}"
 
 # Keys that are safe to echo into manifests and reports. Deliberately excludes
 # externalId so the report artifacts never carry the cross-account trust secret.
-_PUBLIC_ENDPOINT_FIELDS = frozenset(
-    {"accountId", "region", "registryId", "registryArn", "roleArn"}
-)
+_PUBLIC_ENDPOINT_FIELDS = frozenset({"accountId", "region", "registryId", "registryArn", "roleArn"})
 
 #: Libraries whose INFO output is about their own internals, not about the migration.
 #:
@@ -132,9 +131,7 @@ def safe_segment(value: Any, fallback: str = "unknown") -> str:
 
 def public_endpoint(endpoint: dict[str, Any]) -> dict[str, Any]:
     """Project an endpoint down to the non-sensitive fields used in reports."""
-    return {
-        key: value for key, value in endpoint.items() if key in _PUBLIC_ENDPOINT_FIELDS
-    }
+    return {key: value for key, value in endpoint.items() if key in _PUBLIC_ENDPOINT_FIELDS}
 
 
 def json_dumps(value: Any, *, indent: int | None = None) -> str:

@@ -20,13 +20,15 @@ Writes are not encrypted here, because there is no server to encrypt them: the f
 directory's permissions. That is the trade you accept by staging locally, and it is why the reports
 of a local run are worth putting somewhere you control.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 from .storage import JsonLinesObject
 from .util import json_dumps

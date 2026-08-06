@@ -19,6 +19,7 @@ The Preview reader is lenient (it accepts several equivalent input spellings), w
 GA writer is strict: ``_validate_ga_record`` enforces the "exactly one valid primary per
 recordType" rule before any record leaves this module.
 """
+
 from __future__ import annotations
 
 import copy
@@ -91,9 +92,7 @@ _PRIMARY_ALIASES_BY_VARIANT: dict[str, tuple[tuple[str, str], ...]] = {
     "custom": (("custom", "custom"),),
 }
 _PRIMARY_SOURCE_ALIASES = {
-    alias: canonical
-    for aliases in _PRIMARY_ALIASES_BY_VARIANT.values()
-    for alias, canonical in aliases
+    alias: canonical for aliases in _PRIMARY_ALIASES_BY_VARIANT.values() for alias, canonical in aliases
 }
 _PRIMARY_SOURCE_KEYS = tuple(_PRIMARY_SOURCE_ALIASES)
 # Supplementary (non-primary) descriptors and the GA ``additionalData`` child they map to.
@@ -127,9 +126,7 @@ _GA_NAME_MAX_LENGTH = 255
 # Source statuses the load stage can put a migrated record into. The rest (CREATING, UPDATING,
 # CREATE_FAILED, UPDATE_FAILED) are transient or describe a failed operation on the source record,
 # so they say nothing a new GA record could be set to.
-_REPRODUCIBLE_SOURCE_STATUSES = frozenset(
-    {"DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "DEPRECATED"}
-)
+_REPRODUCIBLE_SOURCE_STATUSES = frozenset({"DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "DEPRECATED"})
 
 _SERVER_MANAGED_FIELDS = {
     "recordId",
@@ -185,21 +182,14 @@ class RecordTransformer:
         )
         self._name_prefix = _name_part(configured_prefix)
         self._allowed_record_types = {
-            str(value)
-            for value in transform_config.get(
-                "allowedRecordTypes", ["AGENT", "MCP", "SKILL", "CUSTOM"]
-            )
+            str(value) for value in transform_config.get("allowedRecordTypes", ["AGENT", "MCP", "SKILL", "CUSTOM"])
         }
-        configured_passthrough = [
-            str(value)
-            for value in transform_config.get("passthroughFields", ["description"])
-        ]
+        configured_passthrough = [str(value) for value in transform_config.get("passthroughFields", ["description"])]
         unsupported_passthrough = sorted(set(configured_passthrough) - {"description"})
         if unsupported_passthrough:
             raise TransformError(
                 "transform.passthroughFields contains fields that are not supported "
-                "end-to-end by the GA create/update contract: "
-                + ", ".join(unsupported_passthrough)
+                "end-to-end by the GA create/update contract: " + ", ".join(unsupported_passthrough)
             )
         self._passthrough_fields = configured_passthrough
 
@@ -212,23 +202,17 @@ class RecordTransformer:
 
         preview_descriptors = preview_record.get("descriptors")
         preview_variant = _preview_variant(preview_descriptors)
-        primary_key, primary_value, descriptor_container = _select_primary_descriptor(
-            preview_descriptors
-        )
+        primary_key, primary_value, descriptor_container = _select_primary_descriptor(preview_descriptors)
         record_type = self._record_type(primary_key, preview_variant)
         if record_type not in self._allowed_record_types:
-            raise TransformError(
-                f"Inferred recordType {record_type!r} is not allowed by transform.allowedRecordTypes"
-            )
+            raise TransformError(f"Inferred recordType {record_type!r} is not allowed by transform.allowedRecordTypes")
 
         inherited_source = preview_record.get("synchronizationConfiguration")
         primary_descriptor = self._build_primary_descriptor(
             primary_key, primary_value, descriptor_container, inherited_source, warnings
         )
         if primary_key == "agentSkillsMd":
-            primary_key, primary_descriptor = _markdown_skill_to_definition(
-                primary_descriptor, warnings
-            )
+            primary_key, primary_descriptor = _markdown_skill_to_definition(primary_descriptor, warnings)
 
         if _optional_text(preview_record.get("identifier")):
             warnings.append(
@@ -252,9 +236,7 @@ class RecordTransformer:
                 result[field] = copy.deepcopy(preview_record[field])
 
         ignored = sorted(
-            key
-            for key in preview_record
-            if key not in _KNOWN_TOP_LEVEL_FIELDS and key not in self._passthrough_fields
+            key for key in preview_record if key not in _KNOWN_TOP_LEVEL_FIELDS and key not in self._passthrough_fields
         )
         if ignored:
             warnings.append(f"Ignored unmapped preview fields: {', '.join(ignored)}")
@@ -282,9 +264,7 @@ class RecordTransformer:
     @staticmethod
     def _require_old_record_id(preview_record: dict[str, Any], context: dict[str, Any]) -> str:
         """Return the normalized source record id, preferring the extract-stage context."""
-        old_record_id = _optional_text(context.get("oldRecordId")) or _optional_text(
-            preview_record.get("recordId")
-        )
+        old_record_id = _optional_text(context.get("oldRecordId")) or _optional_text(preview_record.get("recordId"))
         if not old_record_id:
             raise TransformError("A normalized source oldRecordId is required before transformation")
         return old_record_id
@@ -298,9 +278,7 @@ class RecordTransformer:
         warnings: list[str],
     ) -> dict[str, Any]:
         """Build the GA primary descriptor and merge supplementary ``additionalData`` children."""
-        primary_descriptor = _transform_descriptor(
-            primary_value, inherited_source, primary_key, warnings
-        )
+        primary_descriptor = _transform_descriptor(primary_value, inherited_source, primary_key, warnings)
         additional_data = _collect_additional_data(
             descriptor_container, primary_key, primary_value, inherited_source, warnings
         )
@@ -480,17 +458,14 @@ def transform_registry_configuration(
         raise TransformError("discoveryConfiguration must be an object")
     discovery = copy.deepcopy(existing_discovery or {})
     authorizer_type = preview_registry.get("authorizerType")
-    authorizer_configuration = preview_registry.get(
-        "authorizerConfiguration", discovery.get("authorizerConfiguration")
-    )
+    authorizer_configuration = preview_registry.get("authorizerConfiguration", discovery.get("authorizerConfiguration"))
     if authorizer_type is not None:
         discovery["authorizerType"] = copy.deepcopy(authorizer_type)
     if authorizer_configuration is not None:
         discovery["authorizerConfiguration"] = _transform_authorizer_configuration(
             authorizer_configuration,
             source_registry_id=(
-                _optional_text(source_registry_id)
-                or _optional_text(preview_registry.get("registryId"))
+                _optional_text(source_registry_id) or _optional_text(preview_registry.get("registryId"))
             ),
             warnings=collected_warnings,
         )
@@ -543,8 +518,7 @@ def _transform_authorizer_configuration(
     unsupported_variants = sorted(set(value) - {"customJWTAuthorizer"})
     if unsupported_variants:
         raise TransformError(
-            "authorizerConfiguration supports only customJWTAuthorizer at GA; found: "
-            + ", ".join(unsupported_variants)
+            "authorizerConfiguration supports only customJWTAuthorizer at GA; found: " + ", ".join(unsupported_variants)
         )
     jwt_value = value.get("customJWTAuthorizer")
     if jwt_value is None:
@@ -566,9 +540,7 @@ def _transform_authorizer_configuration(
             "Re-apply the equivalent access control by hand if you relied on them."
         )
     if not jwt.get("discoveryUrl"):
-        raise TransformError(
-            "authorizerConfiguration.customJWTAuthorizer.discoveryUrl is required"
-        )
+        raise TransformError("authorizerConfiguration.customJWTAuthorizer.discoveryUrl is required")
 
     _warn_on_stale_registry_references(jwt, source_registry_id, warnings)
     return {"customJWTAuthorizer": jwt}
@@ -631,13 +603,9 @@ def _select_primary_descriptor(descriptors: Any) -> tuple[str, Any, dict[str, An
     if not isinstance(descriptors, dict) or not descriptors:
         raise TransformError("Preview record descriptors must be a non-empty object")
 
-    present_variants = [
-        key for key in _VARIANT_KEYS if key in descriptors and descriptors[key] is not None
-    ]
+    present_variants = [key for key in _VARIANT_KEYS if key in descriptors and descriptors[key] is not None]
     if len(present_variants) > 1:
-        raise TransformError(
-            f"Preview descriptors contain multiple union variants: {', '.join(present_variants)}"
-        )
+        raise TransformError(f"Preview descriptors contain multiple union variants: {', '.join(present_variants)}")
     if present_variants:
         variant = present_variants[0]
         container = descriptors[variant]
@@ -674,8 +642,7 @@ def _select_primary_descriptor(descriptors: Any) -> tuple[str, Any, dict[str, An
     if len(canonical_matches) != 1:
         names = ", ".join(key for key, _ in matches) or "none"
         raise TransformError(
-            "Expected exactly one primary descriptor in preview shape; found "
-            f"{len(canonical_matches)} ({names})"
+            f"Expected exactly one primary descriptor in preview shape; found {len(canonical_matches)} ({names})"
         )
     primary_key, primary_value = canonical_matches[0]
     return primary_key, primary_value, descriptors
@@ -742,8 +709,7 @@ def _collect_additional_data(
                 output_key = _SUPPLEMENTARY_ALIASES.get(str(key), str(key))
                 if output_key not in allowed:
                     raise TransformError(
-                        f"GA primary descriptor {primary_key!r} does not support "
-                        f"additionalData.{output_key}"
+                        f"GA primary descriptor {primary_key!r} does not support additionalData.{output_key}"
                     )
                 if output_key in collected:
                     warnings.append(
@@ -765,8 +731,7 @@ def _collect_additional_data(
         if output_key not in allowed:
             if value != primary_value:
                 raise TransformError(
-                    f"GA primary descriptor {primary_key!r} does not support "
-                    f"additionalData.{output_key}"
+                    f"GA primary descriptor {primary_key!r} does not support additionalData.{output_key}"
                 )
             continue
         if output_key in collected:
@@ -848,8 +813,7 @@ def _transform_descriptor(
         result["dataSchemaVersion"] = copy.deepcopy(versions[0])
         if len({str(version) for version in versions}) > 1:
             warnings.append(
-                "Descriptor had conflicting schema/protocol versions; "
-                "dataSchemaVersion precedence was used."
+                "Descriptor had conflicting schema/protocol versions; dataSchemaVersion precedence was used."
             )
 
     explicit_source = None
@@ -861,17 +825,13 @@ def _transform_descriptor(
     if descriptor_source not in (None, {}):
         if descriptor_key not in _SOURCE_SUPPORTED_DESCRIPTORS:
             if explicit_source is not None:
-                raise TransformError(
-                    f"GA descriptor {descriptor_key!r} does not support source"
-                )
+                raise TransformError(f"GA descriptor {descriptor_key!r} does not support source")
         else:
             result["source"] = _normalize_source(descriptor_source, warnings)
 
     ignored = sorted(str(key) for key in value if key not in _DESCRIPTOR_CONTROL_FIELDS)
     if ignored:
-        warnings.append(
-            f"Ignored unmapped fields on {descriptor_key} descriptor: {', '.join(ignored)}"
-        )
+        warnings.append(f"Ignored unmapped fields on {descriptor_key} descriptor: {', '.join(ignored)}")
     if not result:
         raise TransformError(f"Descriptor {descriptor_key!r} produced an empty GA payload")
     return result
@@ -921,13 +881,9 @@ def _normalize_source(value: Any, warnings: list[str]) -> dict[str, Any]:
     )
     if ignored:
         warnings.append(f"Ignored unsupported source fields: {', '.join(ignored)}")
-    if any(
-        key in source_value or key in value
-        for key in ("syncMode", "synchronizationMode")
-    ):
+    if any(key in source_value or key in value for key in ("syncMode", "synchronizationMode")):
         warnings.append(
-            "Preview synchronization mode was omitted because the GA source.fromUrl shape "
-            "does not contain syncMode."
+            "Preview synchronization mode was omitted because the GA source.fromUrl shape does not contain syncMode."
         )
     return {"fromUrl": from_url}
 
@@ -976,9 +932,7 @@ def _preview_variant(descriptors: Any) -> str | None:
     """Return the Preview union variant (from a variant key or ``recordType``), if any."""
     if not isinstance(descriptors, dict):
         return None
-    present_variants = [
-        key for key in _VARIANT_KEYS if key in descriptors and descriptors[key] is not None
-    ]
+    present_variants = [key for key in _VARIANT_KEYS if key in descriptors and descriptors[key] is not None]
     if len(present_variants) == 1:
         return present_variants[0]
     discriminator = str(descriptors.get("recordType", "")).strip()
@@ -1030,9 +984,7 @@ def _validate_ga_record(record: dict[str, Any]) -> None:
     if record_type not in allowed_primaries:
         raise TransformError(f"Unsupported GA recordType: {record_type}")
     if primary_key not in allowed_primaries[record_type]:
-        raise TransformError(
-            f"GA primary descriptor {primary_key!r} is invalid for recordType {record_type!r}"
-        )
+        raise TransformError(f"GA primary descriptor {primary_key!r} is invalid for recordType {record_type!r}")
     _validate_source_placement(primary_key, descriptors[primary_key])
     if _contains_key(record, "syncMode") or _contains_key(record, "synchronizationMode"):
         raise TransformError("Transformed GA record must not contain a synchronization mode")
@@ -1053,8 +1005,7 @@ def _validate_source_placement(primary_key: str, descriptor: Any) -> None:
     unsupported = set(additional) - allowed
     if unsupported:
         raise TransformError(
-            f"GA descriptor {primary_key!r} has unsupported additionalData keys: "
-            + ", ".join(sorted(unsupported))
+            f"GA descriptor {primary_key!r} has unsupported additionalData keys: " + ", ".join(sorted(unsupported))
         )
     for key, value in additional.items():
         if not isinstance(value, dict):

@@ -14,6 +14,7 @@ neither its name nor -- unless it is URL-synchronized -- its descriptor source, 
 recorded id it would be migrated a second time, leaving the record it was migrated to the first time
 behind as an orphan. Where that id is stored is a state question; see test_watermark.py.
 """
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import registry_api  # noqa: E402
+from migration_common import registry_api
 
 REGISTRY = "reg-target"
 
@@ -82,7 +83,7 @@ def _unwrap_patch(value):
 class CountingClient(registry_api.GaRegistryClient):
     """A GA client with the transport replaced by an in-memory registry that counts calls."""
 
-    def __init__(self, records: list[dict], *, registry: str = REGISTRY) -> None:  # noqa: D107
+    def __init__(self, records: list[dict], *, registry: str = REGISTRY) -> None:
         self.records = {(registry, record["recordId"]): record for record in records}
         self.calls = {"list": 0, "get": 0, "create": 0, "update": 0}
         self._request_config = {
@@ -198,9 +199,7 @@ class SourceIdentityMatching(unittest.TestCase):
 
     def test_a_different_record_version_is_a_new_record(self):
         client = CountingClient([existing("rec-1", "https://mcp.example.com/a", version="1.0")])
-        result = client.upsert(
-            registry_id=REGISTRY, record=desired("https://mcp.example.com/a", version="2.0")
-        )
+        result = client.upsert(registry_id=REGISTRY, record=desired("https://mcp.example.com/a", version="2.0"))
         self.assertEqual(result.action, "created")
 
     def test_absent_and_empty_record_versions_are_the_same_thing(self):
@@ -252,15 +251,11 @@ class NameCollisionCannotOverwrite(unittest.TestCase):
 
     def test_a_second_source_record_with_the_same_name_is_refused(self):
         client = CountingClient([])
-        first = client.upsert(
-            registry_id=REGISTRY, record=self._record('{"v":"A"}'), source_record_id="rec-A"
-        )
+        first = client.upsert(registry_id=REGISTRY, record=self._record('{"v":"A"}'), source_record_id="rec-A")
         self.assertEqual(first.action, "created")
 
         with self.assertRaises(registry_api.RegistryApiError) as ctx:
-            client.upsert(
-                registry_id=REGISTRY, record=self._record('{"v":"B"}'), source_record_id="rec-B"
-            )
+            client.upsert(registry_id=REGISTRY, record=self._record('{"v":"B"}'), source_record_id="rec-B")
         message = str(ctx.exception)
         self.assertIn("rec-A", message)
         self.assertIn("rec-B", message)
@@ -269,19 +264,13 @@ class NameCollisionCannotOverwrite(unittest.TestCase):
 
         # The first record's content survives, and no update was issued against it.
         self.assertEqual(client.calls["update"], 0)
-        self.assertEqual(
-            client.records[(REGISTRY, "rec-new-1")]["descriptors"]["custom"]["data"], '{"v":"A"}'
-        )
+        self.assertEqual(client.records[(REGISTRY, "rec-new-1")]["descriptors"]["custom"]["data"], '{"v":"A"}')
 
     def test_the_same_source_record_can_be_processed_twice(self):
         # Idempotent replay must still work: it is the same record, not a collision.
         client = CountingClient([])
-        first = client.upsert(
-            registry_id=REGISTRY, record=self._record('{"v":"A"}'), source_record_id="rec-A"
-        )
-        second = client.upsert(
-            registry_id=REGISTRY, record=self._record('{"v":"A"}'), source_record_id="rec-A"
-        )
+        first = client.upsert(registry_id=REGISTRY, record=self._record('{"v":"A"}'), source_record_id="rec-A")
+        second = client.upsert(registry_id=REGISTRY, record=self._record('{"v":"A"}'), source_record_id="rec-A")
         self.assertEqual(first.action, "created")
         self.assertEqual(second.action, "existing")
         self.assertEqual(client.calls["create"], 1)
@@ -304,9 +293,7 @@ class NameCollisionCannotOverwrite(unittest.TestCase):
     def test_the_same_name_in_a_different_registry_is_allowed(self):
         client = CountingClient([])
         client.upsert(registry_id="reg-one", record=self._record('{"v":"A"}'), source_record_id="rec-A")
-        result = client.upsert(
-            registry_id="reg-two", record=self._record('{"v":"B"}'), source_record_id="rec-B"
-        )
+        result = client.upsert(registry_id="reg-two", record=self._record('{"v":"B"}'), source_record_id="rec-B")
         self.assertEqual(result.action, "created")
 
     def test_a_caller_that_supplies_no_source_id_is_unaffected(self):
@@ -502,9 +489,7 @@ class IndexingCost(unittest.TestCase):
         client = CountingClient([])
         first = client.upsert(registry_id=REGISTRY, record=desired("https://mcp.example.com/a"))
         # Same source arriving again (duplicated staged data) must resolve to the same record.
-        second = client.upsert(
-            registry_id=REGISTRY, record=desired("https://mcp.example.com/a", name="other-name")
-        )
+        second = client.upsert(registry_id=REGISTRY, record=desired("https://mcp.example.com/a", name="other-name"))
         self.assertEqual(first.action, "created")
         self.assertEqual(second.action, "existing")
         self.assertEqual(second.new_record_id, first.new_record_id)
@@ -534,9 +519,7 @@ class IndexingCost(unittest.TestCase):
 class SourceIdentityFunction(unittest.TestCase):
     def test_records_without_a_source_have_no_identity(self):
         self.assertIsNone(
-            registry_api._source_identity(
-                {"recordType": "CUSTOM", "descriptors": {"custom": {"data": "x"}}}
-            )
+            registry_api._source_identity({"recordType": "CUSTOM", "descriptors": {"custom": {"data": "x"}}})
         )
 
     def test_identity_is_stable_and_order_independent(self):
@@ -550,9 +533,7 @@ class SourceIdentityFunction(unittest.TestCase):
         # made the fallback miss and create a duplicate instead of updating the record.
         original = desired("https://a")
         edited = dict(desired("https://a"), description="now documented")
-        self.assertEqual(
-            registry_api._source_identity(original), registry_api._source_identity(edited)
-        )
+        self.assertEqual(registry_api._source_identity(original), registry_api._source_identity(edited))
 
     def test_a_changed_description_is_still_written_through(self):
         client = CountingClient([existing("rec-1", "https://mcp.example.com/a")])
@@ -571,9 +552,7 @@ class SourceIdentityFunction(unittest.TestCase):
         with_child["descriptors"]["mcpServer"]["additionalData"] = {
             "tools": {"data": "t", "source": source("https://tools")}
         }
-        self.assertNotEqual(
-            registry_api._source_identity(base), registry_api._source_identity(with_child)
-        )
+        self.assertNotEqual(registry_api._source_identity(base), registry_api._source_identity(with_child))
 
 
 class RecordedIdTakesPrecedence(unittest.TestCase):
@@ -597,9 +576,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
     def test_without_the_recorded_id_the_same_rename_duplicates(self):
         # The behaviour before the id map existed, pinned so the fix cannot quietly regress.
         client = CountingClient([plain("old-name", record_id="rec-1")])
-        result = client.upsert(
-            registry_id=REGISTRY, record=plain("new-name"), source_record_id="prev-1"
-        )
+        result = client.upsert(registry_id=REGISTRY, record=plain("new-name"), source_record_id="prev-1")
         self.assertEqual(result.action, "created")
         self.assertEqual(client.calls["create"], 1)
 
@@ -607,9 +584,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         # Two GA records: the one this source record was migrated to, and an unrelated one that
         # happens to hold the name this record now wants. The recorded id has to win, otherwise a
         # rename would start updating somebody else's record.
-        client = CountingClient(
-            [plain("old-name", record_id="rec-1"), plain("new-name", record_id="rec-other")]
-        )
+        client = CountingClient([plain("old-name", record_id="rec-1"), plain("new-name", record_id="rec-other")])
         result = client.upsert(
             registry_id=REGISTRY,
             record=plain("new-name"),

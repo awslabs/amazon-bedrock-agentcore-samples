@@ -15,11 +15,13 @@ Each check returns a :class:`CheckResult` with a status and, on failure, a concr
 same function backs the standalone ``validate`` entrypoint and the fail-fast check the jobs run at
 startup, so what an operator validates is exactly what the job enforces.
 """
+
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable
+from typing import Any
 
 # Check outcomes. ``PASS`` trips Bandit's hardcoded-password heuristic, which matches any name
 # containing "pass" against a string literal; this is a status label, not a credential.
@@ -163,19 +165,12 @@ def check_mapping_shapes(mappings: list[dict[str, Any]]) -> list[CheckResult]:
         # carry region-bound ARNs (an OAuth credential provider, an iamCredentialProvider region)
         # that are copied across verbatim. Crossing regions is allowed -- some estates consolidate
         # deliberately -- but it is worth naming before a run rather than after.
-        if (
-            source.get("region")
-            and target.get("region")
-            and source.get("region") != target.get("region")
-        ):
+        if source.get("region") and target.get("region") and source.get("region") != target.get("region"):
             results.append(
                 CheckResult(
                     name=f"registries.{mapping_id}.crossRegion",
                     status=WARN,
-                    detail=(
-                        f"source region {source.get('region')} differs from target region "
-                        f"{target.get('region')}"
-                    ),
+                    detail=(f"source region {source.get('region')} differs from target region {target.get('region')}"),
                     remedy=(
                         "Deliberate consolidation is fine. Otherwise point the target at the same "
                         "region: record content is copied as-is, so any region-bound ARN in a "
@@ -335,14 +330,10 @@ def check_staging_bucket(store: Any) -> list[CheckResult]:
                 "runs/*, reports/* and state/*, and confirm the bucket name",
             )
         ]
-    results = [
-        CheckResult(name="staging.writable", status=PASS, detail=f"{store.location()} accepts writes")
-    ]
+    results = [CheckResult(name="staging.writable", status=PASS, detail=f"{store.location()} accepts writes")]
     try:
         store.get_json(PROBE_KEY)
-        results.append(
-            CheckResult(name="staging.readable", status=PASS, detail=f"{store.location()} is readable")
-        )
+        results.append(CheckResult(name="staging.readable", status=PASS, detail=f"{store.location()} is readable"))
     except Exception as error:  # noqa: BLE001 - surfaced as a check failure
         results.append(
             CheckResult(
@@ -420,10 +411,7 @@ def run_checks(
 
 
 def _describe(endpoint: dict[str, Any]) -> str:
-    return (
-        f"{endpoint.get('accountId', '?')}/{endpoint.get('region', '?')}/"
-        f"{endpoint.get('registryId', '?')}"
-    )
+    return f"{endpoint.get('accountId', '?')}/{endpoint.get('region', '?')}/{endpoint.get('registryId', '?')}"
 
 
 def _describe_key(key: Iterable[Any]) -> str:

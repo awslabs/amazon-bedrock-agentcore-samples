@@ -9,6 +9,7 @@ file is not a build warning -- it is a job that fails at import time in producti
 
 Exits 0 when the wheel is complete, 1 with the missing (or unexpected) entries listed.
 """
+
 from __future__ import annotations
 
 import sys
@@ -77,9 +78,7 @@ def main(argv: list[str]) -> int:
     # could only ever have matched a hypothetical migration_common/tests -- the check advertised
     # protection it could not provide. Anchoring on the segment also catches a top-level `tests/`.
     unexpected = sorted(
-        name
-        for name in entries
-        if "tests" in Path(name).parts or name.endswith(("_test.py", "test_helpers.py"))
+        name for name in entries if "tests" in Path(name).parts or name.endswith(("_test.py", "test_helpers.py"))
     )
     # A wheel with a duplicated member is malformed (and duplicates a RECORD line), which zipfile
     # will happily produce and pip will not reliably install.

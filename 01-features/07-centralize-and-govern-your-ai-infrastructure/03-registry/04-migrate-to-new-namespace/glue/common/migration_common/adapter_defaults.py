@@ -14,6 +14,7 @@ Two things keep the two paths honest:
   and a deployed one produce the *same* replay fingerprint for the same code. That means a run
   extracted locally can even be loaded by a deployed job, and a drifting checkout is still caught.
 """
+
 from __future__ import annotations
 
 import hashlib

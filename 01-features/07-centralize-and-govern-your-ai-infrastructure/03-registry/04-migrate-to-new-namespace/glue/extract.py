@@ -17,6 +17,7 @@ Runs unchanged in two environments:
 
 All logic lives in ``migration_common.jobs.extract``; this file only wires up the entrypoint.
 """
+
 import os
 import sys
 
@@ -27,7 +28,7 @@ except ModuleNotFoundError:
     if os.path.isdir(_LIBRARY_DIR) and _LIBRARY_DIR not in sys.path:
         sys.path.insert(0, _LIBRARY_DIR)
 
-from migration_common.jobs.extract import run  # noqa: E402
+from migration_common.jobs.extract import run
 
 if __name__ == "__main__":
     run()

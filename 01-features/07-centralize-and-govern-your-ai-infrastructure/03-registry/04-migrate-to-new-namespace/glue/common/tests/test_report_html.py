@@ -5,6 +5,7 @@ matter, so what is pinned here is the review it presents: which checks appear, w
 concludes for a given run, and that nothing in a registry id or an error message can break out of
 the markup.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.report_html import (  # noqa: E402
+from migration_common.report_html import (
     ATTENTION,
     INFO,
     OK,
@@ -91,9 +92,7 @@ class ChecksFromTheReadSide(unittest.TestCase):
     """A load report cannot answer these, so the page has to take them from the extract report."""
 
     def test_a_clean_extract_is_reported_as_clean(self):
-        entry = check(
-            build_checks(report(), extract_summary()), "Preview source records were extracted successfully"
-        )
+        entry = check(build_checks(report(), extract_summary()), "Preview source records were extracted successfully")
         self.assertEqual(entry["status"], OK)
         self.assertIn("3 record(s) were read from 1 configured Preview source registry", entry["detail"])
 
@@ -123,9 +122,7 @@ class ChecksFromTheReadSide(unittest.TestCase):
 
     def test_an_incremental_window_is_stated_so_absent_records_are_not_a_surprise(self):
         summary = extract_summary(incrementalWindow={"changedAfter": "2026-08-01T00:00:00Z"})
-        entry = check(
-            build_checks(report(), summary), "The incremental window is the one you meant"
-        )
+        entry = check(build_checks(report(), summary), "The incremental window is the one you meant")
         self.assertIn("2026-08-01T00:00:00Z", entry["detail"])
 
     def test_without_an_extract_summary_the_page_still_renders(self):
@@ -151,9 +148,7 @@ class ChecksForACleanRun(unittest.TestCase):
         )
 
     def test_a_clean_run_needs_no_attention(self):
-        self.assertEqual(
-            [entry for entry in build_checks(report()) if entry["status"] == ATTENTION], []
-        )
+        self.assertEqual([entry for entry in build_checks(report()) if entry["status"] == ATTENTION], [])
 
     def test_accounting_covers_every_extracted_record(self):
         entry = check(build_checks(report()), "Load attempted every extracted record")
@@ -212,9 +207,7 @@ class DryRunReport(unittest.TestCase):
         self.assertEqual(entry["status"], INFO)
         self.assertIn("run --live --resume", entry["todo"])
         # Comparing counts against the source is meaningless before anything is written.
-        self.assertNotIn(
-            "Verify each GA target contains the expected records", [entry["what"] for entry in checks]
-        )
+        self.assertNotIn("Verify each GA target contains the expected records", [entry["what"] for entry in checks])
 
 
 class RenderedPage(unittest.TestCase):
@@ -345,9 +338,7 @@ class RenderedPage(unittest.TestCase):
         self.assertNotIn("check need ", page)
 
     def test_the_proportional_bar_reflects_the_outcome_split(self):
-        mixed = report(
-            registries=[dict(report()["registries"][0], created=1, updated=1, existing=1, failed=1)]
-        )
+        mixed = report(registries=[dict(report()["registries"][0], created=1, updated=1, existing=1, failed=1)])
         page = render_report(mixed)
         self.assertIn('class="bar"', page)
         self.assertIn("seg-created", page)

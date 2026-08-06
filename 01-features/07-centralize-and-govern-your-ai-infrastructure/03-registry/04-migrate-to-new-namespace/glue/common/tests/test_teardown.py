@@ -5,6 +5,7 @@ nothing, `--yes` alone must not touch the data, and nothing anywhere may call a 
 version-aware bucket emptying is covered too, because a versioned bucket that looks empty can still
 hold thousands of billable versions.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import teardown  # noqa: E402
+from migration_common import teardown
 
 BUCKET = "staging-bucket"
 STACK = "AgentRegistryMigrationEngine"
@@ -30,13 +31,17 @@ class FakePaginator:
 class FakeCloudFormation:
     def __init__(self, *, protection: bool = True, outputs: dict | None = None) -> None:
         self.protection = protection
-        self.outputs = outputs if outputs is not None else {
-            "StagingBucketName": BUCKET,
-            "ConfigurationParameterPrefix": "/agent-registry-migration/default",
-        }
+        self.outputs = (
+            outputs
+            if outputs is not None
+            else {
+                "StagingBucketName": BUCKET,
+                "ConfigurationParameterPrefix": "/agent-registry-migration/default",
+            }
+        )
         self.calls: list[str] = []
 
-    def describe_stacks(self, StackName: str):  # noqa: N803 - boto3 casing
+    def describe_stacks(self, StackName: str):
         self.calls.append(f"describe_stacks:{StackName}")
         return {
             "Stacks": [
@@ -44,10 +49,7 @@ class FakeCloudFormation:
                     "StackName": StackName,
                     "StackStatus": "CREATE_COMPLETE",
                     "EnableTerminationProtection": self.protection,
-                    "Outputs": [
-                        {"OutputKey": key, "OutputValue": value}
-                        for key, value in self.outputs.items()
-                    ],
+                    "Outputs": [{"OutputKey": key, "OutputValue": value} for key, value in self.outputs.items()],
                 }
             ]
         }
@@ -71,7 +73,7 @@ class FakeCloudFormation:
         self.calls.append("update_termination_protection")
         self.protection = kwargs["EnableTerminationProtection"]
 
-    def delete_stack(self, StackName: str):  # noqa: N803
+    def delete_stack(self, StackName: str):
         self.calls.append(f"delete_stack:{StackName}")
 
     def get_waiter(self, name: str):
@@ -93,13 +95,16 @@ def versions(count: int, *, prefix: str = "runs/", size: int = 10) -> list[dict]
 
 class FakeS3:
     def __init__(self, pages: list[dict] | None = None) -> None:
-        self.pages = pages if pages is not None else [
-            {
-                "Versions": versions(2, prefix="runs/", size=1024)
-                + versions(1, prefix="reports/", size=2048),
-                "DeleteMarkers": [{"Key": "runs/gone", "VersionId": "v9", "Size": 0}],
-            }
-        ]
+        self.pages = (
+            pages
+            if pages is not None
+            else [
+                {
+                    "Versions": versions(2, prefix="runs/", size=1024) + versions(1, prefix="reports/", size=2048),
+                    "DeleteMarkers": [{"Key": "runs/gone", "VersionId": "v9", "Size": 0}],
+                }
+            ]
+        )
         self.deleted: list[dict] = []
         self.deleted_buckets: list[str] = []
 
@@ -107,11 +112,11 @@ class FakeS3:
         assert name == "list_object_versions", name
         return FakePaginator(self.pages)
 
-    def delete_objects(self, Bucket: str, Delete: dict):  # noqa: N803
+    def delete_objects(self, Bucket: str, Delete: dict):
         self.deleted.extend(Delete["Objects"])
         return {}
 
-    def delete_bucket(self, Bucket: str):  # noqa: N803
+    def delete_bucket(self, Bucket: str):
         self.deleted_buckets.append(Bucket)
 
 
@@ -153,7 +158,7 @@ class PlanOnlyByDefault(unittest.TestCase):
 
     def test_missing_stack_is_a_clear_error_not_a_traceback(self):
         class Missing(FakeCloudFormation):
-            def describe_stacks(self, StackName: str):  # noqa: N803
+            def describe_stacks(self, StackName: str):
                 from botocore.exceptions import ClientError
 
                 raise ClientError(
@@ -222,7 +227,7 @@ class BucketInventory(unittest.TestCase):
 
     def test_a_delete_error_is_raised_not_ignored(self):
         class Failing(FakeS3):
-            def delete_objects(self, Bucket: str, Delete: dict):  # noqa: N803
+            def delete_objects(self, Bucket: str, Delete: dict):
                 return {"Errors": [{"Key": "runs/x", "Code": "AccessDenied", "Message": "nope"}]}
 
         with self.assertRaisesRegex(teardown.TeardownError, "AccessDenied"):

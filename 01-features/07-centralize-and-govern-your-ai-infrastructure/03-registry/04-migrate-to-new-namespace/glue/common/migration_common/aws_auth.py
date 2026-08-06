@@ -10,6 +10,7 @@ Assumed-role sessions use botocore ``RefreshableCredentials`` so a single long-r
 transparently re-assumes the role before the temporary credentials expire; the ambient
 execution-role session is already self-refreshing.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -114,9 +115,7 @@ def invoker_for_endpoint(
     return AwsApiInvoker(
         role_arn=endpoint.get("roleArn"),
         external_id=endpoint.get("externalId"),
-        session_name="-".join(
-            part for part in ("registry-migration", purpose, run_id) if part
-        ),
+        session_name="-".join(part for part in ("registry-migration", purpose, run_id) if part),
     )
 
 

@@ -8,6 +8,7 @@ Also covers the id map stored beside them -- what it remembers across runs, and 
 does. What the *loader* does with a recorded id is a matching question, so it lives with the other
 matching tests in test_source_index.py.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,8 +18,8 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import watermark  # noqa: E402
-from migration_common.storage import S3Store  # noqa: E402
+from migration_common import watermark
+from migration_common.storage import S3Store
 
 
 class _NoSuchKey(Exception):
@@ -36,7 +37,7 @@ class FakeS3:
         self.objects = dict(objects or {})
         self.puts: list[dict] = []
 
-    def get_object(self, Bucket: str, Key: str):  # noqa: N803 - boto3 casing
+    def get_object(self, Bucket: str, Key: str):
         if Key not in self.objects:
             raise _NoSuchKey(Key)
 
@@ -57,9 +58,7 @@ class FakeS3:
 
 class CutoffSelection(unittest.TestCase):
     def test_full_load_has_no_cutoff(self):
-        cutoff, reason = watermark.resolve_cutoff(
-            mapping_id="m", load_mode="FULL", changed_after=None, watermark=None
-        )
+        cutoff, reason = watermark.resolve_cutoff(mapping_id="m", load_mode="FULL", changed_after=None, watermark=None)
         self.assertIsNone(cutoff)
         self.assertIn("FULL", reason)
 
@@ -121,9 +120,7 @@ class CutoffSelection(unittest.TestCase):
 
     def test_incremental_without_any_basis_raises_actionable_error(self):
         with self.assertRaises(watermark.WatermarkError) as ctx:
-            watermark.resolve_cutoff(
-                mapping_id="orders", load_mode="INCREMENTAL", changed_after=None, watermark=None
-            )
+            watermark.resolve_cutoff(mapping_id="orders", load_mode="INCREMENTAL", changed_after=None, watermark=None)
         message = str(ctx.exception)
         self.assertIn("orders", message)
         self.assertIn("FULL load", message)
@@ -446,9 +443,7 @@ class WhatTheIdMapRemembers(unittest.TestCase):
             watermark.read_idmap(self.store, "map-a")
 
     def test_a_map_with_a_non_object_records_member_is_an_error(self):
-        self.s3.objects[watermark.idmap_key("map-a")] = json.dumps(
-            {"schemaVersion": 1, "records": []}
-        )
+        self.s3.objects[watermark.idmap_key("map-a")] = json.dumps({"schemaVersion": 1, "records": []})
         with self.assertRaises(watermark.IdMapError):
             watermark.read_idmap(self.store, "map-a")
 

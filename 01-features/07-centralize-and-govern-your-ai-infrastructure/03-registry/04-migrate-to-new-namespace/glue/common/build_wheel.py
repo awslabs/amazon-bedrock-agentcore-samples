@@ -11,6 +11,7 @@ network access at build time.
 The package is pure Python, so the resulting ``py3-none-any`` wheel built on any
 Python 3.9+ interpreter is compatible with the Glue 3.9 runtime.
 """
+
 from __future__ import annotations
 
 import argparse

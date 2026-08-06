@@ -7,6 +7,7 @@ regressed once before (now settled against the live service: it becomes an agent
 carrying the Markdown under additionalData.skillMd). The synthesized `name` is a source-namespaced
 hash, so tests assert its contract (prefix + 32 hex) and compare the rest of the record exactly.
 """
+
 from __future__ import annotations
 
 import os
@@ -16,7 +17,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.transform import (  # noqa: E402
+from migration_common.transform import (
     RecordTransformer,
     TransformError,
     transform_registry_configuration,
@@ -156,8 +157,11 @@ class RecordTransformCharacterization(unittest.TestCase):
         self.assertEqual(
             result.warnings,
             [
-                "Preview markdown-only skill was migrated as an agentSkillsDefinition carrying the "
-                "Markdown under additionalData.skillMd, because GA accepts no agentSkillsMd descriptor."
+                (
+                    "Preview markdown-only skill was migrated as an agentSkillsDefinition carrying "
+                    "the Markdown under additionalData.skillMd, because GA accepts no agentSkillsMd "
+                    "descriptor."
+                )
             ],
         )
         self.assertEqual(
@@ -165,9 +169,7 @@ class RecordTransformCharacterization(unittest.TestCase):
             {
                 "displayName": "md-skill",
                 "recordType": "SKILL",
-                "descriptors": {
-                    "agentSkillsDefinition": {"additionalData": {"skillMd": {"data": "# HELLO"}}}
-                },
+                "descriptors": {"agentSkillsDefinition": {"additionalData": {"skillMd": {"data": "# HELLO"}}}},
             },
         )
 
@@ -265,9 +267,7 @@ class RecordTransformCharacterization(unittest.TestCase):
             "recordId": "rec-bad",
             "name": "X",
             "descriptors": {
-                "agentSkills": {
-                    "skillDefinition": {"inlineContent": "D", "source": {"fromUrl": {"url": "https://x"}}}
-                }
+                "agentSkills": {"skillDefinition": {"inlineContent": "D", "source": {"fromUrl": {"url": "https://x"}}}}
             },
         }
         with self.assertRaises(TransformError):
@@ -371,9 +371,7 @@ class SourceStatusTravelsWithTheRecord(unittest.TestCase):
         for status in ("CREATE_FAILED", "UPDATE_FAILED", "CREATING", "UPDATING"):
             with self.subTest(status=status):
                 result = self._with_status(status)
-                self.assertTrue(
-                    any("cannot be reproduced" in w for w in result.warnings), result.warnings
-                )
+                self.assertTrue(any("cannot be reproduced" in w for w in result.warnings), result.warnings)
 
 
 class RegistryConfigurationTransform(unittest.TestCase):
@@ -490,9 +488,7 @@ class RegistryAuthorizerIsProjectedOntoTheGaShape(unittest.TestCase):
         stale = "https://bedrock-agentcore.us-west-2.amazonaws.com/registry/7UTnSjchy17rHV0u/mcp"
         warnings: list[str] = []
         result = transform_registry_configuration(
-            self._preview(
-                allowedAudience=[stale, "https://bedrock-agentcore.us-west-2.amazonaws.com"]
-            ),
+            self._preview(allowedAudience=[stale, "https://bedrock-agentcore.us-west-2.amazonaws.com"]),
             warnings=warnings,
         )
         # Reported, not rewritten: an audience guessed wrong is an authorization bug.
@@ -518,9 +514,7 @@ class RegistryAuthorizerIsProjectedOntoTheGaShape(unittest.TestCase):
         preview = self._preview(allowedAudience=["https://host/registry/abcd1234/mcp"])
         del preview["registryId"]
         warnings: list[str] = []
-        transform_registry_configuration(
-            preview, warnings=warnings, source_registry_id="abcd1234"
-        )
+        transform_registry_configuration(preview, warnings=warnings, source_registry_id="abcd1234")
         self.assertEqual(len(warnings), 1)
         self.assertIn("abcd1234", warnings[0])
 
@@ -539,9 +533,7 @@ class RegistryAuthorizerIsProjectedOntoTheGaShape(unittest.TestCase):
 
     def test_an_aws_iam_registry_needs_no_authorizer_configuration(self):
         warnings: list[str] = []
-        result = transform_registry_configuration(
-            {"name": "reg-iam", "authorizerType": "AWS_IAM"}, warnings=warnings
-        )
+        result = transform_registry_configuration({"name": "reg-iam", "authorizerType": "AWS_IAM"}, warnings=warnings)
         self.assertEqual(result["discoveryConfiguration"], {"authorizerType": "AWS_IAM"})
         self.assertEqual(warnings, [])
 

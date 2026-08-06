@@ -12,16 +12,21 @@ hand. It had no test coverage at all, which mattered most for two of its decisio
 ``transform_registry_configuration`` itself is covered thoroughly in test_transform.py; this is
 about the module that drives it.
 """
+
 from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
+from typing import ClassVar
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import target_registry  # noqa: E402
-from migration_common import registry_api  # noqa: E402
+from migration_common import (
+    registry_api,
+    target_registry,
+)
 
 PREVIEW_API = {
     "serviceName": "bedrock-agentcore-control",
@@ -53,9 +58,9 @@ def _mapping(mapping_id: str, *, source_region: str, target_region: str | None) 
 class _FakePreviewClient:
     """Returns a canned registry, or raises, per source registryId."""
 
-    registries: dict[str, dict] = {}
-    errors: dict[str, Exception] = {}
-    describe_calls: list[str] = []
+    registries: ClassVar[dict[str, dict]] = {}
+    errors: ClassVar[dict[str, Exception]] = {}
+    describe_calls: ClassVar[list[str]] = []
 
     @classmethod
     def reset(cls) -> None:
@@ -132,9 +137,7 @@ class DeriveCreateRegistryInputs(unittest.TestCase):
             "reg-a": self._preview_registry("first"),
             "reg-c": self._preview_registry("third"),
         }
-        _FakePreviewClient.errors = {
-            "reg-b": registry_api.RegistryApiError("AccessDeniedException: nope")
-        }
+        _FakePreviewClient.errors = {"reg-b": registry_api.RegistryApiError("AccessDeniedException: nope")}
         entries = target_registry.derive_create_registry_inputs(
             SETTINGS,
             [
@@ -153,9 +156,7 @@ class DeriveCreateRegistryInputs(unittest.TestCase):
     def test_warnings_reach_the_caller(self):
         """A dropped authorizer field is an access-control decision, so it must not be silent."""
         registry = self._preview_registry()
-        registry["authorizerConfiguration"]["customJWTAuthorizer"]["advertisedScopeMapping"] = {
-            "a": "b"
-        }
+        registry["authorizerConfiguration"]["customJWTAuthorizer"]["advertisedScopeMapping"] = {"a": "b"}
         _FakePreviewClient.registries = {"reg-a": registry}
         entries = target_registry.derive_create_registry_inputs(
             SETTINGS, [_mapping("a", source_region="us-east-1", target_region="us-east-1")]
@@ -204,12 +205,11 @@ class UnknownMappingIds(unittest.TestCase):
 
 class CreateRegistryCommand(unittest.TestCase):
     def test_the_command_names_the_targets_regional_endpoint(self):
-        command = target_registry.create_registry_command(
-            {"mappingId": "a", "region": "eu-west-1"}, "/tmp/a.json"
-        )
+        payload_path = os.path.join(tempfile.gettempdir(), "a.json")
+        command = target_registry.create_registry_command({"mappingId": "a", "region": "eu-west-1"}, payload_path)
         self.assertIn("aws agent-registry-control create-registry", command)
         self.assertIn("--endpoint-url https://agent-registry-control.eu-west-1.api.aws", command)
-        self.assertIn("file:///tmp/a.json", command)
+        self.assertIn(f"file://{payload_path}", command)
 
 
 class TheCreateRegistryCommandCarriesItsPrerequisite(unittest.TestCase):

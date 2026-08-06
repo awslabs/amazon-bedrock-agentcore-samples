@@ -6,6 +6,7 @@ that SigV4 uses the model-derived signing name) and returns canned responses (pr
 clients parse SDK responses and drive iter_records/upsert unchanged). Also covers the
 assumed-role refreshable-credentials path with a stubbed STS.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,13 +16,14 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from typing import ClassVar
 
 # Assigned, not setdefault. With setdefault, a developer's own AWS_PROFILE / AWS_CONFIG_FILE / SSO
 # session stayed in play and botocore took a different credential-resolution path while building
 # clients -- including an IMDS attempt on a machine that has one. The assertions here are about
 # request shape and credential scope, so the credentials must be the fixed, fake ones every time.
 os.environ["AWS_ACCESS_KEY_ID"] = "AKIDEXAMPLE"
-os.environ["AWS_SECRET_ACCESS_KEY"] = "secretkeyexample"  # nosec B105 -- fake, fixed test value
+os.environ["AWS_SECRET_ACCESS_KEY"] = "secretkeyexample"  # nosec B105 # pragma: allowlist secret
 os.environ["AWS_SESSION_TOKEN"] = "sessiontokenexample"  # nosec B105 -- fake, fixed test value
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_EC2_METADATA_DISABLED"] = "true"
@@ -30,12 +32,11 @@ for _ambient in ("AWS_PROFILE", "AWS_DEFAULT_PROFILE", "AWS_CONFIG_FILE", "AWS_S
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import datetime as dt  # noqa: E402
+import datetime as dt
 
-from botocore.awsrequest import AWSResponse  # noqa: E402
-from botocore.credentials import RefreshableCredentials  # noqa: E402
-
-from migration_common import aws_auth, registry_api  # noqa: E402
+from botocore.awsrequest import AWSResponse
+from botocore.credentials import RefreshableCredentials
+from migration_common import aws_auth, registry_api
 
 REGION = "us-east-1"
 PREVIEW_API = {
@@ -77,7 +78,12 @@ GA_API = {
         "get": {"method": "GET", "path": "/registries/{registryId}/records/{recordId}", "expectedStatus": 200},
         "update": {"method": "PATCH", "path": "/registries/{registryId}/records/{recordId}", "expectedStatus": 202},
     },
-    "request": {"filtersField": "filters", "pageTokenField": "nextToken", "pageSizeField": "maxResults", "pageSize": 100},
+    "request": {
+        "filtersField": "filters",
+        "pageTokenField": "nextToken",
+        "pageSizeField": "maxResults",
+        "pageSize": 100,
+    },
     "response": {
         "itemsPath": "registryRecords",
         "nextTokenPath": "nextToken",
@@ -109,7 +115,9 @@ class _FakeRaw:
 
 
 def _resp(status: int, body: dict) -> AWSResponse:
-    return AWSResponse("https://stub", status, {"Content-Type": "application/json"}, _FakeRaw(json.dumps(body).encode()))
+    return AWSResponse(
+        "https://stub", status, {"Content-Type": "application/json"}, _FakeRaw(json.dumps(body).encode())
+    )
 
 
 def _conflict() -> AWSResponse:
@@ -175,9 +183,7 @@ class PollBudgets(unittest.TestCase):
     def test_defaults_come_from_the_module_constants(self):
         client = self._client({})
         self.assertEqual(client._poll_attempts, registry_api.DEFAULT_POLL_ATTEMPTS)
-        self.assertEqual(
-            client._status_poll_attempts, registry_api.DEFAULT_STATUS_POLL_ATTEMPTS
-        )
+        self.assertEqual(client._status_poll_attempts, registry_api.DEFAULT_STATUS_POLL_ATTEMPTS)
 
     def test_a_raised_status_budget_is_honoured(self):
         """The point of the fix: this used to be pinned at 15 whatever the configuration said."""
@@ -240,9 +246,7 @@ class PreviewDescribeRegistryWire(unittest.TestCase):
         client = registry_api.PreviewRegistryClient(_invoker(), PREVIEW_API, REGION)
         _capture(
             client._client,
-            lambda request: _resp(
-                404, {"__type": "ResourceNotFoundException", "message": "no such registry"}
-            ),
+            lambda request: _resp(404, {"__type": "ResourceNotFoundException", "message": "no such registry"}),
         )
         with self.assertRaises(registry_api.RegistryApiError) as raised:
             client.describe_registry(registry_id="missing")
@@ -257,11 +261,30 @@ class PreviewClientWire(unittest.TestCase):
         boto = client._client
         self.assertEqual(boto.meta.service_model.metadata.get("signingName"), "bedrock-agentcore")
 
-        page1 = {"registryRecords": [{"recordId": "r1", "descriptorType": "MCP", "updatedAt": "2026-01-01T00:00:00Z"}], "nextToken": "TOK2"}
-        page2 = {"registryRecords": [{"recordId": "r2", "descriptorType": "CUSTOM", "updatedAt": "2026-01-02T00:00:00Z"}]}
+        page1 = {
+            "registryRecords": [{"recordId": "r1", "descriptorType": "MCP", "updatedAt": "2026-01-01T00:00:00Z"}],
+            "nextToken": "TOK2",
+        }
+        page2 = {
+            "registryRecords": [{"recordId": "r2", "descriptorType": "CUSTOM", "updatedAt": "2026-01-02T00:00:00Z"}]
+        }
         full = {
-            "r1": {"recordId": "r1", "name": "alpha", "descriptorType": "MCP", "descriptors": {"mcp": {"server": {"inlineContent": "x"}}}, "updatedAt": "2026-01-01T00:00:00Z", "status": "ENABLED"},
-            "r2": {"recordId": "r2", "name": "beta", "descriptorType": "CUSTOM", "descriptors": {"custom": {"inlineContent": "y"}}, "updatedAt": "2026-01-02T00:00:00Z", "status": "ENABLED"},
+            "r1": {
+                "recordId": "r1",
+                "name": "alpha",
+                "descriptorType": "MCP",
+                "descriptors": {"mcp": {"server": {"inlineContent": "x"}}},
+                "updatedAt": "2026-01-01T00:00:00Z",
+                "status": "ENABLED",
+            },
+            "r2": {
+                "recordId": "r2",
+                "name": "beta",
+                "descriptorType": "CUSTOM",
+                "descriptors": {"custom": {"inlineContent": "y"}},
+                "updatedAt": "2026-01-02T00:00:00Z",
+                "status": "ENABLED",
+            },
         }
 
         def responder(request):
@@ -310,9 +333,7 @@ class PreviewIncrementalFiltering(unittest.TestCase):
             return _resp(200, {"registryRecords": summaries})
 
         _capture(boto, responder)
-        extracted = list(
-            client.iter_records(registry_id="reg-1", load_mode="INCREMENTAL", changed_after=cutoff)
-        )
+        extracted = list(client.iter_records(registry_id="reg-1", load_mode="INCREMENTAL", changed_after=cutoff))
         return [r.old_record_id for r in extracted], client.warnings
 
     def test_records_older_than_the_cutoff_are_skipped(self):
@@ -352,7 +373,13 @@ class GaClientWire(unittest.TestCase):
         boto = client._client
         self.assertEqual(boto.meta.service_model.metadata.get("signingName"), "agent-registry")
 
-        desired = {"name": "svc-alpha", "displayName": "Svc Alpha", "recordType": "CUSTOM", "descriptors": {"custom": {"data": "payload"}}, "recordVersion": "1"}
+        desired = {
+            "name": "svc-alpha",
+            "displayName": "Svc Alpha",
+            "recordType": "CUSTOM",
+            "descriptors": {"custom": {"data": "payload"}},
+            "recordVersion": "1",
+        }
         new_arn = "arn:aws:agent-registry:us-east-1:123456789012:registry/reg-1/record/rec-new"
 
         def responder(request):
@@ -362,7 +389,18 @@ class GaClientWire(unittest.TestCase):
             if m == "POST" and url.endswith("/records"):
                 return _resp(202, {"recordArn": new_arn, "status": "CREATING"})
             if m == "GET" and url.endswith("/records/rec-new"):
-                return _resp(200, {"recordId": "rec-new", "status": "DRAFT", "name": "svc-alpha", "displayName": "Svc Alpha", "recordType": "CUSTOM", "descriptors": {"custom": {"data": "payload"}}, "recordVersion": "1"})
+                return _resp(
+                    200,
+                    {
+                        "recordId": "rec-new",
+                        "status": "DRAFT",
+                        "name": "svc-alpha",
+                        "displayName": "Svc Alpha",
+                        "recordType": "CUSTOM",
+                        "descriptors": {"custom": {"data": "payload"}},
+                        "recordVersion": "1",
+                    },
+                )
             raise AssertionError(f"unexpected GA request {m} {url}")
 
         cap = _capture(boto, responder)
@@ -387,17 +425,36 @@ class GaClientWire(unittest.TestCase):
     def test_update_path_uses_patch_and_optional_value_wrappers(self):
         client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
         boto = client._client
-        desired = {"name": "svc-beta", "displayName": "New Label", "recordType": "CUSTOM", "descriptors": {"custom": {"data": "new-payload"}}, "recordVersion": "1"}
+        desired = {
+            "name": "svc-beta",
+            "displayName": "New Label",
+            "recordType": "CUSTOM",
+            "descriptors": {"custom": {"data": "new-payload"}},
+            "recordVersion": "1",
+        }
         state = {"updated": False}
 
         def responder(request):
             m, url = request.method, request.url
             if m == "POST" and url.endswith("/records-list"):
-                return _resp(200, {"registryRecords": [{"recordId": "rec-x", "name": "svc-beta", "recordVersion": "1"}]})
+                return _resp(
+                    200, {"registryRecords": [{"recordId": "rec-x", "name": "svc-beta", "recordVersion": "1"}]}
+                )
             if m == "GET" and url.endswith("/records/rec-x"):
                 data = "new-payload" if state["updated"] else "old-payload"
                 label = "New Label" if state["updated"] else "Old Label"
-                return _resp(200, {"recordId": "rec-x", "status": "DRAFT", "name": "svc-beta", "displayName": label, "recordType": "CUSTOM", "descriptors": {"custom": {"data": data}}, "recordVersion": "1"})
+                return _resp(
+                    200,
+                    {
+                        "recordId": "rec-x",
+                        "status": "DRAFT",
+                        "name": "svc-beta",
+                        "displayName": label,
+                        "recordType": "CUSTOM",
+                        "descriptors": {"custom": {"data": data}},
+                        "recordVersion": "1",
+                    },
+                )
             if m == "PATCH" and url.endswith("/records/rec-x"):
                 state["updated"] = True
                 return _resp(202, {"recordId": "rec-x", "status": "UPDATING"})
@@ -545,9 +602,7 @@ class StatusParityWire(unittest.TestCase):
         self.assertEqual(result.actions, ["submitForApproval", "updateStatus=APPROVED"])
 
         submit = next(r for r in cap if r.method == "POST")
-        self.assertTrue(
-            submit.url.endswith("/registries/reg-1/records/rec-1/submit-for-approval"), submit.url
-        )
+        self.assertTrue(submit.url.endswith("/registries/reg-1/records/rec-1/submit-for-approval"), submit.url)
         self.assertEqual(_req_body(submit), {})
         self.assertIn("/agent-registry/aws4_request", _auth(submit))
 
@@ -660,7 +715,7 @@ class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
     """
 
     # Same GA settings, minus the waiting: the delay is real in production and pointless in a test.
-    API = {**GA_API, "poll": {**GA_API["poll"], "conflictRetryDelaySeconds": 0}}
+    API: ClassVar[dict] = {**GA_API, "poll": {**GA_API["poll"], "conflictRetryDelaySeconds": 0}}
 
     def _client(self):
         return registry_api.GaRegistryClient(_invoker(), self.API, REGION)
@@ -806,11 +861,17 @@ class SettledStatusHandling(unittest.TestCase):
             if m == "GET" and url.endswith("/records/rec-x"):
                 data = "new-payload" if state["updated"] else "old-payload"
                 label = "New Label" if state["updated"] else "Old Label"
-                return _resp(200, {
-                    "recordId": "rec-x", "status": existing_status, "name": "svc-beta",
-                    "displayName": label, "recordType": "CUSTOM",
-                    "descriptors": {"custom": {"data": data}},
-                })
+                return _resp(
+                    200,
+                    {
+                        "recordId": "rec-x",
+                        "status": existing_status,
+                        "name": "svc-beta",
+                        "displayName": label,
+                        "recordType": "CUSTOM",
+                        "descriptors": {"custom": {"data": data}},
+                    },
+                )
             if m == "PATCH" and url.endswith("/records/rec-x"):
                 state["updated"] = True
                 return _resp(202, {"recordId": "rec-x", "status": "UPDATING"})
@@ -869,20 +930,21 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
 
     def test_a_create_failed_status_carries_the_record_id(self):
         error = self._create_then(
-            lambda: _resp(200, {
-                "recordId": "rec-orphan",
-                "status": "CREATE_FAILED",
-                "statusReason": "Failed to fetch agent card from URL",
-            })
+            lambda: _resp(
+                200,
+                {
+                    "recordId": "rec-orphan",
+                    "status": "CREATE_FAILED",
+                    "statusReason": "Failed to fetch agent card from URL",
+                },
+            )
         )
         self.assertEqual(error.record_id, "rec-orphan")
         self.assertIn("CREATE_FAILED", str(error))
         self.assertIn("Failed to fetch agent card", str(error))
 
     def test_an_unknown_status_after_create_also_carries_the_record_id(self):
-        error = self._create_then(
-            lambda: _resp(200, {"recordId": "rec-orphan", "status": "SOMETHING_NEW"})
-        )
+        error = self._create_then(lambda: _resp(200, {"recordId": "rec-orphan", "status": "SOMETHING_NEW"}))
         self.assertEqual(error.record_id, "rec-orphan")
 
     def test_a_failed_status_read_after_create_still_carries_the_record_id(self):
@@ -936,14 +998,17 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
             if m == "POST" and url.endswith("/records-list"):
                 return _resp(200, {"registryRecords": [{"recordId": "rec-stuck", "name": "svc-sync"}]})
             if m == "GET" and url.endswith("/records/rec-stuck"):
-                return _resp(200, {
-                    "recordId": "rec-stuck",
-                    "status": "CREATE_FAILED",
-                    "statusReason": "Failed to fetch agent card from URL",
-                    "name": "svc-sync",
-                    "recordType": "CUSTOM",
-                    "descriptors": {"custom": {"data": "payload"}},
-                })
+                return _resp(
+                    200,
+                    {
+                        "recordId": "rec-stuck",
+                        "status": "CREATE_FAILED",
+                        "statusReason": "Failed to fetch agent card from URL",
+                        "name": "svc-sync",
+                        "recordType": "CUSTOM",
+                        "descriptors": {"custom": {"data": "payload"}},
+                    },
+                )
             raise AssertionError(f"unexpected GA request {m} {url}")
 
         _capture(boto, responder)
@@ -976,7 +1041,7 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
     """
 
     #: Preview shape -> the GA field the migration carries it into.
-    SHAPE_FOR_FIELD = {
+    SHAPE_FOR_FIELD: ClassVar[dict[str, str]] = {
         "name": "RegistryRecordName",
         "description": "Description",
         "recordVersion": "RegistryRecordVersion",
@@ -991,15 +1056,10 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
         reports at run time, not something to fail this bound check on.
         """
         try:
-            model = registry_api.PreviewRegistryClient(
-                _invoker(), PREVIEW_API, REGION
-            )._client.meta.service_model
+            model = registry_api.PreviewRegistryClient(_invoker(), PREVIEW_API, REGION)._client.meta.service_model
         except Exception as error:  # noqa: BLE001 - an absent model is the skip condition
             self.skipTest(f"SDK cannot model bedrock-agentcore-control: {error}")
-        return {
-            field: int(model.shape_for(shape).metadata["max"])
-            for field, shape in self.SHAPE_FOR_FIELD.items()
-        }
+        return {field: int(model.shape_for(shape).metadata["max"]) for field, shape in self.SHAPE_FOR_FIELD.items()}
 
     def test_no_bound_is_tighter_than_preview(self):
         for field, preview_max in self._preview_maxima().items():
@@ -1040,9 +1100,11 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
             ("recordVersion", "1" + "9" * maxima["recordVersion"]),
             ("name", "n" * (maxima["name"] + 1)),
         ):
-            with self.subTest(field=field):
-                with self.assertRaisesRegex(registry_api.RegistryApiError, "at most"):
-                    registry_api.validate_ga_request(self._record(**{field: value}))
+            with (
+                self.subTest(field=field),
+                self.assertRaisesRegex(registry_api.RegistryApiError, "at most"),
+            ):
+                registry_api.validate_ga_request(self._record(**{field: value}))
 
 
 class DryRunAppliesTheServiceContract(unittest.TestCase):
@@ -1089,9 +1151,7 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
                 "name": "md-skill",
                 "displayName": "md-skill",
                 "recordType": "SKILL",
-                "descriptors": {
-                    "agentSkillsDefinition": {"additionalData": {"skillMd": {"data": "# HELLO"}}}
-                },
+                "descriptors": {"agentSkillsDefinition": {"additionalData": {"skillMd": {"data": "# HELLO"}}}},
             }
         )
 
@@ -1119,16 +1179,18 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
             {"agentSkillsDefinition": {"additionalData": {"skillMd": {"data": ""}}}},
             {"custom": {"additionalData": {"skillMd": {"data": "# HELLO"}}}},
         ):
-            with self.subTest(descriptors=descriptors):
-                with self.assertRaises(registry_api.RegistryApiError):
-                    registry_api.validate_ga_request(
-                        {
-                            "name": "svc",
-                            "displayName": "svc",
-                            "recordType": "SKILL",
-                            "descriptors": descriptors,
-                        }
-                    )
+            with (
+                self.subTest(descriptors=descriptors),
+                self.assertRaises(registry_api.RegistryApiError),
+            ):
+                registry_api.validate_ga_request(
+                    {
+                        "name": "svc",
+                        "displayName": "svc",
+                        "recordType": "SKILL",
+                        "descriptors": descriptors,
+                    }
+                )
 
     def test_data_is_still_required_on_the_markdown_child_itself(self):
         with self.assertRaisesRegex(registry_api.RegistryApiError, "requires non-empty string data"):
@@ -1160,7 +1222,7 @@ class RefreshableCredentialsPath(unittest.TestCase):
                 return {
                     "Credentials": {
                         "AccessKeyId": "AKIA_ASSUMED",
-                        "SecretAccessKey": "sekret",
+                        "SecretAccessKey": "sekret",  # pragma: allowlist secret
                         "SessionToken": "tok",
                         "Expiration": dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1),
                     }
@@ -1172,9 +1234,7 @@ class RefreshableCredentialsPath(unittest.TestCase):
     def _sts(self, recorded: list[dict]):
         original_client = aws_auth.boto3.client
         fake = self._fake_sts(recorded)
-        aws_auth.boto3.client = (
-            lambda name, *a, **k: fake if name == "sts" else original_client(name, *a, **k)
-        )
+        aws_auth.boto3.client = lambda name, *a, **k: fake if name == "sts" else original_client(name, *a, **k)
         try:
             yield
         finally:
@@ -1183,9 +1243,7 @@ class RefreshableCredentialsPath(unittest.TestCase):
     def test_assumed_role_yields_refreshable_credentials(self):
         recorded: list[dict] = []
         with self._sts(recorded):
-            invoker = aws_auth.invoker_for_endpoint(
-                {"roleArn": "arn:aws:iam::123:role/x"}, "run-1", "load"
-            )
+            invoker = aws_auth.invoker_for_endpoint({"roleArn": "arn:aws:iam::123:role/x"}, "run-1", "load")
             session = invoker.session()
             creds = session.get_credentials()
             self.assertIsInstance(creds, RefreshableCredentials)
@@ -1217,18 +1275,14 @@ class RefreshableCredentialsPath(unittest.TestCase):
         """A same-account role is assumed without the parameter, not with an empty one."""
         recorded: list[dict] = []
         with self._sts(recorded):
-            aws_auth.invoker_for_endpoint(
-                {"roleArn": "arn:aws:iam::123:role/x"}, "run-1", "load"
-            ).session()
+            aws_auth.invoker_for_endpoint({"roleArn": "arn:aws:iam::123:role/x"}, "run-1", "load").session()
         self.assertNotIn("ExternalId", recorded[0])
 
     def test_a_run_id_is_optional_in_the_session_name(self):
         """Pre-flight and target-config have no run, and must not fabricate one."""
         recorded: list[dict] = []
         with self._sts(recorded):
-            aws_auth.invoker_for_endpoint(
-                {"roleArn": "arn:aws:iam::123:role/x"}, None, "target-config"
-            ).session()
+            aws_auth.invoker_for_endpoint({"roleArn": "arn:aws:iam::123:role/x"}, None, "target-config").session()
         self.assertEqual(recorded[0]["RoleSessionName"], "registry-migration-target-config")
 
     def test_concurrent_first_callers_assume_the_role_once(self):
@@ -1239,9 +1293,7 @@ class RefreshableCredentialsPath(unittest.TestCase):
         """
         recorded: list[dict] = []
         with self._sts(recorded):
-            invoker = aws_auth.invoker_for_endpoint(
-                {"roleArn": "arn:aws:iam::123:role/x"}, "run-1", "load"
-            )
+            invoker = aws_auth.invoker_for_endpoint({"roleArn": "arn:aws:iam::123:role/x"}, "run-1", "load")
             barrier = threading.Barrier(8)
 
             def build():

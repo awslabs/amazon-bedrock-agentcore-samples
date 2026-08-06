@@ -5,6 +5,7 @@ side-by-side artifact (old recordId, new recordId, described Preview record, tra
 described GA record). Both are chunked JSON arrays so the two can be diffed for verification at
 any registry size.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.storage import JsonArrayWriter, S3Store  # noqa: E402
+from migration_common.storage import JsonArrayWriter, S3Store
 
 
 class FakeS3:
@@ -36,9 +37,7 @@ class FakeS3:
         prefix = kwargs.get("Prefix", "")
         # Deliberately returned unsorted, so a test asserting sorted output is testing S3Store and
         # not this fake.
-        matching = sorted(
-            (key for key in self.objects if key.startswith(prefix)), reverse=True
-        )
+        matching = sorted((key for key in self.objects if key.startswith(prefix)), reverse=True)
         start = int(kwargs.get("ContinuationToken", 0) or 0)
         window = self.page_size or len(matching) or 1
         page = matching[start : start + window]
@@ -63,9 +62,7 @@ class ListingKeysFromS3(unittest.TestCase):
         return client, S3Store(client, "bucket")
 
     def test_keys_are_prefix_filtered_and_sorted(self):
-        _client, store = self._store(
-            ["reports/run_id=b/x.json", "reports/run_id=a/x.json", "runs/run_id=a/raw.jsonl"]
-        )
+        _client, store = self._store(["reports/run_id=b/x.json", "reports/run_id=a/x.json", "runs/run_id=a/raw.jsonl"])
         self.assertEqual(
             store.list_keys("reports/run_id="),
             ["reports/run_id=a/x.json", "reports/run_id=b/x.json"],
@@ -161,7 +158,9 @@ class JsonArrayWriterBehaviour(unittest.TestCase):
                 "name": "多言語 ✅",
                 "descriptors": {"mcp": {"server": {"inlineContent": '{"a":1}'}, "tools": {"inlineContent": "[]"}}},
             },
-            "gaRecord": {"descriptors": {"mcpServer": {"data": '{"a":1}', "additionalData": {"tools": {"data": "[]"}}}}},
+            "gaRecord": {
+                "descriptors": {"mcpServer": {"data": '{"a":1}', "additionalData": {"tools": {"data": "[]"}}}}
+            },
         }
         writer.append(row)
         writer.close()
@@ -208,9 +207,7 @@ class CrosswalkCsvContract(unittest.TestCase):
     def test_a_row_round_trips_through_the_writer(self):
         from migration_common.jobs.transform_load import _CROSSWALK_COLUMNS, _crosswalk_csv
 
-        text = _crosswalk_csv(
-            [{"oldRecordId": "old-1", "newRecordId": "new-1", "name": "migrated-abc"}]
-        )
+        text = _crosswalk_csv([{"oldRecordId": "old-1", "newRecordId": "new-1", "name": "migrated-abc"}])
         header, row = text.splitlines()
         self.assertEqual(header, ",".join(_CROSSWALK_COLUMNS))
         values = dict(zip(_CROSSWALK_COLUMNS, row.split(",")))
@@ -227,9 +224,7 @@ class CrosswalkCsvContract(unittest.TestCase):
         """
         from migration_common.jobs.transform_load import _crosswalk_csv
 
-        text = _crosswalk_csv(
-            [{"oldRecordId": "old-1", "name": '=HYPERLINK("http://evil","click")'}]
-        )
+        text = _crosswalk_csv([{"oldRecordId": "old-1", "name": '=HYPERLINK("http://evil","click")'}])
         self.assertIn("'=HYPERLINK", text)
         self.assertNotIn(",=HYPERLINK", text)
 

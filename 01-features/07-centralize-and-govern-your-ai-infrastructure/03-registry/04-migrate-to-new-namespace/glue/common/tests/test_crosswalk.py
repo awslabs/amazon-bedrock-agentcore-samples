@@ -4,6 +4,7 @@ Covers the pure CSV renderer (header, RFC 4180 quoting/round-trip, header-only w
 ``S3Store.put_text`` (encryption + content type), and ``_write_crosswalks`` (one CSV per
 registry at a predictable key).
 """
+
 from __future__ import annotations
 
 import csv
@@ -14,12 +15,12 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.jobs.transform_load import (  # noqa: E402
+from migration_common.jobs.transform_load import (
     _CROSSWALK_COLUMNS,
     _crosswalk_csv,
     _write_crosswalks,
 )
-from migration_common.storage import S3Store  # noqa: E402
+from migration_common.storage import S3Store
 
 
 class _FakeS3Client:
@@ -89,7 +90,18 @@ class WriteCrosswalks(unittest.TestCase):
         client = _FakeS3Client()
         store = S3Store(client, "bucket")
         summaries = {"map-a": {}, "map-b": {}}
-        rows = {"map-a": [{"oldRecordId": "o1", "newRecordId": "n1", "name": "x", "recordType": "MCP", "action": "created", "status": "SUCCEEDED"}]}
+        rows = {
+            "map-a": [
+                {
+                    "oldRecordId": "o1",
+                    "newRecordId": "n1",
+                    "name": "x",
+                    "recordType": "MCP",
+                    "action": "created",
+                    "status": "SUCCEEDED",
+                }
+            ]
+        }
         locations = _write_crosswalks(store, "reports/run/attempt/crosswalk", summaries, rows)
 
         self.assertEqual(

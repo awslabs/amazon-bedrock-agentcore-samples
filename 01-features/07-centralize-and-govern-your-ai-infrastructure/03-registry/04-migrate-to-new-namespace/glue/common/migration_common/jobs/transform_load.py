@@ -10,6 +10,7 @@ explicit live attempt reach this job.
 
 Invoked by the ``glue/transform_load.py`` shim via :func:`run`.
 """
+
 from __future__ import annotations
 
 import csv
@@ -21,12 +22,15 @@ import threading
 import traceback
 import uuid
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 import boto3
 
+from migration_common import report_html
+from migration_common import watermark as watermark_state
 from migration_common.aws_auth import invoker_for_endpoint
 from migration_common.registry_api import (
     GaNameClaims,
@@ -40,12 +44,10 @@ from migration_common.settings import (
     resolve_configuration,
     resolve_run_id,
 )
-from migration_common.stores import resolve_store
 from migration_common.storage import JsonArrayWriter, S3Store
-from migration_common import report_html
+from migration_common.stores import resolve_store
 from migration_common.transform import RecordTransformer
 from migration_common.util import configure_logging, public_endpoint, safe_segment, utc_now
-from migration_common import watermark as watermark_state
 
 LOGGER = logging.getLogger("agent-registry-migration.transform-load")
 
@@ -196,9 +198,7 @@ class GaClientPool:
         self._run_id = run_id
         self._clients: dict[tuple[str, str, str, str, str], GaRegistryClient] = {}
         self._name_claims: dict[tuple[str, str, str], GaNameClaims] = {}
-        self._target_claims: dict[
-            tuple[str, str, str], tuple[dict[tuple[str, str], str], threading.Lock]
-        ] = {}
+        self._target_claims: dict[tuple[str, str, str], tuple[dict[tuple[str, str], str], threading.Lock]] = {}
         self._lock = threading.Lock()
 
     def for_target(self, target: dict[str, Any]) -> GaRegistryClient:
@@ -267,9 +267,7 @@ class GaNameClaimPool:
             while sequence != self._next_sequence:
                 self._sequence.wait()
             try:
-                self.for_target(target).claim(
-                    str(target["registryId"]), name, record_version, source_record_id
-                )
+                self.for_target(target).claim(str(target["registryId"]), name, record_version, source_record_id)
             finally:
                 self._next_sequence += 1
                 self._advance_past_skipped()
@@ -387,9 +385,7 @@ def _process_record(
                 # The GA record an earlier run migrated this same source record to, if any. Matched
                 # ahead of the name, so a record renamed in Preview updates the GA record it already
                 # has instead of being migrated a second time under its new name.
-                known_record_id=(known_record_ids or {}).get(mapping_id, {}).get(
-                    outcome.old_record_id or ""
-                ),
+                known_record_id=(known_record_ids or {}).get(mapping_id, {}).get(outcome.old_record_id or ""),
             )
             outcome.warnings.extend(load_result.warnings)
             outcome.action = load_result.action
@@ -400,8 +396,7 @@ def _process_record(
                 outcome.ga_status = load_result.record.get("status")
             if not outcome.new_record_id:
                 raise RuntimeError(
-                    "GA API did not return a recordId, so the required old-to-new ID mapping "
-                    "could not be produced"
+                    "GA API did not return a recordId, so the required old-to-new ID mapping could not be produced"
                 )
             if match_source_status:
                 _apply_source_status(outcome, client, str(target["registryId"]))
@@ -542,14 +537,12 @@ def main(argv: list[str] | None = None) -> None:
     # Configuration first: it carries the staging bucket the deployment created (see
     # resolve_staging_bucket), so --staging-bucket is only needed to point elsewhere.
     settings, mappings, _config_source = resolve_configuration(arguments)
-    store, staging_location = resolve_store(arguments, settings, boto3_module=boto3)
+    store, _staging_location = resolve_store(arguments, settings, boto3_module=boto3)
     mapping_by_id = {str(mapping["id"]): mapping for mapping in mappings}
     run_prefix = f"runs/run_id={run_id}"
     extract_manifest = store.get_json(f"{run_prefix}/extract-manifest.json")
     if extract_manifest.get("status") != "SUCCEEDED":
-        raise RuntimeError(
-            f"Extract manifest for run {run_id} is not successful: {extract_manifest.get('status')}"
-        )
+        raise RuntimeError(f"Extract manifest for run {run_id} is not successful: {extract_manifest.get('status')}")
 
     load = settings["load"]
     dry_run = bool(load.get("dryRun", True))
@@ -592,9 +585,7 @@ def main(argv: list[str] | None = None) -> None:
     # What every previous live load of these mappings produced: source recordId -> GA recordId. Read
     # once up front (it is one small object per mapping) and consulted per record, so a record that
     # was renamed in Preview since it was last migrated is still recognised as the same record.
-    known_record_ids = {
-        mapping_id: watermark_state.read_idmap(store, mapping_id) for mapping_id in mapping_by_id
-    }
+    known_record_ids = {mapping_id: watermark_state.read_idmap(store, mapping_id) for mapping_id in mapping_by_id}
     for mapping_id, known in known_record_ids.items():
         if known:
             LOGGER.info(
@@ -662,7 +653,7 @@ def main(argv: list[str] | None = None) -> None:
         match_source_status=match_source_status,
         known_record_ids=known_record_ids,
     )
-    setattr(worker, "_receives_claim_sequence", True)
+    worker._receives_claim_sequence = True
 
     LOGGER.info(
         "Starting transform/load run %s attempt %s (dryRun=%s, concurrency=%d)",
@@ -715,9 +706,7 @@ def main(argv: list[str] | None = None) -> None:
                 # totals cannot express which record ended up where, so a record auto-approved out
                 # of DRAFT hid a record stranded in it. See RecordOutcome.stranded_in_draft.
                 if outcome.stranded_in_draft:
-                    summary["recordsStrandedInDraft"] = (
-                        int(summary.get("recordsStrandedInDraft", 0)) + 1
-                    )
+                    summary["recordsStrandedInDraft"] = int(summary.get("recordsStrandedInDraft", 0)) + 1
                 if not outcome.status_matched:
                     summary["statusMismatched"] = int(summary.get("statusMismatched", 0)) + 1
                 comparison_writer(outcome.mapping_id).append(
@@ -795,9 +784,7 @@ def main(argv: list[str] | None = None) -> None:
 
     for mapping_id, writer in comparison_writers.items():
         if mapping_id in summaries:
-            summaries[mapping_id]["recordComparison"] = [
-                store.location(key) for key in writer.keys
-            ]
+            summaries[mapping_id]["recordComparison"] = [store.location(key) for key in writer.keys]
     # One failures artifact per affected mapping, and nothing at all for a mapping that had none.
     for mapping_id, writer in failure_writers.items():
         if mapping_id in summaries:
@@ -825,8 +812,7 @@ def main(argv: list[str] | None = None) -> None:
     reconciliation_error: str | None = None
     if processed_records != expected_record_count:
         reconciliation_error = (
-            f"Processed {processed_records} records but extract manifest declares "
-            f"{expected_record_count}"
+            f"Processed {processed_records} records but extract manifest declares {expected_record_count}"
         )
         LOGGER.error(
             "Staged record reconciliation failed for run %s attempt %s: %s",
@@ -892,15 +878,21 @@ def main(argv: list[str] | None = None) -> None:
         "artifacts": {
             store.location(f"{report_root}/summary.html"): "This report as a page, with the checks to review",
             store.location(f"{report_root}/summary.json"): "The same report as data",
-            store.location(f"reports/run_id={run_id}/extract-summary.json"): "What extraction read from the Preview registries",
-            store.location(f"reports/run_id={run_id}/extracted-records/"): "Every extracted Preview record, as described by the Preview API",
+            store.location(
+                f"reports/run_id={run_id}/extract-summary.json"
+            ): "What extraction read from the Preview registries",
+            store.location(
+                f"reports/run_id={run_id}/extracted-records/"
+            ): "Every extracted Preview record, as described by the Preview API",
             store.location(f"{crosswalk_prefix}/"): "CSV mapping each Preview recordId to its new GA recordId",
-            store.location(f"{report_root}/record-comparison/"): "Per record: Preview record, transformed payload, and the resulting GA record",
-            store.location(f"{report_root}/failures/"): "Records that failed, with the error and traceback (absent when none failed)",
+            store.location(
+                f"{report_root}/record-comparison/"
+            ): "Per record: Preview record, transformed payload, and the resulting GA record",
+            store.location(
+                f"{report_root}/failures/"
+            ): "Records that failed, with the error and traceback (absent when none failed)",
         },
-        "approval": _approval_summary(
-            summaries, dry_run=dry_run, match_source_status=match_source_status
-        ),
+        "approval": _approval_summary(summaries, dry_run=dry_run, match_source_status=match_source_status),
         "registries": list(summaries.values()),
     }
     store.put_json(f"{report_root}/summary.json", report)
@@ -942,9 +934,7 @@ def main(argv: list[str] | None = None) -> None:
             f"{store.location(f'{report_root}/summary.json')}"
         )
     if total_errors and fail_on_error:
-        raise RuntimeError(
-            f"Transform/load run {run_id} attempt {attempt_id} failed for {total_errors} records"
-        )
+        raise RuntimeError(f"Transform/load run {run_id} attempt {attempt_id} failed for {total_errors} records")
 
 
 def _approval_summary(
@@ -1009,11 +999,7 @@ def _approval_summary(
             "GA, so data-plane search and the browsing APIs will not return them. They are listed "
             "per record in record-comparison/ with their sourceStatus, gaStatus and statusError. "
             "Submit them for approval in GA to finish the migration."
-            + (
-                f" {applied} other record(s) did reach their Preview status."
-                if applied
-                else ""
-            )
+            + (f" {applied} other record(s) did reach their Preview status." if applied else "")
         )
     elif not_applied:
         note = (
@@ -1078,10 +1064,7 @@ def _validate_replay_configuration(
     if not isinstance(declared, dict):
         reason = "extract manifest has no replayConfiguration fingerprint"
     elif declared.get("schemaVersion") != 1:
-        reason = (
-            "extract manifest has unsupported replayConfiguration schemaVersion "
-            f"{declared.get('schemaVersion')!r}"
-        )
+        reason = f"extract manifest has unsupported replayConfiguration schemaVersion {declared.get('schemaVersion')!r}"
     elif declared.get("sha256") in (None, ""):
         reason = "extract manifest replayConfiguration has no sha256"
     else:
@@ -1152,17 +1135,15 @@ def _validate_extract_manifest(
                 raise RuntimeError(f"Extract object appears more than once in the manifest: {key}")
             seen_keys.add(key)
             actual = store.inspect_json_lines_object(expected)
-            for field in ("recordCount", "sha256", "sizeBytes", "versionId"):
-                if str(actual.get(field)) != str(expected.get(field)):
+            for field_name in ("recordCount", "sha256", "sizeBytes", "versionId"):
+                if str(actual.get(field_name)) != str(expected.get(field_name)):
                     raise RuntimeError(
-                        f"Staged object reconciliation failed for {key}: {field} does not match manifest"
+                        f"Staged object reconciliation failed for {key}: {field_name} does not match manifest"
                     )
             registry_records += int(actual["recordCount"])
             expected_objects.append(expected)
         if registry_records != int(registry.get("recordCount", -1)):
-            raise RuntimeError(
-                f"Registry {registry.get('mappingId')} staged record count does not match manifest"
-            )
+            raise RuntimeError(f"Registry {registry.get('mappingId')} staged record count does not match manifest")
         total_records += registry_records
     if total_records != int(extract_manifest.get("recordCount", -1)):
         raise RuntimeError("Staged run record count does not match the extract manifest")
@@ -1219,10 +1200,10 @@ def _verify_mapping_has_not_changed(
         current = current_mapping.get(side)
         if not isinstance(staged, dict) or not isinstance(current, dict):
             raise ValueError(f"Staged and current {side} endpoints must be objects")
-        for field in ("accountId", "region", "registryId", "roleArn", "externalId"):
-            if staged.get(field) != current.get(field):
+        for field_name in ("accountId", "region", "registryId", "roleArn", "externalId"):
+            if staged.get(field_name) != current.get(field_name):
                 raise RuntimeError(
-                    f"Mapping configuration changed after extraction: {side}.{field}. "
+                    f"Mapping configuration changed after extraction: {side}.{field_name}. "
                     "Start a new extract run instead of replaying this run."
                 )
 
@@ -1311,9 +1292,7 @@ def _commit_id_maps(
             if row.get("oldRecordId") and row.get("newRecordId")
         }
         merged = watermark_state.merge_idmap(watermark_state.read_idmap(store, mapping_id), pairs)
-        key = watermark_state.write_idmap(
-            store, mapping_id, merged, run_id=run_id, updated_at=utc_now()
-        )
+        key = watermark_state.write_idmap(store, mapping_id, merged, run_id=run_id, updated_at=utc_now())
         summary["idMapCommitted"] = True
         summary["idMapArtifact"] = store.location(key)
         summary["idMapRecordCount"] = len(merged)
@@ -1376,9 +1355,7 @@ def _crosswalk_csv(rows: list[dict[str, Any]]) -> str:
     )
     writer.writeheader()
     for row in rows:
-        writer.writerow(
-            {column: _csv_safe(row.get(column)) for column in _CROSSWALK_COLUMNS}
-        )
+        writer.writerow({column: _csv_safe(row.get(column)) for column in _CROSSWALK_COLUMNS})
     return buffer.getvalue()
 
 

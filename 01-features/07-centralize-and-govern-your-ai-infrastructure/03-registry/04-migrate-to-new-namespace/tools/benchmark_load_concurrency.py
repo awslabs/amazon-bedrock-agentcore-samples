@@ -13,6 +13,7 @@ throttling, retries and variance.
 
 It also asserts what the tests assert: the output is identical at every concurrency.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "glue", "common"))
 
-from migration_common.jobs.transform_load import RecordOutcome, _iter_outcomes  # noqa: E402
+from migration_common.jobs.transform_load import RecordOutcome, _iter_outcomes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -68,10 +69,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     latency = options.latency_ms / 1000.0
-    records = [
-        (f"obj-{index // 500:05d}", {"mappingId": "bench", "index": index})
-        for index in range(options.records)
-    ]
+    records = [(f"obj-{index // 500:05d}", {"mappingId": "bench", "index": index}) for index in range(options.records)]
 
     def worker(source_key: str, envelope: dict) -> RecordOutcome:
         time.sleep(latency)

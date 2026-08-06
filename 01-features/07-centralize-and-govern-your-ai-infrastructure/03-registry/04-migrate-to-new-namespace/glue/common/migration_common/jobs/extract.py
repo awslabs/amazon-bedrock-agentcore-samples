@@ -8,6 +8,7 @@ human-readable extract summary report. Extraction never writes to any GA registr
 
 Invoked by the ``glue/extract.py`` shim via :func:`run`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ from typing import Any
 import boto3
 
 from migration_common import preflight, report_html
+from migration_common import watermark as watermark_state
 from migration_common.aws_auth import invoker_for_endpoint
 from migration_common.registry_api import PreviewRegistryClient
 from migration_common.settings import (
@@ -26,8 +28,8 @@ from migration_common.settings import (
     resolve_configuration,
     resolve_run_id,
 )
-from migration_common.stores import resolve_store
 from migration_common.storage import JsonArrayWriter, S3Store
+from migration_common.stores import resolve_store
 from migration_common.util import (
     configure_logging,
     get_path,
@@ -35,7 +37,6 @@ from migration_common.util import (
     safe_segment,
     utc_now,
 )
-from migration_common import watermark as watermark_state
 
 LOGGER = logging.getLogger("agent-registry-migration.extract")
 
@@ -77,7 +78,7 @@ def main(argv: list[str] | None = None) -> None:
     # Configuration first: it carries the staging bucket the deployment created, so a run needs
     # only to be told where its configuration lives.
     settings, mappings, config_source = resolve_configuration(arguments)
-    store, staging_location = resolve_store(arguments, settings, boto3_module=boto3)
+    store, _staging_location = resolve_store(arguments, settings, boto3_module=boto3)
     if not mappings:
         raise RuntimeError(f"No registry mappings are configured in {config_source}")
 
@@ -335,9 +336,7 @@ def main(argv: list[str] | None = None) -> None:
     run_manifest["completedAt"] = utc_now()
     run_manifest["status"] = "FAILED" if failures else "SUCCEEDED"
     run_manifest["registryCount"] = len(mappings)
-    run_manifest["recordCount"] = sum(
-        int(item.get("recordCount", 0)) for item in run_manifest["registries"]
-    )
+    run_manifest["recordCount"] = sum(int(item.get("recordCount", 0)) for item in run_manifest["registries"])
     run_manifest["failures"] = failures
     store.put_json(f"{run_prefix}/extract-manifest.json", run_manifest)
     extract_report = _build_extract_report(run_manifest, store, run_id)
@@ -395,10 +394,8 @@ def _build_extract_report(
         cutoffs = {r.get("changedAfter") for r in registries if r.get("changedAfter")}
         incremental_window = {
             "changedAfter": run_manifest.get("load", {}).get("changedAfter")
-            or (sorted(cutoffs)[0] if len(cutoffs) == 1 else None),
-            "perRegistry": {
-                str(r.get("mappingId")): r.get("changedAfter") for r in registries
-            },
+            or (min(cutoffs) if len(cutoffs) == 1 else None),
+            "perRegistry": {str(r.get("mappingId")): r.get("changedAfter") for r in registries},
         }
     # How many records are past DRAFT at the source. The load stage reproduces those statuses on the
     # GA records, so this is what to reconcile the load report's approval block against.
@@ -449,9 +446,9 @@ def _build_extract_report(
         # one-line explanation, so the extraction page is self-describing on its own. Only locations
         # that exist -- the record dump is listed when it was written, because pointing at an empty
         # prefix reads as a lost artifact rather than a disabled one.
-        "artifacts": _extract_artifacts(store, run_id, dumped=any(
-            registry.get("extractedRecords") for registry in registries
-        )),
+        "artifacts": _extract_artifacts(
+            store, run_id, dumped=any(registry.get("extractedRecords") for registry in registries)
+        ),
         "nextStep": next_step,
     }
 
@@ -459,9 +456,13 @@ def _build_extract_report(
 def _extract_artifacts(store: Any, run_id: str, *, dumped: bool) -> dict[str, str]:
     """Locations this stage produced, with a one-line explanation of each."""
     artifacts = {
-        store.location(f"reports/run_id={run_id}/extraction.html"): "This report as a page, with the checks to review before loading",
+        store.location(
+            f"reports/run_id={run_id}/extraction.html"
+        ): "This report as a page, with the checks to review before loading",
         store.location(f"reports/run_id={run_id}/extract-summary.json"): "The same report as data",
-        store.location(f"runs/run_id={run_id}/extract-manifest.json"): "The full per-registry extract manifest, with integrity metadata for every staged object",
+        store.location(
+            f"runs/run_id={run_id}/extract-manifest.json"
+        ): "The full per-registry extract manifest, with integrity metadata for every staged object",
     }
     if dumped:
         artifacts[store.location(f"reports/run_id={run_id}/extracted-records/")] = (

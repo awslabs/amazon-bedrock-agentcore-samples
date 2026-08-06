@@ -24,6 +24,7 @@ or directly, against artifacts you already have:
 
 Exits 0 when all three agree, 1 with the differing values listed.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -88,8 +89,7 @@ def packaged_hash(tarball: Path) -> str:
             [
                 sys.executable,
                 "-c",
-                "from migration_common.adapter_defaults import implementation_hash;"
-                "print(implementation_hash())",
+                ("from migration_common.adapter_defaults import implementation_hash;print(implementation_hash())"),
             ],
             capture_output=True,
             text=True,
@@ -121,9 +121,7 @@ def _safe_extract(archive: tarfile.TarFile, destination: str) -> None:
         if root not in target.parents and target != root:
             raise SystemExit(f"Refusing to extract {member.name}: it escapes {root}")
         if not (member.isdir() or member.isfile()):
-            raise SystemExit(
-                f"Refusing to extract {member.name}: only regular files and directories are allowed"
-            )
+            raise SystemExit(f"Refusing to extract {member.name}: only regular files and directories are allowed")
         members.append((member, target))
 
     for member, target in members:
@@ -180,9 +178,7 @@ def _is_recent(path: Path) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tarball", help="npm pack output (default: the newest in the repo root)")
     parser.add_argument("--template", help=f"synthesized template (default: {DEFAULT_TEMPLATE})")
     parser.add_argument(
@@ -199,11 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     # for. It used to delete whatever the glob found, which is fine when `npm run verify:fingerprint`
     # has just produced one and destructive when an operator had staged a tarball in the repo root.
     # A --tarball the caller named is never deleted, and neither is one older than this run.
-    removable = (
-        tarball
-        if not options.tarball and tarball.is_file() and _is_recent(tarball)
-        else None
-    )
+    removable = tarball if not options.tarball and tarball.is_file() and _is_recent(tarball) else None
 
     hashes = {
         "checkout": checkout_hash(),

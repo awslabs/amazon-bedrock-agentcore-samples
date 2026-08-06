@@ -8,6 +8,7 @@ from a local file with no ``adapter`` section, which is the case a user without 
 Only the two registry APIs are faked, because they are the source and target of the migration --
 the thing being migrated, not infrastructure the tool needs to own.
 """
+
 from __future__ import annotations
 
 import csv
@@ -21,11 +22,10 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, os.path.dirname(__file__))
 
-from migration_common import __main__ as engine  # noqa: E402
-from migration_common.jobs import extract as extract_job  # noqa: E402
-from migration_common.jobs import transform_load as load_job  # noqa: E402
-
-from test_jobs_end_to_end import FakeGaClient, FakePreviewClient, preview_record  # noqa: E402
+from migration_common import __main__ as engine
+from migration_common.jobs import extract as extract_job
+from migration_common.jobs import transform_load as load_job
+from test_jobs_end_to_end import FakeGaClient, FakePreviewClient, preview_record
 
 RUN_ID = "run-local-0001"
 SOURCE = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-preview"}
@@ -36,9 +36,7 @@ class _NoAws:
     """Any use of the AWS SDK for storage or configuration is a test failure."""
 
     def __getattr__(self, name: str):
-        raise AssertionError(
-            f"A local run must not touch AWS for infrastructure, but boto3.{name} was used"
-        )
+        raise AssertionError(f"A local run must not touch AWS for infrastructure, but boto3.{name} was used")
 
 
 class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
@@ -63,7 +61,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         # Those are the migration's endpoints, not infrastructure, and this module is about the
         # infrastructure being absent -- so the probes are stubbed out rather than exercised here.
         for name in ("_source_prober", "_target_prober"):
-            self._patch(engine, name, lambda settings, purpose: (lambda endpoint: None))
+            self._patch(engine, name, lambda settings, purpose: lambda endpoint: None)
         for module in (extract_job, load_job):
             self._patch(module, "invoker_for_endpoint", lambda endpoint, run_id, purpose: "invoker")
         self._patch(extract_job, "PreviewRegistryClient", FakePreviewClient)
@@ -97,9 +95,12 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
 
     def _arguments(self, *, dry_run: bool, run_id: str = RUN_ID) -> list[str]:
         return [
-            "--config-file", self._config_file(dry_run=dry_run),
-            "--local-dir", str(self.staging),
-            "--RUN_ID", run_id,
+            "--config-file",
+            self._config_file(dry_run=dry_run),
+            "--local-dir",
+            str(self.staging),
+            "--RUN_ID",
+            run_id,
         ]
 
     def _read_json(self, relative: str):
@@ -140,8 +141,9 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
 
         crosswalk = (self._attempt_root() / "id-crosswalk/mapping=map-a.csv").read_text(encoding="utf-8")
         rows = list(csv.DictReader(crosswalk.splitlines()))
-        self.assertEqual([(row["oldRecordId"], row["newRecordId"]) for row in rows],
-                         [("rec-1", "ga-1"), ("rec-2", "ga-2")])
+        self.assertEqual(
+            [(row["oldRecordId"], row["newRecordId"]) for row in rows], [("rec-1", "ga-1"), ("rec-2", "ga-2")]
+        )
 
     def test_a_dry_run_writes_reports_and_no_ga_records(self):
         extract_job.main(self._arguments(dry_run=True))
@@ -167,11 +169,16 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         drifted_path.write_text(json.dumps(drifted), encoding="utf-8")
 
         with self.assertRaisesRegex(RuntimeError, "changed after extraction"):
-            load_job.main([
-                "--config-file", str(drifted_path),
-                "--local-dir", str(self.staging),
-                "--RUN_ID", RUN_ID,
-            ])
+            load_job.main(
+                [
+                    "--config-file",
+                    str(drifted_path),
+                    "--local-dir",
+                    str(self.staging),
+                    "--RUN_ID",
+                    RUN_ID,
+                ]
+            )
         self.assertEqual(FakeGaClient.created, [])
 
     def test_a_run_id_cannot_be_reused_locally_either(self):
@@ -182,9 +189,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
     def test_editing_staged_records_is_caught_before_anything_loads(self):
         extract_job.main(self._arguments(dry_run=False))
         staged = self.staging / f"runs/run_id={RUN_ID}/raw/mapping=map-a/part-00000.jsonl"
-        staged.write_text(
-            staged.read_text(encoding="utf-8").replace("SERVER_1", "TAMPERED"), encoding="utf-8"
-        )
+        staged.write_text(staged.read_text(encoding="utf-8").replace("SERVER_1", "TAMPERED"), encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "reconciliation failed"):
             load_job.main(self._arguments(dry_run=False))
         self.assertEqual(FakeGaClient.created, [])
@@ -196,9 +201,12 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
     def test_the_cli_drives_the_whole_migration_through_one_entrypoint(self):
         """What `agent-registry-migration run` does, stage by stage, with nothing deployed."""
         arguments = [
-            "--config-file", self._config_file(dry_run=True),
-            "--local-dir", str(self.staging),
-            "--RUN_ID", RUN_ID,
+            "--config-file",
+            self._config_file(dry_run=True),
+            "--local-dir",
+            str(self.staging),
+            "--RUN_ID",
+            RUN_ID,
         ]
         self.assertEqual(engine.main(["check", *arguments]), 0)
         self.assertEqual(engine.main(["extract", *arguments]), 0)
@@ -234,9 +242,12 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
 
     def test_a_run_without_live_writes_nothing_however_the_file_is_configured(self):
         arguments = [
-            "--config-file", self._config_file(dry_run=False),
-            "--local-dir", str(self.staging),
-            "--RUN_ID", RUN_ID,
+            "--config-file",
+            self._config_file(dry_run=False),
+            "--local-dir",
+            str(self.staging),
+            "--RUN_ID",
+            RUN_ID,
         ]
         self.assertEqual(engine.main(["extract", *arguments]), 0)
         self.assertEqual(engine.main(["load", *arguments, "--live", "false"]), 0)

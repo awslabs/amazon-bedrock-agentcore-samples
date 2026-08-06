@@ -3,6 +3,7 @@
 These checks are the guard rail that stops a bad configuration before a long run starts, so they
 are tested for both the failure they must catch and the actionable remedy they must return.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,7 +12,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import preflight  # noqa: E402
+from migration_common import preflight
 
 SOURCE = {"accountId": "111122223333", "region": "us-east-1", "registryId": "src-1"}
 TARGET = {"accountId": "111122223333", "region": "us-west-2", "registryId": "tgt-1"}
@@ -217,9 +218,7 @@ class RegistryAccessChecks(unittest.TestCase):
         def broken(_endpoint):
             raise RuntimeError("ResourceNotFoundException: registry does not exist")
 
-        results = preflight.check_registry_access(
-            [mapping()], side="target", prober=broken, label="GA registry"
-        )
+        results = preflight.check_registry_access([mapping()], side="target", prober=broken, label="GA registry")
         self.assertEqual([r.status for r in results], [preflight.FAIL])
         self.assertIn("registry id exists", results[0].remedy)
         self.assertIn("ResourceNotFound", results[0].detail)
@@ -289,10 +288,7 @@ class TheOutputAnOperatorReadsIsTheMigrationsOwn(unittest.TestCase):
 
         from migration_common.util import configure_logging
 
-        original = {
-            name: logging.getLogger(name).level
-            for name in ("boto3", "botocore", "s3transfer", "urllib3")
-        }
+        original = {name: logging.getLogger(name).level for name in ("boto3", "botocore", "s3transfer", "urllib3")}
         root_original = logging.getLogger().level
         try:
             configure_logging()

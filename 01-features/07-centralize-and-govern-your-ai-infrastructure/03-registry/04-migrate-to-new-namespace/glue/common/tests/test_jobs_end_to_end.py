@@ -9,24 +9,23 @@ These are the tests that catch wiring regressions -- an artifact written to the 
 manifest field renamed on one side only, a report that stops being produced -- which unit tests
 around individual helpers cannot see.
 """
+
 from __future__ import annotations
 
-import csv
-import io
 import json
 import os
 import sys
 import tempfile
 import threading
 import unittest
+from typing import ClassVar
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from botocore.exceptions import ClientError  # noqa: E402
-
-from migration_common.jobs import extract as extract_job  # noqa: E402
-from migration_common.jobs import transform_load as load_job  # noqa: E402
-from migration_common.registry_api import (  # noqa: E402
+from botocore.exceptions import ClientError
+from migration_common.jobs import extract as extract_job
+from migration_common.jobs import transform_load as load_job
+from migration_common.registry_api import (
     REPRODUCIBLE_STATUSES,
     LoadResult,
     RegistryApiError,
@@ -60,7 +59,7 @@ ADAPTER = {
 def preview_record(index: int, *, updated_at: str) -> dict:
     return {
         "recordId": f"rec-{index}",
-        "name": f"server-{index}",   # Preview names are [a-zA-Z0-9][a-zA-Z0-9_\-./]*
+        "name": f"server-{index}",  # Preview names are [a-zA-Z0-9][a-zA-Z0-9_\-./]*
         "descriptorType": "MCP",
         "updatedAt": updated_at,
         "descriptors": {"mcp": {"server": {"inlineContent": f"SERVER_{index}", "schemaVersion": "1.0"}}},
@@ -75,8 +74,7 @@ class _Body:
         return self._data
 
     def iter_lines(self):
-        for line in self._data.split(b"\n"):
-            yield line
+        yield from self._data.split(b"\n")
 
     def iter_chunks(self, chunk_size: int = 1024):
         for start in range(0, len(self._data), chunk_size):
@@ -86,7 +84,7 @@ class _Body:
 class _Events:
     """Stand-in for a botocore client's event system, tracking the If-None-Match injection."""
 
-    def __init__(self, client: "FakeS3Client") -> None:
+    def __init__(self, client: FakeS3Client) -> None:
         self._client = client
 
     def register_first(self, event_name: str, handler, unique_id: str) -> None:
@@ -97,7 +95,7 @@ class _Events:
 
 
 class _Meta:
-    def __init__(self, client: "FakeS3Client") -> None:
+    def __init__(self, client: FakeS3Client) -> None:
         self.events = _Events(client)
 
 
@@ -133,7 +131,7 @@ class FakeS3Client:
         self.versions.setdefault(key, []).append((f"v{self.next_version}", body))
 
     # -- the S3 surface the store uses --------------------------------------
-    def put_object(self, **kwargs):  # noqa: N803 - boto3 casing
+    def put_object(self, **kwargs):
         key = kwargs["Key"]
         if kwargs.get("ServerSideEncryption") != "AES256":
             raise AssertionError(f"unencrypted write to {key}")
@@ -147,7 +145,7 @@ class FakeS3Client:
         self.versions.setdefault(key, []).append((version_id, kwargs["Body"]))
         return {"VersionId": version_id}
 
-    def get_object(self, Bucket: str, Key: str, VersionId: str | None = None):  # noqa: N803
+    def get_object(self, Bucket: str, Key: str, VersionId: str | None = None):
         if Key not in self.versions:
             raise ClientError(
                 {"Error": {"Code": "NoSuchKey"}, "ResponseMetadata": {"HTTPStatusCode": 404}},
@@ -181,9 +179,9 @@ class FakeBoto3:
 class FakePreviewClient:
     """Yields staged preview records; optionally raises to exercise the failure path."""
 
-    records: list[dict] = []
+    records: ClassVar[list[dict]] = []
     error: Exception | None = None
-    calls: list[dict] = []
+    calls: ClassVar[list[dict]] = []
 
     @classmethod
     def reset(cls) -> None:
@@ -201,9 +199,7 @@ class FakePreviewClient:
         self.warnings = ["preview pagination used the default page size"]
 
     def iter_records(self, *, registry_id: str, load_mode: str, changed_after):
-        type(self).calls.append(
-            {"registryId": registry_id, "loadMode": load_mode, "changedAfter": changed_after}
-        )
+        type(self).calls.append({"registryId": registry_id, "loadMode": load_mode, "changedAfter": changed_after})
         if type(self).error is not None:
             raise type(self).error
         for record in type(self).records:
@@ -228,25 +224,25 @@ class FakeGaClient:
     error carries that id the way the real client's does.
     """
 
-    created: list[dict] = []
+    created: ClassVar[list[dict]] = []
     # Upserts that resolved onto a GA record an earlier run had already recorded.
-    updated: list[dict] = []
-    fail_records: set[str] = set()
-    fail_after_create: set[str] = set()
+    updated: ClassVar[list[dict]] = []
+    fail_records: ClassVar[set[str]] = set()
+    fail_after_create: ClassVar[set[str]] = set()
     # Names on which the real client's _claim_name guard would refuse a second claimant: the first
     # source record to ask for one of these names is created normally, and any later call for the
     # same name -- from a different source record -- fails, mirroring that guard's effect without
     # reimplementing it (it is unit-tested directly against the real client in
     # test_registry_clients.py::NameCollisionGuard).
-    refuse_second_claim_for: set[str] = set()
+    refuse_second_claim_for: ClassVar[set[str]] = set()
     # Status transitions the fake was asked to perform, and the statuses it refuses. ``auto_approve``
     # models a target registry carrying autoApprovalRules: [APPROVE_ALL], where a submitted record
     # becomes APPROVED without a second call.
-    status_calls: list[dict] = []
-    refuse_status: set[str] = set()
+    status_calls: ClassVar[list[dict]] = []
+    refuse_status: ClassVar[set[str]] = set()
     auto_approve: bool = False
     _lock = threading.Lock()
-    _claimed_names: dict[str, str] = {}
+    _claimed_names: ClassVar[dict[str, str]] = {}
 
     @classmethod
     def reset(cls) -> None:
@@ -298,9 +294,7 @@ class FakeGaClient:
         # earlier run is updated in place, whatever the record is called now.
         if known_record_id:
             with type(self)._lock:
-                type(self).updated.append(
-                    {"registryId": registry_id, "recordId": known_record_id, "record": record}
-                )
+                type(self).updated.append({"registryId": registry_id, "recordId": known_record_id, "record": record})
             return LoadResult(
                 action="updated",
                 new_record_id=known_record_id,
@@ -309,8 +303,7 @@ class FakeGaClient:
         new_record_id = "ga-" + display_name.rsplit("-", 1)[-1]
         if display_name in type(self).fail_after_create:
             raise RegistryApiError(
-                f"GA record {new_record_id} reached failure status CREATE_FAILED: "
-                "Failed to fetch agent card from URL",
+                f"GA record {new_record_id} reached failure status CREATE_FAILED: Failed to fetch agent card from URL",
                 record_id=new_record_id,
             )
         with type(self)._lock:
@@ -330,9 +323,7 @@ class FakeGaClient:
         """Mirror the real ladder closely enough to test what the load stage does with the outcome."""
         requested = (desired_status or "").upper()
         with type(self)._lock:
-            type(self).status_calls.append(
-                {"registryId": registry_id, "recordId": record_id, "status": requested}
-            )
+            type(self).status_calls.append({"registryId": registry_id, "recordId": record_id, "status": requested})
         result = StatusResult(requested=requested, achieved=current_status)
         if not requested or requested == "DRAFT":
             return result
@@ -441,9 +432,7 @@ class JobsEndToEnd(unittest.TestCase):
         """Every per-record comparison row this attempt wrote, in staged order."""
         return [
             row
-            for key in self.s3.keys_under(
-                f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/record-comparison/"
-            )
+            for key in self.s3.keys_under(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/record-comparison/")
             for row in self.s3.json(key)
         ]
 
@@ -477,12 +466,7 @@ class JobsEndToEnd(unittest.TestCase):
                 f"runs/run_id={RUN_ID}/raw/mapping=map-a/part-00001.jsonl",
             ],
         )
-        staged = [
-            json.loads(line)
-            for key in raw_keys[1:]
-            for line in self.s3.text(key).splitlines()
-            if line.strip()
-        ]
+        staged = [json.loads(line) for key in raw_keys[1:] for line in self.s3.text(key).splitlines() if line.strip()]
         self.assertEqual([row["oldRecordId"] for row in staged], ["rec-1", "rec-2", "rec-3"])
         self.assertEqual(staged[0]["runId"], RUN_ID)
         self.assertEqual(staged[0]["source"], SOURCE)
@@ -544,8 +528,13 @@ class JobsEndToEnd(unittest.TestCase):
         with open(config_path, "w", encoding="utf-8") as handle:
             json.dump(
                 {
-                    "config": {"loadMode": "FULL", "dryRun": False, "failOnRecordError": True,
-                               "recordsPerObject": 2, "loadConcurrency": 2},
+                    "config": {
+                        "loadMode": "FULL",
+                        "dryRun": False,
+                        "failOnRecordError": True,
+                        "recordsPerObject": 2,
+                        "loadConcurrency": 2,
+                    },
                     "registries": [{"id": "map-a", "source": SOURCE, "target": TARGET}],
                     "adapter": dict(ADAPTER, engine={"stagingBucket": BUCKET, "deploymentId": "default"}),
                 },
@@ -592,13 +581,9 @@ class JobsEndToEnd(unittest.TestCase):
 
         summary = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")
         approval = summary["approval"]
-        self.assertEqual(
-            approval["sourceStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1}
-        )
+        self.assertEqual(approval["sourceStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1})
         # Each record is now in its source's status.
-        self.assertEqual(
-            approval["gaStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1}
-        )
+        self.assertEqual(approval["gaStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1})
         self.assertEqual(approval["statusesApplied"], 2)
         self.assertEqual(approval["statusesNotApplied"], 0)
         self.assertEqual(approval["recordsNeedingResubmission"], 0)
@@ -645,9 +630,7 @@ class JobsEndToEnd(unittest.TestCase):
         in the approval block instead.
         """
         FakeGaClient.refuse_status = {"APPROVED"}
-        FakePreviewClient.records = [
-            dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")
-        ]
+        FakePreviewClient.records = [dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")]
         self._run_extract()
         self._run_load(dryRun=False)
 
@@ -661,17 +644,13 @@ class JobsEndToEnd(unittest.TestCase):
 
     def test_a_source_status_that_cannot_exist_on_a_new_record_is_reported(self):
         """CREATE_FAILED describes the source record's history, not a state GA can be put into."""
-        FakePreviewClient.records = [
-            dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="CREATE_FAILED")
-        ]
+        FakePreviewClient.records = [dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="CREATE_FAILED")]
         self._run_extract()
         self._run_load(dryRun=False)
 
         rows = self._comparison_rows()
         self.assertEqual(rows[0]["gaStatus"], "DRAFT")
-        self.assertTrue(
-            any("cannot be reproduced" in w for w in rows[0]["warnings"]), rows[0]["warnings"]
-        )
+        self.assertTrue(any("cannot be reproduced" in w for w in rows[0]["warnings"]), rows[0]["warnings"])
         self.assertEqual(
             self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")["approval"][
                 "statusesNotApplied"
@@ -681,29 +660,21 @@ class JobsEndToEnd(unittest.TestCase):
 
     def test_status_matching_can_be_turned_off(self):
         """Off means every record lands in DRAFT, and the report says so rather than implying parity."""
-        FakePreviewClient.records = [
-            dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")
-        ]
+        FakePreviewClient.records = [dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")]
         self._run_extract()
         self._run_load(dryRun=False, matchSourceStatus=False)
 
         self.assertEqual(FakeGaClient.status_calls, [])
-        approval = self.s3.json(
-            f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json"
-        )["approval"]
+        approval = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")["approval"]
         self.assertFalse(approval["matchSourceStatus"])
         self.assertEqual(approval["recordsNeedingResubmission"], 1)
         self.assertIn("Status matching is off", approval["note"])
 
     def test_a_dry_run_says_what_would_happen_to_approval_state(self):
-        FakePreviewClient.records = [
-            dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")
-        ]
+        FakePreviewClient.records = [dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")]
         self._run_extract()
         self._run_load(dryRun=True)
-        approval = self.s3.json(
-            f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json"
-        )["approval"]
+        approval = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")["approval"]
         self.assertEqual(approval["sourceStatusCounts"], {"APPROVED": 1})
         self.assertIn("moved to the status it holds", approval["note"])
 
@@ -850,9 +821,7 @@ class JobsEndToEnd(unittest.TestCase):
         # The staged JSONL is always written; only the readable second copy is optional.
         self._run_extract(dumpExtractedRecords=False)
         self.assertEqual(self.s3.keys_under(f"reports/run_id={RUN_ID}/extracted-records/"), [])
-        self.assertEqual(
-            len(self.s3.keys_under(f"runs/run_id={RUN_ID}/raw/mapping=map-a/part-")), 2
-        )
+        self.assertEqual(len(self.s3.keys_under(f"runs/run_id={RUN_ID}/raw/mapping=map-a/part-")), 2)
         registry = self.s3.json(f"runs/run_id={RUN_ID}/extract-manifest.json")["registries"][0]
         self.assertEqual(registry["extractedRecords"], [])
         self.assertIn("dumpExtractedRecords = false", registry["extractedRecordsNote"])
@@ -946,8 +915,9 @@ class JobsEndToEnd(unittest.TestCase):
         # Customer-facing crosswalk CSV.
         crosswalk = self.s3.text(f"{report_root}/id-crosswalk/mapping=map-a.csv").splitlines()
         self.assertEqual(crosswalk[0].split(",")[:2], ["oldRecordId", "newRecordId"])
-        self.assertEqual([line.split(",")[:2] for line in crosswalk[1:]],
-                         [["rec-1", "ga-1"], ["rec-2", "ga-2"], ["rec-3", "ga-3"]])
+        self.assertEqual(
+            [line.split(",")[:2] for line in crosswalk[1:]], [["rec-1", "ga-1"], ["rec-2", "ga-2"], ["rec-3", "ga-3"]]
+        )
 
         # Watermark is committed only now that records are in GA.
         watermark = self.s3.json("state/watermarks/mapping=map-a.json")
@@ -981,12 +951,8 @@ class JobsEndToEnd(unittest.TestCase):
             ["ga-1"],
             "the renamed record must land on the GA record it was already migrated to",
         )
-        self.assertEqual(
-            len(FakeGaClient.created), 3, "no fourth GA record may be created for a rename"
-        )
-        summary = self.s3.json(
-            f"reports/run_id={second_run}/attempt=attempt-2/summary.json"
-        )["registries"][0]
+        self.assertEqual(len(FakeGaClient.created), 3, "no fourth GA record may be created for a rename")
+        summary = self.s3.json(f"reports/run_id={second_run}/attempt=attempt-2/summary.json")["registries"][0]
         self.assertEqual(summary["updated"], 1)
         self.assertEqual(summary.get("created", 0), 0)
         crosswalk = self.s3.text(
@@ -1025,9 +991,7 @@ class JobsEndToEnd(unittest.TestCase):
         FakeGaClient.fail_after_create = {"server-2"}
         self._run_extract()
         self._run_load(dryRun=False, failOnRecordError=False)
-        self.assertEqual(
-            self.s3.json("state/idmap/mapping=map-a.json")["records"]["rec-2"], "ga-2"
-        )
+        self.assertEqual(self.s3.json("state/idmap/mapping=map-a.json")["records"]["rec-2"], "ga-2")
 
     def test_partial_failure_keeps_the_watermark_and_writes_a_failures_file(self):
         FakeGaClient.fail_records = {"server-2"}
@@ -1121,8 +1085,13 @@ class JobsEndToEnd(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(
                 {
-                    "config": {"loadMode": "FULL", "dryRun": False, "failOnRecordError": True,
-                               "recordsPerObject": 2, "loadConcurrency": 2},
+                    "config": {
+                        "loadMode": "FULL",
+                        "dryRun": False,
+                        "failOnRecordError": True,
+                        "recordsPerObject": 2,
+                        "loadConcurrency": 2,
+                    },
                     "registries": [moved],
                     "adapter": ADAPTER,
                 },
@@ -1130,8 +1099,7 @@ class JobsEndToEnd(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             load_job.main(
-                ["--config-file", path, "--staging-bucket", BUCKET, "--run-id", RUN_ID,
-                 "--attempt-id", ATTEMPT_ID]
+                ["--config-file", path, "--staging-bucket", BUCKET, "--run-id", RUN_ID, "--attempt-id", ATTEMPT_ID]
             )
         self.assertEqual(FakeGaClient.created, [], "no record may be written to a moved target")
 
@@ -1194,9 +1162,7 @@ class JobsEndToEnd(unittest.TestCase):
             self._run_load(dryRun=False)
 
         self.assertIsNone(self.s3.versions.get("state/watermarks/mapping=map-a.json"))
-        summary = self.s3.json(
-            f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json"
-        )["registries"][0]
+        summary = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")["registries"][0]
         self.assertFalse(summary["watermarkCommitted"])
         self.assertIn("reconciliation failed", summary["watermarkSkipReason"])
 

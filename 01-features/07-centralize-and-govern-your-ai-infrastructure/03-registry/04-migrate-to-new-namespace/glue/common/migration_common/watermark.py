@@ -25,6 +25,7 @@ mapping, read at the start of a run and written at the end, so they live togethe
 two near-identical modules. Their names are prefixed (``read_idmap`` beside ``read``) because their
 commit rules are deliberately *not* the same -- see ``read_idmap`` below.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -223,11 +224,7 @@ def read_idmap(store: Any, mapping_id: str) -> dict[str, str]:
     records = value.get("records", {})
     if not isinstance(records, dict):
         raise IdMapError(f"Id map {idmap_key(mapping_id)} has a non-object 'records'")
-    return {
-        str(old): str(new)
-        for old, new in records.items()
-        if old not in (None, "") and new not in (None, "")
-    }
+    return {str(old): str(new) for old, new in records.items() if old not in (None, "") and new not in (None, "")}
 
 
 def merge_idmap(previous: dict[str, str], pairs: dict[str, str]) -> dict[str, str]:

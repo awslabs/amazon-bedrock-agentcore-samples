@@ -7,6 +7,7 @@ CDK-managed ``<prefix>/adapter`` parameter. The replay fingerprint over the tran
 GA adapter binds an extract run to the exact code that produced it, so live writes cannot
 silently replay against changed logic.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -15,7 +16,8 @@ import json
 import os
 import sys
 import uuid
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .util import parse_timestamp, safe_segment
 
@@ -129,9 +131,7 @@ def live_override(arguments: dict[str, str]) -> bool | None:
         return False
     if text in _TRUE_FLAG_VALUES:
         return True
-    raise ConfigurationError(
-        f"--live must be true or false, got {arguments[candidate]!r}"
-    )
+    raise ConfigurationError(f"--live must be true or false, got {arguments[candidate]!r}")
 
 
 def load_mode_override(arguments: dict[str, str]) -> str | None:
@@ -147,9 +147,7 @@ def load_mode_override(arguments: dict[str, str]) -> str | None:
         return None
     value = str(arguments[candidate]).strip().upper()
     if value not in {"FULL", "INCREMENTAL"}:
-        raise ConfigurationError(
-            f"--load-mode must be FULL or INCREMENTAL, got {arguments[candidate]!r}"
-        )
+        raise ConfigurationError(f"--load-mode must be FULL or INCREMENTAL, got {arguments[candidate]!r}")
     return value
 
 
@@ -206,11 +204,7 @@ def required_argument(arguments: dict[str, str], name: str) -> str:
 
 
 def resolve_run_id(arguments: dict[str, str], *, allow_generate: bool) -> str:
-    run_id = (
-        arguments.get("RUN_ID")
-        or arguments.get("WORKFLOW_RUN_ID")
-        or os.environ.get("WORKFLOW_RUN_ID")
-    )
+    run_id = arguments.get("RUN_ID") or arguments.get("WORKFLOW_RUN_ID") or os.environ.get("WORKFLOW_RUN_ID")
     if not run_id and allow_generate:
         # Timestamp-prefixed so generated runs sort chronologically and read clearly in the
         # S3 console (e.g. 20260715T174501Z-a1b2c3d4); the short uuid suffix keeps two runs
@@ -235,9 +229,7 @@ def replay_configuration_fingerprint(settings: dict[str, Any]) -> str:
     api = settings.get("api")
     ga_api = api.get("ga") if isinstance(api, dict) else None
     if not isinstance(transform, dict) or not isinstance(ga_api, dict):
-        raise ConfigurationError(
-            "Settings must contain transform and api.ga objects for replay protection"
-        )
+        raise ConfigurationError("Settings must contain transform and api.ga objects for replay protection")
     payload = {
         "schemaVersion": 1,
         "transform": transform,
@@ -442,10 +434,8 @@ def resolve_configuration(
             # -- and the parameters only exist in the engine's -- so without this a deployment in
             # any other region reports itself as missing.
             region = optional_argument(arguments, "REGION")
-            session = (
-                boto3.session.Session(region_name=region) if region else boto3.session.Session()
-            )
-            ssm_client_factory = lambda: session.client("ssm")  # noqa: E731
+            session = boto3.session.Session(region_name=region) if region else boto3.session.Session()
+            ssm_client_factory = lambda: session.client("ssm")
         settings, mappings = load_configuration(ssm_client_factory(), config_prefix)
         source = f"SSM {config_prefix}"
 
@@ -536,8 +526,7 @@ def _parse_grouped_registries(value: str, source_name: str) -> list[dict[str, An
     if isinstance(parsed, dict):
         # Accept an object keyed by mapping id, filling in the id when omitted.
         entries = [
-            {**entry, "id": entry.get("id", key)} if isinstance(entry, dict) else entry
-            for key, entry in parsed.items()
+            {**entry, "id": entry.get("id", key)} if isinstance(entry, dict) else entry for key, entry in parsed.items()
         ]
     elif isinstance(parsed, list):
         entries = parsed
@@ -594,7 +583,7 @@ def _get_parameter(ssm_client: Any, name: str) -> str | None:
     """
     try:
         response = ssm_client.get_parameter(Name=name, WithDecryption=False)
-    except Exception as error:  # noqa: BLE001 - narrowed immediately below
+    except Exception as error:
         if _is_parameter_not_found(ssm_client, error):
             return None
         raise
@@ -611,7 +600,7 @@ def _is_parameter_not_found(ssm_client: Any, error: Exception) -> bool:
 
 def _looks_like_json(value: str) -> bool:
     stripped = value.lstrip()
-    return stripped.startswith("{") or stripped.startswith("[")
+    return stripped.startswith(("{", "["))
 
 
 def parse_key_value_document(value: str, source_name: str) -> dict[str, str]:
@@ -695,9 +684,7 @@ def parse_registry_document(value: str, source_name: str) -> list[dict[str, Any]
                         f"{source_name}: mapping {mapping_id!r} {side} must be "
                         f"'<accountId>/<region>/<registryId>', got {field_value!r}"
                     )
-                mapping[side].update(
-                    {"accountId": pieces[0], "region": pieces[1], "registryId": pieces[2]}
-                )
+                mapping[side].update({"accountId": pieces[0], "region": pieces[1], "registryId": pieces[2]})
             else:
                 mapping[side][attribute] = field_value
         mappings.append(mapping)
@@ -730,7 +717,7 @@ def _read_parameters_by_path(ssm_client: Any, path: str, *, recursive: bool) -> 
         response = ssm_client.get_parameters_by_path(**request)
         for parameter in response.get("Parameters", []):
             name = str(parameter["Name"])
-            relative = name[len(base) + 1:] if name.startswith(f"{base}/") else name
+            relative = name[len(base) + 1 :] if name.startswith(f"{base}/") else name
             result[relative] = parameter["Value"]
         next_token = response.get("NextToken")
         if not next_token:
@@ -811,9 +798,7 @@ def _require_int_in_range(
     """
     value = load.get(field, default)
     if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
-        raise ConfigurationError(
-            f"load.{field} must be an integer between {minimum} and {maximum}, got {value!r}"
-        )
+        raise ConfigurationError(f"load.{field} must be an integer between {minimum} and {maximum}, got {value!r}")
 
 
 def validate_runtime_configuration(settings: dict[str, Any], mappings: list[dict[str, Any]]) -> None:

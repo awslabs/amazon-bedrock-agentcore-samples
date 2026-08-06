@@ -21,6 +21,7 @@ types and translates them into the calls below, so there is exactly one place to
 stage entrypoints Glue itself runs (``glue/extract.py`` and ``glue/transform_load.py``) call the
 same job modules this does.
 """
+
 from __future__ import annotations
 
 import json
@@ -69,6 +70,7 @@ COMMANDS = (
 # --------------------------------------------------------------------------------------------
 # check -- the pre-flight validation that used to be its own script
 # --------------------------------------------------------------------------------------------
+
 
 def _source_prober(settings: dict[str, Any], purpose: str):
     """Return a callable that proves a Preview registry is listable with its credentials."""
@@ -132,7 +134,7 @@ def check(arguments: dict[str, str]) -> int:
     target_prober = None
     if not offline:
         if store is not None:
-            watermark_reader = lambda mapping_id: watermark_state.read(store, mapping_id)  # noqa: E731
+            watermark_reader = lambda mapping_id: watermark_state.read(store, mapping_id)
         source_prober = _source_prober(settings, "preflight")
         target_prober = _target_prober(settings, "preflight")
 
@@ -154,6 +156,7 @@ def check(arguments: dict[str, str]) -> int:
 # --------------------------------------------------------------------------------------------
 # report -- read a run's reports back without hunting for keys
 # --------------------------------------------------------------------------------------------
+
 
 def report(arguments: dict[str, str]) -> int:
     """Print what a run did: what extraction read, and what the load attempt wrote.
@@ -268,16 +271,14 @@ def _run_ids(store: Any, summaries: dict[str, Any] | None = None) -> list[str]:
     for key in store.list_keys("reports/run_id="):
         segment = key.split("/", 2)[1] if key.startswith("reports/") else ""
         if segment.startswith("run_id="):
-            run_ids.add(segment[len("run_id="):])
+            run_ids.add(segment[len("run_id=") :])
     return sorted(run_ids, key=lambda run_id: (_run_started_at(store, run_id, cache), run_id))
 
 
 def _extract_summary(store: Any, run_id: str, cache: dict[str, Any]) -> Any:
     """Read a run's extract report, remembering it so repeated questions cost one request."""
     if run_id not in cache:
-        cache[run_id] = store.get_json_if_present(
-            f"reports/run_id={run_id}/extract-summary.json"
-        )
+        cache[run_id] = store.get_json_if_present(f"reports/run_id={run_id}/extract-summary.json")
     return cache[run_id]
 
 
@@ -320,8 +321,7 @@ def latest_run(arguments: dict[str, str]) -> int:
             print(run_id)
             return 0
     print(
-        f"No extract that is ready to load was found in {staging}. Run a dry run first: "
-        "agent-registry-migration run",
+        f"No extract that is ready to load was found in {staging}. Run a dry run first: agent-registry-migration run",
         file=sys.stderr,
     )
     return 1
@@ -415,6 +415,7 @@ def _render_report(
 # target-config -- derive the GA registry configuration to create
 # --------------------------------------------------------------------------------------------
 
+
 def target_config(arguments: dict[str, str]) -> int:
     """Write the GA ``CreateRegistry`` input derived from each source registry.
 
@@ -437,9 +438,7 @@ def target_config(arguments: dict[str, str]) -> int:
         return 1
 
     output_dir = optional_argument(arguments, "OUTPUT_DIR")
-    entries = target_registry.derive_create_registry_inputs(
-        settings, mappings, mapping_ids=requested
-    )
+    entries = target_registry.derive_create_registry_inputs(settings, mappings, mapping_ids=requested)
     failures = 0
     rendered_entries = []
     for entry in entries:
@@ -472,9 +471,7 @@ def target_config(arguments: dict[str, str]) -> int:
     # Skipped under --json, which means something is reading this output rather than a person: the
     # `init` wizard is the caller that does, and it prints the same note itself, in position, right
     # before the commands. Printing here as well put it on screen twice.
-    if not flag(arguments, "JSON") and any(
-        entry.get("command") for entry in rendered_entries
-    ):
+    if not flag(arguments, "JSON") and any(entry.get("command") for entry in rendered_entries):
         print("\n" + target_registry.create_registry_prerequisite(), file=sys.stderr)
 
     if output_dir and flag(arguments, "JSON"):
@@ -485,6 +482,7 @@ def target_config(arguments: dict[str, str]) -> int:
 # --------------------------------------------------------------------------------------------
 # publish-artifacts -- upload the Glue job scripts and library wheel
 # --------------------------------------------------------------------------------------------
+
 
 def account(_arguments: dict[str, str]) -> int:
     """Print the calling identity and default region, so the CLI can offer them as defaults.
@@ -605,9 +603,7 @@ def clear_pending_stack(arguments: dict[str, str]) -> int:
 
     # A REVIEW_IN_PROGRESS stack should hold nothing. Verified rather than assumed: this function
     # deletes, so it must not act on a status it has misread.
-    resources = cloudformation.list_stack_resources(StackName=stack_name).get(
-        "StackResourceSummaries", []
-    )
+    resources = cloudformation.list_stack_resources(StackName=stack_name).get("StackResourceSummaries", [])
     if resources:
         print(
             json.dumps(
@@ -665,8 +661,7 @@ def engine_info(arguments: dict[str, str]) -> int:
                 "creationTime": created_at.isoformat() if created_at else None,
                 "lastUpdatedTime": updated_at.isoformat() if updated_at else None,
                 "outputs": {
-                    str(item.get("OutputKey")): str(item.get("OutputValue"))
-                    for item in stack.get("Outputs", [])
+                    str(item.get("OutputKey")): str(item.get("OutputValue")) for item in stack.get("Outputs", [])
                 },
             },
             indent=2,
@@ -789,6 +784,7 @@ def publish_artifacts(arguments: dict[str, str]) -> int:
 # dispatch
 # --------------------------------------------------------------------------------------------
 
+
 def _split_list(value: str | None) -> list[str]:
     return [item.strip() for item in str(value).split(",") if item.strip()] if value else []
 
@@ -887,13 +883,11 @@ def run() -> int:
     except ConfigurationError as error:
         LOGGER.error("%s", error)
         return 1
-    except Exception as error:  # noqa: BLE001 - surfaced as a message, with a traceback on request
+    except Exception as error:
         if debug:
-            LOGGER.exception("%s", error)
+            LOGGER.exception("Command failed")
         else:
-            LOGGER.error(
-                "%s (re-run with --debug, or MIGRATION_DEBUG=1, for the traceback)", error
-            )
+            LOGGER.error("%s (re-run with --debug, or MIGRATION_DEBUG=1, for the traceback)", error)
         return 1
 
 

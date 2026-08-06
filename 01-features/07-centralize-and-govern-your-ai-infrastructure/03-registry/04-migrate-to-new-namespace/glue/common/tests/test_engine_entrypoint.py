@@ -5,6 +5,7 @@ untouched, so the CLI and Glue reach identical code. And ``--live`` must be the 
 turn a review run into a live one -- it decides whether records reach a customer's GA registry, so
 it is pinned from both ends: the dispatcher forwards it, and the settings layer applies it.
 """
+
 from __future__ import annotations
 
 import io
@@ -18,9 +19,9 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import __main__ as engine  # noqa: E402
-from migration_common.local_store import LocalStore  # noqa: E402
-from migration_common.settings import (  # noqa: E402
+from migration_common import __main__ as engine
+from migration_common.local_store import LocalStore
+from migration_common.settings import (
     ConfigurationError,
     apply_run_overrides,
     live_override,
@@ -44,7 +45,11 @@ class Dispatch(unittest.TestCase):
             self.addCleanup(setattr, module, "main", original)
 
     def test_extract_and_load_receive_every_argument_unchanged(self):
-        argv = ["--config-file", "/tmp/c.json", "--local-dir", "/tmp/s", "--run-id", "r-1"]
+        # Paths only have to be forwarded verbatim, never opened, but they still go through
+        # gettempdir() rather than a literal /tmp so no scanner has to guess that.
+        staging = os.path.join(tempfile.gettempdir(), "s")
+        config = os.path.join(tempfile.gettempdir(), "c.json")
+        argv = ["--config-file", config, "--local-dir", staging, "--run-id", "r-1"]
         self.assertEqual(engine.main(["extract", *argv]), 0)
         self.assertEqual(engine.main(["load", *argv, "--live", "true"]), 0)
         self.assertEqual(
@@ -105,16 +110,12 @@ class LiveIsTheOnlyWayToWrite(unittest.TestCase):
         self.assertTrue(settings["load"]["dryRun"])
 
     def test_live_true_enables_writes(self):
-        settings = apply_run_overrides(
-            self._settings(True), parse_job_arguments(["--live", "true"])
-        )
+        settings = apply_run_overrides(self._settings(True), parse_job_arguments(["--live", "true"]))
         self.assertFalse(settings["load"]["dryRun"])
 
     def test_live_false_forces_a_dry_run_even_when_configured_live(self):
         """The CLI always states its intent, so a stored dryRun=false cannot surprise anyone."""
-        settings = apply_run_overrides(
-            self._settings(False), parse_job_arguments(["--live", "false"])
-        )
+        settings = apply_run_overrides(self._settings(False), parse_job_arguments(["--live", "false"]))
         self.assertTrue(settings["load"]["dryRun"])
 
     def test_a_bare_flag_means_live(self):
@@ -262,9 +263,7 @@ class ReportsAreFoundWithoutARunId(unittest.TestCase):
             }
             if approval is not None:
                 summary["approval"] = approval
-            self.store.put_json(
-                f"reports/run_id={run_id}/attempt={attempt}/summary.json", summary
-            )
+            self.store.put_json(f"reports/run_id={run_id}/attempt={attempt}/summary.json", summary)
 
     def test_the_newest_run_is_used_when_none_is_named(self):
         self._write("20260101T000000Z-aaaaaaaa")
@@ -387,9 +386,7 @@ class TheGaModelPrerequisiteIsPrintedOnce(unittest.TestCase):
         buffer = io.StringIO()
         # Reproduces the one decision under test: print the note, or leave it to the caller.
         with contextlib.redirect_stderr(buffer):
-            if not engine.flag(arguments, "JSON") and any(
-                entry.get("command") for entry in rendered
-            ):
+            if not engine.flag(arguments, "JSON") and any(entry.get("command") for entry in rendered):
                 print("\n" + target_registry.create_registry_prerequisite(), file=sys.stderr)
         return buffer.getvalue()
 
@@ -415,7 +412,7 @@ class ClearingAStrandedChangesetShell(unittest.TestCase):
         calls: list[str] = []
 
         class FakeCloudFormation:
-            def describe_stacks(self, StackName: str):  # noqa: N803
+            def describe_stacks(self, StackName: str):
                 calls.append(f"describe:{StackName}")
                 if stack is None:
                     from botocore.exceptions import ClientError
@@ -431,17 +428,15 @@ class ClearingAStrandedChangesetShell(unittest.TestCase):
                     )
                 return {"Stacks": [stack]}
 
-            def list_stack_resources(self, StackName: str):  # noqa: N803
+            def list_stack_resources(self, StackName: str):
                 calls.append("list_resources")
                 return {"StackResourceSummaries": resources or []}
 
             def update_termination_protection(self, **kwargs):
-                calls.append(
-                    f"protection:{kwargs['EnableTerminationProtection']}"
-                )
+                calls.append(f"protection:{kwargs['EnableTerminationProtection']}")
                 return {}
 
-            def delete_stack(self, StackName: str):  # noqa: N803
+            def delete_stack(self, StackName: str):
                 calls.append(f"delete:{StackName}")
                 return {}
 
@@ -475,9 +470,7 @@ class ClearingAStrandedChangesetShell(unittest.TestCase):
             boto3.session.Session = original  # type: ignore[assignment]
 
     def test_an_empty_review_stack_has_its_protection_dropped_then_is_deleted(self):
-        code, result, calls = self._run(
-            {"StackStatus": "REVIEW_IN_PROGRESS", "EnableTerminationProtection": True}
-        )
+        code, result, calls = self._run({"StackStatus": "REVIEW_IN_PROGRESS", "EnableTerminationProtection": True})
         self.assertEqual(code, 0)
         self.assertTrue(result["cleared"])
         # Protection off before the delete, or the delete is refused -- order is the whole point.
@@ -485,9 +478,7 @@ class ClearingAStrandedChangesetShell(unittest.TestCase):
         self.assertIn("waited", calls)
 
     def test_a_review_stack_without_protection_is_just_deleted(self):
-        _code, result, calls = self._run(
-            {"StackStatus": "REVIEW_IN_PROGRESS", "EnableTerminationProtection": False}
-        )
+        _code, result, calls = self._run({"StackStatus": "REVIEW_IN_PROGRESS", "EnableTerminationProtection": False})
         self.assertTrue(result["cleared"])
         self.assertNotIn("protection:False", calls)
         self.assertIn("delete:AStack", calls)
@@ -496,9 +487,7 @@ class ClearingAStrandedChangesetShell(unittest.TestCase):
         """Anything other than REVIEW_IN_PROGRESS is a deployment, not a leftover shell."""
         for status in ("CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"):
             with self.subTest(status=status):
-                code, result, calls = self._run(
-                    {"StackStatus": status, "EnableTerminationProtection": True}
-                )
+                code, result, calls = self._run({"StackStatus": status, "EnableTerminationProtection": True})
                 self.assertEqual(code, 0)
                 self.assertFalse(result["cleared"])
                 self.assertIn(status, result["reason"])

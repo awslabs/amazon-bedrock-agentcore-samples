@@ -18,6 +18,7 @@ the CLI::
 
 Migrated GA records are never deleted, whatever is passed.
 """
+
 from __future__ import annotations
 
 import sys
@@ -76,10 +77,7 @@ def build_plan(cloudformation: object, s3: object, stack_name: str) -> dict:
             ) from error
         raise TeardownError(f"could not describe {stack_name}: {error}") from error
 
-    outputs = {
-        item.get("OutputKey"): item.get("OutputValue")
-        for item in described.get("Outputs", [])
-    }
+    outputs = {item.get("OutputKey"): item.get("OutputValue") for item in described.get("Outputs", [])}
     bucket = outputs.get("StagingBucketName")
     resources: dict[str, int] = {}
     paginator = cloudformation.get_paginator("list_stack_resources")  # type: ignore[attr-defined]
@@ -170,8 +168,10 @@ def render_plan(plan: dict, options: dict) -> str:
         )
         lines += [
             f"  Staging bucket s3://{plan['bucket']} and its contents:",
-            f"    {total.get('objects', 0)} objects / {total.get('versions', 0)} versions"
-            f" / {_human_bytes(total.get('bytes', 0))}",
+            (
+                f"    {total.get('objects', 0)} objects / {total.get('versions', 0)} versions"
+                f" / {_human_bytes(total.get('bytes', 0))}"
+            ),
         ]
         if prefixes:
             lines.append(f"    {prefixes}")
@@ -183,8 +183,10 @@ def render_plan(plan: dict, options: dict) -> str:
     lines.append("  The Preview registries and their records")
     if plan["bucket"] and not options["delete_data"]:
         lines += [
-            f"  Staging bucket s3://{plan['bucket']} with"
-            f" {total.get('objects', 0)} objects / {_human_bytes(total.get('bytes', 0))}",
+            (
+                f"  Staging bucket s3://{plan['bucket']} with"
+                f" {total.get('objects', 0)} objects / {_human_bytes(total.get('bytes', 0))}"
+            ),
             "    (it holds your reports and the old -> new id crosswalks; add --delete-data to remove it)",
         ]
     if plan["bucket"] and options["delete_data"] and options["keep_reports"]:

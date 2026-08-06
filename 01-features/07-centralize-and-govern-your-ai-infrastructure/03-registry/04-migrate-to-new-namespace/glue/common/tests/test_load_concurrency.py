@@ -4,6 +4,7 @@ Concurrency must be invisible in the output: the same records, the same order, t
 whatever the worker count. These tests pin that, plus the thread-safety of the shared GA client
 cache and the memory bound on batching.
 """
+
 from __future__ import annotations
 
 import os
@@ -14,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common.jobs.transform_load import (  # noqa: E402
+from migration_common.jobs.transform_load import (
     GaClientPool,
     RecordOutcome,
     _iter_batches,

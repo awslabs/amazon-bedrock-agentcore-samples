@@ -16,6 +16,7 @@ higher-level list/get/upsert logic works unchanged against the SDK-parsed respon
   terminal state. The module-level helpers build and validate the GA create/update bodies
   and compare a live record against the desired one.
 """
+
 from __future__ import annotations
 
 import copy
@@ -23,8 +24,9 @@ import hashlib
 import json
 import logging
 import threading
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Iterator
+from typing import Any
 from urllib.parse import urlparse
 
 from botocore.exceptions import BotoCoreError, ClientError
@@ -119,9 +121,7 @@ def _client_error_code(error: Exception) -> str | None:
 def _preview_endpoint_url(config: dict[str, Any], region: str) -> str:
     """Resolve and pin the Preview endpoint to the fixed regional bedrock-agentcore host."""
     if _optional_string(config.get("endpointUrl")) is not None:
-        raise RegistryApiError(
-            "Preview endpointUrl overrides are not supported; the regional endpoint is fixed"
-        )
+        raise RegistryApiError("Preview endpointUrl overrides are not supported; the regional endpoint is fixed")
     template = _required_string(config, "endpointUrlTemplate", "preview API")
     endpoint = template.replace("{region}", region)
     parsed = urlparse(endpoint)
@@ -134,8 +134,7 @@ def _preview_endpoint_url(config: dict[str, Any], region: str) -> str:
         or parsed.fragment
     ):
         raise RegistryApiError(
-            "Preview endpointUrlTemplate must resolve to "
-            f"https://{expected_host} for region {region}"
+            f"Preview endpointUrlTemplate must resolve to https://{expected_host} for region {region}"
         )
     return endpoint.rstrip("/")
 
@@ -245,9 +244,7 @@ class PreviewRegistryClient:
                     raise RegistryApiError("Preview list response contains a non-object record")
                 record_id = get_path(summary, record_id_path)
                 if record_id in (None, ""):
-                    raise RegistryApiError(
-                        f"Preview list record is missing id at response path {record_id_path!r}"
-                    )
+                    raise RegistryApiError(f"Preview list record is missing id at response path {record_id_path!r}")
 
                 if cutoff and get_operation and updated_at_path:
                     summary_updated_at = get_path(summary, updated_at_path)
@@ -270,9 +267,7 @@ class PreviewRegistryClient:
                     )
                     selected = get_path(get_response, record_path) if record_path else get_response
                     if not isinstance(selected, dict):
-                        raise RegistryApiError(
-                            f"Preview get response path {record_path!r} is not an object"
-                        )
+                        raise RegistryApiError(f"Preview get response path {record_path!r} is not an object")
                     record = _without_response_metadata(selected)
 
                 if cutoff:
@@ -317,9 +312,7 @@ class PreviewRegistryClient:
         try:
             response = getattr(self._client, method_name)(**request)
         except (ClientError, BotoCoreError) as error:
-            raise RegistryApiError(
-                f"Preview API call {self._service_name}.{operation} failed: {error}"
-            ) from error
+            raise RegistryApiError(f"Preview API call {self._service_name}.{operation} failed: {error}") from error
         return _without_response_metadata(response)
 
     def _warn(self, warning: str) -> None:
@@ -425,12 +418,8 @@ class GaRegistryClient:
         self._response_config = _dict(api_config.get("response"), "ga.response")
         self._poll_config = _dict(api_config.get("poll"), "ga.poll")
         # Lifecycle status sets are read once here and reused by the poll loop.
-        self._in_progress_statuses = _status_set(
-            self._poll_config, "inProgressStatuses", ["CREATING", "UPDATING"]
-        )
-        self._failure_statuses = _status_set(
-            self._poll_config, "failureStatuses", ["CREATE_FAILED", "UPDATE_FAILED"]
-        )
+        self._in_progress_statuses = _status_set(self._poll_config, "inProgressStatuses", ["CREATING", "UPDATING"])
+        self._failure_statuses = _status_set(self._poll_config, "failureStatuses", ["CREATE_FAILED", "UPDATE_FAILED"])
         # Defaults cover every settled record state, so a record the customer already submitted
         # or approved counts as settled and can still be updated by a later incremental run.
         self._success_statuses = _status_set(
@@ -448,11 +437,7 @@ class GaRegistryClient:
         )
         self._conflict_retry_delay_seconds = max(
             0.0,
-            float(
-                self._poll_config.get(
-                    "conflictRetryDelaySeconds", DEFAULT_CONFLICT_RETRY_DELAY_SECONDS
-                )
-            ),
+            float(self._poll_config.get("conflictRetryDelaySeconds", DEFAULT_CONFLICT_RETRY_DELAY_SECONDS)),
         )
         # Source-identity index per target registry, built at most once (see _find_existing_by_source).
         # This client is shared by the load stage's worker threads, hence the lock.
@@ -502,13 +487,9 @@ class GaRegistryClient:
         polling.
         """
         self._poll_attempts = int(self._poll_config.get("maxAttempts", DEFAULT_POLL_ATTEMPTS))
-        self._poll_interval_seconds = float(
-            self._poll_config.get("intervalSeconds", DEFAULT_POLL_INTERVAL_SECONDS)
-        )
+        self._poll_interval_seconds = float(self._poll_config.get("intervalSeconds", DEFAULT_POLL_INTERVAL_SECONDS))
         if self._poll_attempts < 1 or self._poll_interval_seconds < 0:
-            raise RegistryApiError(
-                "GA poll settings must use maxAttempts >= 1 and intervalSeconds >= 0"
-            )
+            raise RegistryApiError("GA poll settings must use maxAttempts >= 1 and intervalSeconds >= 0")
         # Status transitions settle faster than creates, so they get their own smaller budget --
         # capped by the record-level budget so shortening that shortens this too. See
         # DEFAULT_STATUS_POLL_ATTEMPTS.
@@ -599,8 +580,7 @@ class GaRegistryClient:
             elif self._is_failure(current_status):
                 reason = _optional_string(current.get("statusReason")) or "No status reason returned"
                 raise RegistryApiError(
-                    f"Existing GA record {record_id} is in failure status "
-                    f"{current_status}: {reason}",
+                    f"Existing GA record {record_id} is in failure status {current_status}: {reason}",
                     record_id=record_id,
                 )
             if _record_matches_desired(current, record):
@@ -647,9 +627,7 @@ class GaRegistryClient:
         )
         create_status = _required_string(response, "status", "GA create response")
         if create_status != "CREATING":
-            raise RegistryApiError(
-                f"GA create returned status {create_status!r}; expected 'CREATING'"
-            )
+            raise RegistryApiError(f"GA create returned status {create_status!r}; expected 'CREATING'")
         record_arn_path = _required_string(
             self._response_config,
             "recordArnPath",
@@ -776,8 +754,7 @@ class GaRegistryClient:
                     )
                 except RegistryApiError as fallback_error:
                     raise RegistryApiError(
-                        f"{fallback_error} (after a direct transition to {requested} was refused: "
-                        f"{first_refusal})",
+                        f"{fallback_error} (after a direct transition to {requested} was refused: {first_refusal})",
                         record_id=fallback_error.record_id or record_id,
                         error_code=fallback_error.error_code,
                     ) from fallback_error
@@ -863,14 +840,10 @@ class GaRegistryClient:
                     body=body,
                 )
             except RegistryApiError as error:
-                if (
-                    error.error_code != "ConflictException"
-                    or attempt >= self._conflict_retry_attempts
-                ):
+                if error.error_code != "ConflictException" or attempt >= self._conflict_retry_attempts:
                     raise
                 LOGGER.info(
-                    "GA %s on record %s hit a concurrent-update conflict (attempt %d of %d); "
-                    "retrying in %.1fs",
+                    "GA %s on record %s hit a concurrent-update conflict (attempt %d of %d); retrying in %.1fs",
                     route_name,
                     record_id,
                     attempt,
@@ -1012,9 +985,7 @@ class GaRegistryClient:
                     raise RegistryApiError("GA list response contains a non-object record")
                 item_name = get_path(item, record_name_path)
                 if item_name in (None, ""):
-                    raise RegistryApiError(
-                        f"GA list result is missing name at response path {record_name_path!r}"
-                    )
+                    raise RegistryApiError(f"GA list result is missing name at response path {record_name_path!r}")
                 if str(item_name) != name:
                     continue
                 item_version = get_path(item, record_version_path)
@@ -1031,8 +1002,7 @@ class GaRegistryClient:
 
         if len(matches) > 1:
             raise RegistryApiError(
-                f"GA registry returned multiple records for name={name!r}, "
-                f"recordVersion={record_version!r}"
+                f"GA registry returned multiple records for name={name!r}, recordVersion={record_version!r}"
             )
         return matches[0] if matches else None
 
@@ -1178,9 +1148,7 @@ class GaRegistryClient:
                 _required_string(self._response_config, "recordIdPath", "ga.response"),
             )
             if record_id in (None, ""):
-                raise RegistryApiError(
-                    "GA list result is missing recordId while indexing the target registry"
-                )
+                raise RegistryApiError("GA list result is missing recordId while indexing the target registry")
             # List summaries carry no descriptors, so the sources are only visible on the record
             # itself. This is the one Get per existing record that the index pays for.
             current = self._get_record(registry_id=registry_id, record_id=str(record_id))
@@ -1394,9 +1362,7 @@ _GA_FIELD_MAX_LENGTHS = {
 def _validate_length(field: str, value: str) -> None:
     limit = _GA_FIELD_MAX_LENGTHS.get(field)
     if limit is not None and len(value) > limit:
-        raise RegistryApiError(
-            f"GA record {field} must be at most {limit} characters, got {len(value)}"
-        )
+        raise RegistryApiError(f"GA record {field} must be at most {limit} characters, got {len(value)}")
 
 
 def _build_create_body(record: dict[str, Any]) -> dict[str, Any]:
@@ -1408,9 +1374,9 @@ def _build_create_body(record: dict[str, Any]) -> dict[str, Any]:
         "recordType": copy.deepcopy(record["recordType"]),
         "descriptors": copy.deepcopy(record["descriptors"]),
     }
-    for field in ("description", "recordVersion"):
-        if field in record:
-            body[field] = copy.deepcopy(record[field])
+    for field_name in ("description", "recordVersion"):
+        if field_name in record:
+            body[field_name] = copy.deepcopy(record[field_name])
     return body
 
 
@@ -1439,19 +1405,17 @@ def validate_ga_request(record: dict[str, Any]) -> None:
     primary_key, descriptor = next(iter(descriptors.items()))
     allowed_types = _FINAL_PRIMARY_RECORD_TYPES.get(str(primary_key))
     if allowed_types is None or record_type not in allowed_types:
-        raise RegistryApiError(
-            f"GA primary descriptor {primary_key!r} is incompatible with recordType {record_type!r}"
-        )
+        raise RegistryApiError(f"GA primary descriptor {primary_key!r} is incompatible with recordType {record_type!r}")
     _validate_final_descriptor(str(primary_key), descriptor, allow_additional=True)
-    for field in ("description", "recordVersion"):
-        value = record.get(field)
-        if field in record:
+    for field_name in ("description", "recordVersion"):
+        value = record.get(field_name)
+        if field_name in record:
             if not isinstance(value, str) or not value:
-                raise RegistryApiError(f"GA record {field} must be a non-empty string when supplied")
+                raise RegistryApiError(f"GA record {field_name} must be a non-empty string when supplied")
             # Bounded for the same reason name and displayName are: an over-long value passed a dry
             # run and then failed the live load, which is precisely the outcome staging exists to
             # rule out. These two were unbounded.
-            _validate_length(field, value)
+            _validate_length(field_name, value)
 
 
 def _validate_final_descriptor(
@@ -1470,21 +1434,16 @@ def _validate_final_descriptor(
             + ", ".join(sorted(str(value) for value in unsupported))
         )
     data = descriptor.get("data")
-    if not _content_lives_in_additional_data(descriptor_key, descriptor, allow_additional):
-        if not isinstance(data, str) or not data:
-            raise RegistryApiError(
-                f"GA descriptor {descriptor_key!r} requires non-empty string data"
-            )
+    if not _content_lives_in_additional_data(descriptor_key, descriptor, allow_additional) and (
+        not isinstance(data, str) or not data
+    ):
+        raise RegistryApiError(f"GA descriptor {descriptor_key!r} requires non-empty string data")
     version = descriptor.get("dataSchemaVersion")
     if "dataSchemaVersion" in descriptor:
         if descriptor_key not in _FINAL_VERSIONED_DESCRIPTORS:
-            raise RegistryApiError(
-                f"GA descriptor {descriptor_key!r} does not support dataSchemaVersion"
-            )
+            raise RegistryApiError(f"GA descriptor {descriptor_key!r} does not support dataSchemaVersion")
         if not isinstance(version, str) or not version:
-            raise RegistryApiError(
-                f"GA descriptor {descriptor_key!r} dataSchemaVersion must be a non-empty string"
-            )
+            raise RegistryApiError(f"GA descriptor {descriptor_key!r} dataSchemaVersion must be a non-empty string")
     source = descriptor.get("source")
     if source is not None:
         if descriptor_key not in _FINAL_SOURCE_DESCRIPTORS:
@@ -1536,9 +1495,7 @@ def _content_lives_in_additional_data(
 def _validate_final_source(source: Any, descriptor_key: str) -> None:
     """Require a GA source to be exactly ``{"fromUrl": {"url": ...}}`` (URL-only at GA)."""
     if not isinstance(source, dict) or set(source) != {"fromUrl"}:
-        raise RegistryApiError(
-            f"GA descriptor {descriptor_key!r} source must contain exactly one fromUrl object"
-        )
+        raise RegistryApiError(f"GA descriptor {descriptor_key!r} source must contain exactly one fromUrl object")
     from_url = source.get("fromUrl")
     if not isinstance(from_url, dict) or not isinstance(from_url.get("url"), str) or not from_url["url"]:
         raise RegistryApiError(f"GA descriptor {descriptor_key!r} source.fromUrl.url is required")
@@ -1550,9 +1507,7 @@ def _validate_final_source(source: Any, descriptor_key: str) -> None:
         )
     credentials = from_url.get("credentialProviderConfigurations")
     if credentials is not None and not isinstance(credentials, list):
-        raise RegistryApiError(
-            f"GA descriptor {descriptor_key!r} credentialProviderConfigurations must be an array"
-        )
+        raise RegistryApiError(f"GA descriptor {descriptor_key!r} credentialProviderConfigurations must be an array")
 
 
 def _build_update_body(
@@ -1577,11 +1532,11 @@ def _build_update_body(
             )
         },
     }
-    for field in ("displayName", "description"):
-        if field in desired:
-            body[field] = {"optionalValue": copy.deepcopy(desired[field])}
-        elif field in current:
-            body[field] = {}
+    for field_name in ("displayName", "description"):
+        if field_name in desired:
+            body[field_name] = {"optionalValue": copy.deepcopy(desired[field_name])}
+        elif field_name in current:
+            body[field_name] = {}
     if "recordVersion" in desired:
         body["recordVersion"] = copy.deepcopy(desired["recordVersion"])
     if _contains_descriptor_source(desired["descriptors"]):
@@ -1616,11 +1571,11 @@ def _wrap_final_descriptor(desired: Any, current: Any) -> dict[str, Any]:
         raise RegistryApiError("GA update descriptor must be an object")
     current_value = current if isinstance(current, dict) else {}
     wrapped: dict[str, Any] = {}
-    for field in ("data", "dataSchemaVersion", "source"):
-        if field in desired:
-            wrapped[field] = {"optionalValue": copy.deepcopy(desired[field])}
-        elif field in current_value:
-            wrapped[field] = {}
+    for field_name in ("data", "dataSchemaVersion", "source"):
+        if field_name in desired:
+            wrapped[field_name] = {"optionalValue": copy.deepcopy(desired[field_name])}
+        elif field_name in current_value:
+            wrapped[field_name] = {}
     desired_additional = desired.get("additionalData")
     current_additional = current_value.get("additionalData")
     if isinstance(desired_additional, dict):
@@ -1648,11 +1603,7 @@ def _contains_descriptor_source(value: Any) -> bool:
         return False
     if "source" in value:
         return True
-    return any(
-        _contains_descriptor_source(child)
-        for child in value.values()
-        if isinstance(child, dict)
-    )
+    return any(_contains_descriptor_source(child) for child in value.values() if isinstance(child, dict))
 
 
 def _record_matches_desired(actual: dict[str, Any], desired: dict[str, Any]) -> bool:
@@ -1667,8 +1618,8 @@ def _record_matches_desired(actual: dict[str, Any], desired: dict[str, Any]) -> 
     if _source_backed_record_matches(actual, desired):
         return actual.get("description") == desired.get("description")
     expected = _build_create_body(desired)
-    for field in ("name", "displayName", "recordType", "description"):
-        if actual.get(field) != expected.get(field):
+    for field_name in ("name", "displayName", "recordType", "description"):
+        if actual.get(field_name) != expected.get(field_name):
             return False
     if not _descriptors_match(actual.get("descriptors"), expected.get("descriptors")):
         return False
@@ -1742,12 +1693,8 @@ def _descriptors_match(actual: Any, desired: Any) -> bool:
     """Return True if both sides have the same single primary descriptor and it matches."""
     if not isinstance(actual, dict) or not isinstance(desired, dict):
         return False
-    actual_primaries = {
-        str(key): value for key, value in actual.items() if value is not None
-    }
-    desired_primaries = {
-        str(key): value for key, value in desired.items() if value is not None
-    }
+    actual_primaries = {str(key): value for key, value in actual.items() if value is not None}
+    desired_primaries = {str(key): value for key, value in desired.items() if value is not None}
     if len(actual_primaries) != 1 or len(desired_primaries) != 1:
         return False
     desired_key, desired_descriptor = next(iter(desired_primaries.items()))
@@ -1764,8 +1711,8 @@ def _descriptor_matches(descriptor_key: str, actual: Any, desired: Any) -> bool:
     """Compare data, source, version, and additionalData children of two descriptors."""
     if not isinstance(actual, dict) or not isinstance(desired, dict):
         return False
-    for field in ("data", "source"):
-        if actual.get(field) != desired.get(field):
+    for field_name in ("data", "source"):
+        if actual.get(field_name) != desired.get(field_name):
             return False
     if not _descriptor_version_matches(
         descriptor_key,
@@ -1780,12 +1727,8 @@ def _descriptor_matches(descriptor_key: str, actual: Any, desired: Any) -> bool:
         return actual_additional in (None, {})
     if not isinstance(actual_additional, dict) or not isinstance(desired_additional, dict):
         return False
-    actual_children = {
-        str(key): value for key, value in actual_additional.items() if value is not None
-    }
-    desired_children = {
-        str(key): value for key, value in desired_additional.items() if value is not None
-    }
+    actual_children = {str(key): value for key, value in actual_additional.items() if value is not None}
+    desired_children = {str(key): value for key, value in desired_additional.items() if value is not None}
     if set(actual_children) != set(desired_children):
         return False
     return all(
@@ -1819,9 +1762,7 @@ def _normalize_a2a_schema_version(value: Any) -> str:
 def _ga_endpoint_url(config: dict[str, Any], region: str) -> str:
     """Resolve and pin the GA endpoint to the fixed regional agent-registry-control host."""
     if _optional_string(config.get("endpointUrl")) is not None:
-        raise RegistryApiError(
-            "GA endpointUrl overrides are not supported; the regional api.aws endpoint is fixed"
-        )
+        raise RegistryApiError("GA endpointUrl overrides are not supported; the regional api.aws endpoint is fixed")
     template = _required_string(config, "endpointUrlTemplate", "GA API")
     endpoint = template.replace("{region}", region)
     parsed = urlparse(endpoint)
@@ -1833,10 +1774,7 @@ def _ga_endpoint_url(config: dict[str, Any], region: str) -> str:
         or parsed.query
         or parsed.fragment
     ):
-        raise RegistryApiError(
-            "GA endpointUrlTemplate must resolve to "
-            f"https://{expected_host} for region {region}"
-        )
+        raise RegistryApiError(f"GA endpointUrlTemplate must resolve to https://{expected_host} for region {region}")
     return endpoint.rstrip("/")
 
 

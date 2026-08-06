@@ -4,6 +4,7 @@ Read-ahead exists so the load stage does not stall on an S3 GET between batches 
 must never change what the load sees: same records, same order, same pinned versions. It must also
 stay memory-bounded, which means large objects are streamed rather than buffered.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,8 +16,8 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from migration_common import storage  # noqa: E402
-from migration_common.storage import S3Store  # noqa: E402
+from migration_common import storage
+from migration_common.storage import S3Store
 
 
 class _Body:
@@ -29,8 +30,7 @@ class _Body:
 
     def iter_lines(self):
         self._usage.append(f"stream:{self._key}")
-        for line in self._data.split(b"\n"):
-            yield line
+        yield from self._data.split(b"\n")
 
     def read(self):
         self._usage.append(f"buffer:{self._key}")
@@ -52,7 +52,7 @@ class FakeS3:
         self.objects[(key, version_id)] = body
         return {"key": key, "versionId": version_id, "sizeBytes": len(body), "recordCount": len(records)}
 
-    def get_object(self, Bucket: str, Key: str, VersionId: str | None = None):  # noqa: N803
+    def get_object(self, Bucket: str, Key: str, VersionId: str | None = None):
         with self._lock:
             self.gets.append((Key, str(VersionId)))
             self.active += 1
@@ -85,8 +85,7 @@ class StagedObjectReading(unittest.TestCase):
 
     def _read(self, **kwargs):
         return [
-            (key, record["oldRecordId"])
-            for key, record in self.store.iter_json_lines_objects(self.inventory, **kwargs)
+            (key, record["oldRecordId"]) for key, record in self.store.iter_json_lines_objects(self.inventory, **kwargs)
         ]
 
     def test_serial_read_returns_every_record_in_order(self):
@@ -129,8 +128,7 @@ class StagedObjectReading(unittest.TestCase):
 
     def test_objects_without_a_declared_size_are_streamed(self):
         self.inventory = [
-            {key: value for key, value in entry.items() if key != "sizeBytes"}
-            for entry in self.inventory
+            {key: value for key, value in entry.items() if key != "sizeBytes"} for entry in self.inventory
         ]
         self.assertEqual(self._read(read_ahead=2), self.expected)
         self.assertTrue(all(entry.startswith("stream:") for entry in self.s3.usage), self.s3.usage)

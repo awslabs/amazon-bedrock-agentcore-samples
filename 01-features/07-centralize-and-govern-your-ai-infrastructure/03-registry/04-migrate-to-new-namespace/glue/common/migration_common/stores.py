@@ -4,6 +4,7 @@ Kept in its own module so the two stores stay independent of each other and the 
 independent of both: a job asks for "the store this run should use" and gets something with the
 same methods either way.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -10,6 +10,7 @@ The factory reuses the assumed-role/direct session managed by :class:`AwsApiInvo
 credential handling and cross-account AssumeRole are unchanged; only the transport (raw REST
 -> modeled SDK calls) changes.
 """
+
 from __future__ import annotations
 
 import logging
