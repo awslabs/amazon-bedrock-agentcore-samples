@@ -1,6 +1,6 @@
 # Banking Assistant: Temporal Policies Sample
 
-In this sample you build a banking assistant: an AI agent that can look up accounts, move money, and manage an investment portfolio on a customer's behalf. The tools live behind two Lambda MCP targets (banking and portfolio), and the agent reaches them through an AgentCore Gateway.
+In this sample you build a banking assistant: an AI agent that can look up accounts, move money, and manage an investment portfolio on a customer's behalf. The tools live behind an MCP server deployed to AgentCore Runtime, and the agent reaches them through an AgentCore Gateway.
 
 The catch with any agent that can take real actions is that a single tool call can look perfectly valid while the sequence of calls is dangerous: transferring to an account the agent never actually looked up, draining a balance through many small transfers, or approving and rejecting the same request seconds apart. You cannot catch these by inspecting one request in isolation; you have to look at what the agent did earlier in the session.
 
@@ -10,9 +10,10 @@ So instead of trying to constrain the agent from inside its own prompt (which a 
 
 ### Prerequisites
 
-- **Python 3.10+** and **uv** ([install uv](https://docs.astral.sh/uv/getting-started/installation/)) for the deploy, setup, and cleanup scripts
+- **Python 3.12+** and **uv** ([install uv](https://docs.astral.sh/uv/getting-started/installation/)) for the MCP server and setup scripts
 - **Node.js 20+** and **npm** for the web app (Step 4)
-- **AWS credentials** configured with permissions to create Lambda, IAM, and AgentCore resources, and to invoke Amazon Bedrock (the web app calls the Converse API)
+- **[AgentCore CLI](https://www.npmjs.com/package/@aws/agentcore)**: `npm install -g @aws/agentcore`
+- **AWS credentials** configured with permissions to create IAM and AgentCore resources, and to invoke Amazon Bedrock (the web app calls the Converse API)
 
 Set these variables once. All commands below reference them:
 
@@ -77,8 +78,9 @@ export GATEWAY_CLIENT_SECRET=$(aws cognito-idp describe-user-pool-client \
   --region ${REGION})
 ```
 
-### Step 2: Deploy the Lambda functions
+### Step 2: Deploy the MCP server to AgentCore Runtime
 
+The MCP server at `app/banking_assistant_tools/main.py` exposes all 14 tools (banking + portfolio) as a single FastMCP server. It is deployed to AgentCore Runtime, where the gateway discovers tools via `tools/list` and invokes them via `tools/call`.
 
 #### Banking tools
 
@@ -104,35 +106,71 @@ export GATEWAY_CLIENT_SECRET=$(aws cognito-idp describe-user-pool-client \
 | `approve_trade` | Record advisor approval for a large trade. Required by the gateway before `execute_trade` calls above $25,000. Each approval is consumed by a single trade (Step 6, Policy 3). |
 | `interact_advisor` | Record an advisor interaction to reset the 15-minute trust-decay clock. Without this, the agent loses access to `rebalance_portfolio` after 15 minutes of inactivity (Step 6, Policy 6). |
 
-
-Run the deployment script. It creates the shared IAM role, packages both handlers, deploys the Lambda functions, and grants the AgentCore Gateway invoke permission on each. The script is idempotent; re-running it safely skips steps that already completed.
-
-```bash
-uv run deploy_lambda.py
-```
-
-Retrieve the Lambda ARNs at any time:
+Export the MCP client credentials from the Cognito stack (the MCP server uses these for inbound auth):
 
 ```bash
-export BANKING_LAMBDA_ARN=$(aws lambda get-function --function-name banking-tools \
-  --query 'Configuration.FunctionArn' --output text --region ${REGION})
-echo $BANKING_LAMBDA_ARN
+export MCP_CLIENT_ID=$(aws cloudformation describe-stacks \
+  --stack-name $COGNITO_STACK_NAME \
+  --query 'Stacks[0].Outputs[?OutputKey==`MCPClientId`].OutputValue' --output text \
+  --region ${REGION})
 
-export PORTFOLIO_BANKING_LAMBDA_ARN=$(aws lambda get-function --function-name portfolio-tools \
-  --query 'Configuration.FunctionArn' --output text --region ${REGION})
-echo $PORTFOLIO_BANKING_LAMBDA_ARN
+export MCP_CLIENT_SECRET=$(aws cognito-idp describe-user-pool-client \
+  --user-pool-id $USER_POOL_ID \
+  --client-id $MCP_CLIENT_ID \
+  --query 'UserPoolClient.ClientSecret' --output text \
+  --region ${REGION})
 ```
 
-### Step 3: Create the gateway, policy engine, and Lambda targets
+Register and deploy the MCP server:
 
-Run the setup script. It creates the gateway IAM role, policy engine, gateway (with the engine attached in ENFORCE mode), both Lambda targets, and the base (non-temporal) permits. The script is idempotent; re-running it safely skips resources that already exist. State is saved to `setup_config.json`.
+```bash
+agentcore add agent \
+  --name banking_assistant_tools \
+  --type byo \
+  --language Python \
+  --protocol MCP \
+  --code-location app/banking_assistant_tools \
+  --authorizer-type CUSTOM_JWT \
+  --discovery-url "$DISCOVERY_URL" \
+  --allowed-clients "$MCP_CLIENT_ID" \
+  --allowed-scopes "api/mcp" \
+  --client-id "$MCP_CLIENT_ID" \
+  --client-secret "$MCP_CLIENT_SECRET"
+
+agentcore deploy --yes
+```
+
+### Step 3: Create the gateway, policy engine, and MCP server target
+
+Run the setup script. It creates the gateway IAM role, policy engine, gateway (with the engine attached in ENFORCE mode), the MCP server target (pointing to the Runtime URL from Step 2), and the base (non-temporal) permits. The script is idempotent; re-running it safely skips resources that already exist. State is saved to `setup_config.json`.
+
+First, export the MCP server URL and credential provider ARN from Step 2:
+
+```bash
+export MCP_SERVER_URL=$(agentcore status --json | python3 -c "
+import sys, json
+data, _ = json.JSONDecoder().raw_decode(sys.stdin.read().lstrip())
+print(next(r['invocationUrl'] for r in data['resources'] if r['name'] == 'banking_assistant_tools'))
+")
+
+export MCP_CREDENTIAL_PROVIDER_ARN=$(agentcore status --json | python3 -c "
+import sys, json
+data = json.loads(sys.stdin.read())
+print(data['deployedState']['targets']['default']['resources']['credentials']['banking_assistant_tools-oauth']['credentialProviderArn'])
+")
+
+echo "MCP_SERVER_URL: $MCP_SERVER_URL"
+echo "MCP_CREDENTIAL_PROVIDER_ARN: $MCP_CREDENTIAL_PROVIDER_ARN"
+```
+
+Then run the setup:
 
 ```bash
 uv run setup.py
 ```
 
 > [!NOTE]
-> AgentCore Policy is deny-by-default, so every tool that should be callable needs a plain `permit`. `setup.py` creates base permits for the read, prerequisite, and record tools (`get_account_balance`, `approve_transfer`, `get_client_profile`, `get_market_price`, `interact_advisor`, and so on). The four write tools that the workshop gates with temporal policies (`transfer_funds`, `load_portfolio`, `rebalance_portfolio`, `execute_trade`) are deliberately left without a base permit: they are authorized solely by the temporal permits you add in Steps 5 and 6. A tool with no permit is denied, and a denied action records no history for later temporal conditions to match (see `docs/predicates.md`, "The Dependency Trap").
+> AgentCore Policy is deny-by-default, so every tool that should be callable needs a plain `permit`. `setup.py` creates base permits for the read, prerequisite, and record tools (`get_account_balance`, `approve_transfer`, `get_client_profile`, `get_market_price`, `interact_advisor`, and so on). All tools are exposed under the single target name `banking-assistant-tools`. The four write tools that the workshop gates with temporal policies (`transfer_funds`, `load_portfolio`, `rebalance_portfolio`, `execute_trade`) are deliberately left without a base permit: they are authorized solely by the temporal permits you add in Steps 5 and 6. A tool with no permit is denied, and a denied action records no history for later temporal conditions to match (see `docs/predicates.md`, "The Dependency Trap").
 
 When complete, capture the exported IDs for the policy steps:
 
@@ -157,7 +195,32 @@ npm run dev
 Then open [http://localhost:5173](http://localhost:5173).
 
 > [!NOTE]
-> The backend reads the gateway URL from `setup_config.json` automatically. It also needs the Cognito values from Step 1 exported in this second terminal: `REGION`, `DISCOVERY_URL`, `GATEWAY_CLIENT_ID`, and `GATEWAY_CLIENT_SECRET`.
+> The backend reads the gateway URL from `setup_config.json` automatically. Export the following in this second terminal:
+> ```bash
+> export REGION=us-east-1
+> export COGNITO_STACK_NAME="agentcore-gateway-lab"
+>
+> export DISCOVERY_URL=$(aws cloudformation describe-stacks \
+>   --stack-name $COGNITO_STACK_NAME \
+>   --query 'Stacks[0].Outputs[?OutputKey==`DiscoveryUrl`].OutputValue' --output text \
+>   --region ${REGION})
+>
+> export GATEWAY_CLIENT_ID=$(aws cloudformation describe-stacks \
+>   --stack-name $COGNITO_STACK_NAME \
+>   --query 'Stacks[0].Outputs[?OutputKey==`GatewayClientId`].OutputValue' --output text \
+>   --region ${REGION})
+>
+> export USER_POOL_ID=$(aws cloudformation describe-stacks \
+>   --stack-name $COGNITO_STACK_NAME \
+>   --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' --output text \
+>   --region ${REGION})
+>
+> export GATEWAY_CLIENT_SECRET=$(aws cognito-idp describe-user-pool-client \
+>   --user-pool-id $USER_POOL_ID \
+>   --client-id $GATEWAY_CLIENT_ID \
+>   --query 'UserPoolClient.ClientSecret' --output text \
+>   --region ${REGION})
+> ```
 
 In the UI:
 
@@ -197,14 +260,14 @@ Permits `transfer_funds` of $10,000 or less only when a `get_account_balance` re
 ```cedar
 permit(
   principal,
-  action == AgentCore::Action::"banking-tools___transfer_funds",
+  action == AgentCore::Action::"banking-assistant-tools___transfer_funds",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 2m
-    AgentCore::Action::"banking-tools___get_account_balance"::response{
+    AgentCore::Action::"banking-assistant-tools___get_account_balance"::response{
       eventResource: resource,
-      output.accountId: context.input.to_account
+      input.account_id: context.input.to_account
     }
 }
 when { context.input.amount <= 10000 };
@@ -212,11 +275,9 @@ when { context.input.amount <= 10000 };
 
 | # | Sample prompt | `to_account` | Expected |
 | :--- | :--- | :--- | :--- |
-| 1 | Check the balance of ACC-2002, then transfer $500 from ACC-1001 to ACC-2002 | ACC-2002 | ALLOW |
-| 2 | Check the balance of ACC-2002, then transfer $500 from ACC-1001 to ACC-9999 | ACC-9999 | DENY (destination does not match the looked-up account) |
-| 3 | Transfer $500 from ACC-1001 to ACC-2002 with no balance check first | ACC-2002 | DENY (no matching balance response) |
-| 4 | Send "Check the balance of ACC-2002", pause more than 2 minutes, then send "Transfer $500 from ACC-1001 to ACC-2002" as a separate prompt | ACC-2002 | DENY (balance response older than 2m) |
-| 5 | After row 4, send "Check the balance of ACC-2002" again, then immediately send "Transfer $500 from ACC-1001 to ACC-2002" | ACC-2002 | ALLOW (fresh response within 2m) |
+| 1 | Check the balance of ACC-2002 | - | ALLOW |
+| 2 | , then transfer $500 from ACC-1001 to ACC-2002 | ACC-2002 | ALLOW |
+| 3 | Transfer $500 from ACC-1001 to ACC-2003 | ACC-9999 | DENY (destination does not match the looked-up account) |
 
 </details>
 
@@ -226,7 +287,7 @@ aws bedrock-agentcore-control create-policy \
   --name transfer_integrity_freshness \
   --description "transfer_funds <= 10000 requires a get_account_balance response for the same destination within 2m" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 2m AgentCore::Action::\\\"banking-tools___get_account_balance\\\"::response{ eventResource: resource, output.accountId: context.input.to_account } } when { context.input.amount <= 10000 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 2m AgentCore::Action::\\\"banking-assistant-tools___get_account_balance\\\"::response{ eventResource: resource, input.account_id: context.input.to_account } } when { context.input.amount <= 10000 };\"}}" \
   --region ${REGION}
 ```
 
@@ -239,18 +300,18 @@ Permits `transfer_funds` above $10,000 only when both hold: a `get_account_balan
 ```cedar
 permit(
   principal,
-  action == AgentCore::Action::"banking-tools___transfer_funds",
+  action == AgentCore::Action::"banking-assistant-tools___transfer_funds",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 2m
-    AgentCore::Action::"banking-tools___get_account_balance"::response{
+    AgentCore::Action::"banking-assistant-tools___get_account_balance"::response{
       eventResource: resource,
-      output.accountId: context.input.to_account
+      input.account_id: context.input.to_account
     }
-  && !AgentCore::Action::"banking-tools___transfer_funds"::response{ eventResource: resource }
+  && !AgentCore::Action::"banking-assistant-tools___transfer_funds"::response{ eventResource: resource }
      since within 30m
-     AgentCore::Action::"banking-tools___approve_transfer"::response{ eventResource: resource }
+     AgentCore::Action::"banking-assistant-tools___approve_transfer"::response{ eventResource: resource }
 }
 when { context.input.amount > 10000 };
 ```
@@ -258,10 +319,8 @@ when { context.input.amount > 10000 };
 | # | Sample prompt | Amount | Expected |
 | :--- | :--- | :--- | :--- |
 | 1 | Check the balance of ACC-2002, then transfer $5,000 from ACC-1001 to ACC-2002 | $5,000 | ALLOW (Policy 1 path, at or below $10k) |
-| 2 | Check the balance of ACC-2002, then transfer $15,000 from ACC-1001 to ACC-2002 | $15,000 | DENY (above $10k, no approval) |
-| 3 | Approve transfer REQ-001 on behalf of manager@bank.com, check the balance of ACC-2002, then transfer $15,000 from ACC-1001 to ACC-2002 | $15,000 | ALLOW |
-| 4 | Continuing row 3: re-check the balance of ACC-2002, then transfer $15,000 from ACC-1001 to ACC-2002 again | $15,000 | DENY (approval consumed by the row 3 transfer) |
-| 5 | Send "Approve transfer REQ-002 on behalf of manager@bank.com", pause more than 30 minutes, then send "Check the balance of ACC-2002 and transfer $15,000 from ACC-1001 to ACC-2002" | $15,000 | DENY (approval older than 30m) |
+| 2 | Transfer $15,000 from ACC-1001 to ACC-2002 | $15,000 | DENY (above $10k, no approval) |
+| 3 | Approve transfer REQ-001 on behalf of manager@bank.com, transfer $15,000 from ACC-1001 to ACC-2002 | $15,000 | ALLOW |
 
 </details>
 
@@ -274,7 +333,7 @@ aws bedrock-agentcore-control create-policy \
   --name approval_gate \
   --description "Transfers above 10000 require a fresh destination lookup and an unconsumed approve_transfer" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 2m AgentCore::Action::\\\"banking-tools___get_account_balance\\\"::response{ eventResource: resource, output.accountId: context.input.to_account } && !AgentCore::Action::\\\"banking-tools___transfer_funds\\\"::response{ eventResource: resource } since within 30m AgentCore::Action::\\\"banking-tools___approve_transfer\\\"::response{ eventResource: resource } } when { context.input.amount > 10000 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 2m AgentCore::Action::\\\"banking-assistant-tools___get_account_balance\\\"::response{ eventResource: resource, input.account_id: context.input.to_account } && \!AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\"::response{ eventResource: resource } since within 30m AgentCore::Action::\\\"banking-assistant-tools___approve_transfer\\\"::response{ eventResource: resource } } when { context.input.amount > 10000 };\"}}" \
   --region ${REGION}
 ```
 
@@ -287,14 +346,14 @@ Sums `amount` across all `transfer_funds` requests in the session within the las
 ```cedar
 forbid(
   principal,
-  action == AgentCore::Action::"banking-tools___transfer_funds",
+  action == AgentCore::Action::"banking-assistant-tools___transfer_funds",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   exists (total: Long).
   (sum amt for (amt: Long), (t: Timepoint).
     where (formerly within 24h (
-      AgentCore::Action::"banking-tools___transfer_funds"::request{
+      AgentCore::Action::"banking-assistant-tools___transfer_funds"::request{
         eventResource: resource,
         input.amount: amt
       } && tp(t)
@@ -322,7 +381,7 @@ aws bedrock-agentcore-control create-policy \
   --name daily_transfer_cap \
   --description "Block once cumulative transfers in the session reach 60000 in 24h" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { exists (total: Long). (sum amt for (amt: Long), (t: Timepoint). where (formerly within 24h ( AgentCore::Action::\\\"banking-tools___transfer_funds\\\"::request{ eventResource: resource, input.amount: amt } && tp(t) ))) == total && total >= 60000 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { exists (total: Long). (sum amt for (amt: Long), (t: Timepoint). where (formerly within 24h ( AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\"::request{ eventResource: resource, input.amount: amt } && tp(t) ))) == total && total >= 60000 };\"}}" \
   --region ${REGION}
 ```
 
@@ -335,13 +394,13 @@ Counts `transfer_funds` requests within the last 5 minutes. Denies the 6th and b
 ```cedar
 forbid(
   principal,
-  action == AgentCore::Action::"banking-tools___transfer_funds",
+  action == AgentCore::Action::"banking-assistant-tools___transfer_funds",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   count for (t: Timepoint).
     where (formerly within 5m (
-      AgentCore::Action::"banking-tools___transfer_funds"::request{
+      AgentCore::Action::"banking-assistant-tools___transfer_funds"::request{
         eventResource: resource
       } && tp(t)
     )) > 5
@@ -352,10 +411,8 @@ Use small $100 amounts and a fresh session so the $60,000 cap from Policy 3 is n
 
 | # | Sample prompt | Expected |
 | :--- | :--- | :--- |
-| 1 | In a fresh session, check ACC-2002 and transfer $100 from ACC-1001 to ACC-2002 (1st call) | ALLOW |
-| 2 | Repeat the check-and-transfer of $100 up to the 5th call in the same 5-minute window | ALLOW |
-| 3 | Check ACC-2002 and transfer $100 a 6th time within the 5-minute window | DENY (count > 5) |
-| 4 | After the 5-minute window has passed since the earlier transfers, send "Check ACC-2002 and transfer $100 from ACC-1001 to ACC-2002" again | ALLOW (window resets) |
+| 1 | Check ACC-2002 and transfer $100 from ACC-1001 to ACC-2002 | ALLOW |
+| 2 | transfer $100 from ACC-1001 to ACC-2002 five times| ALLOW 4 transfers by 5th one DENY |
 
 </details>
 
@@ -365,7 +422,7 @@ aws bedrock-agentcore-control create-policy \
   --name transfer_rate_limit \
   --description "At most 5 transfer_funds calls per 5-minute window" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { count for (t: Timepoint). where (formerly within 5m ( AgentCore::Action::\\\"banking-tools___transfer_funds\\\"::request{ eventResource: resource } && tp(t) )) > 5 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { count for (t: Timepoint). where (formerly within 5m ( AgentCore::Action::\\\"banking-assistant-tools___transfer_funds\\\"::request{ eventResource: resource } && tp(t) )) > 5 };\"}}" \
   --region ${REGION}
 ```
 
@@ -379,33 +436,32 @@ Two symmetric `forbid` rules prevent `approve_transfer` and `reject_transfer` fr
 // mutual_exclusion_approve
 forbid(
   principal,
-  action == AgentCore::Action::"banking-tools___reject_transfer",
+  action == AgentCore::Action::"banking-assistant-tools___reject_transfer",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 5m
-    AgentCore::Action::"banking-tools___approve_transfer"::request{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___approve_transfer"::request{ eventResource: resource }
 };
 
 // mutual_exclusion_reject
 forbid(
   principal,
-  action == AgentCore::Action::"banking-tools___approve_transfer",
+  action == AgentCore::Action::"banking-assistant-tools___approve_transfer",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 5m
-    AgentCore::Action::"banking-tools___reject_transfer"::request{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___reject_transfer"::request{ eventResource: resource }
 };
 ```
 
 | # | Sample prompt | Expected |
 | :--- | :--- | :--- |
-| 1 | In a fresh session, approve transfer TRF-001 on behalf of ops@bank.com | ALLOW |
-| 2 | Continuing row 1, reject transfer TRF-001 with reason 'changed mind' within 5 minutes | DENY on reject |
-| 3 | In a fresh session, reject TRF-002, then approve TRF-002 within 5 minutes | DENY on approve |
-| 4 | In a fresh session with no approve or reject in the last 5 minutes, approve TRF-003 on behalf of ops@bank.com | ALLOW (window clear) |
-| 5 | In a fresh session, reject TRF-004 with no approve in the last 5 minutes | ALLOW |
+| 1 | **New Session** Approve transfer TRF-001 on behalf of ops@bank.com | ALLOW |
+| 2 |  Reject transfer TRF-001 with reason 'changed mind'  | DENY |
+| 3 | **New Session** reject TRF-002| ALLOW |
+| 4 | Allow TRF-002 on behalf of ops@bank.com with valid reason| DENY |
 
 </details>
 
@@ -415,7 +471,7 @@ aws bedrock-agentcore-control create-policy \
   --name mutual_exclusion_approve \
   --description "Cannot reject a transfer after approving one in the same 5-minute window" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-tools___reject_transfer\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-tools___approve_transfer\\\"::request{ eventResource: resource } };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-assistant-tools___reject_transfer\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-assistant-tools___approve_transfer\\\"::request{ eventResource: resource } };\"}}" \
   --region ${REGION}
 
 aws bedrock-agentcore-control create-policy \
@@ -423,7 +479,7 @@ aws bedrock-agentcore-control create-policy \
   --name mutual_exclusion_reject \
   --description "Cannot approve a transfer after rejecting one in the same 5-minute window" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-tools___approve_transfer\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-tools___reject_transfer\\\"::request{ eventResource: resource } };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-assistant-tools___approve_transfer\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-assistant-tools___reject_transfer\\\"::request{ eventResource: resource } };\"}}" \
   --region ${REGION}
 ```
 
@@ -431,7 +487,7 @@ aws bedrock-agentcore-control create-policy \
 ### Step 6: Add temporal policies (portfolio tools)
 
 > [!NOTE]
-> As in Step 5, these policies are additive and created in order, so each policy's test table runs with policies 1 through N active. The prompts spell out the full prerequisite sequence (`get_client_profile` then `get_market_price` then `execute_trade`, and so on) so every row is valid against the policies in effect when you run it. All policies use target name `portfolio-tools`. Ensure `${ENGINE_ID}` and `${GATEWAY_ARN}` are set from Step 3.
+> As in Step 5, these policies are additive and created in order, so each policy's test table runs with policies 1 through N active. The prompts spell out the full prerequisite sequence (`get_client_profile` then `get_market_price` then `execute_trade`, and so on) so every row is valid against the policies in effect when you run it. All policies use the single target name `banking-assistant-tools`. Ensure `${ENGINE_ID}` and `${GATEWAY_ARN}` are set from Step 3.
 >
 > `load_portfolio`, `rebalance_portfolio`, and `execute_trade` have no base permit (see Step 3); they are authorized only by the temporal permits below. `execute_trade` is split by cost so its two permits never overlap: Policy 2 handles trades of $25,000 or less, Policy 3 handles trades above $25,000. Both require the same integrity and freshness prerequisites, so a trade is authorized only when every required prior step is present, not when any single one is.
 
@@ -445,20 +501,19 @@ aws bedrock-agentcore-control create-policy \
 ```cedar
 permit(
   principal,
-  action == AgentCore::Action::"portfolio-tools___load_portfolio",
+  action == AgentCore::Action::"banking-assistant-tools___load_portfolio",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 5m
-    AgentCore::Action::"portfolio-tools___get_client_profile"::response{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___get_client_profile"::response{ eventResource: resource }
 };
 ```
 
 | # | Sample prompt | Expected |
 | :--- | :--- | :--- |
-| 1 | In a fresh session, load portfolio PORT-8821 without first fetching a client profile | DENY (no prior profile) |
+| 1 | Load portfolio PORT-8821 | DENY (no prior profile) |
 | 2 | Get the client profile for CLIENT-001, then load portfolio PORT-8821 | ALLOW |
-| 3 | Send "Get the client profile for CLIENT-001", pause more than 5 minutes, then send "Load portfolio PORT-8821" | DENY (profile older than 5m) |
 
 </details>
 
@@ -468,13 +523,13 @@ aws bedrock-agentcore-control create-policy \
   --name portfolio_sequence_load \
   --description "load_portfolio requires prior get_client_profile within 5 minutes" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"portfolio-tools___load_portfolio\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"portfolio-tools___get_client_profile\\\"::response{ eventResource: resource } };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-assistant-tools___load_portfolio\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-assistant-tools___get_client_profile\\\"::response{ eventResource: resource } };\"}}" \
   --region ${REGION}
 ```
 
-**Policy 2: Trade integrity and freshness (trades up to $25,000)**
+**Policy 2: Trade sequencing and freshness (trades up to $25,000)**
 
-Permits `execute_trade` of $25,000 or less only when both hold: a `get_client_profile` response within 24 hours whose `portfolioIds` include the `portfolio_id` being traded (integrity, blocking trades against a portfolio the client does not own), and a `get_market_price` response within the last 30 seconds (freshness, blocking trades on stale quotes).
+Permits `execute_trade` of $25,000 or less only when both hold: a `get_client_profile` response within 24 hours (sequencing, ensuring the agent looked up the client before trading), and a `get_market_price` response within the last 30 seconds (freshness, blocking trades on stale quotes).
 
 <details>
 <summary>Policy statement and test sequences</summary>
@@ -482,30 +537,24 @@ Permits `execute_trade` of $25,000 or less only when both hold: a `get_client_pr
 ```cedar
 permit(
   principal,
-  action == AgentCore::Action::"portfolio-tools___execute_trade",
+  action == AgentCore::Action::"banking-assistant-tools___execute_trade",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 24h
-    AgentCore::Action::"portfolio-tools___get_client_profile"::response{
-      eventResource: resource,
-      output.portfolioIds: context.input.portfolio_id
+    AgentCore::Action::"banking-assistant-tools___get_client_profile"::response{
+      eventResource: resource
     }
   && formerly within 30s
-    AgentCore::Action::"portfolio-tools___get_market_price"::response{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___get_market_price"::response{ eventResource: resource }
 }
 when { context.input.cost <= 25000 };
 ```
 
-CLIENT-001 owns PORT-8821; PORT-3347 belongs to a different client.
-
 | # | Sample prompt | Expected |
 | :--- | :--- | :--- |
 | 1 | Get the client profile for CLIENT-001, get the market price for AAPL, then buy $15,000 of AAPL in PORT-8821 | ALLOW |
-| 2 | Get the client profile for CLIENT-001, get the market price for AAPL, then buy $15,000 of AAPL in PORT-3347 | DENY (PORT-3347 not in the client's portfolios) |
-| 3 | Get the client profile for CLIENT-001, then buy $15,000 of AAPL in PORT-8821 with no price check | DENY (no fresh market price) |
-| 4 | Send "Get the client profile for CLIENT-001 and the market price for AAPL", pause more than 30 seconds, then send "Buy $15,000 of AAPL in PORT-8821" | DENY (price older than 30s) |
-| 5 | Get the market price for AAPL, then buy $15,000 of AAPL in PORT-8821 with no profile lookup | DENY (no matching profile) |
+| 2 | **New Session** Get the client profile for CLIENT-001, then buy $15,000 of AAPL in PORT-8821 with no price check | DENY (no fresh market price) |
 
 </details>
 
@@ -513,15 +562,15 @@ CLIENT-001 owns PORT-8821; PORT-3347 belongs to a different client.
 aws bedrock-agentcore-control create-policy \
   --policy-engine-id ${ENGINE_ID} \
   --name portfolio_trade_integrity_freshness \
-  --description "execute_trade <= 25000 requires a matching client profile within 24h and a market price within 30s" \
+  --description "execute_trade <= 25000 requires a client profile within 24h and a market price within 30s" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"portfolio-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 24h AgentCore::Action::\\\"portfolio-tools___get_client_profile\\\"::response{ eventResource: resource, output.portfolioIds: context.input.portfolio_id } && formerly within 30s AgentCore::Action::\\\"portfolio-tools___get_market_price\\\"::response{ eventResource: resource } } when { context.input.cost <= 25000 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 24h AgentCore::Action::\\\"banking-assistant-tools___get_client_profile\\\"::response{ eventResource: resource } && formerly within 30s AgentCore::Action::\\\"banking-assistant-tools___get_market_price\\\"::response{ eventResource: resource } } when { context.input.cost <= 25000 };\"}}" \
   --region ${REGION}
 ```
 
 **Policy 3: Human approval gate (trades above $25,000)**
 
-Permits `execute_trade` above $25,000 only when the same integrity and freshness prerequisites hold (matching profile within 24h, market price within 30s) and an `approve_trade` response with status `approved` occurred within 24 hours that has not yet been consumed by a completed `execute_trade`. Because this is the only permit for trades above $25,000, a large trade without a fresh unconsumed approval has no permit and is denied.
+Permits `execute_trade` above $25,000 only when the same sequencing and freshness prerequisites hold (client profile within 24h, market price within 30s) and an `approve_trade` response with status `approved` occurred within 24 hours that has not yet been consumed by a completed `execute_trade`. Because this is the only permit for trades above $25,000, a large trade without a fresh unconsumed approval has no permit and is denied.
 
 <details>
 <summary>Policy statement and test sequences</summary>
@@ -529,21 +578,19 @@ Permits `execute_trade` above $25,000 only when the same integrity and freshness
 ```cedar
 permit(
   principal,
-  action == AgentCore::Action::"portfolio-tools___execute_trade",
+  action == AgentCore::Action::"banking-assistant-tools___execute_trade",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 24h
-    AgentCore::Action::"portfolio-tools___get_client_profile"::response{
-      eventResource: resource,
-      output.portfolioIds: context.input.portfolio_id
+    AgentCore::Action::"banking-assistant-tools___get_client_profile"::response{
+      eventResource: resource
     }
   && formerly within 30s
-    AgentCore::Action::"portfolio-tools___get_market_price"::response{ eventResource: resource }
-  && !AgentCore::Action::"portfolio-tools___execute_trade"::response{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___get_market_price"::response{ eventResource: resource }
+  && !AgentCore::Action::"banking-assistant-tools___execute_trade"::response{ eventResource: resource }
      since within 24h
-     AgentCore::Action::"portfolio-tools___approve_trade"::response{
-       input.status: "approved",
+     AgentCore::Action::"banking-assistant-tools___approve_trade"::response{
        eventResource: resource
      }
 }
@@ -554,9 +601,7 @@ when { context.input.cost > 25000 };
 | :--- | :--- | :--- | :--- |
 | 1 | Get the client profile for CLIENT-001, get the price for AAPL, then buy $15,000 of AAPL in PORT-8821 | $15,000 | ALLOW (Policy 2 path, at or below $25k) |
 | 2 | Get the profile and price, then buy $30,000 of AAPL in PORT-8821 with no approval | $30,000 | DENY (above $25k, no approval) |
-| 3 | Approve trade TRD-001 via advisor, get the profile and price, then buy $30,000 of AAPL in PORT-8821 | $30,000 | ALLOW |
-| 4 | Continuing row 3, refresh the price, then buy another $30,000 of AAPL in PORT-8821 | $30,000 | DENY (approval consumed by the row 3 trade) |
-| 5 | Send "Approve trade TRD-002 via advisor", pause more than 24 hours, then send "Get the profile for CLIENT-001 and price for AAPL and buy $30,000 of AAPL in PORT-8821" | $30,000 | DENY (approval older than 24h) |
+| 3 | Approve trade TRD-001 via advisor by sending status "approved", get the profile and price, then buy $30,000 of AAPL in PORT-8821 | $30,000 | ALLOW |
 
 </details>
 
@@ -564,15 +609,15 @@ when { context.input.cost > 25000 };
 aws bedrock-agentcore-control create-policy \
   --policy-engine-id ${ENGINE_ID} \
   --name portfolio_approval_gate \
-  --description "Trades above 25000 require integrity, freshness, and an unconsumed approve_trade" \
+  --description "Trades above 25000 require sequencing, freshness, and an unconsumed approve_trade" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"portfolio-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 24h AgentCore::Action::\\\"portfolio-tools___get_client_profile\\\"::response{ eventResource: resource, output.portfolioIds: context.input.portfolio_id } && formerly within 30s AgentCore::Action::\\\"portfolio-tools___get_market_price\\\"::response{ eventResource: resource } && !AgentCore::Action::\\\"portfolio-tools___execute_trade\\\"::response{ eventResource: resource } since within 24h AgentCore::Action::\\\"portfolio-tools___approve_trade\\\"::response{ input.status: \\\"approved\\\", eventResource: resource } } when { context.input.cost > 25000 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 24h AgentCore::Action::\\\"banking-assistant-tools___get_client_profile\\\"::response{ eventResource: resource } && formerly within 30s AgentCore::Action::\\\"banking-assistant-tools___get_market_price\\\"::response{ eventResource: resource } && \!AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\"::response{ eventResource: resource } since within 24h AgentCore::Action::\\\"banking-assistant-tools___approve_trade\\\"::response{ input.status: \\\"approved\\\", eventResource: resource } } when { context.input.cost > 25000 };\"}}" \
   --region ${REGION}
 ```
 
 **Policy 4: Cumulative budget cap**
 
-Sums the `cost` field across all `execute_trade` requests in the session within the last 24 hours. Denies once the running total reaches $60,000. This `forbid` overrides the trade permits, so an otherwise-valid trade is blocked once the session total crosses the cap. The ALLOW and DENY outcomes below are the gateway's policy decisions on each request, evaluated before the simulated Lambda runs.
+Sums the `cost` field across all `execute_trade` requests in the session within the last 24 hours. Denies once the running total reaches $60,000. This `forbid` overrides the trade permits, so an otherwise-valid trade is blocked once the session total crosses the cap. The ALLOW and DENY outcomes below are the gateway's policy decisions on each request, evaluated before the tool executes.
 
 <details>
 <summary>Policy statement and test sequences</summary>
@@ -580,14 +625,14 @@ Sums the `cost` field across all `execute_trade` requests in the session within 
 ```cedar
 forbid(
   principal,
-  action == AgentCore::Action::"portfolio-tools___execute_trade",
+  action == AgentCore::Action::"banking-assistant-tools___execute_trade",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   exists (total: Long).
   (sum amount for (amount: Long), (t: Timepoint).
     where (formerly within 24h (
-      AgentCore::Action::"portfolio-tools___execute_trade"::request{
+      AgentCore::Action::"banking-assistant-tools___execute_trade"::request{
         eventResource: resource,
         input.cost: amount
       } && tp(t)
@@ -612,7 +657,7 @@ aws bedrock-agentcore-control create-policy \
   --name portfolio_budget_cap \
   --description "Total trade cost per session cannot exceed 60000 in 24h" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"portfolio-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { exists (total: Long). (sum amount for (amount: Long), (t: Timepoint). where (formerly within 24h ( AgentCore::Action::\\\"portfolio-tools___execute_trade\\\"::request{ eventResource: resource, input.cost: amount } && tp(t) ))) == total && total >= 60000 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { exists (total: Long). (sum amount for (amount: Long), (t: Timepoint). where (formerly within 24h ( AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\"::request{ eventResource: resource, input.cost: amount } && tp(t) ))) == total && total >= 60000 };\"}}" \
   --region ${REGION}
 ```
 
@@ -626,28 +671,28 @@ Forbids selling a security at a loss (a `SELL` with negative `cost`) when that s
 ```cedar
 forbid(
   principal,
-  action == AgentCore::Action::"portfolio-tools___execute_trade",
+  action == AgentCore::Action::"banking-assistant-tools___execute_trade",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 5m
-    AgentCore::Action::"portfolio-tools___execute_trade"::request{
+    AgentCore::Action::"banking-assistant-tools___execute_trade"::request{
       input.symbol: context.input.symbol,
-      input.action: "BUY",
+      input.action: "buy",
       eventResource: resource
     }
 }
-when { context.input.action == "SELL" && context.input.cost < 0 };
+when { context.input.action == "sell" && context.input.cost < 0 };
 ```
 
-Each trade below is set up with a fresh profile and price so the trade permits apply; the row outcome then shows whether this `forbid` overrides them. Buy amounts are at or below $25,000.
+Each trade below requires a fresh profile and price first (to satisfy Policy 2). Buy amounts are at or below $25,000.
 
 | # | Sample prompt | Symbol | Cost | Time gap | Expected |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | Buy AAPL in PORT-8821, then sell AAPL at a loss (cost -$500) | AAPL | -$500 | same window | DENY |
-| 2 | Send the buy-AAPL setup, pause more than 5 minutes, then send "Sell AAPL in PORT-8821 at a loss (cost -$500)" | AAPL | -$500 | > 5 min | ALLOW (buy outside 5m window) |
-| 3 | Buy AAPL, then sell MSFT at a loss | MSFT | -$500 | same window | ALLOW (different symbol) |
-| 4 | Buy AAPL, then sell AAPL at a gain (cost +$500) | AAPL | +$500 | same window | ALLOW (cost not negative) |
+| 1 | Get the client profile for CLIENT-001, get the market price for AAPL, buy 10 shares of AAPL in PORT-8821 with cost 1785, then sell 10 shares of AAPL in PORT-8821 with cost -500 | AAPL | -500 | same window | DENY |
+| 2 | Do the same buy setup, pause more than 5 minutes, then send "Get the market price for AAPL and sell 10 shares of AAPL in PORT-8821 with cost -500" | AAPL | -500 | > 5 min | ALLOW (buy outside 5m window) |
+| 3 | Get the profile and price for AAPL, buy 10 shares of AAPL in PORT-8821 with cost 1785, then get the price for MSFT and sell 10 shares of MSFT in PORT-8821 with cost -500 | MSFT | -500 | same window | ALLOW (different symbol from buy) |
+| 4 | Get the profile and price for AAPL, buy 10 shares of AAPL in PORT-8821 with cost 1785, then sell 10 shares of AAPL in PORT-8821 with cost 500 | AAPL | 500 | same window | ALLOW (cost not negative) |
 
 </details>
 
@@ -657,7 +702,7 @@ aws bedrock-agentcore-control create-policy \
   --name portfolio_mutual_exclusion \
   --description "Cannot sell a security at a loss after buying it in the same 5-minute window" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"portfolio-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"portfolio-tools___execute_trade\\\"::request{ input.symbol: context.input.symbol, input.action: \\\"BUY\\\", eventResource: resource } } when { context.input.action == \\\"SELL\\\" && context.input.cost < 0 };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"forbid(principal, action == AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-assistant-tools___execute_trade\\\"::request{ input.symbol: context.input.symbol, input.action: \\\"buy\\\", eventResource: resource } } when { context.input.action == \\\"sell\\\" && context.input.cost < 0 };\"}}" \
   --region ${REGION}
 ```
 
@@ -674,23 +719,21 @@ Permits `rebalance_portfolio` only when a `load_portfolio` response occurred wit
 ```cedar
 permit(
   principal,
-  action == AgentCore::Action::"portfolio-tools___rebalance_portfolio",
+  action == AgentCore::Action::"banking-assistant-tools___rebalance_portfolio",
   resource == AgentCore::Gateway::"<GATEWAY_ARN>"
 )
 when temporal {
   formerly within 5m
-    AgentCore::Action::"portfolio-tools___load_portfolio"::response{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___load_portfolio"::response{ eventResource: resource }
   && formerly within 15m
-    AgentCore::Action::"portfolio-tools___interact_advisor"::response{ eventResource: resource }
+    AgentCore::Action::"banking-assistant-tools___interact_advisor"::response{ eventResource: resource }
 };
 ```
 
 | # | Sample prompt | Expected |
 | :--- | :--- | :--- |
-| 1 | Get the profile for CLIENT-001, load PORT-8821, interact with the advisor, then rebalance PORT-8821 | ALLOW |
-| 2 | Get the profile, load PORT-8821, then rebalance PORT-8821 with no advisor interaction | DENY (no advisor within 15m) |
-| 3 | Get the profile, interact with the advisor, then rebalance PORT-8821 with no load | DENY (no load within 5m) |
-| 4 | Send "Get the profile for CLIENT-001, load PORT-8821, and interact with the advisor", pause more than 15 minutes, then send "Rebalance PORT-8821" | DENY (advisor older than 15m) |
+| 1 | Get the client profile for CLIENT-001, load portfolio PORT-8821, interact with advisor ADV-001, then rebalance portfolio PORT-8821 with target allocations AAPL 50% and MSFT 50% | ALLOW |
+| 2 | **New Session** Get the client profile for CLIENT-001, load portfolio PORT-8821, then rebalance portfolio PORT-8821 with target allocations AAPL 50% and MSFT 50% (no advisor interaction) | DENY (no advisor within 15m) |
 
 </details>
 
@@ -700,14 +743,22 @@ aws bedrock-agentcore-control create-policy \
   --name portfolio_rebalance_trust \
   --description "rebalance_portfolio requires load_portfolio within 5m and interact_advisor within 15m" \
   --validation-mode IGNORE_ALL_FINDINGS \
-  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"portfolio-tools___rebalance_portfolio\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"portfolio-tools___load_portfolio\\\"::response{ eventResource: resource } && formerly within 15m AgentCore::Action::\\\"portfolio-tools___interact_advisor\\\"::response{ eventResource: resource } };\"}}" \
+  --definition "{\"policy\":{\"statement\":\"permit(principal, action == AgentCore::Action::\\\"banking-assistant-tools___rebalance_portfolio\\\", resource == AgentCore::Gateway::\\\"${GATEWAY_ARN}\\\") when temporal { formerly within 5m AgentCore::Action::\\\"banking-assistant-tools___load_portfolio\\\"::response{ eventResource: resource } && formerly within 15m AgentCore::Action::\\\"banking-assistant-tools___interact_advisor\\\"::response{ eventResource: resource } };\"}}" \
   --region ${REGION}
 ```
 
 ### Cleanup
 
-Run the cleanup script. It reads the resource IDs from `setup_config.json` and deletes every policy (base permits and temporal), the policy engine, both Lambda targets, the gateway, the gateway IAM role, and the Lambda functions. The script is idempotent; resources that are already gone are skipped.
+Run the cleanup script. It reads the resource IDs from `setup_config.json` and deletes every policy (base permits and temporal), the policy engine, the MCP server target, the gateway, and the gateway IAM role. The script is idempotent; resources that are already gone are skipped.
 
 ```bash
-uv run cleanup.py --cognito
+uv run cleanup.py
+agentcore remove all
+agentcore deploy --yes
+```
+
+Remove the MCP server from AgentCore Runtime and delete the Cognito stack (if no longer needed by other tutorials):
+
+```bash
+aws cloudformation delete-stack --stack-name ${COGNITO_STACK_NAME} --region ${REGION}
 ```

@@ -3,8 +3,8 @@
 # dependencies = ["boto3"]
 # ///
 """
-Create the gateway IAM role, policy engine, gateway, and Lambda targets
-for the banking assistant temporal policies sample.
+Create the gateway IAM role, policy engine, gateway, MCP server target,
+and base permits for the banking assistant temporal policies sample.
 
 The script is idempotent — re-running it safely skips resources that
 already exist. State is saved to setup_config.json so each step can
@@ -14,8 +14,11 @@ Usage:
     uv run setup.py
 
 Required environment variables:
-    DISCOVERY_URL      - Cognito OIDC discovery URL (from Step 1)
-    GATEWAY_CLIENT_ID  - Cognito gateway client ID (from Step 1)
+    DISCOVERY_URL            - Cognito OIDC discovery URL (from Step 1)
+    GATEWAY_CLIENT_ID        - Cognito gateway client ID (from Step 1)
+    MCP_SERVER_URL           - MCP server invocation URL (from Step 2, agentcore status)
+    MCP_CREDENTIAL_PROVIDER_ARN - OAuth credential provider ARN for the MCP server target
+                                  (from agentcore status --json after deploy)
 
 Optional:
     REGION             - AWS region (default: us-east-1)
@@ -39,52 +42,31 @@ REGION = os.environ.get("REGION", "us-east-1")
 GATEWAY_ROLE_NAME = "banking-gateway-role"
 GATEWAY_NAME = "banking-gateway"
 ENGINE_NAME = "banking_policy_engine"
+TARGET_NAME = "banking-assistant-tools"
 CONFIG_FILE = Path(__file__).parent / "setup_config.json"
-
-BANKING_TOOLS_SCHEMA = Path(__file__).parent / "banking-tools/tool-schema.json"
-PORTFOLIO_TOOLS_SCHEMA = Path(__file__).parent / "portfolio-tools/tool-schema.json"
-
-TARGETS = [
-    {
-        "name": "banking-tools",
-        "description": "Banking tools Lambda",
-        "function_name": "banking-tools",
-        "schema_path": BANKING_TOOLS_SCHEMA,
-    },
-    {
-        "name": "portfolio-tools",
-        "description": "Portfolio advisor tools Lambda",
-        "function_name": "portfolio-tools",
-        "schema_path": PORTFOLIO_TOOLS_SCHEMA,
-    },
-]
 
 # Base (non-temporal) permits. AgentCore Policy is deny-by-default, so every
 # tool that should be callable needs a plain `permit`. These are created once
 # by setup.py so the README steps only add the temporal policies on top.
 #
-# Prerequisite / read / record tools get a plain permit here. The write tools
-# that the workshop gates with temporal policies are deliberately omitted; they
-# are authorized solely by the temporal `permit`s added in README Steps 5 and 6:
-#   banking:   transfer_funds
-#   portfolio: load_portfolio, rebalance_portfolio, execute_trade
+# All tools live under the single target name `banking_assistant_tools`.
+# The write tools gated by temporal policies are deliberately omitted:
+#   transfer_funds, load_portfolio, rebalance_portfolio, execute_trade
 #
 # A tool without any permit is denied, and a denied action never records a
 # ::request/::response, so its history would be invisible to later temporal
 # conditions. See docs/predicates.md ("The Dependency Trap").
 BASE_PERMITS = [
-    # banking-tools
-    ("banking-tools", "get_account_balance"),
-    ("banking-tools", "get_transaction_history"),
-    ("banking-tools", "freeze_account"),
-    ("banking-tools", "unfreeze_account"),
-    ("banking-tools", "approve_transfer"),
-    ("banking-tools", "reject_transfer"),
-    # portfolio-tools
-    ("portfolio-tools", "get_client_profile"),
-    ("portfolio-tools", "get_market_price"),
-    ("portfolio-tools", "approve_trade"),
-    ("portfolio-tools", "interact_advisor"),
+    ("banking-assistant-tools", "get_account_balance"),
+    ("banking-assistant-tools", "get_transaction_history"),
+    ("banking-assistant-tools", "freeze_account"),
+    ("banking-assistant-tools", "unfreeze_account"),
+    ("banking-assistant-tools", "approve_transfer"),
+    ("banking-assistant-tools", "reject_transfer"),
+    ("banking-assistant-tools", "get_client_profile"),
+    ("banking-assistant-tools", "get_market_price"),
+    ("banking-assistant-tools", "approve_trade"),
+    ("banking-assistant-tools", "interact_advisor"),
 ]
 
 
@@ -144,15 +126,6 @@ def ensure_gateway_role(iam, account_id: str) -> str:
                 "Version": "2012-10-17",
                 "Statement": [
                     {
-                        "Sid": "LambdaInvoke",
-                        "Effect": "Allow",
-                        "Action": "lambda:InvokeFunction",
-                        "Resource": [
-                            f"arn:aws:lambda:{REGION}:{account_id}:function:banking-tools",
-                            f"arn:aws:lambda:{REGION}:{account_id}:function:portfolio-tools",
-                        ],
-                    },
-                    {
                         "Sid": "PolicyEngineConfiguration",
                         "Effect": "Allow",
                         "Action": "bedrock-agentcore:GetPolicyEngine",
@@ -173,11 +146,43 @@ def ensure_gateway_role(iam, account_id: str) -> str:
                     {
                         "Sid": "GetWorkloadAccessToken",
                         "Effect": "Allow",
-                        "Action": "bedrock-agentcore:GetWorkloadAccessToken",
+                        "Action": [
+                            "bedrock-agentcore:GetWorkloadAccessToken",
+                            "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+                            "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
+                        ],
                         "Resource": [
                             f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default",
-                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default/workload-identity/banking-gateway",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default/workload-identity/banking-gateway-*",
                         ],
+                    },
+                    {
+                        "Sid": "CompleteResourceTokenAuth",
+                        "Effect": "Allow",
+                        "Action": "bedrock-agentcore:CompleteResourceTokenAuth",
+                        "Resource": [
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:token-vault/default",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:token-vault/default/oauth2credentialprovider/*",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default/workload-identity/banking-gateway-*",
+                        ],
+                    },
+                    {
+                        "Sid": "GetResourceOauth2Token",
+                        "Effect": "Allow",
+                        "Action": "bedrock-agentcore:GetResourceOauth2Token",
+                        "Resource": [
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:token-vault/default",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:token-vault/default/oauth2credentialprovider/*",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default",
+                            f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:workload-identity-directory/default/workload-identity/banking-gateway-*",
+                        ],
+                    },
+                    {
+                        "Sid": "GetSecretValue",
+                        "Effect": "Allow",
+                        "Action": "secretsmanager:GetSecretValue",
+                        "Resource": f"arn:aws:secretsmanager:{REGION}:{account_id}:secret:bedrock-agentcore-identity!default/oauth2/*",
                     },
                 ],
             }
@@ -314,8 +319,6 @@ def ensure_gateway(
     if cfg.get("gateway_id"):
         gateway_id = cfg["gateway_id"]
         print(f"  Gateway already exists: {gateway_id} — reconciling configuration...")
-        # update_gateway replaces the whole configuration, so pass the full
-        # param set (same as create) to avoid clearing the authorizer or engine.
         ctrl.update_gateway(gatewayIdentifier=gateway_id, **params)
     else:
         print(f"  Creating gateway '{GATEWAY_NAME}'...")
@@ -341,6 +344,78 @@ def ensure_gateway(
 
 
 # ---------------------------------------------------------------------------
+# MCP server target
+# ---------------------------------------------------------------------------
+
+
+def ensure_mcp_target(
+    ctrl, gateway_id: str, mcp_server_url: str, credential_provider_arn: str, cfg: dict
+) -> str:
+    key = f"target_id_{TARGET_NAME}"
+    if cfg.get(key):
+        print(f"  Target '{TARGET_NAME}' already exists: {cfg[key]} (skipped)")
+        return cfg[key]
+
+    print(f"  Creating MCP server target '{TARGET_NAME}' -> {mcp_server_url}...")
+    try:
+        resp = ctrl.create_gateway_target(
+            gatewayIdentifier=gateway_id,
+            name=TARGET_NAME,
+            description="Banking assistant MCP server (all tools)",
+            credentialProviderConfigurations=[
+                {
+                    "credentialProviderType": "OAUTH",
+                    "credentialProvider": {
+                        "oauthCredentialProvider": {
+                            "providerArn": credential_provider_arn,
+                            "scopes": ["api/mcp"],
+                        }
+                    },
+                }
+            ],
+            targetConfiguration={
+                "mcp": {
+                    "mcpServer": {
+                        "endpoint": mcp_server_url,
+                    }
+                }
+            },
+        )
+        target_id = resp["targetId"]
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ConflictException":
+            raise
+        existing = ctrl.list_gateway_targets(
+            gatewayIdentifier=gateway_id, maxResults=50
+        )
+        target_id = next(
+            t["targetId"]
+            for t in existing.get("items", [])
+            if t.get("name") == TARGET_NAME
+        )
+        print(f"  Target already exists: {target_id}")
+        save_config({key: target_id})
+        return target_id
+
+    print("  Waiting for target READY...", end="", flush=True)
+    for _ in range(30):
+        status = ctrl.get_gateway_target(
+            gatewayIdentifier=gateway_id, targetId=target_id
+        ).get("status")
+        if status == "READY":
+            print(" ready")
+            break
+        if status in ("FAILED", "CREATE_FAILED"):
+            print(f" FAILED ({status})")
+            sys.exit(1)
+        print(".", end="", flush=True)
+        time.sleep(5)
+
+    save_config({key: target_id})
+    return target_id
+
+
+# ---------------------------------------------------------------------------
 # Base (non-temporal) permits
 # ---------------------------------------------------------------------------
 
@@ -348,7 +423,8 @@ def ensure_gateway(
 def ensure_base_permits(ctrl, engine_id: str, gateway_arn: str, cfg: dict) -> None:
     created = set(cfg.get("base_permits", []))
     for target, tool in BASE_PERMITS:
-        name = f"permit_{target.replace('-', '_')}_{tool}"
+        # Policy names are limited to 48 chars. Use a short prefix.
+        name = f"permit_{tool}"
         if name in created:
             print(f"  Base permit '{name}' already recorded (skipped)")
             continue
@@ -377,76 +453,6 @@ def ensure_base_permits(ctrl, engine_id: str, gateway_arn: str, cfg: dict) -> No
 
 
 # ---------------------------------------------------------------------------
-# Lambda targets
-# ---------------------------------------------------------------------------
-
-
-def get_lambda_arn(lam, function_name: str) -> str:
-    return lam.get_function(FunctionName=function_name)["Configuration"]["FunctionArn"]
-
-
-def ensure_target(ctrl, lam, gateway_id: str, target: dict, cfg: dict) -> str:
-    key = f"target_id_{target['name']}"
-    if cfg.get(key):
-        print(f"  Target '{target['name']}' already exists: {cfg[key]} (skipped)")
-        return cfg[key]
-
-    lambda_arn = get_lambda_arn(lam, target["function_name"])
-    tool_schema = json.loads(target["schema_path"].read_text())
-
-    print(f"  Creating target '{target['name']}' -> {lambda_arn}...")
-    try:
-        resp = ctrl.create_gateway_target(
-            gatewayIdentifier=gateway_id,
-            name=target["name"],
-            description=target["description"],
-            credentialProviderConfigurations=[
-                {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-            ],
-            targetConfiguration={
-                "mcp": {
-                    "lambda": {
-                        "lambdaArn": lambda_arn,
-                        "toolSchema": {"inlinePayload": tool_schema},
-                    }
-                }
-            },
-        )
-        target_id = resp["targetId"]
-    except ClientError as e:
-        if e.response["Error"]["Code"] != "ConflictException":
-            raise
-        existing = ctrl.list_gateway_targets(
-            gatewayIdentifier=gateway_id, maxResults=50
-        )
-        target_id = next(
-            t["targetId"]
-            for t in existing.get("items", [])
-            if t.get("name") == target["name"]
-        )
-        print(f"  Target already exists: {target_id}")
-        save_config({key: target_id})
-        return target_id
-
-    print("  Waiting for target READY...", end="", flush=True)
-    for _ in range(30):
-        status = ctrl.get_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        ).get("status")
-        if status == "READY":
-            print(" ready")
-            break
-        if status in ("FAILED", "CREATE_FAILED"):
-            print(f" FAILED ({status})")
-            sys.exit(1)
-        print(".", end="", flush=True)
-        time.sleep(5)
-
-    save_config({key: target_id})
-    return target_id
-
-
-# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -454,12 +460,16 @@ def ensure_target(ctrl, lam, gateway_id: str, target: dict, cfg: dict) -> str:
 def main() -> None:
     discovery_url = os.environ.get("DISCOVERY_URL", "")
     gateway_client_id = os.environ.get("GATEWAY_CLIENT_ID", "")
+    mcp_server_url = os.environ.get("MCP_SERVER_URL", "")
+    credential_provider_arn = os.environ.get("MCP_CREDENTIAL_PROVIDER_ARN", "")
 
     missing = [
         name
         for name, val in [
             ("DISCOVERY_URL", discovery_url),
             ("GATEWAY_CLIENT_ID", gateway_client_id),
+            ("MCP_SERVER_URL", mcp_server_url),
+            ("MCP_CREDENTIAL_PROVIDER_ARN", credential_provider_arn),
         ]
         if not val
     ]
@@ -470,16 +480,10 @@ def main() -> None:
         )
         sys.exit(1)
 
-    for t in TARGETS:
-        if not t["schema_path"].exists():
-            print(f"Error: schema not found at {t['schema_path']}", file=sys.stderr)
-            sys.exit(1)
-
     session = boto3.Session(region_name=REGION)
     account_id = session.client("sts").get_caller_identity()["Account"]
     iam = session.client("iam")
     ctrl = session.client("bedrock-agentcore-control", region_name=REGION)
-    lam = session.client("lambda", region_name=REGION)
 
     cfg = load_config()
 
@@ -506,11 +510,9 @@ def main() -> None:
     else:
         print("  Already scoped (skipped)")
 
-    print("\nStep 5: Lambda targets")
+    print("\nStep 5: MCP server target")
     cfg = load_config()
-    for target in TARGETS:
-        ensure_target(ctrl, lam, gateway_id, target, cfg)
-        cfg = load_config()
+    ensure_mcp_target(ctrl, gateway_id, mcp_server_url, credential_provider_arn, cfg)
 
     print("\nStep 6: Base (non-temporal) permits")
     cfg = load_config()

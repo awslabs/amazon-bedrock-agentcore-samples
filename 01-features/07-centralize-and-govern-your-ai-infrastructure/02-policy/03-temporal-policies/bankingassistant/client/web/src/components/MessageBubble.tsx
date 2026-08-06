@@ -34,20 +34,28 @@ export function MessageBubble({
           <div className="text">{message.content}</div>
         ))}
       {streaming && noContentYet && <div className="thinking">…</div>}
-      {message.toolEvents?.map((ev, i) => (
-        <details key={i} className={`tool-event ${ev.isError ? "err" : ""}`}>
+      {message.toolEvents?.map((ev, i) => {
+        const pending = ev.result === null;
+        return (
+        <details key={i} open={pending} className={`tool-event ${ev.isError ? "err" : ""} ${pending ? "pending" : ""}`}>
           <summary>
-            {ev.isError ? "⚠ " : "🔧 "}
+            {pending ? "⏳ " : ev.isError ? "⚠ " : "🔧 "}
             {ev.name}
+            {pending && <span className="tool-waiting"> calling…</span>}
           </summary>
           <div className="tool-body">
             <div className="tool-label">args</div>
             <pre>{fmt(ev.args)}</pre>
-            <div className="tool-label">{ev.isError ? "error" : "result"}</div>
-            <pre>{fmt(ev.result)}</pre>
+            {!pending && (
+              <>
+                <div className="tool-label">{ev.isError ? "error" : "result"}</div>
+                <pre>{fmt(ev.result)}</pre>
+              </>
+            )}
           </div>
         </details>
-      ))}
+        );
+      })}
     </div>
   );
 }

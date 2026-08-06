@@ -54,6 +54,23 @@ export function sessionsRouter(deps: {
     res.json({ session: toDTO(session) });
   });
 
+  // Re-fetch the tool list from the gateway (e.g. after a policy change adds a new tool).
+  router.post("/:id/refresh-tools", async (req, res) => {
+    const session = store.get(req.params.id);
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    try {
+      session.tools = await session.client.listTools();
+      res.json({ session: toDTO(session) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error("Refresh tools failed", { session: session.id, error: msg });
+      res.status(502).json({ error: msg });
+    }
+  });
+
   // Send a chat message: run the Converse tool loop, append transcript.
   router.post("/:id/messages", async (req, res) => {
     const session = store.get(req.params.id);

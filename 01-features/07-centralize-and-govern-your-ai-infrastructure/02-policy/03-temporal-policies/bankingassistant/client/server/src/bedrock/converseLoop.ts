@@ -13,6 +13,7 @@ import { mcpToolsToConverseToolConfig } from "./toolConfig.js";
 /** Events emitted during a streaming turn, consumed by the route and forwarded to the UI. */
 export type ConverseEvent =
   | { type: "text"; delta: string }
+  | { type: "tool_start"; name: string; args: unknown }
   | { type: "tool"; event: ToolEvent }
   | { type: "ids"; mcpSessionId: string | null; policySessionId: string | null };
 
@@ -169,9 +170,15 @@ export async function runConverseStream(
     for (const [, b] of ordered) {
       if (!b.toolUse) continue;
       const toolInput = parseToolInput(b.toolUse.inputJson);
+      emit({ type: "tool_start", name: b.toolUse.name, args: toolInput });
 
       try {
-        const res = await mcp.callTool(b.toolUse.name, toolInput);
+        const res = await Promise.race([
+          mcp.callTool(b.toolUse.name, toolInput),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Tool call timed out after 30s")), 30_000),
+          ),
+        ]);
         const text = mcpResultToText(res.content);
         const event: ToolEvent = {
           name: b.toolUse.name,

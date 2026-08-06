@@ -32,6 +32,11 @@ export function createSdkMcpClient(deps: McpClientDeps): McpClient {
     const token = await deps.getToken();
     const headers = new Headers(init?.headers);
     headers.set("Authorization", `Bearer ${token}`);
+    // Force plain JSON responses from the gateway. Without this, the gateway
+    // returns text/event-stream (SSE) which keeps the connection open for
+    // notifications/progress. The SDK's SSE parser then hangs waiting for
+    // more events even after the tool result has been delivered.
+    headers.set("Accept", "application/json");
 
     const policyId = deps.getPolicySessionId();
     if (policyId) headers.set(POLICY_SESSION_HEADER, policyId);

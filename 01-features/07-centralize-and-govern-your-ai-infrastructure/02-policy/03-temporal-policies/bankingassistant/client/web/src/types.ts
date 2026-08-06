@@ -25,8 +25,14 @@ export interface SessionSummary {
   policySessionSource: PolicySessionSource;
 }
 
+export interface McpToolInfo {
+  name: string;
+  description?: string;
+}
+
 export interface SessionDTO extends SessionSummary {
   messages: ChatMessage[];
+  tools: McpToolInfo[];
 }
 
 export interface AppConfigDTO {

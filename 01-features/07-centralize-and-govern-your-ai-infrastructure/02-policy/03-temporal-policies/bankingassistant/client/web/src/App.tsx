@@ -1,5 +1,6 @@
 import { SessionSidebar } from "./components/SessionSidebar";
 import { SessionHeader } from "./components/SessionHeader";
+import { ToolList } from "./components/ToolList";
 import { ChatWindow } from "./components/ChatWindow";
 import { useSessions } from "./state/useSessions";
 
@@ -40,6 +41,7 @@ export function App() {
         {s.activeSession ? (
           <>
             <SessionHeader session={s.activeSession} />
+            <ToolList tools={s.activeSession.tools} onRefresh={s.refreshTools} />
             <ChatWindow
               session={s.activeSession}
               sending={s.sending}

@@ -20,6 +20,7 @@ export interface UseSessions {
   selectSession: (id: string) => Promise<void>;
   createSession: (protocol: ProtocolVersion, policySessionId?: string) => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
+  refreshTools: () => Promise<void>;
   clearError: () => void;
   clearNotice: () => void;
 }
@@ -44,8 +45,13 @@ export function useSessions(): UseSessions {
 
   const upsertSummary = useCallback((s: SessionDTO) => {
     setSessions((prev) => {
-      const next = prev.filter((p) => p.id !== s.id);
-      return [summarize(s), ...next];
+      const idx = prev.findIndex((p) => p.id === s.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = summarize(s);
+        return next;
+      }
+      return [summarize(s), ...prev];
     });
   }, []);
 
@@ -130,11 +136,28 @@ export function useSessions(): UseSessions {
       await api.sendMessageStream(id, text, (ev) => {
         if (ev.type === "text") {
           patchAssistant((m) => ({ ...m, content: m.content + ev.delta }));
-        } else if (ev.type === "tool") {
+        } else if (ev.type === "tool_start") {
           patchAssistant((m) => ({
             ...m,
-            toolEvents: [...(m.toolEvents ?? []), ev.event],
+            toolEvents: [
+              ...(m.toolEvents ?? []),
+              { name: ev.name, args: ev.args, result: null, isError: false },
+            ],
           }));
+        } else if (ev.type === "tool") {
+          // Replace the last pending tool_start with the full result
+          patchAssistant((m) => {
+            const events = [...(m.toolEvents ?? [])];
+            const pendingIdx = events.findLastIndex(
+              (e) => e.name === ev.event.name && e.result === null,
+            );
+            if (pendingIdx >= 0) {
+              events[pendingIdx] = ev.event;
+            } else {
+              events.push(ev.event);
+            }
+            return { ...m, toolEvents: events };
+          });
         } else if (ev.type === "ids") {
           setActiveSession((prev) =>
             prev && prev.id === id
@@ -166,6 +189,17 @@ export function useSessions(): UseSessions {
     selectSession,
     createSession,
     sendMessage,
+    refreshTools: async () => {
+      if (!activeId) return;
+      setError(null);
+      try {
+        const s = await api.refreshTools(activeId);
+        setActiveSession(s);
+        upsertSummary(s);
+      } catch (e) {
+        setError(String((e as Error).message || e));
+      }
+    },
     clearError: () => setError(null),
     clearNotice: () => setNotice(null),
   };

@@ -32,32 +32,6 @@ const META_CLIENT_CAPS = "io.modelcontextprotocol/clientCapabilities";
 
 const CLIENT_INFO = { name: "banking-assistant-web", version: "1.0.0" };
 
-/**
- * Parse an MCP HTTP response body. The gateway returns either plain JSON or an
- * SSE stream (`event: message\ndata: {json}\n\n`) depending on content type.
- * For SSE, return the JSON-RPC object from the last `data:` line that has one.
- */
-function parseMcpBody(contentType: string | null, text: string): any {
-  const isSse = (contentType ?? "").includes("text/event-stream");
-  if (!isSse) return JSON.parse(text);
-
-  let last: any = null;
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trimStart();
-    if (!trimmed.startsWith("data:")) continue;
-    const payload = trimmed.slice(5).trim();
-    if (!payload || payload === "[DONE]") continue;
-    try {
-      last = JSON.parse(payload);
-    } catch {
-      // Ignore keep-alive or non-JSON data lines.
-    }
-  }
-  if (last === null) {
-    throw new Error(`No JSON payload in SSE response: ${text.slice(0, 200)}`);
-  }
-  return last;
-}
 
 export function createStatelessMcpClient(deps: McpClientDeps): McpClient {
   let rpcId = 0;
@@ -73,17 +47,21 @@ export function createStatelessMcpClient(deps: McpClientDeps): McpClient {
       "MCP-Protocol-Version": VERSION,
       "Mcp-Method": method,
       "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
+      Accept: "application/json",
     };
     // On 2026-07-28 the gateway requires an Mcp-Name header naming the tool for
     // tools/call, and rejects the request if it contradicts params.name.
     if (mcpName) headers["Mcp-Name"] = mcpName;
     const policyId = deps.getPolicySessionId();
-    if (policyId) headers[POLICY_SESSION_HEADER] = policyId;
+    if (policyId) {
+      headers[POLICY_SESSION_HEADER] = policyId;
+    }
+    log.info("stateless MCP policy-session state", { method, policyIdSent: policyId ?? "(omitted)" });
 
+    const id = String(++rpcId);
     const body = {
       jsonrpc: "2.0",
-      id: ++rpcId,
+      id,
       method,
       params: {
         ...params,
@@ -95,12 +73,14 @@ export function createStatelessMcpClient(deps: McpClientDeps): McpClient {
       },
     };
 
-    log.debug("stateless MCP request", { method, body });
+    const bodyStr = JSON.stringify(body);
+    log.info("stateless MCP request", { method, id, mcpName });
+    log.debug("stateless MCP request body", { bodyStr });
 
     const res = await fetch(deps.mcpUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body: bodyStr,
     });
 
     const returned = res.headers.get(POLICY_SESSION_HEADER);
@@ -108,20 +88,75 @@ export function createStatelessMcpClient(deps: McpClientDeps): McpClient {
       deps.onPolicySessionId(returned);
     }
     if (res.status === 409) throw new SessionInvalidatedError();
-
-    const text = await res.text();
-    log.debug("stateless MCP response", { status: res.status, text });
     if (!res.ok) {
+      const text = await res.text();
       throw new Error(`MCP ${method} failed (${res.status}): ${text}`);
     }
 
-    // The gateway may reply as plain JSON or as an SSE stream (text/event-stream)
-    // when streaming is enabled. Handle both.
-    const json = parseMcpBody(res.headers.get("content-type"), text);
+    // The gateway may reply as plain JSON (closed body) or as an SSE stream
+    // (text/event-stream) that stays open for notifications/progress. For SSE,
+    // read incrementally and resolve on the first complete JSON-RPC result
+    // rather than waiting for the stream to close (it may never close).
+    const contentType = res.headers.get("content-type") ?? "";
+    log.info("stateless MCP response headers", { method, status: res.status, contentType, hasBody: Boolean(res.body) });
+    let json: any;
+
+    if (contentType.includes("text/event-stream") && res.body) {
+      json = await readFirstSseResult(res.body);
+    } else {
+      const text = await res.text();
+      log.info("stateless MCP response (json)", { status: res.status, text: text.slice(0, 500) });
+      json = JSON.parse(text);
+    }
+
     if (json.error) {
       throw new Error(`MCP ${method} error: ${JSON.stringify(json.error)}`);
     }
     return json.result;
+  }
+
+  /** Read an SSE stream until we find the first `data:` line with a JSON-RPC result, then return it. */
+  async function readFirstSseResult(body: ReadableStream<Uint8Array>): Promise<any> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        log.info("SSE chunk received", { len: chunk.length, preview: chunk.slice(0, 200) });
+        buffer += chunk;
+
+        // Process complete lines
+        let nl: number;
+        while ((nl = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(payload);
+            // A JSON-RPC response has either `result` or `error`
+            if ("result" in parsed || "error" in parsed) {
+              log.debug("stateless MCP response (sse)", { parsed });
+              reader.cancel();
+              return parsed;
+            }
+          } catch {
+            // Not valid JSON yet, keep reading
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    throw new Error("SSE stream ended without a JSON-RPC result");
   }
 
   return {

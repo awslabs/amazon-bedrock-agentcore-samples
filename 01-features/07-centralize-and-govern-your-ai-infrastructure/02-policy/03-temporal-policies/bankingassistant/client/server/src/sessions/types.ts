@@ -29,6 +29,11 @@ export interface Session {
   tools: McpTool[];
 }
 
+export interface McpToolInfo {
+  name: string;
+  description?: string;
+}
+
 /** Serializable view sent to the browser (no live client). */
 export interface SessionDTO {
   id: string;
@@ -38,6 +43,7 @@ export interface SessionDTO {
   policySessionId: string | null;
   policySessionSource: PolicySessionSource;
   messages: ChatMessage[];
+  tools: McpToolInfo[];
 }
 
 export interface SessionSummary {
@@ -58,6 +64,7 @@ export function toDTO(s: Session): SessionDTO {
     policySessionId: s.policySessionId,
     policySessionSource: s.policySessionSource,
     messages: s.messages,
+    tools: s.tools.map((t) => ({ name: t.name, description: t.description })),
   };
 }
 

@@ -15,6 +15,7 @@ export type StreamEvent =
       mcpSessionId: string | null;
       policySessionId: string | null;
     }
+  | { type: "tool_start"; name: string; args: unknown }
   | { type: "done"; session: SessionDTO }
   | { type: "error"; error: string; code?: string; hint?: string };
 
@@ -44,6 +45,11 @@ export const api = {
     request<{ session: SessionDTO }>("/api/sessions", {
       method: "POST",
       body: JSON.stringify({ protocol, policySessionId }),
+    }).then((r) => r.session),
+
+  refreshTools: (id: string) =>
+    request<{ session: SessionDTO }>(`/api/sessions/${id}/refresh-tools`, {
+      method: "POST",
     }).then((r) => r.session),
 
   /**
