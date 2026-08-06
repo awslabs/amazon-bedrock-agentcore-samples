@@ -66,12 +66,7 @@ The sample PetStore REST API uses mock integrations with both IAM (SigV4) and AP
 | `/pets/{petId}`     | GET    | IAM (SigV4)   | Get pet by ID           |
 | `/orders/{orderId}` | GET    | API Key       | Get order details       |
 
-| Region    | Launch                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| us-east-1 | [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=agentcore-petstore-api&templateURL=https://raw.githubusercontent.com/awslabs/agentcore-samples/main/01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/gatewaylabproject/cloudformation/api-gateway/petstore-api-stack.yaml) |
-| us-west-2 | [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=agentcore-petstore-api&templateURL=https://raw.githubusercontent.com/awslabs/agentcore-samples/main/01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/gatewaylabproject/cloudformation/api-gateway/petstore-api-stack.yaml) |
-
-Or deploy via the CLI:
+Deploy via the CLI:
 
 ```bash
 export PETSTORE_STACK_NAME="agentcore-petstore-api"

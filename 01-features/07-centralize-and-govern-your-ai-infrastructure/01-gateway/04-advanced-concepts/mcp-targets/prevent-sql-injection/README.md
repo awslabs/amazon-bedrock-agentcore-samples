@@ -91,12 +91,7 @@ export GATEWAY_CLIENT_SECRET=$(aws cognito-idp describe-user-pool-client \
 
 Deploy the interceptor Lambda (SQL injection detection) and the mock customer query tool Lambda:
 
-| Region    | Launch |
-| :-------- | :----- |
-| us-east-1 | [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=agentcore-sql-injection-lambdas&templateURL=https://raw.githubusercontent.com/awslabs/agentcore-samples/main/01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/gatewaylabproject/cloudformation/sql-injection/sql-injection-stack.yaml) |
-| us-west-2 | [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=agentcore-sql-injection-lambdas&templateURL=https://raw.githubusercontent.com/awslabs/agentcore-samples/main/01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/gatewaylabproject/cloudformation/sql-injection/sql-injection-stack.yaml) |
-
-Or deploy via the CLI from the [`gatewaylabproject/`](../../gatewaylabproject/) directory:
+Deploy via the CLI from the [`gatewaylabproject/`](../../gatewaylabproject/) directory:
 
 ```bash
 export LAMBDA_STACK_NAME="agentcore-sql-injection-lambdas"

@@ -48,12 +48,7 @@ In this scenrio, the MCP client or Agent calling the AgentCore gateway should ha
 
 Deploy the sample Lambda function that you want to expose as MCP tools. The Lambda function contains two operations: `get_order` and `update_order`.
 
-| Region    | Launch                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| :-------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| us-east-1 | [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=agentcore-gateway-lambda-sample&templateURL=https://raw.githubusercontent.com/awslabs/agentcore-samples/main/01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/gatewaylabproject/cloudformation/lambda/lambda-sample-stack.yaml) |
-| us-west-2 | [![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=agentcore-gateway-lambda-sample&templateURL=https://raw.githubusercontent.com/awslabs/agentcore-samples/main/01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/gatewaylabproject/cloudformation/lambda/lambda-sample-stack.yaml) |
-
-Or deploy via the CLI:
+Deploy via the CLI:
 
 ```bash
 export LAMBDA_STACK_NAME="agentcore-gateway-lambda-sample"
