@@ -25,10 +25,6 @@ Prerequisites:
     cp env-sample.txt .env                    # then fill in Coinbase secrets + INSTRUMENT_EMAIL
     bash test/integration/setup-roles.sh      # creates the four IAM roles
 
-Notebook companion: see the matching pay-for-x402-secure-data.ipynb under
-06-workshops/13-AgentCore-payments/02-use-cases/pay-for-x402-secure-data/ for a
-step-by-step walkthrough with markdown commentary and screenshots.
-
 The agent is designed so that it never holds private keys. AgentCore Identity
 stores wallet-provider secrets in AWS Secrets Manager under KMS encryption after
 CreatePaymentCredentialProvider runs in §4. The agent runtime calls

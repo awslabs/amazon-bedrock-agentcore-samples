@@ -246,9 +246,7 @@ production:
 This use case ships as a single self-contained Python script,
 `pay_for_x402_secure_data.py`, plus the CDK app for the agent runtime
 (`agent/cdk/`) and idempotent shell scripts under `test/integration/` for IAM
-and environment setup. (A step-by-step notebook companion with the same flow
-lives in the workshop copy under
-`06-workshops/13-AgentCore-payments/02-use-cases/pay-for-x402-secure-data/`.)
+and environment setup.
 
 **Step 1.** Create a Python virtual environment and install dependencies. The
 script requires Python **3.10+**, so create the venv with an explicit 3.10+

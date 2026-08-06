@@ -31,22 +31,6 @@ A finance research agent that calls paid **Heurist x402 endpoints** for live mar
 
 ---
 
-### [Pay for Secure Data (x402)](pay-for-x402-secure-data/)
-
-Demonstrates a trust-gated x402 paid-service flow with AgentCore payments and t54 x402-secure. The agent first calls the t54 x402-secure direct API for endpoint risk scoring, lets `AgentCorePaymentsPlugin` handle the HTTP 402 payment retry, blocks low-quality or scam endpoints before target payment, and only then calls a registered target x402 service. The included service is Heurist YahooFinanceAgent market data, but the guardrail tool pattern is generic.
-
-**Highlights**
-- Two-stage x402 payment flow: t54 trust score first, registered target service payment second
-- Pre-payment guardrail for endpoint quality, risk, and scam signals
-- Per-invocation payment context for AgentCore Runtime calls
-- `AgentCorePaymentsPlugin` proof generation instead of local signing keys
-- Local x402 guardrail unit tests and optional AWS/x402 integration gates
-- No web demo or vendored service models
-
-> ⚠️ **Mainnet sample.** This use case settles real USDC on Base mainnet for both the t54 trust check and the registered target x402 service. Fund your embedded wallet before running; $1 USDC is enough for many calls at the included sample prices.
-
----
-
 ### [Pay for API](pay-for-api-agent/)
 
 An AI agent built with **Strands Agents** autonomously pays for metered access to an HTTP API through AgentCore payments. The seller is a "Fun Facts" Amazon API Gateway and AWS Lambda service deployed via AWS CDK that charges $0.01 per call and accepts payment on either EVM or Solana. When the agent hits HTTP 402, the `AgentCorePaymentsPlugin` forwards the requirement to AgentCore payments, attaches the signed proof, and retries. The agent's tool code stays a plain `http_request` call.

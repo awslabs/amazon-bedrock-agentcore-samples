@@ -5,7 +5,7 @@
 Local unit tests use mocks and do not require AWS credentials or live x402 payments:
 
 ```bash
-cd 06-workshops/13-AgentCore-payments/02-use-cases/pay-for-x402-secure-data
+cd 01-features/08-agents-that-transact/02-use-cases/pay-for-x402-secure-data
 source .venv/bin/activate
 PYTHONPATH="$PWD/agent/container" python -m unittest discover -s test/unit -p 'test_*.py' -v
 ```
@@ -45,7 +45,7 @@ Normal integration output is redacted and must not include raw AWS responses, wa
 Before publishing, scan the sample for sensitive artifacts. Brand and product terms such as `t54`, `x402-secure`, and `x402-secure-api.t54.ai` are expected and should not be treated as secrets.
 
 ```bash
-cd 06-workshops/13-AgentCore-payments/02-use-cases/pay-for-x402-secure-data
+cd 01-features/08-agents-that-transact/02-use-cases/pay-for-x402-secure-data
 rg -n --hidden --glob '!.git' --glob '!.venv' --glob '!__pycache__' \
   'BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|payment[ _-]proof|payment[P]roof|transaction[H]ash|wallet[ _-]address|account[ _-]id|payment_session_id=[A-Za-z0-9_-]+|payment_instrument_id=[A-Za-z0-9_-]+' .
 ```
