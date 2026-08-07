@@ -35,7 +35,7 @@ glue/
     storage.py          Amazon S3 staging
     local_store.py      Local filesystem staging
     teardown.py         Resources removed by the `destroy` command
-    target_registry.py  Target registry configuration derivation for the `init` command
+    target_registry.py  Target registry configuration derivation, creation, and READY wait
     adapter/            Shared API contract
   common/tests/         Offline test suite (no AWS calls, no credentials required)
 tools/                  Development utilities: wheel and fingerprint verification,
@@ -57,10 +57,10 @@ npm run verify:fingerprint # Verifies that the replay fingerprint matches across
 npm run synth              # Build and CDK synth
 ```
 
-Run the same checks in CI on every push: the Python test suite on Python 3.11 (the AWS Glue 5.0
-interpreter), followed by a build and CDK synth of both example configurations. The synth asserts
-that the customer-managed-role configuration produces no IAM resources. No AWS credentials are
-required for any of it.
+The CI pipeline defined in `.gitlab-ci.yml` runs the same checks on every push: the Python test
+suite on Python 3.11 (the AWS Glue 5.0 interpreter), followed by a build and CDK synth of both example
+configurations. The synth asserts that the customer-managed-role configuration produces no IAM
+resources. No AWS credentials are required in the pipeline.
 
 The pipeline also runs `verify:fingerprint`. This check cannot be replaced by a unit test. The
 replay fingerprint includes a hash of the runtime Python, computed independently by the checkout,
@@ -169,6 +169,10 @@ does not. Two consequences worth knowing about:
 
 * Tests that read a model (`test_registry_clients.py`, `test_target_registry.py`) skip rather than
   fail when the SDK has no such model — the same condition the tool itself reports at run time.
+* A model under `~/.aws/models/agent-registry-control` takes precedence over the SDK's own, and an
+  interim copy left there from before the registry operations shipped makes `CreateRegistry` look
+  absent. `agent-registry-migration check` warns about this (`sdk.shadowedTargetModel`) when run on a
+  workstation; the Glue jobs never see a home directory, so they never run that check.
 * The deployed jobs get their SDK from `--additional-python-modules`, pinned in
   `GLUE_SDK_MODULES` (`lib/migration-engine-stack.ts`), because no AWS Glue image ships an SDK new
   enough to carry the target service model. The pin is exact rather than a floor, so two runs of one

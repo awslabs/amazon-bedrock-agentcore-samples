@@ -7,7 +7,7 @@ Everything a user does goes through the npm CLI, which shells into this dispatch
     python3 -m migration_common load    [config arguments] --run-id <id> [--live true]
     python3 -m migration_common report  [config arguments] [--run-id <id>]
     python3 -m migration_common latest-run         [config arguments]
-    python3 -m migration_common target-config      [config arguments] --output-dir <dir>
+    python3 -m migration_common target-config      [config arguments] --output-dir <dir> [--create true]
     python3 -m migration_common account
     python3 -m migration_common engine-info        [--stack-name <name>] [--region <r>]
     python3 -m migration_common bucket-info        --bucket <name> [--region <r>]
@@ -145,6 +145,9 @@ def check(arguments: dict[str, str]) -> int:
         watermark_reader=watermark_reader,
         source_prober=source_prober,
         target_prober=target_prober,
+        # This entrypoint is only ever reached from the CLI on someone's machine, so the checks
+        # about that machine's own AWS configuration apply here and nowhere else.
+        workstation=True,
     )
     if flag(arguments, "JSON"):
         print(json.dumps({**report.as_dict(), "configurationSource": config_source}, indent=2))
@@ -419,9 +422,9 @@ def _render_report(
 def target_config(arguments: dict[str, str]) -> int:
     """Write the target registry ``CreateRegistry`` input derived from each source registry.
 
-    The registry itself is a decision (who may read it, what happens to submitted records), so this
-    prints the translated configuration and the one command that applies it rather than creating
-    anything.
+    Derives by default and prints the one command that applies the result, because the payload
+    decides who may read the registry and is worth a look before it exists. ``--create`` applies it
+    here instead: create, wait for ``READY``, and report the generated registry id.
     """
     from . import target_registry
     from .settings import resolve_configuration
@@ -439,6 +442,11 @@ def target_config(arguments: dict[str, str]) -> int:
 
     output_dir = optional_argument(arguments, "OUTPUT_DIR")
     entries = target_registry.derive_create_registry_inputs(settings, mappings, mapping_ids=requested)
+    create = flag(arguments, "CREATE")
+    if create:
+        # Before the loop below, so every entry already carries its registry id (or its
+        # createError) by the time that entry is reported and by the time --json is emitted.
+        target_registry.create_target_registries(settings, mappings, entries)
     failures = 0
     rendered_entries = []
     for entry in entries:
@@ -453,10 +461,21 @@ def target_config(arguments: dict[str, str]) -> int:
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(body)
             entry["payloadPath"] = path
-            entry["command"] = target_registry.create_registry_command(entry, path)
+            # Kept even when --create applied the payload: it records exactly what was sent, which
+            # is what someone reviewing or reproducing the registry afterwards needs. The command
+            # is only offered when nothing was created, so there is one instruction on screen.
+            if not create:
+                entry["command"] = target_registry.create_registry_command(entry, path)
         else:
             print(f"# {entry['mappingId']}")
             print(body, end="")
+        if create:
+            if entry.get("createError"):
+                print(f"error: {entry['mappingId']}: {entry['createError']}", file=sys.stderr)
+                failures += 1
+            elif not flag(arguments, "JSON"):
+                status = entry.get("status") or "unknown"
+                print(f"Created target registry {entry.get('registryId')} for {entry['mappingId']} ({status})")
         # On stderr so it is seen even when stdout is the payload being redirected to a file, and
         # because these need answering before the payload is applied: a dropped authorizer field or
         # an audience still naming the Preview registry is an access-control decision, and this

@@ -38,14 +38,14 @@ Descriptor content is never rewritten — only re-keyed. The record comparison r
 
 | Command | Description |
 | --- | --- |
-| `init` | Prompts for registry information and writes the configuration file. Derives the target registry configuration automatically. |
+| `init` | Prompts for registry information and writes the configuration file. Derives each target registry's configuration automatically, and creates the registry for you once you confirm. |
 | `check` | Validates the configuration and verifies that every registry and the staging location is reachable. Exits with a non-zero code on any failure, making it suitable for use as a pipeline gate. |
 | `extract` | Reads all records from the preview registries into staging and prints the run ID. Does not write to the target registry. There is no `--live` flag for this command. |
 | `load` | Transforms and loads a staged extract. Defaults to the most recent extract; use `--run-id` to specify another. Does not write without `--live`. |
 | `run` | Runs both phases in a single command: check, extract, transform, load, and report. Does not write without `--live`. |
 | `report` | Displays the outcome of a run and the paths to its output files. Defaults to the most recent run. |
 | `deploy` / `destroy` | Optional. Deploys or removes the AWS Glue migration engine. See [Managed migration with AWS Glue](../README.md#managed-migration-with-aws-glue). |
-| `target-config` | Analyses a preview registry and derives the configuration its target registry should be created with, translated to the new schema. `init` performs this step automatically during setup; run `target-config` directly when adding a mapping later. |
+| `target-config` | Analyses a preview registry and derives the configuration its target registry should be created with, translated to the new schema. With `--create`, it also creates each registry, waits for it to become `READY`, and writes the generated ID into the configuration. `init` performs both steps during setup; run `target-config` directly when adding a mapping later. |
 
 ### Available options
 
@@ -65,6 +65,7 @@ Descriptor content is never rewritten — only re-keyed. The record comparison r
 | `--yes` | `deploy`, `destroy` | Skips the AWS CDK approval prompt, or confirms deletion. |
 | `--delete-data`, `--keep-reports` | `destroy` | Controls what happens to the staging bucket on teardown. |
 | `--force` | `init` | Overwrites an existing configuration file. |
+| `--create` | `target-config` | Creates each derived target registry, waits for it to become `READY`, and writes the generated ID into the configuration. Without it, `target-config` only derives and prints the settings. |
 
 Options are validated against the command they are passed to. Specifying an option that does not apply to a given command causes the tool to exit with an error, because each option represents a per-run decision and silently ignoring one could cause a run to behave differently from what was intended. Use `agent-registry-migration <command> --help` (or `help <command>`) to see the options available for a specific command.
 
@@ -79,7 +80,7 @@ The following procedure describes a complete first migration. Steps 1, 2, 4, and
 | Step | Action | Command | Required |
 | --- | --- | --- | --- |
 | 1 | Write the configuration | `init` | **Required** — once |
-| 2 | Create the target registry | `target-config` derives its settings from the preview registry | **Required** — once per registry |
+| 2 | Create the target registry | `init` creates it from settings derived from the preview registry, or `target-config --create` later | **Required** — once per registry |
 | 3 | Validate access | `check` | Optional, strongly recommended |
 | 4 | Extract from the preview registries | `extract` | **Required** |
 | 5 | Review what would be written | `load --dry-run` | Optional, strongly recommended |
@@ -118,22 +119,47 @@ If you specify a different Region, no additional configuration is required. If y
 
 ### Step 2: Create the target registry — Required (unless it already exists)
 
-A registry's `discoveryConfiguration` determines who can read it, so a registry's settings are a configuration decision rather than data to be copied. The `init` command analyses the preview registry, translates its authorizer and approval settings into the new schema, writes them to a payload file, and accepts the resulting registry ID back into your configuration.
+If you left the target registry ID empty, `init` creates the registry for you. It reads the preview registry, translates its authorizer and approval settings into the new schema, writes them to a payload file, shows you that file, and then — with your confirmation — creates the registry, waits for it to become `READY`, and records the generated ID in your configuration.
+
+A registry's `discoveryConfiguration` determines who can read it, which is why the derived payload is displayed before anything is created rather than after.
 
 ```bash
-For registry-1, create the target registry yourself, then give its id below.
-  These are its settings, translated from your Preview registry:
+For registry-1, these are the target registry's settings, translated from your Preview
+  registry:
   /home/you/new-registry-payloads/registry-1.json
 
+Create it now? (y/n) [y]:
+
+Creating the target registry. Each one provisions a workload identity, so this
+takes a moment.
+  registry-1: dnrwr3bpZ5w0i7Ps  (READY)
+
+Next: agent-registry-migration check
+```
+
+The generated ID is written to your configuration file as `target.registryId`, so nothing needs to be copied by hand.
+
+Answer `n` to create the registry yourself instead. The command that applies the same payload is printed, and the prompt for the resulting ID remains available:
+
+```bash
+To create registry-1 yourself:
+  aws agent-registry-control create-registry --cli-input-json file:///home/you/new-registry-payloads/registry-1.json --endpoint-url https://agent-registry-control.us-east-1.api.aws --query registryArn --output text
   (creation is asynchronous; wait for the registry status to reach READY before loading)
 
   Target registry id for registry-1 (empty to add it later): dnrwr3bpZ5w0i7Ps
 ```
 
-> **Note**
-> Until the new Registry service model ships in the public AWS SDK and CLI, creating the registry is a step you perform yourself using the derived settings above. Create the registry, wait for its status to reach `READY`, then supply its ID. The migration itself calls only record-level operations.
+To create a registry outside the `init` wizard — when you add a mapping later, or from a script with no terminal to confirm at — use `target-config --create`, which performs the same derive, create, wait, and record steps without prompting:
 
-Registry creation also requires three `bedrock-agentcore` workload-identity IAM permissions that are easy to overlook. For details, see [Permissions — Creating the target registries](iam.md#creating-target-registries).
+```bash
+agent-registry-migration target-config --create --mapping registry-2
+```
+
+> **Note**
+> Creating a registry requires `agent-registry:CreateRegistry` and `agent-registry:GetRegistry`, plus three `bedrock-agentcore` workload-identity permissions that are easy to overlook. A missing workload-identity permission surfaces as a `CREATE_FAILED` registry whose `statusReason` is `Unable to create workload identity because access was denied`. For details, see [Permissions — Creating the target registries](iam.md#creating-target-registries).
+
+> **Note**
+> If a model in `~/.aws/models/agent-registry-control` overrides the one shipped with the AWS SDK, and that model predates the registry operations, creation fails while record migration continues to work. The `check` command reports this as a warning and names the directory.
 
 ### Step 3: Validate access (`check`) — Optional, strongly recommended
 
@@ -420,7 +446,7 @@ Every failure message includes guidance on the recommended corrective action. Th
 | `This tool needs Python 3.10+ with boto3 1.43.66 or newer` | The CLI could not locate a Python interpreter whose boto3 models both registry APIs. The new Registry control plane's model first shipped in botocore 1.43.66, which requires Python 3.10. | Run `python3 -m pip install 'boto3>=1.43.66'`, or set the `PYTHON` environment variable to the path of a supported interpreter. |
 | `this SDK has no service model for agent-registry-control` | A pre-flight check found an SDK too old to write target records. On AWS Glue the SDK is installed by the job's `--additional-python-modules`, so this means the deployment predates that setting. | Locally, upgrade boto3 as above. On AWS Glue, redeploy with `agent-registry-migration deploy`. |
 | `No configuration at …` | No configuration file was found at the expected path. | Run `agent-registry-migration init`, or pass `--config <path>` to specify the file location. |
-| `still has a placeholder target registry id` | The `init` command could not complete because the target registry did not exist at the time. | Create the target registry and update `target.registryId` in the configuration file. |
+| `still has a placeholder target registry id` | The `init` command could not create the target registry, or was answered `n` when it offered to. | Run `agent-registry-migration target-config --create` to create it and record its ID, or create the registry yourself and update `target.registryId` in the configuration file. |
 | `Pre-flight validation failed` | A configuration or access check failed. No records were read. | Resolve each `[FAIL]` item and re-run. |
 | `AccessDeniedException` reading preview records | The `bedrock-agentcore` IAM policy on the source registry is missing required permissions, or the assume-role path is incorrect. | Verify permissions for both namespaces. The preview registry uses `bedrock-agentcore`; the target registry uses `agent-registry`. See [Permissions](iam.md). |
 | `AccessDeniedException` writing target records | The `agent-registry` IAM policy on the target registry is missing required permissions, or the account is not allowlisted for the target endpoint. | Verify the policy, then confirm allowlisting with the service team. |
@@ -433,7 +459,9 @@ Every failure message includes guidance on the recommended corrective action. Th
 | `Staged object reconciliation failed` | The staged data no longer matches the manifest. | Re-extract. Do not force the load. |
 | `Existing target record <id> is in failure status CREATE_FAILED` | A previous load created the record and it never settled — typically because a `source.fromUrl` URL could not be fetched by the service. The tool refuses to overwrite the broken record on re-run. | Fix the URL in the source record, or delete the broken target record, then re-run the load. |
 | `Exactly one valid descriptor is allowed for record type SKILL` | A `SKILL` record was sent to the target registry with a descriptor other than `agentSkillsDefinition` or `custom`. | Markdown-only skills are migrated as `agentSkillsDefinition` with the Markdown content under `additionalData.skillMd`. If this error still occurs, the record contains an unexpected skill descriptor. Inspect it using the record comparison report. |
-| `Unable to create workload identity because access was denied` from `create-registry` | Target registry creation provisions an AgentCore Identity workload identity in the `bedrock-agentcore` namespace. | Add the three workload-identity IAM actions listed in [Permissions — Creating the target registries](iam.md#creating-target-registries). These permissions are not required by the migration tool itself. |
+| `Unable to create workload identity because access was denied` from `init` or `target-config --create` | Target registry creation provisions an AgentCore Identity workload identity in the `bedrock-agentcore` namespace. | Add the three workload-identity IAM actions listed in [Permissions — Creating the target registries](iam.md#creating-target-registries). These permissions are needed only to create a registry, not to migrate records. The registry that reported this is left in `CREATE_FAILED`; its ID is printed, so it can be deleted before retrying. |
+| `Invalid choice: 'agent-registry-control'` | The AWS CLI in this shell predates the registry operations. Only affects the command printed for creating a registry yourself. | Use `agent-registry-migration target-config --create`, which makes the same call through this tool's own pinned SDK, or update the AWS CLI. |
+| `overrides the SDK's own agent-registry-control model` (a `check` warning naming a directory under `~/.aws/models`) | A model file in your home directory takes precedence over the one shipped with the SDK. If it predates the registry operations, creating a registry fails. | Delete that directory, unless you installed it deliberately. Record migration is unaffected either way. |
 | `No deployed engine found for stack …` | The `--glue` flag was passed but the Glue engine has not been deployed. | Run `agent-registry-migration deploy`, or remove the `--glue` flag to run locally. |
 | `No extract that is ready to load was found` | `load` or `--resume` was invoked but no staged extract is available. | Run `agent-registry-migration extract` first. The command prints the run ID that `load` will use by default. |
 | A few records fail but the rest succeed | `failOnRecordError = false` causes the tool to log failures and continue. | Review `failures/mapping=<id>.json` for per-record errors and tracebacks. Fix the cause and re-run. Records that succeeded are detected as unchanged on re-run and are not duplicated. |

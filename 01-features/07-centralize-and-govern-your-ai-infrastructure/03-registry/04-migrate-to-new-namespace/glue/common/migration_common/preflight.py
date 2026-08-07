@@ -18,6 +18,7 @@ startup, so what an operator validates is exactly what the job enforces.
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
@@ -440,6 +441,40 @@ def check_sdk_models(available_services: Iterable[str] | None = None) -> list[Ch
     ]
 
 
+def check_shadowed_target_model(model_root: str | None = None) -> list[CheckResult]:
+    """Warn when a hand-installed target model shadows the SDK's own, hiding registry operations.
+
+    ``~/.aws/models`` takes precedence over the model bundled with botocore. An interim
+    ``agent-registry-control`` model copied there during the preview carries the six record
+    operations and nothing else, so ``CreateRegistry`` disappears from a perfectly current SDK --
+    which makes ``target-config --create`` fail, and makes the AWS CLI answer "Invalid choice:
+    'create-registry'" for a service it otherwise knows.
+
+    A warning rather than a failure: records still migrate with the shadowing model, since the load
+    only ever calls record operations. What stops working is creating the registry, so the check
+    names the file to delete rather than blocking the run.
+    """
+    root = model_root or os.path.join(os.path.expanduser("~"), ".aws", "models")
+    override = os.path.join(root, "agent-registry-control")
+    if not os.path.isdir(override):
+        return []
+    return [
+        CheckResult(
+            name="sdk.shadowedTargetModel",
+            status=WARN,
+            detail=(
+                f"{override} overrides the SDK's own agent-registry-control model; if it predates "
+                "the registry operations, creating a target registry fails while record migration "
+                "still works"
+            ),
+            remedy=(
+                f"delete {override} to use the model shipped with botocore "
+                f"{MINIMUM_BOTOCORE_VERSION} or newer, unless you installed it deliberately"
+            ),
+        )
+    ]
+
+
 def run_checks(
     settings: dict[str, Any],
     mappings: list[dict[str, Any]],
@@ -448,6 +483,7 @@ def run_checks(
     watermark_reader: Callable[[str], dict[str, Any] | None] | None = None,
     source_prober: Callable[[dict[str, Any]], Any] | None = None,
     target_prober: Callable[[dict[str, Any]], Any] | None = None,
+    workstation: bool = False,
 ) -> PreflightReport:
     """Run every applicable check and return the aggregated report.
 
@@ -459,6 +495,10 @@ def run_checks(
     # client needs the model. Reported before the configuration checks so the remedy an operator
     # reads first is the one that unblocks everything else.
     results.extend(check_sdk_models())
+    # Only where a person is running commands. ``~/.aws/models`` cannot exist on a Glue worker, and
+    # a job reporting on the operator's home directory would be reporting on the wrong machine.
+    if workstation:
+        results.extend(check_shadowed_target_model())
     results.extend(check_load_settings(settings))
     results.extend(check_mapping_shapes(mappings))
     if store is not None:

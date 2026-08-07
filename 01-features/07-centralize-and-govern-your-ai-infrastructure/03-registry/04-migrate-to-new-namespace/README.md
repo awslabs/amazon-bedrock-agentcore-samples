@@ -16,7 +16,7 @@ This tool handles extraction of existing data, transformation from the old schem
 - **Node.js 20+** and **Python 3.10+ with boto3 1.43.66 or newer** (`python3 -m pip install 'boto3>=1.43.66'`). Earlier releases carry no service model for the target control plane.
 - **AWS credentials** with required permissions. [Permissions](docs/iam.md) has the minimum policy, copy-pasteable.
 - **Registry IDs for the preview version of AWS Agent Registry**
-- **[Optional] Registry IDs for the new version of AWS Agent Registry**
+- **[Optional] Registry IDs for the new version of AWS Agent Registry** — leave these out and `init` creates each target registry for you, from settings derived from the preview registry it replaces, and prints the generated ID.
 
 ## Install
 ```bash
@@ -43,7 +43,7 @@ This tool supports multiple migration patterns. Below is a quick guide on what p
 > If you would like to first try a test migration on a dummy registry, follow [seeding the preview registry](docs/development.md#seeding-a-registry-for-testing).
 
 ```bash
-agent-registry-migration init            # writes configurations to migration.config.json
+agent-registry-migration init            # writes configurations to migration.config.json, creating target registries
 agent-registry-migration check           # validates the configuration
 agent-registry-migration extract         # reads everything from source and prints the run id
 agent-registry-migration load --dry-run  # transforms for the target schema and generates reports
@@ -68,7 +68,7 @@ This migration pattern is best suited in any of below cases:
 
 ### Deploy
 ```bash
-agent-registry-migration init                  # writes configurations to migration.config.json
+agent-registry-migration init                  # writes configurations to migration.config.json, creating target registries
 agent-registry-migration check                 # validates the configuration
 agent-registry-migration deploy                # CDK stack: S3 bucket, 2 Glue jobs, config in SSM parameter store
 ```

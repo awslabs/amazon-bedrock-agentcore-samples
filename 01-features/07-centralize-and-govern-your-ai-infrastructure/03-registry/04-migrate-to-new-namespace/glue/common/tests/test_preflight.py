@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -69,6 +70,37 @@ class SdkModelChecks(unittest.TestCase):
         # than a pip install the operator cannot perform on a worker.
         results = preflight.check_sdk_models([])
         self.assertIn("redeploy", results[0].remedy)
+
+
+class ShadowedTargetModel(unittest.TestCase):
+    """A model in ~/.aws/models wins over the SDK's own, which can take CreateRegistry away.
+
+    An interim `agent-registry-control` model installed during the preview carries the six record
+    operations and nothing else. Records still migrate with it -- the load only calls record
+    operations -- but creating a target registry stops working on an otherwise current SDK, and the
+    symptom ("Invalid choice: 'create-registry'", or a missing attribute) names the CLI or the SDK
+    rather than the file that caused it. Hence a warning that names the file.
+    """
+
+    def test_no_override_is_silent(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(preflight.check_shadowed_target_model(root), [])
+
+    def test_an_override_warns_and_names_the_directory(self):
+        with tempfile.TemporaryDirectory() as root:
+            override = os.path.join(root, "agent-registry-control")
+            os.makedirs(override)
+            results = preflight.check_shadowed_target_model(root)
+            self.assertEqual([r.status for r in results], [preflight.WARN])
+            self.assertIn(override, results[0].detail)
+            # It warns rather than fails, and says which half still works.
+            self.assertIn("record migration", results[0].detail)
+            self.assertIn("delete", results[0].remedy)
+
+    def test_the_jobs_never_run_it(self):
+        """A Glue worker has no ~/.aws/models, so reporting on one would describe the wrong machine."""
+        report = preflight.run_checks(settings(), [mapping()])
+        self.assertEqual([r for r in report.results if r.name == "sdk.shadowedTargetModel"], [])
 
 
 class MappingShapeChecks(unittest.TestCase):

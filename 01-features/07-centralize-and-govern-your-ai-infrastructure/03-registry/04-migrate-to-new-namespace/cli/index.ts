@@ -58,6 +58,7 @@ const FLAGS: Record<string, FlagSpec> = {
   '--delete-data': { help: 'Also delete the staging bucket and everything in it' },
   '--keep-reports': { help: 'With --delete-data, keep the reports' },
   '--force': { help: 'Overwrite an existing configuration' },
+  '--create': { help: 'Create each target registry from the derived configuration, and wait for it' },
 };
 
 const COMMANDS: Record<string, CommandSpec> = {
@@ -176,9 +177,11 @@ const COMMANDS: Record<string, CommandSpec> = {
     summary: "Derive a target registry's configuration from its Preview registry.",
     detail:
       'Reads a preview registry and writes the settings the matching target registry should be created\n' +
-      'with, translated to the target shape. Creates nothing -- you create the registry and supply its\n' +
-      'id. init does this during setup; use it directly when you add a mapping later.',
-    flags: [],
+      'with, translated to the target shape. Reads only, so the payload can be reviewed -- its\n' +
+      'discovery configuration decides who may read the registry. Add --create to create each\n' +
+      'registry from that payload, wait for it to become READY, and record the generated id in your\n' +
+      'configuration. init offers the same thing during setup.',
+    flags: ['--create'],
   },
 };
 
@@ -392,6 +395,7 @@ function parse(argv: string[]): Parsed {
       deleteData: flags.has('--delete-data'),
       keepReports: flags.has('--keep-reports'),
       force: flags.has('--force'),
+      create: flags.has('--create'),
     },
   };
 }

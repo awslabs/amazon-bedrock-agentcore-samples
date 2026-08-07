@@ -407,7 +407,7 @@ class TargetRegistryClient:
         # signingName stays in config for documentation/validation; botocore derives the
         # actual SigV4 signing name from the new Registry service model (``agent-registry``).
         _required_string(api_config, "signingName", "target API")
-        endpoint_url = _target_endpoint_url(api_config, region)
+        endpoint_url = target_endpoint_url(api_config, region)
         self._client = build_control_plane_client(
             session=invoker.session(),
             service_name=self._service_name,
@@ -1763,7 +1763,7 @@ def _normalize_a2a_schema_version(value: Any) -> str:
     return ".".join(parts)
 
 
-def _target_endpoint_url(config: dict[str, Any], region: str) -> str:
+def target_endpoint_url(config: dict[str, Any], region: str) -> str:
     """Resolve and pin the target endpoint to the fixed regional agent-registry-control host."""
     if _optional_string(config.get("endpointUrl")) is not None:
         raise RegistryApiError("Target endpointUrl overrides are not supported; the regional api.aws endpoint is fixed")

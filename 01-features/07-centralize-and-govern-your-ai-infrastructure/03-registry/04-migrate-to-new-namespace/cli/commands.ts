@@ -52,6 +52,8 @@ export interface Options {
   readonly offline: boolean;
   readonly deleteData: boolean;
   readonly keepReports: boolean;
+  /** `--create`: apply the derived target registry configuration instead of only printing it. */
+  readonly create: boolean;
   readonly runId?: string;
 }
 
@@ -214,7 +216,7 @@ function explainRemoteAccounts(engineAccount: string, registries: RegistryMappin
   );
 }
 
-/** One entry from `target-config --json`: what the engine derived for a mapping. */
+/** One entry from `target-config --json`: what the engine derived for a mapping, and created. */
 interface DerivedTarget {
   readonly mappingId: string;
   readonly payloadPath?: string;
@@ -222,6 +224,12 @@ interface DerivedTarget {
   readonly error?: string;
   /** What about the derived payload needs a decision before it is applied. */
   readonly warnings?: readonly string[];
+  /** Set by `--create`: the registry the engine created, and the state it settled in. */
+  readonly registryId?: string;
+  readonly registryArn?: string;
+  readonly status?: string;
+  /** Why creating this one failed. A registry that exists but never settled reports both this and `registryId`. */
+  readonly createError?: string;
 }
 
 export async function init(options: Options): Promise<number> {
@@ -328,21 +336,23 @@ export async function init(options: Options): Promise<number> {
 }
 
 /**
- * Derive each target registry's configuration from its Preview registry, then take the id back.
+ * Derive each target registry's configuration from its Preview registry, create it, and record the id.
  *
- * Creating the registry stays the operator's call -- its authorizer decides who may read it -- but
- * working out the translated configuration does not, and neither does copying the resulting id into
- * the file by hand.
+ * Derive first and create second, in that order and with the payload on screen in between: the
+ * derived `discoveryConfiguration` decides who may read the registry, so it is shown before it is
+ * applied. What used to be manual either side of that -- running the create call, waiting for
+ * READY, copying the generated id into the configuration -- this does.
  */
 async function helpCreateTargetRegistries(
   configPath: string,
   config: MigrationFile,
   missing: RegistryMapping[],
+  options: { readonly create?: boolean } = {},
 ): Promise<void> {
   const outputDir = path.resolve(path.dirname(configPath), 'new-registry-payloads');
   process.stdout.write(
-    '\nYou still need a target registry to migrate into. Its authorizer decides who may read it, so\n' +
-      'that is your call -- but the configuration can be derived from the Preview registry.\n\n',
+    '\nYou still need a target registry to migrate into. Its configuration is derived from the\n' +
+      'Preview registry, and I can create it for you once you have seen what it says.\n\n',
   );
   // Ask for JSON so the derived payload path comes back from the engine that wrote it, rather than
   // being reconstructed here from assumptions about the output directory.
@@ -370,18 +380,7 @@ async function helpCreateTargetRegistries(
     );
     return;
   }
-  // Deliberately no create-registry command and no model-install instructions.
-  //
-  // Both used to be printed here. The command needs the new Registry service model installed into
-  // ~/.aws/models, and that model is not distributed with this repository -- so the instruction was
-  // to copy a file that does not exist, and the command it enabled answered "Invalid choice:
-  // 'agent-registry-control'". Printing a command that cannot run, above an instruction that cannot
-  // be followed, is worse than printing neither: it reads as the supported path and sends people
-  // looking for a missing file.
-  //
-  // So creating the registry is stated as the separate, external step it actually is. What this
-  // tool can do is derive the equivalent target configuration, which is what the payload below is for.
-  let recorded = false;
+  const pending: RegistryMapping[] = [];
   for (const mapping of missing) {
     const entry = derived.find((candidate) => candidate.mappingId === mapping.id);
     if (!entry?.payloadPath) {
@@ -389,9 +388,8 @@ async function helpCreateTargetRegistries(
       continue;
     }
     process.stdout.write(
-      `\nFor ${mapping.id}, create the target registry yourself, then give its id below.\n` +
-        `  These are its settings, translated from your Preview registry:\n` +
-        `  ${entry.payloadPath}\n\n`,
+      `\nFor ${mapping.id}, these are the target registry's settings, translated from your Preview\n` +
+        `  registry:\n  ${entry.payloadPath}\n\n`,
     );
     // Printed with the payload rather than left to scroll past on stderr: "review this" is only
     // actionable if what to look at comes with it. These are authorizer decisions -- a field the service
@@ -399,27 +397,46 @@ async function helpCreateTargetRegistries(
     for (const warning of entry.warnings ?? []) {
       process.stdout.write(`  ! ${warning}\n\n`);
     }
-    process.stdout.write(
-      '  (creation is asynchronous; wait for the registry status to reach READY before loading)\n\n',
-    );
-    // Only offer to take the id back when there is a terminal to answer and something to fill in.
-    // Asking with no tty hangs forever, and a mapping that already has a real id has nothing to ask
-    // about -- its payload was printed so it can be compared against the registry that exists.
-    if (!isInteractive() || mapping.target.registryId !== PLACEHOLDER_TARGET) {
-      continue;
-    }
-    const registryId = await ask(`  Target registry id for ${mapping.id} (empty to add it later)`);
-    if (registryId) {
-      const stored = (config.registries ?? []).find((entry) => entry.id === mapping.id);
-      if (stored) {
-        stored.target.registryId = registryId;
-        recorded = true;
+    pending.push(mapping);
+  }
+
+  let recorded = false;
+  // --create says yes without asking, for a non-interactive or scripted run. Otherwise ask, because
+  // this is the first thing either command does that writes anything to an AWS account.
+  const create =
+    pending.length > 0 &&
+    (options.create === true ||
+      (isInteractive() && (await confirm(`Create ${pending.length === 1 ? 'it' : 'them'} now?`, true))));
+  if (create) {
+    recorded = await createTargetRegistries(configPath, config, pending, outputDir);
+  } else {
+    for (const mapping of pending) {
+      const entry = derived.find((candidate) => candidate.mappingId === mapping.id);
+      if (entry?.command) {
+        process.stdout.write(`\nTo create ${mapping.id} yourself:\n  ${entry.command}\n`);
+      }
+      process.stdout.write(
+        '  (creation is asynchronous; wait for the registry status to reach READY before loading)\n\n',
+      );
+      // Only offer to take the id back when there is a terminal to answer and something to fill in.
+      // Asking with no tty hangs forever, and a mapping that already has a real id has nothing to ask
+      // about -- its payload was printed so it can be compared against the registry that exists.
+      if (!isInteractive() || mapping.target.registryId !== PLACEHOLDER_TARGET) {
+        continue;
+      }
+      const registryId = await ask(`  Target registry id for ${mapping.id} (empty to add it later)`);
+      if (registryId) {
+        const stored = (config.registries ?? []).find((candidate) => candidate.id === mapping.id);
+        if (stored) {
+          stored.target.registryId = registryId;
+          recorded = true;
+        }
       }
     }
   }
-  // Only written when a registry id was actually collected. `target-config` calls this to *derive*
-  // configuration and is documented as creating nothing, so rewriting the file unconditionally --
-  // reformatting it, and touching its mtime -- was a side effect nobody asked for.
+  // Only written when a registry id was actually collected. Deriving alone changes nothing, so
+  // rewriting the file unconditionally -- reformatting it, and touching its mtime -- was a side
+  // effect nobody asked for.
   if (recorded) {
     writeConfig(configPath, config);
   }
@@ -432,6 +449,70 @@ async function helpCreateTargetRegistries(
       ? `\nPut the remaining target registry ids into ${configPath}, then run: agent-registry-migration check\n`
       : '\nNext: agent-registry-migration check\n',
   );
+}
+
+/**
+ * Create each pending target registry through the engine, and write the generated ids into the file.
+ *
+ * Returns whether the configuration now holds an id it did not before, so the caller writes the file
+ * once. A registry that was created but never reached READY records its id *and* reports the reason:
+ * the id is what stops the next attempt creating a second registry, so losing it is worse than
+ * storing one that is not ready yet.
+ */
+async function createTargetRegistries(
+  configPath: string,
+  config: MigrationFile,
+  pending: readonly RegistryMapping[],
+  outputDir: string,
+): Promise<boolean> {
+  process.stdout.write(
+    `\nCreating ${pending.length === 1 ? 'the target registry' : `${pending.length} target registries`}. ` +
+      'Each one provisions a workload identity, so this\ntakes a moment.\n',
+  );
+  const created = runEngineJson<DerivedTarget[]>([
+    'target-config',
+    '--config-file',
+    configPath,
+    '--output-dir',
+    outputDir,
+    '--json',
+    '--create',
+    '--mapping',
+    pending.map((mapping) => mapping.id).join(','),
+  ]);
+  if (!created) {
+    process.stdout.write(
+      '\nNothing was created -- see the reason above. The derived payloads are still in\n' +
+        `${outputDir}, so you can create the registries from them and put their ids into\n` +
+        `${configPath} as target.registryId.\n`,
+    );
+    return false;
+  }
+  let recorded = false;
+  for (const mapping of pending) {
+    const entry = created.find((candidate) => candidate.mappingId === mapping.id);
+    if (entry?.registryId) {
+      const stored = (config.registries ?? []).find((candidate) => candidate.id === mapping.id);
+      if (stored) {
+        stored.target.registryId = entry.registryId;
+        recorded = true;
+      }
+      process.stdout.write(`  ${mapping.id}: ${entry.registryId}  (${entry.status ?? 'created'})\n`);
+    }
+    if (entry?.createError) {
+      process.stdout.write(`  ${mapping.id}: ${entry.createError}\n`);
+      // Named rather than left to be looked up: this is the failure people hit, it arrives as the
+      // registry's own statusReason ("Unable to create workload identity because access was
+      // denied"), and the missing permission is not the one the message appears to be about.
+      process.stdout.write(
+        '    Creating a registry needs agent-registry:CreateRegistry and the workload-identity\n' +
+          '    permissions listed in docs/iam.md.\n',
+      );
+    } else if (!entry?.registryId) {
+      process.stdout.write(`  ${mapping.id}: no registry was created; create it by hand.\n`);
+    }
+  }
+  return recorded;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -538,7 +619,9 @@ export async function targetConfig(options: Options): Promise<number> {
   );
   // With every target already filled in there is nothing to chase, but the translation is still
   // worth printing -- that is how you check an existing registry matches its source.
-  await helpCreateTargetRegistries(configPath, config, missing.length > 0 ? missing : config.registries ?? []);
+  await helpCreateTargetRegistries(configPath, config, missing.length > 0 ? missing : (config.registries ?? []), {
+    create: options.create,
+  });
   return 0;
 }
 

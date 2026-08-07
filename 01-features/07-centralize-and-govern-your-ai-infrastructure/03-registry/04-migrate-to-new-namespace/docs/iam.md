@@ -106,9 +106,14 @@ registry is reachable.
 
 ## Creating target registries
 
-The migration tool does not create registries. Registries must be created separately, once per
-registry. The `init` command generates the exact command to run. Registry creation requires
-additional permissions beyond those needed for migration:
+Registries are created once per registry, before any records can be loaded into them. The `init`
+command does this for you — it derives each registry's settings from the preview registry it
+replaces, creates it once you confirm, waits for it to become `READY`, and records the generated ID.
+`target-config --create` does the same for a mapping added later, and answering `n` at the prompt
+prints the equivalent AWS CLI command to run yourself instead.
+
+Either way, creating a registry requires permissions beyond those needed to migrate records. These
+are one-time permissions: a credential that only migrates records does not need them.
 
 ```json
 {

@@ -370,8 +370,8 @@ class ReportsAreFoundWithoutARunId(unittest.TestCase):
 class TheTargetModelPrerequisiteIsPrintedOnce(unittest.TestCase):
     """The note belongs to whoever is talking to the person, and only one of them is.
 
-    `target-config` emits a create-registry command the AWS CLI cannot run until the target service model is
-    installed, so the note has to travel with it. But `init` shells to `target-config --json` and
+    `target-config` emits a create-registry command an older AWS CLI cannot run, so the note saying
+    what to do about that has to travel with it. But `init` shells to `target-config --json` and
     inherits its stderr while printing its own copy in position -- which put the same six lines on
     screen twice. `--json` means something is reading this rather than someone, so the note is the
     caller's job there.
