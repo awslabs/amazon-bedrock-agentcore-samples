@@ -189,5 +189,5 @@ Preview registry ──▶│  1. extract          2. transform + load          
 | [Working on the tool](docs/development.md) | Layout, the test gate, seeding dummy registries with some records, throughput, and the SDK the service models come from |
 | [Detailed operational guide](docs/detaileddoc.md) | A detailed operational guide covering how the migration tool works — what it changes, available commands, reporting, incremental runs, multi-account support, and troubleshooting. |
 
-[Migrating AWS Agent Registry from Public Preview to General
-Availability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-faq.html).
+[Migrating AWS Agent Registry from the public preview to the new
+version](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-faq.html).
