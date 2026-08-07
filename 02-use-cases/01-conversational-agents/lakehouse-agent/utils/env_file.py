@@ -65,9 +65,21 @@ def find_env_file(start: Path | None = None) -> Path | None:
     notebook run from the sample root reads the former. The loader always prints
     the path it used, so a divergence is visible rather than silent.
 
+    Upward search alone is NOT sufficient, which is easy to get wrong. "Upward"
+    means toward the filesystem root, so a notebook running at the sample root
+    cannot reach a ``.env`` that lives *below* it in ``deployment/`` — the walk
+    goes the other way. Since the scripts run from ``deployment/<step>/`` and the
+    notebooks run from the sample root, a purely-upward search serves the scripts
+    and silently fails the notebooks. The upward walk is therefore followed by a
+    bounded set of sample-root-relative candidates. The list is explicit rather
+    than a recursive glob so resolution stays predictable.
+
+    Args:
+        start: Directory to begin the search from. Defaults to the current
+            working directory.
+
     Returns:
-        The first ``.env`` found at or above ``start``, or the sample root's
-        ``.env`` as a final fallback, or None if neither exists.
+        The first ``.env`` found, or None when none of the candidates exist.
     """
     start_dir = (start or Path.cwd()).resolve()
     for directory in (start_dir, *start_dir.parents):
@@ -75,10 +87,31 @@ def find_env_file(start: Path | None = None) -> Path | None:
         if candidate.is_file():
             return candidate
 
-    # Fallback: the sample root, derived from this file's location rather than
-    # from cwd, so an odd working directory cannot hide the reader's .env.
-    sample_root_env = Path(__file__).resolve().parent.parent / ".env"
-    return sample_root_env if sample_root_env.is_file() else None
+    # Nothing at or above the caller. Fall back to a bounded, explicit set of
+    # locations relative to the sample root, derived from this file's own path so
+    # an odd working directory cannot hide the reader's .env.
+    for candidate in sample_root_env_candidates():
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def sample_root_env_candidates() -> list[Path]:
+    """
+    Ordered ``.env`` locations relative to the sample root, nearest-to-root first.
+
+    ``.env.example`` ships at the sample root, so a reader following the README
+    creates ``<sample root>/.env``. An operator working inside the deployment tree
+    tends to create ``deployment/.env`` (or one per step) instead. Both layouts are
+    supported, and the resolved path is always printed so it is obvious which file
+    a given run actually used.
+    """
+    sample_root = Path(__file__).resolve().parent.parent
+    candidates = [sample_root / ".env", sample_root / "deployment" / ".env"]
+    deployment_dir = sample_root / "deployment"
+    if deployment_dir.is_dir():
+        candidates.extend(sorted(deployment_dir.glob("*/.env")))
+    return candidates
 
 
 def load_env_file(
@@ -137,6 +170,11 @@ def load_env_file(
 
     if verbose:
         print(f"✅ Loaded {env_path} ({len(names_set)} variable(s) set)")
+        others = [c for c in sample_root_env_candidates() if c.is_file() and c != env_path.resolve()]
+        if others:
+            print(
+                f"   ⚠️  {len(others)} other .env file(s) exist and were NOT read: {', '.join(str(o) for o in others)}"
+            )
         for key in names_set:
             if any(hint in key.upper() for hint in _SECRET_HINTS):
                 print(f"   {key} = ****** ({len(os.environ[key])} chars; value not shown)")
