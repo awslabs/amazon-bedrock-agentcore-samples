@@ -2,18 +2,18 @@
 
 Each policy in this document represents the minimum permissions required for the operation it
 describes. No policy grants `*` on a service. Administrator permissions are required only when
-creating GA registries and deploying the optional AWS Glue engine, both of which are one-time
+creating target registries and deploying the optional AWS Glue engine, both of which are one-time
 operations.
 
 Two IAM namespaces appear throughout this document. Reading preview data requires permissions in
-the `bedrock-agentcore` namespace. Writing GA data requires permissions in the `agent-registry`
+the `bedrock-agentcore` namespace. Writing target data requires permissions in the `agent-registry`
 namespace. Both namespaces are required during the migration window.
 
 **Contents**
 
 - [Permission requirements by role](#permission-requirements-by-role)
 - [Running the migration locally](#running-the-migration-locally)
-- [Creating GA registries](#creating-ga-registries)
+- [Creating target registries](#creating-target-registries)
 - [Synchronized records: update the role's trust policy](#synchronized-records-update-the-roles-trust-policy)
 - [Deploying the Glue engine](#deploying-the-glue-engine)
 - [The engine's execution role](#the-engines-execution-role)
@@ -25,7 +25,7 @@ namespace. Both namespaces are required during the migration window.
 | Role | Required permissions |
 | --- | --- |
 | Running `run` locally or in AWS CloudShell | [Running the migration locally](#running-the-migration-locally) |
-| Creating the GA registry to migrate into | [Creating GA registries](#creating-ga-registries) (one-time) |
+| Creating the target registry to migrate into | [Creating target registries](#creating-target-registries) (one-time) |
 | Migrating records that use Synchronize with an IAM role | [Synchronized records: update the role's trust policy](#synchronized-records-update-the-roles-trust-policy) |
 | Deploying the optional Glue engine | [Deploying the Glue engine](#deploying-the-glue-engine) (one-time) |
 | Supplying the engine's execution role instead of having the stack create it | [The engine's execution role](#the-engines-execution-role) |
@@ -34,10 +34,10 @@ namespace. Both namespaces are required during the migration window.
 ## Running the migration locally
 
 The following policy grants the permissions required by `init`, `check`, `run`, and `report` in
-local mode. The policy allows reading all preview records, writing all GA records, and calling
+local mode. The policy allows reading all preview records, writing all target records, and calling
 `sts:GetCallerIdentity`. No other read or write access is granted.
 
-Replace `<region>`, `<account-id>`, `<preview-registry-id>`, and `<ga-registry-id>` with the
+Replace `<region>`, `<account-id>`, `<preview-registry-id>`, and `<new-registry-id>` with the
 appropriate values. A wildcard (`*`) can be used in place of a registry ID while the registry IDs
 are not yet known.
 
@@ -65,7 +65,7 @@ are not yet known.
       ]
     },
     {
-      "Sid": "WriteGARegistries",
+      "Sid": "WriteTargetRegistries",
       "Effect": "Allow",
       "Action": [
         "agent-registry:ListRegistryRecords",
@@ -76,8 +76,8 @@ are not yet known.
         "agent-registry:UpdateRegistryRecordStatus"
       ],
       "Resource": [
-        "arn:aws:agent-registry:<region>:<account-id>:registry/<ga-registry-id>",
-        "arn:aws:agent-registry:<region>:<account-id>:registry/<ga-registry-id>/record/*"
+        "arn:aws:agent-registry:<region>:<account-id>:registry/<new-registry-id>",
+        "arn:aws:agent-registry:<region>:<account-id>:registry/<new-registry-id>/record/*"
       ]
     }
   ]
@@ -91,8 +91,8 @@ The following table describes why each action is required:
 | `sts:GetCallerIdentity` | The `init` command derives the account ID from credentials. The `check` command displays the identity that will perform the migration |
 | `bedrock-agentcore:ListRegistryRecords` | Reads the source registry one page at a time |
 | `bedrock-agentcore:GetRegistryRecord` | Retrieves descriptor content, which is not included in list responses |
-| `bedrock-agentcore:GetRegistry` | The `init` and `target-config` commands read the preview registry's authorizer and approval settings to derive the GA registry configuration |
-| `agent-registry:CreateRegistryRecord` | Creates the migrated record in the GA registry |
+| `bedrock-agentcore:GetRegistry` | The `init` and `target-config` commands read the preview registry's authorizer and approval settings to derive the target registry configuration |
+| `agent-registry:CreateRegistryRecord` | Creates the migrated record in the target registry |
 | `agent-registry:ListRegistryRecords`, `agent-registry:GetRegistryRecord` | Detects records that already exist so that a re-run updates rather than duplicates them |
 | `agent-registry:UpdateRegistryRecord` | Updates a previously migrated record when the source has changed |
 | `agent-registry:SubmitRegistryRecordForApproval`, `agent-registry:UpdateRegistryRecordStatus` | Sets the migrated record to the same status it holds in the preview registry. Without these actions, an approved record is created in `DRAFT` status and is not returned by data-plane search or browsing APIs |
@@ -100,11 +100,11 @@ The following table describes why each action is required:
 None of these actions can delete a record in either namespace.
 
 **Dry run.** Running `run` without `--live` does not call any write APIs. To grant read-only access,
-omit the `WriteGARegistries` statement, with the exception of
+omit the `WriteTargetRegistries` statement, with the exception of
 `agent-registry:ListRegistryRecords`, which the `check` command uses to verify that the target
 registry is reachable.
 
-## Creating GA registries
+## Creating target registries
 
 The migration tool does not create registries. Registries must be created separately, once per
 registry. The `init` command generates the exact command to run. Registry creation requires
@@ -115,7 +115,7 @@ additional permissions beyond those needed for migration:
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "CreateGARegistry",
+      "Sid": "CreateTargetRegistry",
       "Effect": "Allow",
       "Action": ["agent-registry:CreateRegistry", "agent-registry:GetRegistry"],
       "Resource": "*"
@@ -135,14 +135,14 @@ additional permissions beyond those needed for migration:
 ```
 
 The `WorkloadIdentityForRegistryCreation` statement is required because workload identities and
-OAuth credential providers remain in the `bedrock-agentcore` namespace after GA. Creating a
+OAuth credential providers remain in the `bedrock-agentcore` namespace in the new version. Creating a
 registry also creates a workload identity. A policy without this statement fails with a workload
 identity error rather than a registry permission error.
 
 ## Synchronized records: update the role's trust policy
 
 Records that use the **Synchronize** feature with the **IAM role** credential type name a role that
-the registry service itself assumes to fetch the record's URL. The service principal changed at GA,
+the registry service itself assumes to fetch the record's URL. The service principal changed in the new version,
 so that role's trust policy must be updated.
 
 This applies only to records that use Synchronize **and** IAM role credentials. Records using an
@@ -163,7 +163,7 @@ OAuth client, or no authorization, are unaffected.
 }
 ```
 
-**After (GA):**
+**After (new version):**
 
 ```json
 {
@@ -181,18 +181,18 @@ OAuth client, or no authorization, are unaffected.
 Until the trust policy is updated, the registry cannot assume the role and synchronization fails.
 
 **Why this matters for the migration.** The migration copies each descriptor's
-`source.fromUrl.credentialProviderConfigurations` into the GA record unchanged, because the role and
+`source.fromUrl.credentialProviderConfigurations` into the target record unchanged, because the role and
 its configuration are the customer's, not the tool's. A record that synchronized correctly in
-preview therefore arrives in GA still pointing at the same role — and fails to synchronize until
+preview therefore arrives in the target registry still pointing at the same role — and fails to synchronize until
 that role trusts the new principal. Update the trust policy **before** the live load.
 
 This is not something `check` can detect: the tool never assumes that role. It belongs to the
 registry service, and is used asynchronously after the record is created.
 
-**If a record has already failed for this reason,** the GA record exists in `CREATE_FAILED` status.
+**If a record has already failed for this reason,** the target record exists in `CREATE_FAILED` status.
 The migration refuses to overwrite a record in a failure status, so fixing the trust policy and
 re-running the load reports the same error. Update the trust policy, delete the `CREATE_FAILED`
-record from the GA registry, then re-run the load. A re-extract is only needed if the role ARN
+record from the target registry, then re-run the load. A re-extract is only needed if the role ARN
 inside the preview record itself was wrong, since staged records are immutable.
 
 ## Deploying the Glue engine
@@ -309,7 +309,7 @@ identical to what the stack would create when `createIamRoles` is `true`.
       ]
     },
     {
-      "Sid": "WriteGARegistries",
+      "Sid": "WriteTargetRegistries",
       "Effect": "Allow",
       "Action": [
         "agent-registry:ListRegistryRecords",
@@ -320,8 +320,8 @@ identical to what the stack would create when `createIamRoles` is `true`.
         "agent-registry:UpdateRegistryRecordStatus"
       ],
       "Resource": [
-        "arn:aws:agent-registry:<region>:<account-id>:registry/<ga-registry-id>",
-        "arn:aws:agent-registry:<region>:<account-id>:registry/<ga-registry-id>/record/*"
+        "arn:aws:agent-registry:<region>:<account-id>:registry/<new-registry-id>",
+        "arn:aws:agent-registry:<region>:<account-id>:registry/<new-registry-id>/record/*"
       ]
     }
   ]
@@ -366,7 +366,7 @@ account for the migration to assume. Specify the role ARN in the registry pair c
 }
 ```
 
-The role in the remote account must have the appropriate preview-read or GA-write permissions from
+The role in the remote account must have the appropriate preview-read or target-write permissions from
 this document — whichever side it represents — and must trust the account running the migration.
 Use an `externalId` in the registry pair configuration and require it in the trust policy:
 
@@ -391,7 +391,7 @@ specified explicitly.
 
 ## Scoping action lists
 
-The preview read and GA write action lists are configuration values, not code. They can be
+The preview read and target write action lists are configuration values, not code. They can be
 restricted without modifying the tool:
 
 ```jsonc
@@ -399,7 +399,7 @@ restricted without modifying the tool:
   "iam": {
     // Suitable for a dry run, or for an operator with read-only access requirements.
     "previewReadActions": ["bedrock-agentcore:ListRegistryRecords", "bedrock-agentcore:GetRegistryRecord"],
-    "gaWriteActions": ["agent-registry:ListRegistryRecords", "agent-registry:CreateRegistryRecord"]
+    "targetWriteActions": ["agent-registry:ListRegistryRecords", "agent-registry:CreateRegistryRecord"]
   }
 }
 ```

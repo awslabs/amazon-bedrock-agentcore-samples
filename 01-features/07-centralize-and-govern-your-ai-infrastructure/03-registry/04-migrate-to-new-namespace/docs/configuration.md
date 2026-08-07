@@ -34,7 +34,7 @@ The following four values are required. All other settings have defaults.
     {
       "id": "registry-1",              // Identifies this pair in reports and staging paths
       "source": { "accountId": "111122223333", "region": "us-east-1", "registryId": "<preview-registry-id>" },
-      "target": { "accountId": "111122223333", "region": "us-west-2", "registryId": "<ga-registry-id>" }
+      "target": { "accountId": "111122223333", "region": "us-west-2", "registryId": "<new-registry-id>" }
     }
   ]
 }
@@ -78,7 +78,7 @@ The configuration file is resolved in the following order:
 | --- | --- | --- |
 | `runtime.load.matchSourceStatus` | `true` | Moves each migrated record to the status it holds in the preview registry. When `false`, all records are left in `DRAFT` status and are not returned by data-plane search or browsing APIs |
 | `runtime.load.failOnRecordError` | `false` | Record-level failures are skipped and listed in the report instead of stopping the run. Set to `true` for an all-or-nothing load, which fails the run (nonzero exit, report status `FAILED`) as soon as any record fails |
-| `runtime.load.loadConcurrency` | `32` | Number of records loaded in parallel (1–32). Because each record is primarily waiting on network I/O, increasing concurrency reduces total run time without requiring additional compute capacity. Lower it if the GA control plane throttles the run |
+| `runtime.load.loadConcurrency` | `32` | Number of records loaded in parallel (1–32). Because each record is primarily waiting on network I/O, increasing concurrency reduces total run time without requiring additional compute capacity. Lower it if the target control plane throttles the run |
 | `runtime.load.recordsPerObject` | `500` | Number of records per staged S3 object |
 | `runtime.load.dumpExtractedRecords` | `true` | When `false`, the human-readable copy of extracted records is not written |
 | `runtime.load.mode` | `FULL` | Default scope for a job started outside the CLI. The `run --incremental` flag overrides this per run |
@@ -90,7 +90,7 @@ The configuration file is resolved in the following order:
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `runtime.transform.duplicateNames` | `fail` | Behavior when two preview records share a name. `fail` stops the run and reports the conflicts. `suffix` migrates both records under distinct GA names, removing the original preview name from those records |
+| `runtime.transform.duplicateNames` | `fail` | Behavior when two preview records share a name. `fail` stops the run and reports the conflicts. `suffix` migrates both records under distinct target names, removing the original preview name from those records |
 | `runtime.transform.namePrefix` | `migrated` | Prefix used for fallback names when a source record has no usable name |
 | `runtime.transform.allowedRecordTypes` | `AGENT`, `MCP`, `SKILL`, `CUSTOM` | Restricts migration to records whose inferred `recordType` is in this list |
 | `runtime.transform.passthroughFields` | `description` | Fields copied from the source record to the target record without transformation |
@@ -101,12 +101,12 @@ The configuration file is resolved in the following order:
 | --- | --- | --- |
 | `registries[].id` | — | Identifier for this registry pair. Used in all reports and staging paths |
 | `registries[].source` | — | The preview registry: `accountId`, `region`, and `registryId` |
-| `registries[].target` | — | The GA registry: `accountId`, `region`, and `registryId` |
+| `registries[].target` | — | The target registry: `accountId`, `region`, and `registryId` |
 | `registries[].source/target.roleArn` | Derived when the stack creates roles | IAM role to assume for a registry in another account |
 | `registries[].source/target.externalId` | Value of `engine.externalId` | External ID required by the role's trust policy |
 
 Each side of a registry pair is configured independently. A pair can span AWS Regions, AWS accounts,
-or both. The standard migration path places the GA registry in the same account and Region as the
+or both. The standard migration path places the target registry in the same account and Region as the
 preview registry, but this is not required.
 
 ## IAM settings
@@ -116,7 +116,7 @@ Both action lists are configuration values, so IAM policies can be scoped withou
 | Setting | Default | Description |
 | --- | --- | --- |
 | `iam.previewReadActions` | Read-only action list | Actions the migration is permitted to perform in the `bedrock-agentcore` namespace |
-| `iam.gaWriteActions` | List and write action list | Actions the migration is permitted to perform in the `agent-registry` namespace |
+| `iam.targetWriteActions` | List and write action list | Actions the migration is permitted to perform in the `agent-registry` namespace |
 | `iam.allowUnscopedRegistryResources` | `false` | When `true`, allows `Resource: "*"` in generated policies when a registry ID is not yet known |
 
 For full policy details and action descriptions, see [Permissions](iam.md).

@@ -3,9 +3,9 @@
  *
  * Loads and validates the customer's `migration.json`, applies defaults, and resolves each
  * registry mapping's cross-account access (deriving the generated access-role ARN + external
- * id when a mapping is in another account and no `roleArn` is supplied). The Preview and GA
+ * id when a mapping is in another account and no `roleArn` is supplied). The Preview and target
  * API wire contracts are not customer-overridable: they are read from the shared
- * `api-adapter.json` inside the Python package and validated here, so a future GA change is a
+ * `api-adapter.json` inside the Python package and validated here, so a future target API change is a
  * controlled edit to one file that both the stack and the jobs read.
  */
 import * as fs from 'node:fs';
@@ -64,7 +64,7 @@ export interface LoadConfig {
    * Whether one failed record stops the whole load.
    *
    * `false` (default): a failed record is skipped and listed in the report, and every other
-   * staged record still loads -- the common case, since one record's error (a transient GA
+   * staged record still loads -- the common case, since one record's error (a transient target
    * throttle, a name collision, a malformed source payload) should not block the rest of a
    * registry. `true` stops the run (nonzero exit, report status FAILED) the moment any record
    * fails, for estates that want a load to be all-or-nothing.
@@ -75,7 +75,7 @@ export interface LoadConfig {
   /**
    * How many records the load stage processes at once.
    *
-   * Each record costs a GA create followed by status polling, which is almost entirely waiting on
+   * Each record costs a target create followed by status polling, which is almost entirely waiting on
    * the network, so overlapping records with threads shortens a run roughly proportionally without
    * needing extra Glue capacity. 1 processes records one at a time.
    */
@@ -94,10 +94,10 @@ export interface LoadConfig {
   /**
    * Whether a migrated record is put into the status its Preview record holds.
    *
-   * GA creates every record in DRAFT, and a DRAFT record is not returned by data-plane search or the
+   * target creates every record in DRAFT, and a DRAFT record is not returned by data-plane search or the
    * browsing APIs, so an approved Preview record would arrive invisible. With this on (the default)
-   * the load stage submits and, where needed, sets the status so the GA record matches its source.
-   * Turn it off to land everything in DRAFT for review inside GA before publishing.
+   * the load stage submits and, where needed, sets the status so the target record matches its source.
+   * Turn it off to land everything in DRAFT for review inside the target registry before publishing.
    */
   readonly matchSourceStatus: boolean;
 }
@@ -110,7 +110,7 @@ export interface TransformConfig {
 
 export interface ApiConfig {
   readonly preview: Record<string, unknown>;
-  readonly ga: Record<string, unknown>;
+  readonly target: Record<string, unknown>;
 }
 
 export interface RuntimeConfig {
@@ -120,7 +120,7 @@ export interface RuntimeConfig {
 
 export interface IamConfig {
   readonly previewReadActions: string[];
-  readonly gaWriteActions: string[];
+  readonly targetWriteActions: string[];
   readonly allowUnscopedRegistryResources: boolean;
 }
 
@@ -170,7 +170,7 @@ interface PartialMigrationConfig {
   readonly registries?: RegistryMappingConfig[];
 }
 
-// Public Preview and GA control-plane settings. The HTTP contract itself comes from the service
+// Public Preview and the target registry control-plane settings. The HTTP contract itself comes from the service
 // models the SDK supplies, so these only carry what the jobs cannot infer from a model: which
 // endpoint to call, the field names the higher-level paging/matching logic reads, and how long to
 // poll a write for.
@@ -182,9 +182,9 @@ interface PartialMigrationConfig {
 // of the replay fingerprint, so any drift would show up as records that cannot be loaded.
 //
 // Two entries carry rationale worth keeping in view:
-//   * `preview.response.recordTypePath` is `descriptorType` — the Preview field the GA `recordType`
+//   * `preview.response.recordTypePath` is `descriptorType` — the Preview field the target registry `recordType`
 //     is inferred from.
-//   * `ga.poll.successStatuses` lists every settled state, not just the one a freshly created
+//   * `target.poll.successStatuses` lists every settled state, not just the one a freshly created
 //     record lands in. A record the customer has already submitted or approved is settled too, and
 //     an incremental run at cutover has to be able to update it; treating APPROVED as unknown would
 //     fail the run on exactly the records the customer had put into service.
@@ -210,7 +210,7 @@ function validatePreviewApiContract(api: Record<string, unknown>): void {
   }
 }
 
-const DEFAULT_GA_API: Record<string, unknown> = apiAdapterFile.ga;
+const DEFAULT_TARGET_API: Record<string, unknown> = apiAdapterFile.target;
 
 export function migrationApiAdapter(): ApiConfig {
   // A real deep copy. This was `deepMerge(DEFAULT_*_API, {})`, which with an empty override is just
@@ -220,12 +220,12 @@ export function migrationApiAdapter(): ApiConfig {
   // something will rely on that.
   const api: ApiConfig = {
     preview: structuredClone(DEFAULT_PREVIEW_API),
-    ga: structuredClone(DEFAULT_GA_API),
+    target: structuredClone(DEFAULT_TARGET_API),
   };
   validateApiEndpoint(api.preview, 'migration adapter preview API');
-  validateApiEndpoint(api.ga, 'migration adapter GA API');
+  validateApiEndpoint(api.target, 'migration adapter new Registry API');
   validatePreviewApiContract(api.preview);
-  validateGaApiContract(api.ga);
+  validateTargetApiContract(api.target);
   return api;
 }
 
@@ -233,20 +233,20 @@ const DEFAULT_PREVIEW_READ_ACTIONS = [
   'bedrock-agentcore:ListRegistryRecords',
   'bedrock-agentcore:GetRegistryRecord',
   // Not used by the migration jobs, which only read records. `agent-registry-migration init` reads the
-  // registry itself to derive the GA registry configuration you have to re-apply, and for a
+  // registry itself to derive the target registry configuration you have to re-apply, and for a
   // cross-account mapping it does that through this same assumed role -- so without this, the one
   // command that helps multi-account users fails with AccessDenied. Read-only, and scoped to the
   // registries the role can already read records from.
   'bedrock-agentcore:GetRegistry',
 ];
 
-const DEFAULT_GA_WRITE_ACTIONS = [
+const DEFAULT_TARGET_WRITE_ACTIONS = [
   'agent-registry:ListRegistryRecords',
   'agent-registry:GetRegistryRecord',
   'agent-registry:CreateRegistryRecord',
   'agent-registry:UpdateRegistryRecord',
   // A migrated record is created in DRAFT, then moved to the status its Preview record holds
-  // (runtime.load.matchSourceStatus). Without these two, an approved Preview record would land in GA
+  // (runtime.load.matchSourceStatus). Without these two, an approved Preview record would land in the target registry
   // invisible to data-plane search and the browsing APIs.
   'agent-registry:SubmitRegistryRecordForApproval',
   'agent-registry:UpdateRegistryRecordStatus',
@@ -341,7 +341,7 @@ export function loadMigrationConfig(configPath: string): MigrationConfig {
   const iamInput = parsed.iam ?? {};
   const iam: IamConfig = {
     previewReadActions: iamInput.previewReadActions ?? DEFAULT_PREVIEW_READ_ACTIONS,
-    gaWriteActions: iamInput.gaWriteActions ?? DEFAULT_GA_WRITE_ACTIONS,
+    targetWriteActions: iamInput.targetWriteActions ?? DEFAULT_TARGET_WRITE_ACTIONS,
     allowUnscopedRegistryResources: iamInput.allowUnscopedRegistryResources ?? false,
   };
 
@@ -536,7 +536,7 @@ function validateConfig(config: MigrationConfig): void {
   // 1.5 passed, and because `"500" < 1` and `"500" > 10000` are both false in JavaScript, so did a
   // string -- which then reached the job as a string and was coerced somewhere else.
   assertIntegerInRange(config.runtime.load.recordsPerObject, 'runtime.load.recordsPerObject', 1, 10_000);
-  // Capped at 32: beyond that the GA control plane, not the job, becomes the limit and throttling
+  // Capped at 32: beyond that the target control plane, not the job, becomes the limit and throttling
   // costs more than the added parallelism gains.
   assertIntegerInRange(config.runtime.load.loadConcurrency, 'runtime.load.loadConcurrency', 1, 32);
   if (!GLUE_WORKER_TYPES.includes(config.engine.glueWorkerType)) {
@@ -604,7 +604,7 @@ function validateConfig(config: MigrationConfig): void {
   const validRecordTypes = new Set(['AGENT', 'MCP', 'SKILL', 'CUSTOM']);
   for (const recordType of config.runtime.transform.allowedRecordTypes) {
     if (!validRecordTypes.has(recordType)) {
-      throw new Error(`runtime.transform.allowedRecordTypes contains unsupported GA type ${recordType}`);
+      throw new Error(`runtime.transform.allowedRecordTypes contains unsupported record type ${recordType}`);
     }
   }
   const supportedPassthroughFields = new Set(['description']);
@@ -630,7 +630,7 @@ function validateConfig(config: MigrationConfig): void {
   }
 
   validateActions(config.iam.previewReadActions, 'iam.previewReadActions');
-  validateActions(config.iam.gaWriteActions, 'iam.gaWriteActions');
+  validateActions(config.iam.targetWriteActions, 'iam.targetWriteActions');
 }
 
 /**
@@ -731,21 +731,21 @@ function validateApiEndpoint(api: Record<string, unknown>, field: string): void 
   }
 }
 
-function validateGaApiContract(api: Record<string, unknown>): void {
+function validateTargetApiContract(api: Record<string, unknown>): void {
   if (api.transport !== 'sigv4RestJson') {
-    throw new Error('runtime.api.ga.transport must be sigv4RestJson');
+    throw new Error('runtime.api.target.transport must be sigv4RestJson');
   }
   if (api.endpointUrl !== null && api.endpointUrl !== undefined && api.endpointUrl !== '') {
-    throw new Error('runtime.api.ga.endpointUrl overrides are not supported');
+    throw new Error('runtime.api.target.endpointUrl overrides are not supported');
   }
   if (!Array.isArray(api.allowedEndpointHosts) || api.allowedEndpointHosts.length !== 0) {
-    throw new Error('runtime.api.ga.allowedEndpointHosts must remain empty');
+    throw new Error('runtime.api.target.allowedEndpointHosts must remain empty');
   }
   if (api.signingName !== 'agent-registry') {
-    throw new Error('runtime.api.ga.signingName must be agent-registry');
+    throw new Error('runtime.api.target.signingName must be agent-registry');
   }
   if (api.endpointUrlTemplate !== 'https://agent-registry-control.{region}.api.aws') {
-    throw new Error('runtime.api.ga.endpointUrlTemplate must use the regional agent-registry-control api.aws host');
+    throw new Error('runtime.api.target.endpointUrlTemplate must use the regional agent-registry-control api.aws host');
   }
 }
 

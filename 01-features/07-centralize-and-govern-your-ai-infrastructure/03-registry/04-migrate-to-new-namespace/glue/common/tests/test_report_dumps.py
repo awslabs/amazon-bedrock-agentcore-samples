@@ -2,7 +2,7 @@
 
 The extract stage dumps every Preview record it read, and the load stage dumps a matching
 side-by-side artifact (old recordId, new recordId, described Preview record, transformed payload,
-described GA record). Both are chunked JSON arrays so the two can be diffed for verification at
+described target record). Both are chunked JSON arrays so the two can be diffed for verification at
 any registry size.
 """
 
@@ -158,7 +158,7 @@ class JsonArrayWriterBehaviour(unittest.TestCase):
                 "name": "多言語 ✅",
                 "descriptors": {"mcp": {"server": {"inlineContent": '{"a":1}'}, "tools": {"inlineContent": "[]"}}},
             },
-            "gaRecord": {
+            "targetRecord": {
                 "descriptors": {"mcpServer": {"data": '{"a":1}', "additionalData": {"tools": {"data": "[]"}}}}
             },
         }
@@ -171,10 +171,10 @@ class JsonArrayWriterBehaviour(unittest.TestCase):
 class ComparisonRowShape(unittest.TestCase):
     """The load stage's comparison row must carry both described records and both ids."""
 
-    def test_load_result_carries_the_described_ga_record(self):
-        """``upsert`` returns the GA record from the poll it already performed.
+    def test_load_result_carries_the_described_target_record(self):
+        """``upsert`` returns the target record from the poll it already performed.
 
-        That is what lets the comparison row show the real GA record without a second
+        That is what lets the comparison row show the real target record without a second
         GetRegistryRecord call, and what makes ``record=None`` meaningful for a dry run.
         """
         from migration_common.registry_api import LoadResult
@@ -200,8 +200,8 @@ class CrosswalkCsvContract(unittest.TestCase):
         from migration_common.jobs.transform_load import _CROSSWALK_COLUMNS
 
         # Repointing a dependency needs the old id; finding the record needs the new one. Both names
-        # are needed because a duplicate-name collision means the GA name is not the Preview name.
-        for column in ("oldRecordId", "newRecordId", "previewName", "name", "gaStatus"):
+        # are needed because a duplicate-name collision means the target name is not the Preview name.
+        for column in ("oldRecordId", "newRecordId", "previewName", "name", "targetStatus"):
             self.assertIn(column, _CROSSWALK_COLUMNS)
 
     def test_a_row_round_trips_through_the_writer(self):

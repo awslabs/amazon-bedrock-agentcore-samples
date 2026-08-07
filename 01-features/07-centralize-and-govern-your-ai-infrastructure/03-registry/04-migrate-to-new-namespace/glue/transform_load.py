@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Stage 2 of the migration: transform staged Preview records and load them into GA.
+"""Stage 2 of the migration: transform staged Preview records and load them into the target registry.
 
 This is one of the two files Glue runs. It is not the front door -- use the CLI:
 
     agent-registry-migration run           # dry run: transform and report, write nothing
-    agent-registry-migration run --live    # create the GA records
+    agent-registry-migration run --live    # create the target records
 
 Runs unchanged in two environments:
 

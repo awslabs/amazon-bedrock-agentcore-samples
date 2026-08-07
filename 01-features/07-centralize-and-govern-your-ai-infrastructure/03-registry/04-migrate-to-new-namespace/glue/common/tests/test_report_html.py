@@ -41,7 +41,7 @@ def report(**overrides):
         "approval": {
             "matchSourceStatus": True,
             "sourceStatusCounts": {"APPROVED": 2, "DRAFT": 1},
-            "gaStatusCounts": {"APPROVED": 2, "DRAFT": 1},
+            "targetStatusCounts": {"APPROVED": 2, "DRAFT": 1},
             "statusesApplied": 2,
             "statusesNotApplied": 0,
             "recordsNeedingResubmission": 0,
@@ -51,7 +51,7 @@ def report(**overrides):
             {
                 "mappingId": "map-a",
                 "source": "111122223333/us-east-1/reg-preview",
-                "target": "111122223333/us-east-1/reg-ga",
+                "target": "111122223333/us-east-1/reg-new",
                 "extracted": 3,
                 "created": 3,
                 "updated": 0,
@@ -142,7 +142,7 @@ class ChecksForACleanRun(unittest.TestCase):
             [
                 "Load attempted every extracted record",
                 "Failed records",
-                "Verify each GA target contains the expected records",
+                "Verify each target contains the expected records",
                 "Approval status carried across",
             ],
         )
@@ -207,7 +207,7 @@ class DryRunReport(unittest.TestCase):
         self.assertEqual(entry["status"], INFO)
         self.assertIn("run --live --resume", entry["todo"])
         # Comparing counts against the source is meaningless before anything is written.
-        self.assertNotIn("Verify each GA target contains the expected records", [entry["what"] for entry in checks])
+        self.assertNotIn("Verify each target contains the expected records", [entry["what"] for entry in checks])
 
 
 class RenderedPage(unittest.TestCase):
@@ -231,13 +231,13 @@ class RenderedPage(unittest.TestCase):
     def test_a_dry_run_page_says_so_at_the_top(self):
         page = render_report(report(dryRun=True))
         self.assertIn("DRY RUN", page)
-        self.assertIn("Dry run -- nothing was written to GA", page)
+        self.assertIn("Dry run -- nothing was written to the target registry", page)
         # The banner has to say what a live run would do, not just that this one did nothing.
         self.assertIn("would create", page)
         self.assertIn("--live", page)
 
     def test_content_from_the_registry_cannot_break_out_of_the_markup(self):
-        # Record names, ids and GA error text all reach this page, and none of them are ours.
+        # Record names, ids and target error text all reach this page, and none of them are ours.
         hostile = report(
             registries=[
                 dict(
@@ -274,7 +274,7 @@ class RenderedPage(unittest.TestCase):
                             "oldRecordId": "preview-record-1",
                             "name": "orders-agent",
                             "recordType": "AGENT",
-                            "error": "A record named orders-agent already exists in GA",
+                            "error": "A record named orders-agent already exists in the target registry",
                         }
                     ],
                     failures="s3://bucket/f.json",
@@ -285,7 +285,7 @@ class RenderedPage(unittest.TestCase):
         self.assertIn("Failed records and error reasons", page)
         self.assertIn("orders-agent", page)
         self.assertIn("preview-record-1", page)
-        self.assertIn("A record named orders-agent already exists in GA", page)
+        self.assertIn("A record named orders-agent already exists in the target registry", page)
         self.assertIn("s3://bucket/f.json", page)
 
     def test_a_run_with_no_approval_block_still_renders(self):
@@ -295,9 +295,9 @@ class RenderedPage(unittest.TestCase):
 
     def test_a_clean_run_shows_the_clear_banner_not_the_attention_one(self):
         # The headline states the outcome in records, not a count of internal checks: the first
-        # question a reviewer has is what is in GA now.
+        # question a reviewer has is what is in the target registry now.
         page = render_report(report())
-        self.assertIn("are now in your GA registries", page)
+        self.assertIn("are now in your target registries", page)
         self.assertIn("Every check passed", page)
         self.assertNotIn("need your attention", page)
 

@@ -36,7 +36,7 @@ RUN_ID = "run-e2e-0001"
 ATTEMPT_ID = "attempt-1"
 BUCKET = "staging-bucket"
 SOURCE = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-preview"}
-TARGET = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-ga"}
+TARGET = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-new"}
 ADAPTER = {
     "schemaVersion": 1,
     "transform": {
@@ -51,7 +51,7 @@ ADAPTER = {
             "signingName": "bedrock-agentcore",
             "response": {"recordTypePath": "descriptorType", "updatedAtPath": "updatedAt"},
         },
-        "ga": {"serviceName": "agent-registry-control", "signingName": "agent-registry"},
+        "target": {"serviceName": "agent-registry-control", "signingName": "agent-registry"},
     },
 }
 
@@ -212,7 +212,7 @@ class _Extracted:
         self.old_record_id = str(record["recordId"])
 
 
-class FakeGaClient:
+class FakeTargetClient:
     """Accepts every record, or fails the ones whose displayName is in ``fail_records``.
 
     The new record id is derived from the record itself, not from a call counter, so the
@@ -225,7 +225,7 @@ class FakeGaClient:
     """
 
     created: ClassVar[list[dict]] = []
-    # Upserts that resolved onto a GA record an earlier run had already recorded.
+    # Upserts that resolved onto a target record an earlier run had already recorded.
     updated: ClassVar[list[dict]] = []
     fail_records: ClassVar[set[str]] = set()
     fail_after_create: ClassVar[set[str]] = set()
@@ -278,7 +278,7 @@ class FakeGaClient:
     ):
         display_name = str(record.get("displayName", ""))
         if display_name in type(self).fail_records:
-            raise RuntimeError(f"ValidationException: {display_name} rejected by GA")
+            raise RuntimeError(f"ValidationException: {display_name} rejected by the target registry")
         name = str(record.get("name", ""))
         if name in type(self).refuse_second_claim_for and not known_record_id:
             with type(self)._lock:
@@ -290,7 +290,7 @@ class FakeGaClient:
                         f"ValidationException: name {name!r} is already claimed by {claimant!r}, "
                         f"refusing {source_record_id!r}"
                     )
-        # Mirror the real client's precedence: a GA record recorded for this source record by an
+        # Mirror the real client's precedence: a target record recorded for this source record by an
         # earlier run is updated in place, whatever the record is called now.
         if known_record_id:
             with type(self)._lock:
@@ -300,10 +300,10 @@ class FakeGaClient:
                 new_record_id=known_record_id,
                 record=dict(record, recordId=known_record_id, status="DRAFT"),
             )
-        new_record_id = "ga-" + display_name.rsplit("-", 1)[-1]
+        new_record_id = "new-" + display_name.rsplit("-", 1)[-1]
         if display_name in type(self).fail_after_create:
             raise RegistryApiError(
-                f"GA record {new_record_id} reached failure status CREATE_FAILED: Failed to fetch agent card from URL",
+                f"target record {new_record_id} reached failure status CREATE_FAILED: Failed to fetch agent card from URL",
                 record_id=new_record_id,
             )
         with type(self)._lock:
@@ -357,7 +357,7 @@ class JobsEndToEnd(unittest.TestCase):
         # Both fakes keep all their state on the class, so it has to be cleared between tests. Done
         # through reset() rather than attribute by attribute, so the list cannot drift from the class.
         FakePreviewClient.reset()
-        FakeGaClient.reset()
+        FakeTargetClient.reset()
         FakePreviewClient.records = [
             preview_record(1, updated_at="2026-07-01T10:00:00Z"),
             preview_record(2, updated_at="2026-07-02T10:00:00Z"),
@@ -369,7 +369,7 @@ class JobsEndToEnd(unittest.TestCase):
         self._patch(extract_job, "PreviewRegistryClient", FakePreviewClient)
         self._patch(load_job, "boto3", FakeBoto3(self.s3))
         self._patch(load_job, "invoker_for_endpoint", lambda endpoint, run_id, purpose: "invoker")
-        self._patch(load_job, "GaRegistryClient", FakeGaClient)
+        self._patch(load_job, "TargetRegistryClient", FakeTargetClient)
 
     def _patch(self, module, name: str, value):
         original = getattr(module, name)
@@ -549,7 +549,7 @@ class JobsEndToEnd(unittest.TestCase):
         summary = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")
         self.assertEqual(summary["status"], "SUCCEEDED")
         self.assertEqual(summary["registries"][0]["created"], 3)
-        self.assertEqual(len(FakeGaClient.created), 3)
+        self.assertEqual(len(FakeTargetClient.created), 3)
 
     def test_a_missing_staging_bucket_is_a_clear_error(self):
         config_path = os.path.join(self.temp.name, "no-bucket.json")
@@ -566,9 +566,9 @@ class JobsEndToEnd(unittest.TestCase):
             extract_job.main(["--config-file", config_path, "--run-id", RUN_ID])
 
     def test_migrated_records_end_up_in_the_status_they_hold_in_preview(self):
-        """A record approved in Preview has to be approved in GA, not left in DRAFT.
+        """A record approved in Preview has to be approved in the target registry, not left in DRAFT.
 
-        GA creates every record in DRAFT, and a DRAFT record is not returned by data-plane search or
+        target creates every record in DRAFT, and a DRAFT record is not returned by data-plane search or
         the browsing APIs, so stopping at create would migrate approved records into invisibility.
         """
         FakePreviewClient.records = [
@@ -583,7 +583,7 @@ class JobsEndToEnd(unittest.TestCase):
         approval = summary["approval"]
         self.assertEqual(approval["sourceStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1})
         # Each record is now in its source's status.
-        self.assertEqual(approval["gaStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1})
+        self.assertEqual(approval["targetStatusCounts"], {"APPROVED": 1, "PENDING_APPROVAL": 1, "DRAFT": 1})
         self.assertEqual(approval["statusesApplied"], 2)
         self.assertEqual(approval["statusesNotApplied"], 0)
         self.assertEqual(approval["recordsNeedingResubmission"], 0)
@@ -591,12 +591,12 @@ class JobsEndToEnd(unittest.TestCase):
         # Each record's own status was requested. Sorted because records are loaded concurrently, so
         # the order these arrive in is not part of the contract.
         self.assertEqual(
-            sorted(call["status"] for call in FakeGaClient.status_calls),
+            sorted(call["status"] for call in FakeTargetClient.status_calls),
             ["APPROVED", "DRAFT", "PENDING_APPROVAL"],
         )
         rows = self._comparison_rows()
         self.assertEqual(
-            [(row["sourceStatus"], row["gaStatus"]) for row in rows],
+            [(row["sourceStatus"], row["targetStatus"]) for row in rows],
             [("APPROVED", "APPROVED"), ("PENDING_APPROVAL", "PENDING_APPROVAL"), ("DRAFT", "DRAFT")],
         )
         self.assertEqual(rows[0]["statusActions"], ["submitForApproval", "updateStatus=APPROVED"])
@@ -608,7 +608,7 @@ class JobsEndToEnd(unittest.TestCase):
         A record that was PENDING_APPROVAL at source becomes APPROVED, which is the target
         registry's own policy, not a migration error -- so it is reported rather than corrected.
         """
-        FakeGaClient.auto_approve = True
+        FakeTargetClient.auto_approve = True
         FakePreviewClient.records = [
             dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="PENDING_APPROVAL")
         ]
@@ -617,7 +617,7 @@ class JobsEndToEnd(unittest.TestCase):
 
         rows = self._comparison_rows()
         self.assertEqual(rows[0]["sourceStatus"], "PENDING_APPROVAL")
-        self.assertEqual(rows[0]["gaStatus"], "APPROVED")
+        self.assertEqual(rows[0]["targetStatus"], "APPROVED")
         self.assertTrue(
             any("approval policy decided the final state" in w for w in rows[0]["warnings"]),
             rows[0]["warnings"],
@@ -629,7 +629,7 @@ class JobsEndToEnd(unittest.TestCase):
         Failing the record would throw away a successful load, so the gap is reported per record and
         in the approval block instead.
         """
-        FakeGaClient.refuse_status = {"APPROVED"}
+        FakeTargetClient.refuse_status = {"APPROVED"}
         FakePreviewClient.records = [dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="APPROVED")]
         self._run_extract()
         self._run_load(dryRun=False)
@@ -639,17 +639,17 @@ class JobsEndToEnd(unittest.TestCase):
         self.assertEqual(summary["approval"]["statusesNotApplied"], 1)
         self.assertEqual(summary["approval"]["recordsNeedingResubmission"], 1)
         rows = self._comparison_rows()
-        self.assertEqual(rows[0]["gaStatus"], "DRAFT")
+        self.assertEqual(rows[0]["targetStatus"], "DRAFT")
         self.assertIn("cannot move record to APPROVED", rows[0]["statusError"])
 
     def test_a_source_status_that_cannot_exist_on_a_new_record_is_reported(self):
-        """CREATE_FAILED describes the source record's history, not a state GA can be put into."""
+        """CREATE_FAILED describes the source record's history, not a state the service can be put into."""
         FakePreviewClient.records = [dict(preview_record(1, updated_at="2026-07-01T10:00:00Z"), status="CREATE_FAILED")]
         self._run_extract()
         self._run_load(dryRun=False)
 
         rows = self._comparison_rows()
-        self.assertEqual(rows[0]["gaStatus"], "DRAFT")
+        self.assertEqual(rows[0]["targetStatus"], "DRAFT")
         self.assertTrue(any("cannot be reproduced" in w for w in rows[0]["warnings"]), rows[0]["warnings"])
         self.assertEqual(
             self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")["approval"][
@@ -664,7 +664,7 @@ class JobsEndToEnd(unittest.TestCase):
         self._run_extract()
         self._run_load(dryRun=False, matchSourceStatus=False)
 
-        self.assertEqual(FakeGaClient.status_calls, [])
+        self.assertEqual(FakeTargetClient.status_calls, [])
         approval = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")["approval"]
         self.assertFalse(approval["matchSourceStatus"])
         self.assertEqual(approval["recordsNeedingResubmission"], 1)
@@ -682,7 +682,7 @@ class JobsEndToEnd(unittest.TestCase):
         """Two source records sharing a name are no longer caught at extraction.
 
         Extraction has no view of a name that will collide -- the guard that used to stop the run
-        here was removed, so both records are staged, and it is the load stage's GA client that
+        here was removed, so both records are staged, and it is the load stage's target client that
         must refuse the second one rather than let it silently overwrite the first (see
         ``NameCollisionGuard`` in test_registry_clients.py for that guard itself). What matters here
         is the job-level behaviour: extraction succeeds, and the load run does not abort on the
@@ -707,7 +707,7 @@ class JobsEndToEnd(unittest.TestCase):
         # unchanged); the fake mirrors the real client's guard by letting the first claimant through
         # and refusing the second. loadConcurrency=1 makes "first" mean staged order, so which
         # record wins is deterministic for this test.
-        FakeGaClient.refuse_second_claim_for = {"server-1"}
+        FakeTargetClient.refuse_second_claim_for = {"server-1"}
         self._run_load(dryRun=False, failOnRecordError=False, loadConcurrency=1)
 
         load_report = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")
@@ -719,7 +719,7 @@ class JobsEndToEnd(unittest.TestCase):
         # batch. rec-2 is the record renamed to collide, so it is the one refused.
         self.assertEqual(registry_summary["created"], 2)
         self.assertEqual(
-            sorted(entry["record"]["name"] for entry in FakeGaClient.created),
+            sorted(entry["record"]["name"] for entry in FakeTargetClient.created),
             ["server-1", "server-3"],
         )
 
@@ -730,7 +730,7 @@ class JobsEndToEnd(unittest.TestCase):
 
     def test_a_record_error_does_not_stop_the_run_but_can_still_fail_it(self):
         """``failOnRecordError`` only decides the run's final status, not whether it keeps going."""
-        FakeGaClient.fail_records = {"server-2"}
+        FakeTargetClient.fail_records = {"server-2"}
         self._run_extract()
 
         # false (the default): every record is still attempted, the run reports PARTIAL_SUCCESS,
@@ -738,10 +738,10 @@ class JobsEndToEnd(unittest.TestCase):
         self._run_load(dryRun=False, failOnRecordError=False, attempt="attempt-a")
         report_a = self.s3.json(f"reports/run_id={RUN_ID}/attempt=attempt-a/summary.json")
         self.assertEqual(report_a["status"], "PARTIAL_SUCCESS")
-        self.assertEqual(len(FakeGaClient.created), 2)
+        self.assertEqual(len(FakeTargetClient.created), 2)
 
-        FakeGaClient.created = []
-        FakeGaClient.updated = []
+        FakeTargetClient.created = []
+        FakeTargetClient.updated = []
         # true: the same batch is fully processed again (attempt-b is a separate attempt; the two
         # records that already succeeded are recognised via the id map from attempt-a and updated
         # in place rather than duplicated) but the run itself now fails on the one still-failing
@@ -750,8 +750,8 @@ class JobsEndToEnd(unittest.TestCase):
             self._run_load(dryRun=False, failOnRecordError=True, attempt="attempt-b")
         report_b = self.s3.json(f"reports/run_id={RUN_ID}/attempt=attempt-b/summary.json")
         self.assertEqual(report_b["status"], "FAILED")
-        self.assertEqual(len(FakeGaClient.created), 0)
-        self.assertEqual(len(FakeGaClient.updated), 2)
+        self.assertEqual(len(FakeTargetClient.created), 0)
+        self.assertEqual(len(FakeTargetClient.updated), 2)
 
     def test_both_stages_report_progress_while_they_work(self):
         """A long stage that logs only at start and finish is indistinguishable from a hung one.
@@ -800,7 +800,7 @@ class JobsEndToEnd(unittest.TestCase):
         self._run_load(dryRun=False)
 
         self.assertEqual(
-            sorted(entry["record"]["name"] for entry in FakeGaClient.created),
+            sorted(entry["record"]["name"] for entry in FakeTargetClient.created),
             ["server-1", "server-2", "server-3"],
         )
         for row in self._comparison_rows():
@@ -850,7 +850,7 @@ class JobsEndToEnd(unittest.TestCase):
         self.assertEqual(FakePreviewClient.calls[-1]["loadMode"], "INCREMENTAL")
 
     # -- transform/load ------------------------------------------------------
-    def test_dry_run_load_reports_without_touching_ga(self):
+    def test_dry_run_load_reports_without_touching_the_target(self):
         self._run_extract()
         self._run_load(dryRun=True)
 
@@ -868,7 +868,7 @@ class JobsEndToEnd(unittest.TestCase):
         self.assertEqual(mapping_summary["created"], 0)
         self.assertFalse(mapping_summary["watermarkCommitted"])
 
-        self.assertEqual(FakeGaClient.created, [], "a dry run must not write to the GA registry")
+        self.assertEqual(FakeTargetClient.created, [], "a dry run must not write to the target registry")
         self.assertIsNone(self.s3.versions.get("state/watermarks/mapping=map-a.json"))
         # No failures file when nothing failed.
         self.assertEqual(self.s3.keys_under(f"{report_root}/failures/"), [])
@@ -877,10 +877,10 @@ class JobsEndToEnd(unittest.TestCase):
         self._run_extract()
         self._run_load(dryRun=False)
 
-        self.assertEqual([entry["registryId"] for entry in FakeGaClient.created], ["reg-ga"] * 3)
+        self.assertEqual([entry["registryId"] for entry in FakeTargetClient.created], ["reg-new"] * 3)
         # Workers run concurrently, so sort by the record itself rather than by arrival order.
         loaded = sorted(
-            (entry["record"] for entry in FakeGaClient.created),
+            (entry["record"] for entry in FakeTargetClient.created),
             key=lambda record: record["displayName"],
         )
         self.assertEqual([record["recordType"] for record in loaded], ["MCP"] * 3)
@@ -896,7 +896,7 @@ class JobsEndToEnd(unittest.TestCase):
         self.assertEqual(mapping_summary["failed"], 0)
         self.assertTrue(mapping_summary["watermarkCommitted"])
 
-        # Side-by-side comparison dump: preview record, transformed payload, GA record.
+        # Side-by-side comparison dump: preview record, transformed payload, target record.
         comparison_keys = self.s3.keys_under(f"{report_root}/record-comparison/")
         self.assertEqual(
             comparison_keys,
@@ -907,19 +907,20 @@ class JobsEndToEnd(unittest.TestCase):
         )
         rows = [row for key in comparison_keys for row in self.s3.json(key)]
         self.assertEqual([row["oldRecordId"] for row in rows], ["rec-1", "rec-2", "rec-3"])
-        self.assertEqual([row["newRecordId"] for row in rows], ["ga-1", "ga-2", "ga-3"])
+        self.assertEqual([row["newRecordId"] for row in rows], ["new-1", "new-2", "new-3"])
         self.assertEqual(rows[0]["previewRecord"], FakePreviewClient.records[0])
         self.assertEqual(rows[0]["transformedRecord"]["displayName"], "server-1")
-        self.assertEqual(rows[0]["gaRecord"]["recordId"], "ga-1")
+        self.assertEqual(rows[0]["targetRecord"]["recordId"], "new-1")
 
         # Customer-facing crosswalk CSV.
         crosswalk = self.s3.text(f"{report_root}/id-crosswalk/mapping=map-a.csv").splitlines()
         self.assertEqual(crosswalk[0].split(",")[:2], ["oldRecordId", "newRecordId"])
         self.assertEqual(
-            [line.split(",")[:2] for line in crosswalk[1:]], [["rec-1", "ga-1"], ["rec-2", "ga-2"], ["rec-3", "ga-3"]]
+            [line.split(",")[:2] for line in crosswalk[1:]],
+            [["rec-1", "new-1"], ["rec-2", "new-2"], ["rec-3", "new-3"]],
         )
 
-        # Watermark is committed only now that records are in GA.
+        # Watermark is committed only now that records are in the target registry.
         watermark = self.s3.json("state/watermarks/mapping=map-a.json")
         self.assertEqual(watermark["maxUpdatedAt"], "2026-07-03T10:00:00Z")
         self.assertEqual(watermark["lastLoadedRecordCount"], 3)
@@ -932,12 +933,12 @@ class JobsEndToEnd(unittest.TestCase):
     def test_a_record_renamed_between_runs_updates_instead_of_migrating_twice(self):
         # The incremental case that name matching cannot get right. Run one migrates rec-1 as
         # "server-1"; it is renamed in Preview; run two must recognise it by the id run one recorded
-        # and update that GA record, not create a second one and orphan the first.
+        # and update that target record, not create a second one and orphan the first.
         self._run_extract()
         self._run_load(dryRun=False)
         self.assertEqual(
             self.s3.json("state/idmap/mapping=map-a.json")["records"],
-            {"rec-1": "ga-1", "rec-2": "ga-2", "rec-3": "ga-3"},
+            {"rec-1": "new-1", "rec-2": "new-2", "rec-3": "new-3"},
         )
 
         renamed = dict(FakePreviewClient.records[0], name="server-1-renamed")
@@ -947,26 +948,26 @@ class JobsEndToEnd(unittest.TestCase):
         self._run_load(dryRun=False, run_id=second_run, attempt="attempt-2")
 
         self.assertEqual(
-            [entry["recordId"] for entry in FakeGaClient.updated],
-            ["ga-1"],
-            "the renamed record must land on the GA record it was already migrated to",
+            [entry["recordId"] for entry in FakeTargetClient.updated],
+            ["new-1"],
+            "the renamed record must land on the target record it was already migrated to",
         )
-        self.assertEqual(len(FakeGaClient.created), 3, "no fourth GA record may be created for a rename")
+        self.assertEqual(len(FakeTargetClient.created), 3, "no fourth target record may be created for a rename")
         summary = self.s3.json(f"reports/run_id={second_run}/attempt=attempt-2/summary.json")["registries"][0]
         self.assertEqual(summary["updated"], 1)
         self.assertEqual(summary.get("created", 0), 0)
         crosswalk = self.s3.text(
             f"reports/run_id={second_run}/attempt=attempt-2/id-crosswalk/mapping=map-a.csv"
         ).splitlines()
-        self.assertEqual([line.split(",")[:2] for line in crosswalk[1:]], [["rec-1", "ga-1"]])
+        self.assertEqual([line.split(",")[:2] for line in crosswalk[1:]], [["rec-1", "new-1"]])
         # The map still names the records this run's window did not include.
         self.assertEqual(
             self.s3.json("state/idmap/mapping=map-a.json")["records"],
-            {"rec-1": "ga-1", "rec-2": "ga-2", "rec-3": "ga-3"},
+            {"rec-1": "new-1", "rec-2": "new-2", "rec-3": "new-3"},
         )
 
     def test_a_dry_run_records_no_id_map(self):
-        # Nothing reached GA, so there is nothing to remember -- and writing a map from a dry run
+        # Nothing reached the target registry, so there is nothing to remember -- and writing a map from a dry run
         # would make the next live run think those records already existed.
         self._run_extract()
         self._run_load(dryRun=True)
@@ -974,27 +975,27 @@ class JobsEndToEnd(unittest.TestCase):
         summary = self.s3.json(f"reports/run_id={RUN_ID}/attempt={ATTEMPT_ID}/summary.json")
         self.assertFalse(summary["registries"][0]["idMapCommitted"])
 
-    def test_records_that_reached_ga_are_remembered_even_when_the_run_partly_failed(self):
+    def test_records_that_reached_the_target_are_remembered_even_when_the_run_partly_failed(self):
         # Unlike the watermark, the id map must advance after a partial failure: the ids in it name
-        # records that exist in GA, and forgetting one makes the next run create a second copy.
-        FakeGaClient.fail_records = {"server-2"}
+        # records that exist in the target registry, and forgetting one makes the next run create a second copy.
+        FakeTargetClient.fail_records = {"server-2"}
         self._run_extract()
         self._run_load(dryRun=False, failOnRecordError=False)
 
         stored = self.s3.json("state/idmap/mapping=map-a.json")["records"]
-        self.assertEqual(stored, {"rec-1": "ga-1", "rec-3": "ga-3"})
-        self.assertNotIn("rec-2", stored, "the record that never reached GA has no id to remember")
+        self.assertEqual(stored, {"rec-1": "new-1", "rec-3": "new-3"})
+        self.assertNotIn("rec-2", stored, "the record that never reached the target registry has no id to remember")
 
     def test_a_record_created_then_stuck_is_still_remembered(self):
         # It failed to settle, but it is in the registry. If the next run forgot it, it would create
         # a duplicate rather than retry the one that is already there.
-        FakeGaClient.fail_after_create = {"server-2"}
+        FakeTargetClient.fail_after_create = {"server-2"}
         self._run_extract()
         self._run_load(dryRun=False, failOnRecordError=False)
-        self.assertEqual(self.s3.json("state/idmap/mapping=map-a.json")["records"]["rec-2"], "ga-2")
+        self.assertEqual(self.s3.json("state/idmap/mapping=map-a.json")["records"]["rec-2"], "new-2")
 
     def test_partial_failure_keeps_the_watermark_and_writes_a_failures_file(self):
-        FakeGaClient.fail_records = {"server-2"}
+        FakeTargetClient.fail_records = {"server-2"}
         self._run_extract()
         self._run_load(dryRun=False, failOnRecordError=False)
 
@@ -1008,13 +1009,13 @@ class JobsEndToEnd(unittest.TestCase):
         self.assertEqual(mapping_summary["failed"], 1)
         self.assertFalse(mapping_summary["watermarkCommitted"])
         self.assertIn("re-reads them", mapping_summary["watermarkSkipReason"])
-        # The watermark must not advance past records that never reached GA.
+        # The watermark must not advance past records that never reached the target registry.
         self.assertIsNone(self.s3.versions.get("state/watermarks/mapping=map-a.json"))
 
         failures = self._failure_rows()
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["oldRecordId"], "rec-2")
-        self.assertIn("rejected by GA", failures[0]["error"])
+        self.assertIn("rejected by the target registry", failures[0]["error"])
         self.assertIsNotNone(failures[0]["traceback"])
         # Nothing was created for this record, so there is no id to report.
         self.assertIsNone(failures[0]["newRecordId"])
@@ -1023,12 +1024,12 @@ class JobsEndToEnd(unittest.TestCase):
         self.assertEqual(failed_row.split(",")[:2], ["rec-2", ""])
 
     def test_a_record_created_then_failed_is_named_in_the_crosswalk(self):
-        """A GA record can exist and still fail: created, then CREATE_FAILED while it settles.
+        """A target record can exist and still fail: created, then CREATE_FAILED while it settles.
 
         Reporting that as a failure with an empty newRecordId hides a record that is really there,
         so anyone cleaning up from the crosswalk would leave it behind.
         """
-        FakeGaClient.fail_after_create = {"server-2"}
+        FakeTargetClient.fail_after_create = {"server-2"}
         self._run_extract()
         self._run_load(dryRun=False, failOnRecordError=False)
 
@@ -1041,19 +1042,19 @@ class JobsEndToEnd(unittest.TestCase):
         failures = self._failure_rows()
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["oldRecordId"], "rec-2")
-        self.assertEqual(failures[0]["newRecordId"], "ga-2")
+        self.assertEqual(failures[0]["newRecordId"], "new-2")
         self.assertIn("CREATE_FAILED", failures[0]["error"])
 
         # And so does the crosswalk row, while still reporting the row as a failure.
         crosswalk = self.s3.text(f"{report_root}/id-crosswalk/mapping=map-a.csv").splitlines()
         header = crosswalk[0].split(",")
         row = dict(zip(header, next(line for line in crosswalk[1:] if line.startswith("rec-2,")).split(",")))
-        self.assertEqual(row["newRecordId"], "ga-2")
+        self.assertEqual(row["newRecordId"], "new-2")
         self.assertEqual(row["action"], "failed")
         self.assertEqual(row["status"], "FAILED")
 
     def test_fail_on_record_error_marks_the_attempt_failed(self):
-        FakeGaClient.fail_records = {"server-3"}
+        FakeTargetClient.fail_records = {"server-3"}
         self._run_extract()
         with self.assertRaisesRegex(RuntimeError, "1 record"):
             self._run_load(dryRun=False, failOnRecordError=True)
@@ -1076,7 +1077,7 @@ class JobsEndToEnd(unittest.TestCase):
         self.addCleanup(ADAPTER["transform"].__setitem__, "namePrefix", original_prefix)
         with self.assertRaisesRegex(RuntimeError, "changed after extraction"):
             self._run_load(dryRun=False)
-        self.assertEqual(FakeGaClient.created, [])
+        self.assertEqual(FakeTargetClient.created, [])
 
     def test_load_refuses_a_changed_mapping(self):
         self._run_extract()
@@ -1101,7 +1102,7 @@ class JobsEndToEnd(unittest.TestCase):
             load_job.main(
                 ["--config-file", path, "--staging-bucket", BUCKET, "--run-id", RUN_ID, "--attempt-id", ATTEMPT_ID]
             )
-        self.assertEqual(FakeGaClient.created, [], "no record may be written to a moved target")
+        self.assertEqual(FakeTargetClient.created, [], "no record may be written to a moved target")
 
     def test_attempt_id_cannot_be_reused(self):
         self._run_extract()

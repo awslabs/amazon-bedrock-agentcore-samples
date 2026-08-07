@@ -96,13 +96,13 @@ def _source_prober(settings: dict[str, Any], purpose: str):
 
 
 def _target_prober(settings: dict[str, Any], purpose: str):
-    """Return a callable that proves a GA registry is listable with its credentials."""
+    """Return a callable that proves a target registry is listable with its credentials."""
     from .aws_auth import invoker_for_endpoint
-    from .registry_api import GaRegistryClient
+    from .registry_api import TargetRegistryClient
 
     def probe(endpoint: dict[str, Any]) -> None:
         invoker = invoker_for_endpoint(endpoint, run_id=None, purpose=purpose)
-        client = GaRegistryClient(invoker, settings["api"]["ga"], str(endpoint["region"]))
+        client = TargetRegistryClient(invoker, settings["api"]["target"], str(endpoint["region"]))
         client.list_records_page(registry_id=str(endpoint["registryId"]))
 
     return probe
@@ -374,7 +374,7 @@ def _render_report(
         return "\n".join(lines)
 
     latest = attempts[-1]
-    mode = "DRY RUN (nothing written to GA)" if latest.get("dryRun") else "LIVE"
+    mode = "DRY RUN (nothing written to the target registry)" if latest.get("dryRun") else "LIVE"
     lines.append(
         f"Load: {latest.get('status')} -- {mode}"
         + (f", attempt {len(attempts)} of {len(attempts)}" if len(attempts) > 1 else "")
@@ -389,11 +389,11 @@ def _render_report(
     if approval.get("recordsNeedingResubmission"):
         lines.append(
             f"  {approval['recordsNeedingResubmission']} record(s) were past DRAFT in Preview and "
-            "are DRAFT in GA -- submit them for approval when ready"
+            "are DRAFT in the target registry -- submit them for approval when ready"
         )
     # A record whose content loaded but whose status could not be reproduced is a successful record
     # with unfinished business, so it never reaches errorCount. Printing it is the difference
-    # between a run that looks clean and a run that is: the record exists in GA but sits in the
+    # between a run that looks clean and a run that is: the record exists in the target registry but sits in the
     # wrong status, which for anything past DRAFT means the data plane cannot see it.
     if approval.get("statusesNotApplied"):
         lines.append(
@@ -412,12 +412,12 @@ def _render_report(
 
 
 # --------------------------------------------------------------------------------------------
-# target-config -- derive the GA registry configuration to create
+# target-config -- derive the target registry configuration to create
 # --------------------------------------------------------------------------------------------
 
 
 def target_config(arguments: dict[str, str]) -> int:
-    """Write the GA ``CreateRegistry`` input derived from each source registry.
+    """Write the target registry ``CreateRegistry`` input derived from each source registry.
 
     The registry itself is a decision (who may read it, what happens to submitted records), so this
     prints the translated configuration and the one command that applies it rather than creating
@@ -466,7 +466,7 @@ def target_config(arguments: dict[str, str]) -> int:
         rendered_entries.append(entry)
 
     # Once, not per mapping, and only when a command was actually emitted: the command cannot run
-    # until the CLI has the GA model, and it is emitted to be copied.
+    # until the CLI has the target service model, and it is emitted to be copied.
     #
     # Skipped under --json, which means something is reading this output rather than a person: the
     # `init` wizard is the caller that does, and it prints the same note itself, in position, right
@@ -827,7 +827,7 @@ def _load(_arguments: dict[str, str], raw: list[str]) -> int:
 
 #: command name -> handler. A table rather than an ``if`` chain, and every name in :data:`COMMANDS`
 #: must appear here: the chain this replaces had no terminal ``else``, so its fall-through ran the
-#: *load* stage -- the one stage that writes to a customer's GA registry. A name added to
+#: *load* stage -- the one stage that writes to a customer's target registry. A name added to
 #: ``COMMANDS`` and forgotten in the chain would have silently started a load.
 #: ``test_engine_entrypoint`` asserts the two agree in both directions.
 _HANDLERS: dict[str, Any] = {

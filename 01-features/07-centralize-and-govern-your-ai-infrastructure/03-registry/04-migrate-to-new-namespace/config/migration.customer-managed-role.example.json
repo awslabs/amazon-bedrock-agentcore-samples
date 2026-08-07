@@ -10,7 +10,7 @@
     {
       "id": "same-account",
       "source": { "accountId": "111111111111", "region": "us-west-2", "registryId": "<preview-registry-id>" },
-      "target": { "accountId": "111111111111", "region": "us-west-2", "registryId": "<ga-registry-id>" }
+      "target": { "accountId": "111111111111", "region": "us-west-2", "registryId": "<new-registry-id>" }
     },
     {
       "id": "another-account",
@@ -25,7 +25,7 @@
       "target": {
         "accountId": "222222222222",
         "region": "eu-west-1",
-        "registryId": "<ga-registry-id>",
+        "registryId": "<new-registry-id>",
         "roleArn": "arn:aws:iam::222222222222:role/AgentRegistryMigrationAccess",
         "externalId": "agent-registry-migration-default"
       }

@@ -1,4 +1,4 @@
-"""Tests for the four guards that stand between staged data and the GA registry.
+"""Tests for the four guards that stand between staged data and the target registry.
 
 These are the functions whose silent failure would corrupt a migration rather than fail it:
 
@@ -202,7 +202,7 @@ class ExtractManifestReconciliation(unittest.TestCase):
 
 SETTINGS = {
     "transform": {"namePrefix": "migrated", "implementationHash": "abc"},
-    "api": {"ga": {"serviceName": "agent-registry-control", "signingName": "agent-registry"}},
+    "api": {"target": {"serviceName": "agent-registry-control", "signingName": "agent-registry"}},
 }
 
 
@@ -276,7 +276,7 @@ class MappingDriftGuard(unittest.TestCase):
             _verify_mapping_has_not_changed(envelope(source="reg-src"), MAPPING)
 
 
-class FakeGaClient:
+class FakeTargetClient:
     def __init__(self, result=None, error=None):
         self.result = result
         self.error = error
@@ -331,7 +331,7 @@ class ProcessOneRecord(unittest.TestCase):
         )
 
     def test_dry_run_transforms_without_writing(self):
-        client = FakeGaClient()
+        client = FakeTargetClient()
         outcome = self._process(envelope(), clients=FakePool(client), dry_run=True)
         self.assertTrue(outcome.succeeded)
         self.assertEqual(outcome.action, "dryRun")
@@ -341,7 +341,7 @@ class ProcessOneRecord(unittest.TestCase):
         self.assertEqual(outcome.record_type, "MCP")
         self.assertEqual(outcome.primary_descriptor_type, "mcpServer")
         self.assertIsNone(outcome.new_record_id)
-        self.assertEqual(client.calls, [], "a dry run must not call the GA API")
+        self.assertEqual(client.calls, [], "a dry run must not call the new Registry API")
 
     def test_no_client_pool_is_treated_as_a_dry_run(self):
         outcome = self._process(envelope(), clients=None, dry_run=False)
@@ -349,13 +349,13 @@ class ProcessOneRecord(unittest.TestCase):
 
     def test_live_load_records_both_sides_of_the_id_mapping(self):
         described = {"recordId": "new-1", "name": "migrated-x", "status": "DRAFT"}
-        pool = FakePool(FakeGaClient(LoadResult(action="created", new_record_id="new-1", record=described)))
+        pool = FakePool(FakeTargetClient(LoadResult(action="created", new_record_id="new-1", record=described)))
         outcome = self._process(envelope(), clients=pool, dry_run=False)
         self.assertTrue(outcome.succeeded)
         self.assertEqual(outcome.action, "created")
         self.assertEqual(outcome.old_record_id, "rec-1")
         self.assertEqual(outcome.new_record_id, "new-1")
-        self.assertEqual(outcome.ga_record, described)
+        self.assertEqual(outcome.target_record, described)
         self.assertEqual(outcome.preview_record, PREVIEW_RECORD)
         self.assertEqual(outcome.transformed_record["recordType"], "MCP")
         self.assertEqual(pool.targets, [TARGET], "record was loaded into the mapped target")
@@ -388,15 +388,15 @@ class ProcessOneRecord(unittest.TestCase):
         self.assertIsNotNone(outcome.error)
         self.assertEqual(outcome.status, "FAILED")
 
-    def test_ga_error_is_captured_as_a_failed_outcome(self):
-        pool = FakePool(FakeGaClient(error=RuntimeError("ThrottlingException")))
+    def test_target_error_is_captured_as_a_failed_outcome(self):
+        pool = FakePool(FakeTargetClient(error=RuntimeError("ThrottlingException")))
         outcome = self._process(envelope(), clients=pool, dry_run=False)
         self.assertFalse(outcome.succeeded)
         self.assertIn("ThrottlingException", outcome.error)
 
     def test_missing_new_record_id_fails_the_record(self):
         # Without a new id the old->new crosswalk would be incomplete, so this must not pass.
-        pool = FakePool(FakeGaClient(LoadResult(action="created", new_record_id="", record={})))
+        pool = FakePool(FakeTargetClient(LoadResult(action="created", new_record_id="", record={})))
         outcome = self._process(envelope(), clients=pool, dry_run=False)
         self.assertFalse(outcome.succeeded)
         self.assertIn("did not return a recordId", outcome.error)
@@ -411,7 +411,7 @@ class ApprovalSummaryReporting(unittest.TestCase):
 
     @staticmethod
     def _summary(**fields):
-        base = {"sourceStatusCounts": {}, "gaStatusCounts": {}}
+        base = {"sourceStatusCounts": {}, "targetStatusCounts": {}}
         base.update(fields)
         return {"map-a": base}
 
@@ -422,7 +422,7 @@ class ApprovalSummaryReporting(unittest.TestCase):
         report = _approval_summary(
             self._summary(
                 sourceStatusCounts={"APPROVED": 2, "DRAFT": 1},
-                gaStatusCounts={"APPROVED": 2, "DRAFT": 1},
+                targetStatusCounts={"APPROVED": 2, "DRAFT": 1},
                 statusesApplied=0,
             ),
             dry_run=False,
@@ -433,21 +433,21 @@ class ApprovalSummaryReporting(unittest.TestCase):
 
     def test_a_registry_that_was_entirely_draft_at_source(self):
         report = _approval_summary(
-            self._summary(sourceStatusCounts={"DRAFT": 3}, gaStatusCounts={"DRAFT": 3}),
+            self._summary(sourceStatusCounts={"DRAFT": 3}, targetStatusCounts={"DRAFT": 3}),
             dry_run=False,
         )
         self.assertIn("Every record was DRAFT", report["note"])
         self.assertEqual(report["recordsNeedingResubmission"], 0)
 
     def test_records_left_behind_are_counted_as_needing_attention(self):
-        # Two approved at source, one still DRAFT in GA: that record is invisible to the data plane,
+        # Two approved at source, one still DRAFT in the target registry: that record is invisible to the data plane,
         # so it has to show up as work outstanding. `recordsStrandedInDraft` is what the load loop
         # counts per record (RecordOutcome.stranded_in_draft); the status totals alone cannot say
         # which record ended up where, which is why they are no longer what this is derived from.
         report = _approval_summary(
             self._summary(
                 sourceStatusCounts={"APPROVED": 2},
-                gaStatusCounts={"APPROVED": 1, "DRAFT": 1},
+                targetStatusCounts={"APPROVED": 1, "DRAFT": 1},
                 statusesApplied=1,
                 statusesNotApplied=1,
                 recordsStrandedInDraft=1,
@@ -456,21 +456,21 @@ class ApprovalSummaryReporting(unittest.TestCase):
             dry_run=False,
         )
         self.assertEqual(report["recordsNeedingResubmission"], 1)
-        self.assertIn("DRAFT in GA", report["note"])
+        self.assertIn("DRAFT in the target registry", report["note"])
         self.assertIn("record-comparison/", report["note"])
 
     def test_an_auto_approved_record_cannot_hide_a_stranded_one(self):
         """A stranded record must be reported even when the status totals net out to zero.
 
         One record APPROVED at source that stayed DRAFT, and one DRAFT record the target registry
-        auto-approved. The GA totals then show one DRAFT and one APPROVED, exactly as the source
+        auto-approved. The target totals then show one DRAFT and one APPROVED, exactly as the source
         totals do, so deriving this by subtracting totals reported nothing outstanding while an
         approved record sat invisible to data-plane search. This is that case.
         """
         report = _approval_summary(
             self._summary(
                 sourceStatusCounts={"APPROVED": 1, "DRAFT": 1},
-                gaStatusCounts={"APPROVED": 1, "DRAFT": 1},
+                targetStatusCounts={"APPROVED": 1, "DRAFT": 1},
                 statusesApplied=1,
                 statusesNotApplied=0,
                 recordsStrandedInDraft=1,
@@ -480,14 +480,14 @@ class ApprovalSummaryReporting(unittest.TestCase):
         )
         self.assertEqual(report["recordsNeedingResubmission"], 1)
         self.assertEqual(report["statusMismatched"], 2)
-        self.assertIn("DRAFT in GA", report["note"])
+        self.assertIn("DRAFT in the target registry", report["note"])
 
     def test_a_discoverable_mismatch_is_reported_without_alarm(self):
         """A record in a different-but-visible status is named, not folded into "all clear"."""
         report = _approval_summary(
             self._summary(
                 sourceStatusCounts={"PENDING_APPROVAL": 1},
-                gaStatusCounts={"APPROVED": 1},
+                targetStatusCounts={"APPROVED": 1},
                 statusesApplied=0,
                 recordsStrandedInDraft=0,
                 statusMismatched=1,

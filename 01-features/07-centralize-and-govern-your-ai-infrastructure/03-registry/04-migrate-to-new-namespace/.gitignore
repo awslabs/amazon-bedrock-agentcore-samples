@@ -32,8 +32,8 @@ config/*.local.json
 # Staged records and reports from a local run: customer record content and the old -> new id
 # crosswalks. Keep them, but never commit them.
 migration-runs/
-# GA CreateRegistry payloads derived by `init` from a customer's preview registry.
-ga-registry-payloads/
+# Target CreateRegistry payloads derived by `init` from a customer's preview registry.
+new-registry-payloads/
 # npm pack output
 *.tgz
 .env

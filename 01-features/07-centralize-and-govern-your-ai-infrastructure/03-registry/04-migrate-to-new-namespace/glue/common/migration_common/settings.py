@@ -4,7 +4,7 @@ Runtime configuration is split in two: customer-editable run knobs live as indiv
 parameters under ``<prefix>/config`` (so a single value such as ``dryRun`` can be changed
 in isolation), while the internal API adapter and transform rules live in one
 CDK-managed ``<prefix>/adapter`` parameter. The replay fingerprint over the transform and
-GA adapter binds an extract run to the exact code that produced it, so live writes cannot
+target adapter binds an extract run to the exact code that produced it, so live writes cannot
 silently replay against changed logic.
 """
 
@@ -118,7 +118,7 @@ def _present_argument_key(arguments: dict[str, str], name: str) -> str | None:
 def live_override(arguments: dict[str, str]) -> bool | None:
     """Return this invocation's explicit live/dry-run intent, or ``None`` when unspecified.
 
-    Whether records reach the GA registry is the one decision worth stating per run rather than
+    Whether records reach the target registry is the one decision worth stating per run rather than
     storing, so ``--live`` overrides the configured ``dryRun`` for this invocation only. It is read
     from the command line and never from the environment: a leftover ``LIVE=1`` in a shell or CI
     environment must not be able to turn a review run into a live one.
@@ -171,7 +171,7 @@ def apply_run_overrides(settings: dict[str, Any], arguments: dict[str, str]) -> 
     an incremental run starts (``--changed-after``). Everything else comes from the one
     configuration document, so there is a single place to look when a run behaves unexpectedly.
 
-    The replay fingerprint covers ``transform`` + ``api.ga``, none of which this touches, so an
+    The replay fingerprint covers ``transform`` + ``api.target``, none of which this touches, so an
     override cannot make a staged run unloadable. Callers re-validate afterwards, so an override
     cannot smuggle in a value the configuration itself would have been rejected for.
     """
@@ -220,20 +220,20 @@ def resolve_run_id(arguments: dict[str, str], *, allow_generate: bool) -> str:
 
 
 def replay_configuration_fingerprint(settings: dict[str, Any]) -> str:
-    """Return a stable SHA-256 over the transform + GA adapter settings.
+    """Return a stable SHA-256 over the transform + target adapter settings.
 
     The extract stage records this fingerprint; transform/load recomputes it and refuses
     live writes on a mismatch so a run is never replayed against changed logic.
     """
     transform = settings.get("transform")
     api = settings.get("api")
-    ga_api = api.get("ga") if isinstance(api, dict) else None
-    if not isinstance(transform, dict) or not isinstance(ga_api, dict):
-        raise ConfigurationError("Settings must contain transform and api.ga objects for replay protection")
+    target_api = api.get("target") if isinstance(api, dict) else None
+    if not isinstance(transform, dict) or not isinstance(target_api, dict):
+        raise ConfigurationError("Settings must contain transform and api.target objects for replay protection")
     payload = {
         "schemaVersion": 1,
         "transform": transform,
-        "gaApi": ga_api,
+        "targetApi": target_api,
     }
     canonical = json.dumps(
         payload,
@@ -745,7 +745,7 @@ def _build_load(knobs: dict[str, Any]) -> dict[str, Any]:
         "loadConcurrency": _as_int(knobs, "loadConcurrency", 32),
         "dumpExtractedRecords": _as_bool(knobs, "dumpExtractedRecords", True),
         "allowReplayConfigurationDrift": _as_bool(knobs, "allowReplayConfigurationDrift", False),
-        # On by default: GA creates records in DRAFT, and a DRAFT record is invisible to data-plane
+        # On by default: target creates records in DRAFT, and a DRAFT record is invisible to data-plane
         # search and the browsing APIs, so an approved Preview record would arrive undiscoverable.
         "matchSourceStatus": _as_bool(knobs, "matchSourceStatus", True),
     }

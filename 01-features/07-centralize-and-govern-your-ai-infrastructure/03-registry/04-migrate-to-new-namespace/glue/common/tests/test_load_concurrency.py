@@ -1,7 +1,7 @@
 """Tests for the concurrent load path.
 
 Concurrency must be invisible in the output: the same records, the same order, the same counts,
-whatever the worker count. These tests pin that, plus the thread-safety of the shared GA client
+whatever the worker count. These tests pin that, plus the thread-safety of the shared target client
 cache and the memory bound on batching.
 """
 
@@ -16,8 +16,8 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from migration_common.jobs.transform_load import (
-    GaClientPool,
     RecordOutcome,
+    TargetClientPool,
     _iter_batches,
     _iter_outcomes,
 )
@@ -120,13 +120,13 @@ class OutcomeOrdering(unittest.TestCase):
 
 
 class ClientPoolSafety(unittest.TestCase):
-    """One GA client per distinct target, built exactly once even under concurrent use."""
+    """One target client per distinct target, built exactly once even under concurrent use."""
 
     def setUp(self):
         import migration_common.jobs.transform_load as module
 
         self.module = module
-        self._original_client = module.GaRegistryClient
+        self._original_client = module.TargetRegistryClient
         self._original_invoker = module.invoker_for_endpoint
         self.constructions: list[str] = []
         guard = threading.Lock()
@@ -137,13 +137,13 @@ class ClientPoolSafety(unittest.TestCase):
             time.sleep(0.01)  # widen the window a racing caller could slip through
             return f"client-{region}"
 
-        module.GaRegistryClient = fake_client
+        module.TargetRegistryClient = fake_client
         module.invoker_for_endpoint = lambda endpoint, run_id, purpose: "invoker"
         self.addCleanup(self._restore)
-        self.pool = GaClientPool({"serviceName": "agent-registry-control"}, "run-1")
+        self.pool = TargetClientPool({"serviceName": "agent-registry-control"}, "run-1")
 
     def _restore(self):
-        self.module.GaRegistryClient = self._original_client
+        self.module.TargetRegistryClient = self._original_client
         self.module.invoker_for_endpoint = self._original_invoker
 
     def test_repeated_calls_reuse_one_client(self):

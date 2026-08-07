@@ -43,7 +43,7 @@ class AdapterDefaultsError(RuntimeError):
 
 
 def api_adapter() -> dict[str, Any]:
-    """Return the ``api`` section: the Preview and GA wire contracts, from the shared JSON file."""
+    """Return the ``api`` section: the Preview and target wire contracts, from the shared JSON file."""
     try:
         document = json.loads(_ADAPTER_FILE.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
@@ -54,10 +54,10 @@ def api_adapter() -> dict[str, Any]:
         ) from error
     except json.JSONDecodeError as error:
         raise AdapterDefaultsError(f"{_ADAPTER_FILE} is not valid JSON: {error}") from error
-    for section in ("preview", "ga"):
+    for section in ("preview", "target"):
         if not isinstance(document.get(section), dict):
             raise AdapterDefaultsError(f"{_ADAPTER_FILE} has no {section!r} object")
-    return {"preview": document["preview"], "ga": document["ga"]}
+    return {"preview": document["preview"], "target": document["target"]}
 
 
 def repository_root() -> Path | None:

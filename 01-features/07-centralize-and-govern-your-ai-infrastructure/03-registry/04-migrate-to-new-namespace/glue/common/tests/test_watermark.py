@@ -398,9 +398,9 @@ class WhatTheIdMapRemembers(unittest.TestCase):
 
     def test_a_written_map_reads_back(self):
         watermark.write_idmap(
-            self.store, "map-a", {"prev-1": "ga-1"}, run_id="run-1", updated_at="2026-07-01T00:00:00Z"
+            self.store, "map-a", {"prev-1": "new-1"}, run_id="run-1", updated_at="2026-07-01T00:00:00Z"
         )
-        self.assertEqual(watermark.read_idmap(self.store, "map-a"), {"prev-1": "ga-1"})
+        self.assertEqual(watermark.read_idmap(self.store, "map-a"), {"prev-1": "new-1"})
 
     def test_it_is_stored_outside_the_run_and_report_folders(self):
         # Run-data lifecycle expiry deletes runs/ and reports/. If the map lived there it would
@@ -424,16 +424,16 @@ class WhatTheIdMapRemembers(unittest.TestCase):
     def test_merging_keeps_records_this_run_did_not_see(self):
         # Every incremental run carries a fraction of the registry. A record outside this run's
         # window was not un-migrated, so dropping it would make a later rename of it duplicate.
-        merged = watermark.merge_idmap({"prev-1": "ga-1", "prev-2": "ga-2"}, {"prev-3": "ga-3"})
-        self.assertEqual(merged, {"prev-1": "ga-1", "prev-2": "ga-2", "prev-3": "ga-3"})
+        merged = watermark.merge_idmap({"prev-1": "new-1", "prev-2": "new-2"}, {"prev-3": "new-3"})
+        self.assertEqual(merged, {"prev-1": "new-1", "prev-2": "new-2", "prev-3": "new-3"})
 
     def test_merging_lets_this_run_correct_an_older_entry(self):
-        merged = watermark.merge_idmap({"prev-1": "ga-old"}, {"prev-1": "ga-new"})
-        self.assertEqual(merged, {"prev-1": "ga-new"})
+        merged = watermark.merge_idmap({"prev-1": "preview-registry"}, {"prev-1": "new-registry"})
+        self.assertEqual(merged, {"prev-1": "new-registry"})
 
     def test_merging_ignores_half_a_pair(self):
-        merged = watermark.merge_idmap({}, {"prev-1": "", "": "ga-1", "prev-2": "ga-2"})
-        self.assertEqual(merged, {"prev-2": "ga-2"})
+        merged = watermark.merge_idmap({}, {"prev-1": "", "": "new-1", "prev-2": "new-2"})
+        self.assertEqual(merged, {"prev-2": "new-2"})
 
     def test_a_malformed_map_is_an_error_rather_than_an_empty_one(self):
         # Reading a corrupt map as empty would silently re-create every renamed record, which is

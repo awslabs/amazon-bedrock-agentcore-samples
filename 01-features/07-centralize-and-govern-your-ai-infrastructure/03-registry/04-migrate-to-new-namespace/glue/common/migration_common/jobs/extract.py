@@ -4,7 +4,7 @@ For each configured mapping this assumes the source role (when set), pages throu
 Preview API, and writes records to ``runs/run_id=<id>/raw/mapping=<id>/`` (partitioned by
 mapping, mirroring the transformed layout). It emits a per-mapping manifest, a run-level
 extract manifest (with the replay fingerprint and per-object integrity metadata), and a
-human-readable extract summary report. Extraction never writes to any GA registry.
+human-readable extract summary report. Extraction never writes to any target registry.
 
 Invoked by the ``glue/extract.py`` shim via :func:`run`.
 """
@@ -51,7 +51,7 @@ Stage 1: extract AWS Agent Registry records from the Preview API into replayable
 Use the CLI rather than this stage directly:
 
   agent-registry-migration run           # validate, extract, then transform and report
-  agent-registry-migration run --live    # the same, creating the GA records
+  agent-registry-migration run --live    # the same, creating the target records
 
 The CLI translates your configuration into the arguments below, which are also what Glue passes
 (Glue uses the --UPPER_SNAKE form; both styles work):
@@ -148,7 +148,7 @@ def main(argv: list[str] | None = None) -> None:
         "replayConfiguration": {
             "schemaVersion": 1,
             "sha256": replay_configuration_fingerprint(settings),
-            "scope": ["transform", "api.ga"],
+            "scope": ["transform", "api.target"],
         },
         "registries": [],
     }
@@ -173,7 +173,7 @@ def main(argv: list[str] | None = None) -> None:
             "objectCount": 0,
             "objects": [],
             "recordTypeCounts": {},
-            # Approval state as it stands in the Preview registry. GA creates every record in DRAFT,
+            # Approval state as it stands in the Preview registry. The new version creates every record in DRAFT,
             # so this is what a reviewer needs in order to know what will still need submitting.
             "sourceStatusCounts": {},
             "warnings": [],
@@ -185,10 +185,10 @@ def main(argv: list[str] | None = None) -> None:
         # could not be constructed.
         client: PreviewRegistryClient | None = None
         # Source updatedAt values seen for this mapping; the newest becomes the watermark that
-        # transform/load commits once these records are actually in the GA registry.
+        # transform/load commits once these records are actually in the target registry.
         observed_updated_at: list[Any] = []
         # Human-readable dump of every extracted Preview record, written into the report so it can
-        # be diffed against the post-load GA dump that transform/load produces. It duplicates the
+        # be diffed against the post-load target dump that transform/load produces. It duplicates the
         # JSONL staged under runs/, so `dumpExtractedRecords = false` turns it off for estates
         # where a second copy is not worth the storage.
         preview_dump = (
@@ -279,7 +279,7 @@ def main(argv: list[str] | None = None) -> None:
                 mapping_manifest["objectCount"] += 1
             mapping_manifest["status"] = "SUCCEEDED"
             # Proposed, not committed: transform/load promotes this to the saved watermark only
-            # after the records land in the GA registry.
+            # after the records land in the target registry.
             mapping_manifest["candidateWatermark"] = watermark_state.build_candidate(
                 mapping_id=mapping_id,
                 run_id=run_id,
@@ -398,7 +398,7 @@ def _build_extract_report(
             "perRegistry": {str(r.get("mappingId")): r.get("changedAfter") for r in registries},
         }
     # How many records are past DRAFT at the source. The load stage reproduces those statuses on the
-    # GA records, so this is what to reconcile the load report's approval block against.
+    # target records, so this is what to reconcile the load report's approval block against.
     past_draft = sum(
         count
         for registry in registries
@@ -407,7 +407,7 @@ def _build_extract_report(
     )
     if ready:
         next_step = (
-            "No GA records are created during extraction. Review the record counts and the "
+            "No target records are created during extraction. Review the record counts and the "
             "record-type distribution per registry below. When satisfied, start the transform/load "
             f"stage with RUN_ID={run_id}. If anything looks wrong, do not start transform/load; "
             "adjust the configuration and re-run extract with a new run id."

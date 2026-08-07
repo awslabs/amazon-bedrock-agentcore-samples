@@ -1,10 +1,10 @@
-"""The GA registry configuration derived from each Preview registry.
+"""The target registry configuration derived from each Preview registry.
 
 ``target_registry`` is what ``agent-registry-migration target-config`` (and ``init``) drives: it
 reads a source registry read-only and returns the ``CreateRegistry`` input an operator applies by
 hand. It had no test coverage at all, which mattered most for two of its decisions:
 
-* **which region** the GA registry belongs in -- ``target.region or source.region``. Get that wrong
+* **which region** the target registry belongs in -- ``target.region or source.region``. Get that wrong
   and the operator creates the registry in the wrong place, then cannot load into it.
 * **per-mapping failure isolation** -- one unreachable registry must not hide the others, because
   the whole point of the command is to answer for every mapping at once.
@@ -41,7 +41,7 @@ SETTINGS = {"api": {"preview": PREVIEW_API}}
 
 
 def _mapping(mapping_id: str, *, source_region: str, target_region: str | None) -> dict:
-    target: dict = {"accountId": "111122223333", "registryId": "reg-ga"}
+    target: dict = {"accountId": "111122223333", "registryId": "reg-new"}
     if target_region is not None:
         target["region"] = target_region
     return {
@@ -114,11 +114,11 @@ class DeriveCreateRegistryInputs(unittest.TestCase):
         entry = entries[0]
         self.assertIsNone(entry["error"])
         self.assertEqual(entry["payload"]["name"], "src")
-        # The preview shape's top-level authorizer is nested under discoveryConfiguration at GA.
+        # The preview shape's top-level authorizer is nested under discoveryConfiguration in the new version.
         self.assertEqual(entry["payload"]["discoveryConfiguration"]["authorizerType"], "CUSTOM_JWT")
 
     def test_the_region_is_the_targets_not_the_sources(self):
-        """The GA registry has to be created where the mapping loads into."""
+        """The target registry has to be created where the mapping loads into."""
         _FakePreviewClient.registries = {"reg-a": self._preview_registry()}
         entries = target_registry.derive_create_registry_inputs(
             SETTINGS, [_mapping("a", source_region="us-east-1", target_region="eu-west-1")]
@@ -216,7 +216,7 @@ class TheCreateRegistryCommandCarriesItsPrerequisite(unittest.TestCase):
     """The emitted command does not run on a stock AWS CLI, so it has to say so.
 
     `aws agent-registry-control` is not a service the CLI knows yet: the command fails with
-    "Invalid choice: 'agent-registry-control'" until the GA model is installed by hand. A command
+    "Invalid choice: 'agent-registry-control'" until the target service model is installed by hand. A command
     printed to be copied and run must therefore arrive with the step that makes it runnable.
     """
 
@@ -230,7 +230,7 @@ class TheCreateRegistryCommandCarriesItsPrerequisite(unittest.TestCase):
         # And that installing it serves boto3 as well, so it is done once rather than twice.
         self.assertIn("boto3", note)
 
-    def test_the_ga_client_really_does_lack_create_registry(self):
+    def test_the_target_client_really_does_lack_create_registry(self):
         """Pins the reason the prerequisite exists, so the note cannot outlive its cause.
 
         Asked of a ``boto3`` client, which is the only way this tool ever reaches the control plane

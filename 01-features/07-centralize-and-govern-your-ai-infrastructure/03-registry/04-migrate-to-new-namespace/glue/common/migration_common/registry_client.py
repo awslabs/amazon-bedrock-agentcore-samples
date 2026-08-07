@@ -3,7 +3,7 @@
 The migration talks to the control plane through modeled ``boto3`` operations rather than
 hand-rolled SigV4 REST. Both service models come from the installed ``boto3``/``botocore``, so
 the SDK must be recent enough to carry ``bedrock-agentcore-control`` (the preview source) and
-``agent-registry-control`` (the GA target). Creating a client raises
+``agent-registry-control`` (the target). Creating a client raises
 ``UnknownServiceError`` when it is not -- see the minimum version in ``requirements-dev.txt``.
 
 The factory reuses the assumed-role/direct session managed by :class:`AwsApiInvoker`, so

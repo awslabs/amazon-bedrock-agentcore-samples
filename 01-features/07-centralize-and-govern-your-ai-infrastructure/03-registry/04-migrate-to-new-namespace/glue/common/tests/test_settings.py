@@ -44,7 +44,7 @@ ADAPTER = {
     "transform": {"namePrefix": "migrated", "allowedRecordTypes": ["CUSTOM"], "passthroughFields": []},
     "api": {
         "preview": {"serviceName": "bedrock-agentcore-control", "signingName": "bedrock-agentcore"},
-        "ga": {"serviceName": "agent-registry-control", "signingName": "agent-registry"},
+        "target": {"serviceName": "agent-registry-control", "signingName": "agent-registry"},
     },
 }
 
@@ -568,7 +568,7 @@ class NumericKnobsRejectBooleans(unittest.TestCase):
             "schemaVersion": 1,
             "load": {"mode": "FULL", "changedAfter": None, **load},
             "transform": {"namePrefix": "migrated"},
-            "api": {"ga": {}},
+            "api": {"target": {}},
         }
         return base
 
@@ -665,7 +665,7 @@ class FileBackedConfiguration(unittest.TestCase):
 
         self.assertEqual([m["id"] for m in mappings], ["map-a"])
         self.assertEqual(settings["api"]["preview"]["serviceName"], "bedrock-agentcore-control")
-        self.assertEqual(settings["api"]["ga"]["serviceName"], "agent-registry-control")
+        self.assertEqual(settings["api"]["target"]["serviceName"], "agent-registry-control")
         # The transform rules must be complete, including the implementation hash the replay
         # fingerprint depends on -- without it a local extract could not be safely re-loaded.
         self.assertEqual(settings["transform"]["namePrefix"], "migrated")

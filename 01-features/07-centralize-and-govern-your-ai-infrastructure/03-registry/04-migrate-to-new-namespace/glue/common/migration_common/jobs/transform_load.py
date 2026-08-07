@@ -1,10 +1,10 @@
-"""Transform/load job logic: map staged Preview records to GA and idempotently load them.
+"""Transform/load job logic: map staged Preview records to the target registry and idempotently load them.
 
 Before processing, it reconciles the staged objects against the extract manifest (run id,
 per-object hash/size/count) and verifies the replay fingerprint so a run cannot be replayed
-against changed transform/GA logic; live writes additionally require the fingerprint to
+against changed transform/target logic; live writes additionally require the fingerprint to
 match exactly. Each record is transformed, written to a transformed JSONL partition, and --
-unless ``dryRun`` -- upserted into the GA registry. It emits per-record detail rows plus a
+unless ``dryRun`` -- upserted into the target registry. It emits per-record detail rows plus a
 run/attempt summary. Loading is gated behind manual approval: only ``dryRun`` runs and the
 explicit live attempt reach this job.
 
@@ -33,10 +33,10 @@ from migration_common import report_html
 from migration_common import watermark as watermark_state
 from migration_common.aws_auth import invoker_for_endpoint
 from migration_common.registry_api import (
-    GaNameClaims,
-    GaRegistryClient,
     RegistryApiError,
-    validate_ga_request,
+    TargetNameClaims,
+    TargetRegistryClient,
+    validate_target_request,
 )
 from migration_common.settings import (
     parse_job_arguments,
@@ -62,12 +62,12 @@ INLINE_FAILURE_DETAILS_LIMIT = 100
 configure_logging()
 
 USAGE = """\
-Stage 2: transform staged Preview records to the GA shape and load them into the GA registries.
+Stage 2: transform staged Preview records to the target shape and load them into the target registries.
 
 Use the CLI rather than this stage directly:
 
   agent-registry-migration run                    # dry run: transform and report, write nothing
-  agent-registry-migration run --live             # create the GA records
+  agent-registry-migration run --live             # create the target records
   agent-registry-migration run --live --resume <run-id>   # load an extract you already reviewed
 
 The CLI translates your configuration into the arguments below, which are also what Glue passes
@@ -79,7 +79,7 @@ The CLI translates your configuration into the arguments below, which are also w
   --live true|false                 override the configured dryRun for this invocation only
   --attempt-id                      attempt label for the report (generated when omitted)
 
-Nothing reaches a GA registry unless --live true is passed or the configuration sets
+Nothing reaches a target registry unless --live true is passed or the configuration sets
 dryRun = false. The default is a dry run.
 """
 
@@ -108,11 +108,11 @@ class RecordOutcome:
     record_type: str | None = None
     record_version: str | None = None
     primary_descriptor_type: str | None = None
-    # The record's status in the Preview registry, and the status it has in GA after the write.
+    # The record's status in the Preview registry, and the status it has in the target registry after the write.
     # Reported side by side because they can still legitimately differ -- a status the target
     # registry's own approval policy overrides, or one that describes the source record's history.
     source_status: str | None = None
-    ga_status: str | None = None
+    target_status: str | None = None
     # What reproducing the source status took, and whether it worked. Empty actions mean nothing was
     # needed (the source record was DRAFT, so the created record already matched).
     status_actions: list[str] = field(default_factory=list)
@@ -126,7 +126,7 @@ class RecordOutcome:
     traceback_text: str | None = None
     preview_record: dict[str, Any] | None = None
     transformed_record: dict[str, Any] | None = None
-    ga_record: dict[str, Any] | None = None
+    target_record: dict[str, Any] | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -134,20 +134,20 @@ class RecordOutcome:
 
     @property
     def status_matched(self) -> bool:
-        """Whether the GA record ended up in the status its Preview record holds.
+        """Whether the target record ended up in the status its Preview record holds.
 
-        Only meaningful once the record has actually been written: a dry run has no GA status to
+        Only meaningful once the record has actually been written: a dry run has no target status to
         compare, and reports its expectations from the source side instead.
         """
         source = (self.source_status or "").strip().upper()
-        ga = (self.ga_status or "").strip().upper()
-        if not source or not ga:
+        target = (self.target_status or "").strip().upper()
+        if not source or not target:
             return True
-        return source == ga
+        return source == target
 
     @property
     def stranded_in_draft(self) -> bool:
-        """Whether this record is past DRAFT at source but sitting in DRAFT in GA.
+        """Whether this record is past DRAFT at source but sitting in DRAFT in the target registry.
 
         This is the one status divergence that silently costs a customer something: a DRAFT record
         is not returned by data-plane search or the browsing APIs, so a record that was in service
@@ -156,10 +156,10 @@ class RecordOutcome:
         record stranded in it, and the subtraction then reports zero while a record is stranded.
         """
         source = (self.source_status or "").strip().upper()
-        ga = (self.ga_status or "").strip().upper()
+        target = (self.target_status or "").strip().upper()
         if not source or source in {"DRAFT", "UNKNOWN"}:
             return False
-        return ga == "DRAFT"
+        return target == "DRAFT"
 
 
 def _target_identity(target: dict[str, Any]) -> tuple[str, str, str]:
@@ -184,24 +184,24 @@ def _source_claimant_id(mapping: dict[str, Any], record_id: str) -> str:
     )
 
 
-class GaClientPool:
-    """Thread-safe cache of GA clients, one per distinct target access route.
+class TargetClientPool:
+    """Thread-safe cache of target clients, one per distinct target access route.
 
     botocore clients are safe to call from many threads, but building one (which may assume a
     role) is not, so construction happens under a lock and is then shared by all workers. Clients
-    using different credentials for the same canonical GA target share the final name and resolved-
+    using different credentials for the same canonical target share the final name and resolved-
     record claim guards.
     """
 
     def __init__(self, api_config: dict[str, Any], run_id: str) -> None:
         self._api_config = api_config
         self._run_id = run_id
-        self._clients: dict[tuple[str, str, str, str, str], GaRegistryClient] = {}
-        self._name_claims: dict[tuple[str, str, str], GaNameClaims] = {}
+        self._clients: dict[tuple[str, str, str, str, str], TargetRegistryClient] = {}
+        self._name_claims: dict[tuple[str, str, str], TargetNameClaims] = {}
         self._target_claims: dict[tuple[str, str, str], tuple[dict[tuple[str, str], str], threading.Lock]] = {}
         self._lock = threading.Lock()
 
-    def for_target(self, target: dict[str, Any]) -> GaRegistryClient:
+    def for_target(self, target: dict[str, Any]) -> TargetRegistryClient:
         target_key = _target_identity(target)
         client_key = target_key + (
             str(target.get("roleArn") or ""),
@@ -212,13 +212,13 @@ class GaClientPool:
             if client is None:
                 claims = self._name_claims.get(target_key)
                 if claims is None:
-                    claims = GaNameClaims()
+                    claims = TargetNameClaims()
                     self._name_claims[target_key] = claims
                 target_claims = self._target_claims.get(target_key)
                 if target_claims is None:
                     target_claims = ({}, threading.Lock())
                     self._target_claims[target_key] = target_claims
-                client = GaRegistryClient(
+                client = TargetRegistryClient(
                     invoker_for_endpoint(target, self._run_id, "load"),
                     self._api_config,
                     str(target["region"]),
@@ -230,27 +230,27 @@ class GaClientPool:
             return client
 
 
-class GaNameClaimPool:
-    """GA-name claims coordinated in deterministic staged-input order.
+class TargetNameClaimPool:
+    """Target-name claims coordinated in deterministic staged-input order.
 
-    Every canonical GA target gets one claim set regardless of which role or external ID accesses
+    Every canonical target gets one claim set regardless of which role or external ID accesses
     it. The sequence coordinator preserves staged order while workers transform concurrently, so
     local, Glue, dry-run, and live attempts choose the same claimant.
     """
 
     def __init__(self) -> None:
-        self._claims: dict[tuple[str, str, str], GaNameClaims] = {}
+        self._claims: dict[tuple[str, str, str], TargetNameClaims] = {}
         self._lock = threading.Lock()
         self._sequence = threading.Condition()
         self._next_sequence = 0
         self._skipped_sequences: set[int] = set()
 
-    def for_target(self, target: dict[str, Any]) -> GaNameClaims:
+    def for_target(self, target: dict[str, Any]) -> TargetNameClaims:
         key = _target_identity(target)
         with self._lock:
             claims = self._claims.get(key)
             if claims is None:
-                claims = GaNameClaims()
+                claims = TargetNameClaims()
                 self._claims[key] = claims
             return claims
 
@@ -294,14 +294,14 @@ def _process_record(
     *,
     mapping_by_id: dict[str, dict[str, Any]],
     transformer: RecordTransformer,
-    clients: GaClientPool | None,
+    clients: TargetClientPool | None,
     dry_run: bool,
-    name_claims: GaNameClaimPool | None = None,
+    name_claims: TargetNameClaimPool | None = None,
     claim_sequence: int | None = None,
     match_source_status: bool = True,
     known_record_ids: dict[str, dict[str, str]] | None = None,
 ) -> RecordOutcome:
-    """Transform one staged record and (unless ``dry_run``) upsert it into its GA registry.
+    """Transform one staged record and (unless ``dry_run``) upsert it into its target registry.
 
     Returns an outcome instead of raising, so one bad record never aborts the batch; the caller
     decides whether the run fails.
@@ -342,10 +342,10 @@ def _process_record(
         outcome.warnings = list(transformed.warnings)
         outcome.preview_name = transformed.preview_name
 
-        # Apply the GA request contract on every path, so a dry run cannot pass a record that the
-        # live load would reject. This is the check the service itself would fail on, and the GA
+        # Apply the target request contract on every path, so a dry run cannot pass a record that the
+        # live load would reject. This is the check the service itself would fail on, and the target
         # model types `descriptors` as a document, so botocore will not catch it.
-        validate_ga_request(transformed.record)
+        validate_target_request(transformed.record)
 
         target = current_mapping["target"]
         source_claimant_id = _source_claimant_id(current_mapping, transformed.old_record_id)
@@ -365,7 +365,7 @@ def _process_record(
         elif dry_run or clients is None:
             # Direct single-record callers do not need sequence coordination, but still need the
             # same no-client validation on a dry run.
-            (name_claims or GaNameClaimPool()).for_target(target).claim(
+            (name_claims or TargetNameClaimPool()).for_target(target).claim(
                 str(target["registryId"]),
                 str(transformed.record["name"]),
                 transformed.record.get("recordVersion"),
@@ -382,21 +382,21 @@ def _process_record(
                 # The canonical source identity lets client-level name and resolved-record guards
                 # distinguish equal record IDs from different Preview registries.
                 source_record_id=source_claimant_id,
-                # The GA record an earlier run migrated this same source record to, if any. Matched
-                # ahead of the name, so a record renamed in Preview updates the GA record it already
+                # The target record an earlier run migrated this same source record to, if any. Matched
+                # ahead of the name, so a record renamed in Preview updates the target record it already
                 # has instead of being migrated a second time under its new name.
                 known_record_id=(known_record_ids or {}).get(mapping_id, {}).get(outcome.old_record_id or ""),
             )
             outcome.warnings.extend(load_result.warnings)
             outcome.action = load_result.action
             outcome.new_record_id = load_result.new_record_id
-            # Described GA record, captured from the status poll upsert already performs.
-            outcome.ga_record = load_result.record
+            # Described target record, captured from the status poll upsert already performs.
+            outcome.target_record = load_result.record
             if isinstance(load_result.record, dict):
-                outcome.ga_status = load_result.record.get("status")
+                outcome.target_status = load_result.record.get("status")
             if not outcome.new_record_id:
                 raise RuntimeError(
-                    "GA API did not return a recordId, so the required old-to-new ID mapping could not be produced"
+                    "new Registry API did not return a recordId, so the required old-to-new ID mapping could not be produced"
                 )
             if match_source_status:
                 _apply_source_status(outcome, client, str(target["registryId"]))
@@ -426,12 +426,12 @@ def _process_record(
 
 def _apply_source_status(
     outcome: RecordOutcome,
-    client: GaRegistryClient,
+    client: TargetRegistryClient,
     registry_id: str,
 ) -> None:
-    """Put the loaded GA record into the status its Preview record holds, and record the outcome.
+    """Put the loaded target record into the status its Preview record holds, and record the outcome.
 
-    A record that was APPROVED in Preview is invisible to the GA data plane while it sits in DRAFT,
+    A record that was APPROVED in Preview is invisible to the target registry data plane while it sits in DRAFT,
     so this is part of migrating it. Never raises: the record is already loaded and correct, and a
     refused status transition is reported rather than turned into a failed record.
     """
@@ -442,27 +442,27 @@ def _apply_source_status(
         registry_id=registry_id,
         record_id=outcome.new_record_id,
         desired_status=source_status,
-        current_status=str(outcome.ga_status) if outcome.ga_status else None,
+        current_status=str(outcome.target_status) if outcome.target_status else None,
         reason=f"Migrated from Preview record {outcome.old_record_id} in status {source_status}",
     )
     outcome.status_actions = list(result.actions)
     outcome.status_reproducible = result.reproducible
     outcome.status_error = result.error
     if result.achieved:
-        outcome.ga_status = result.achieved
+        outcome.target_status = result.achieved
     if not result.reproducible:
         outcome.warnings.append(
             f"Preview status {source_status} describes the source record's own history and cannot be "
-            "reproduced on a new GA record; it was left in DRAFT."
+            "reproduced on a new target record; it was left in DRAFT."
         )
     elif result.error:
         outcome.warnings.append(
-            f"Could not put the GA record into its Preview status {source_status}: {result.error} "
-            f"(it is {outcome.ga_status or 'unknown'}). The record itself loaded correctly."
+            f"Could not put the target record into its Preview status {source_status}: {result.error} "
+            f"(it is {outcome.target_status or 'unknown'}). The record itself loaded correctly."
         )
     elif result.achieved and result.achieved != source_status:
         outcome.warnings.append(
-            f"GA record is {result.achieved}, not the Preview status {source_status}: the target "
+            f"Target record is {result.achieved}, not the Preview status {source_status}: the target "
             "registry's own approval policy decided the final state."
         )
 
@@ -487,7 +487,7 @@ def _iter_outcomes(
 ) -> Iterator[RecordOutcome]:
     """Run ``worker`` over staged records in parallel while yielding results in input order.
 
-    The per-record cost is almost entirely waiting on the GA API (create, then poll until the
+    The per-record cost is almost entirely waiting on the new Registry API (create, then poll until the
     record settles), so threads -- not processes -- overlap that waiting without extra capacity.
     ``executor.map`` preserves report order. The production worker carries an internal marker that
     asks this helper to pass the staged-input position used to serialize only the duplicate claim;
@@ -577,12 +577,12 @@ def main(argv: list[str] | None = None) -> None:
             "createdAt": started_at,
         },
     )
-    clients = None if dry_run else GaClientPool(settings["api"]["ga"], run_id)
+    clients = None if dry_run else TargetClientPool(settings["api"]["target"], run_id)
     # Shared by every worker in both modes. It orders only the in-memory identity reservation by
-    # staged position; all transformation and GA work remains concurrent. Dry-run uses no client,
+    # staged position; all transformation and target work remains concurrent. Dry-run uses no client,
     # while live clients retain their own identical final pre-write guard.
-    name_claims = GaNameClaimPool()
-    # What every previous live load of these mappings produced: source recordId -> GA recordId. Read
+    name_claims = TargetNameClaimPool()
+    # What every previous live load of these mappings produced: source recordId -> target recordId. Read
     # once up front (it is one small object per mapping) and consulted per record, so a record that
     # was renamed in Preview since it was last migrated is still recognised as the same record.
     known_record_ids = {mapping_id: watermark_state.read_idmap(store, mapping_id) for mapping_id in mapping_by_id}
@@ -608,8 +608,8 @@ def main(argv: list[str] | None = None) -> None:
     # therefore fails every record, and buffering every payload is how the job runs out of memory
     # on the exact run that most needs its report written.
     failure_writers: dict[str, JsonArrayWriter] = {}
-    # Per-mapping side-by-side dumps: Preview record as extracted, the transformed GA payload, and
-    # the GA record as the service describes it after the write. Written in bounded chunks so the
+    # Per-mapping side-by-side dumps: Preview record as extracted, the transformed target payload, and
+    # the target record as the service describes it after the write. Written in bounded chunks so the
     # artifact stays diffable against the extract's dump without buffering everything.
     comparison_writers: dict[str, JsonArrayWriter] = {}
 
@@ -669,7 +669,7 @@ def main(argv: list[str] | None = None) -> None:
         for outcome in _iter_outcomes(staged_records, worker, concurrency=concurrency):
             processed_records += 1
             if processed_records % PROGRESS_EVERY_RECORDS == 0:
-                # Each record is a GA write plus status polling, so a large run is a long quiet
+                # Each record is a target write plus status polling, so a large run is a long quiet
                 # stretch. The staged total is known from the extract manifest, which makes this a
                 # real position rather than just a sign of life.
                 LOGGER.info(
@@ -694,9 +694,9 @@ def main(argv: list[str] | None = None) -> None:
                 summary["sourceStatusCounts"][outcome.source_status or "UNKNOWN"] = (
                     summary["sourceStatusCounts"].get(outcome.source_status or "UNKNOWN", 0) + 1
                 )
-                if outcome.ga_status:
-                    summary["gaStatusCounts"][outcome.ga_status] = (
-                        summary["gaStatusCounts"].get(outcome.ga_status, 0) + 1
+                if outcome.target_status:
+                    summary["targetStatusCounts"][outcome.target_status] = (
+                        summary["targetStatusCounts"].get(outcome.target_status, 0) + 1
                     )
                 if outcome.status_actions:
                     summary["statusesApplied"] = int(summary.get("statusesApplied", 0)) + 1
@@ -720,13 +720,13 @@ def main(argv: list[str] | None = None) -> None:
                         "recordVersion": outcome.record_version,
                         "action": outcome.action,
                         "sourceStatus": outcome.source_status,
-                        "gaStatus": outcome.ga_status,
+                        "targetStatus": outcome.target_status,
                         "statusActions": outcome.status_actions,
                         "statusError": outcome.status_error,
                         "warnings": outcome.warnings,
                         "previewRecord": outcome.preview_record,
                         "transformedRecord": outcome.transformed_record,
-                        "gaRecord": outcome.ga_record,
+                        "targetRecord": outcome.target_record,
                     }
                 )
             else:
@@ -775,7 +775,7 @@ def main(argv: list[str] | None = None) -> None:
                     "recordVersion": outcome.record_version or "",
                     "action": outcome.action or ("failed" if not outcome.succeeded else ""),
                     "status": outcome.status,
-                    "gaStatus": outcome.ga_status or "",
+                    "targetStatus": outcome.target_status or "",
                 }
             )
     finally:
@@ -796,7 +796,7 @@ def main(argv: list[str] | None = None) -> None:
         summaries[mapping_id]["idCrosswalk"] = location
 
     # Before the reconciliation check below, deliberately: every id in here names a record that is
-    # already in the GA registry, and a run that ends in an exception must not leave them unrecorded
+    # already in the target registry, and a run that ends in an exception must not leave them unrecorded
     # -- the next run would then create a second copy of each one.
     _commit_id_maps(store, summaries, crosswalk_rows, run_id=run_id, dry_run=dry_run)
 
@@ -824,7 +824,7 @@ def main(argv: list[str] | None = None) -> None:
     # Commit incremental watermarks. Only for a live run, only for mappings whose records all
     # loaded, and never on an unreconciled run: advancing the watermark after a partial failure
     # would permanently skip the records that failed. A dry run never advances it, because nothing
-    # reached the GA registry.
+    # reached the target registry.
     if reconciliation_error is None:
         _commit_watermarks(
             store,
@@ -884,10 +884,10 @@ def main(argv: list[str] | None = None) -> None:
             store.location(
                 f"reports/run_id={run_id}/extracted-records/"
             ): "Every extracted Preview record, as described by the Preview API",
-            store.location(f"{crosswalk_prefix}/"): "CSV mapping each Preview recordId to its new GA recordId",
+            store.location(f"{crosswalk_prefix}/"): "CSV mapping each Preview recordId to its new target recordId",
             store.location(
                 f"{report_root}/record-comparison/"
-            ): "Per record: Preview record, transformed payload, and the resulting GA record",
+            ): "Per record: Preview record, transformed payload, and the resulting target record",
             store.location(
                 f"{report_root}/failures/"
             ): "Records that failed, with the error and traceback (absent when none failed)",
@@ -943,15 +943,15 @@ def _approval_summary(
     dry_run: bool,
     match_source_status: bool = True,
 ) -> dict[str, Any]:
-    """Reconcile source approval state against GA state for the whole run.
+    """Reconcile source approval state against the target registry state for the whole run.
 
-    GA creates every record in DRAFT, so the load stage drives each record to the status its Preview
+    target creates every record in DRAFT, so the load stage drives each record to the status its Preview
     record holds. This states the result in numbers: how many statuses were applied, how many the
     tool could not reproduce, and any record left in a status other than its source's -- because an
     approved record still sitting in DRAFT is invisible to data-plane search and browsing.
     """
     source_counts: dict[str, int] = {}
-    ga_counts: dict[str, int] = {}
+    target_counts: dict[str, int] = {}
     applied = 0
     not_applied = 0
     stranded_in_draft = 0
@@ -959,8 +959,8 @@ def _approval_summary(
     for summary in summaries.values():
         for status, count in summary.get("sourceStatusCounts", {}).items():
             source_counts[status] = source_counts.get(status, 0) + int(count)
-        for status, count in summary.get("gaStatusCounts", {}).items():
-            ga_counts[status] = ga_counts.get(status, 0) + int(count)
+        for status, count in summary.get("targetStatusCounts", {}).items():
+            target_counts[status] = target_counts.get(status, 0) + int(count)
         applied += int(summary.get("statusesApplied", 0))
         not_applied += int(summary.get("statusesNotApplied", 0))
         stranded_in_draft += int(summary.get("recordsStrandedInDraft", 0))
@@ -987,7 +987,7 @@ def _approval_summary(
     elif not match_source_status:
         note = (
             f"Status matching is off (runtime.load.matchSourceStatus = false), so all {not_draft_at_source} "
-            "record(s) that were past DRAFT in the Preview registry are DRAFT in GA. Data-plane search "
+            "record(s) that were past DRAFT in the Preview registry are DRAFT in the target registry. Data-plane search "
             "and the browsing APIs will not return them until they are submitted for approval."
         )
     elif stranded_in_draft:
@@ -996,9 +996,9 @@ def _approval_summary(
         # Preview is in the target registry but cannot be found in it.
         note = (
             f"{stranded_in_draft} record(s) were past DRAFT in the Preview registry but are DRAFT in "
-            "GA, so data-plane search and the browsing APIs will not return them. They are listed "
-            "per record in record-comparison/ with their sourceStatus, gaStatus and statusError. "
-            "Submit them for approval in GA to finish the migration."
+            "the target registry, so data-plane search and the browsing APIs will not return them. They are listed "
+            "per record in record-comparison/ with their sourceStatus, targetStatus and statusError. "
+            "Submit them for approval in the target registry to finish the migration."
             + (f" {applied} other record(s) did reach their Preview status." if applied else "")
         )
     elif not_applied:
@@ -1013,9 +1013,9 @@ def _approval_summary(
         # Not DRAFT, but not the source status either -- the target registry's approval policy
         # decided a different end state. Worth stating rather than folding into "every check clear".
         note = (
-            f"{mismatched} record(s) hold a GA status other than their Preview status, though none "
+            f"{mismatched} record(s) hold a target status other than their Preview status, though none "
             "are stranded in DRAFT, so all of them are discoverable. The target registry's own "
-            "approval policy decided the final state; see sourceStatus and gaStatus per record in "
+            "approval policy decided the final state; see sourceStatus and targetStatus per record in "
             "record-comparison/."
         )
     elif applied:
@@ -1028,21 +1028,21 @@ def _approval_summary(
         # their source status, which is what a re-run of an already-migrated registry looks like.
         note = (
             f"No status change was needed: {not_draft_at_source} record(s) are past DRAFT at source "
-            "and already hold that status in GA."
+            "and already hold that status in the target registry."
         )
     else:
         note = "Every record was DRAFT in the Preview registry, so no status change was needed."
     return {
         "matchSourceStatus": match_source_status,
         "sourceStatusCounts": source_counts,
-        "gaStatusCounts": ga_counts,
+        "targetStatusCounts": target_counts,
         "statusesApplied": applied,
         "statusesNotApplied": not_applied,
         # Kept under its original name: it is what a reviewer looks for, and it still answers the
-        # same question -- how many records need a human to finish their approval in GA. What
+        # same question -- how many records need a human to finish their approval in the target registry. What
         # changed is how it is derived: a per-record count, not a subtraction of status totals.
         "recordsNeedingResubmission": stranded_in_draft if match_source_status else not_draft_at_source,
-        # Every record whose GA status differs from its Preview status, stranded or not. Reported
+        # Every record whose target status differs from its Preview status, stranded or not. Reported
         # alongside the count above so "discoverable but in a different state" is distinguishable
         # from "invisible", which are two different things to act on.
         "statusMismatched": mismatched,
@@ -1070,7 +1070,7 @@ def _validate_replay_configuration(
     else:
         expected_sha256 = str(declared["sha256"])
         if expected_sha256 != current_sha256:
-            reason = "transform or GA API adapter settings changed after extraction"
+            reason = "transform or new Registry API adapter settings changed after extraction"
 
     matches = reason is None
     if not matches and not allow_drift:
@@ -1085,7 +1085,7 @@ def _validate_replay_configuration(
         )
     return {
         "schemaVersion": 1,
-        "scope": ["transform", "api.ga"],
+        "scope": ["transform", "api.target"],
         "expectedSha256": expected_sha256,
         "currentSha256": current_sha256,
         "matches": matches,
@@ -1175,10 +1175,10 @@ def _initialize_summaries(
             # the complete failure rows, payloads, and tracebacks are streamed separately.
             "failureDetails": [],
             "warningCount": 0,
-            # Source vs GA approval state, counted per mapping. GA creates records in DRAFT, so
+            # Source vs target approval state, counted per mapping. The new version creates records in DRAFT, so
             # these two rarely match and the difference is what still needs doing after the load.
             "sourceStatusCounts": {},
-            "gaStatusCounts": {},
+            "targetStatusCounts": {},
             "statusesApplied": 0,
             "statusesNotApplied": 0,
             # Per-record status outcomes, seeded so every mapping reports them even when zero.
@@ -1220,7 +1220,7 @@ def _commit_watermarks(
     """Promote each mapping's extract candidate to its saved incremental watermark.
 
     Skipped entirely for a dry run, and skipped per mapping when that mapping had any record
-    failure, so the next incremental run re-reads anything that did not make it to GA.
+    failure, so the next incremental run re-reads anything that did not make it to the target registry.
     """
     candidates = {
         str(entry.get("mappingId")): entry.get("candidateWatermark")
@@ -1231,7 +1231,7 @@ def _commit_watermarks(
         candidate = candidates.get(mapping_id)
         if dry_run:
             summary["watermarkCommitted"] = False
-            summary["watermarkSkipReason"] = "dry run: nothing was written to the GA registry"
+            summary["watermarkSkipReason"] = "dry run: nothing was written to the target registry"
             continue
         if not isinstance(candidate, dict):
             summary["watermarkCommitted"] = False
@@ -1276,7 +1276,7 @@ def _commit_id_maps(
 
     Unlike the watermark, this is committed even when records failed, and it records a record that
     was created and then failed to settle. Both follow from what the map is for: the entries name
-    records that exist in the GA registry, and forgetting one does not make the next run re-read it
+    records that exist in the target registry, and forgetting one does not make the next run re-read it
     safely -- it makes the next run create a second copy of it.
 
     Skipped for a dry run, which creates nothing to remember.
@@ -1284,7 +1284,7 @@ def _commit_id_maps(
     for mapping_id, summary in summaries.items():
         if dry_run:
             summary["idMapCommitted"] = False
-            summary["idMapSkipReason"] = "dry run: nothing was written to the GA registry"
+            summary["idMapSkipReason"] = "dry run: nothing was written to the target registry"
             continue
         pairs = {
             str(row["oldRecordId"]): str(row["newRecordId"])
@@ -1308,7 +1308,7 @@ _CROSSWALK_COLUMNS = (
     "oldRecordId",
     "newRecordId",
     # Both names, because they are not always the same string: when two Preview records shared a
-    # name, GA cannot, so the migrated record carries a disambiguated `name`. Anything that looked
+    # name, the new version cannot, so the migrated record carries a disambiguated `name`. Anything that looked
     # records up by the Preview name needs this column to find its record.
     "previewName",
     "name",
@@ -1317,8 +1317,8 @@ _CROSSWALK_COLUMNS = (
     "recordVersion",
     "action",
     "status",
-    # The status the record ended up in, so the crosswalk alone answers "is it live in GA yet".
-    "gaStatus",
+    # The status the record ended up in, so the crosswalk alone answers "is it live in the target registry yet".
+    "targetStatus",
 )
 
 

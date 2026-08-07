@@ -44,13 +44,13 @@ class SdkModelChecks(unittest.TestCase):
         results = preflight.check_sdk_models(["s3", "bedrock-agentcore-control", "agent-registry-control"])
         self.assertEqual(statuses(results, "sdk.serviceModels"), [preflight.PASS])
 
-    def test_missing_ga_model_fails_and_names_the_version_that_has_it(self):
+    def test_missing_target_model_fails_and_names_the_version_that_has_it(self):
         # The expensive case: extract succeeds against Preview, then the load dies on the first
         # create. Half a working SDK has to fail as loudly as none of one.
         results = preflight.check_sdk_models(["s3", "bedrock-agentcore-control"])
         self.assertEqual(statuses(results, "sdk.serviceModels"), [preflight.FAIL])
         self.assertIn("agent-registry-control", results[0].detail)
-        self.assertIn("write GA records", results[0].detail)
+        self.assertIn("write target records", results[0].detail)
         self.assertIn(preflight.MINIMUM_BOTOCORE_VERSION, results[0].remedy)
 
     def test_missing_preview_model_fails(self):
@@ -252,7 +252,7 @@ class RegistryAccessChecks(unittest.TestCase):
         def broken(_endpoint):
             raise RuntimeError("ResourceNotFoundException: registry does not exist")
 
-        results = preflight.check_registry_access([mapping()], side="target", prober=broken, label="GA registry")
+        results = preflight.check_registry_access([mapping()], side="target", prober=broken, label="target registry")
         self.assertEqual([r.status for r in results], [preflight.FAIL])
         self.assertIn("registry id exists", results[0].remedy)
         self.assertIn("ResourceNotFound", results[0].detail)

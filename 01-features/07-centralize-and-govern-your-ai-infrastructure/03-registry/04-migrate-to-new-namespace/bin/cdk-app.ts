@@ -29,7 +29,7 @@ const engineStack = new MigrationEngineStack(app, 'AgentRegistryMigrationEngine'
   terminationProtection: config.engine.terminationProtection,
   config,
   registryMappings,
-  description: 'AWS Agent Registry preview-to-GA migration engine',
+  description: 'AWS Agent Registry preview-to-new-version migration engine',
 });
 Tags.of(engineStack).add('Application', 'AgentRegistryMigration');
 Tags.of(engineStack).add('DeploymentId', config.engine.deploymentId);
@@ -55,8 +55,8 @@ for (const accountId of generatedAccessAccounts(config)) {
     externalId: migrationExternalId(config),
     previewReadActions: config.iam.previewReadActions,
     previewRegistryResources: resources.source,
-    gaWriteActions: config.iam.gaWriteActions,
-    gaRegistryResources: resources.target,
+    targetWriteActions: config.iam.targetWriteActions,
+    targetRegistryResources: resources.target,
     description: `Cross-account Agent Registry migration access for engine ${config.engine.deploymentId}`,
   });
   accessStack.addDependency(engineStack);

@@ -1,7 +1,7 @@
 {
   "name": "aws-agent-registry-migration",
   "version": "0.1.0",
-  "description": "Migrate AWS Agent Registry records from Public Preview to GA, with a report of every record that moved",
+  "description": "Migrate AWS Agent Registry records to the new version of Registry, with a report of every record that moved",
   "license": "Apache-2.0",
   "keywords": [
     "aws",

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Measure what `loadConcurrency` buys, using the real load loop and a simulated GA latency.
+"""Measure what `loadConcurrency` buys, using the real load loop and a simulated target latency.
 
 This is a **simulation, not a field measurement**. It drives the actual concurrency machinery the
 load stage uses (`_iter_outcomes`, the same batching and ordering), but each record's work is a
-sleep standing in for the GA create plus status polling. That is a fair model of the shape of the
+sleep standing in for the target create plus status polling. That is a fair model of the shape of the
 work -- it is network wait, not compute -- and it is honest about what it is not: a real registry's
 throttling, retries and variance.
 
@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
         "--latency-ms",
         type=int,
         default=50,
-        help="simulated per-record GA latency in milliseconds (default 50)",
+        help="simulated per-record target latency in milliseconds (default 50)",
     )
     parser.add_argument(
         "--concurrency",
@@ -109,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"\nOutput was identical across all {len(levels)} concurrency levels "
         f"({', '.join(str(level) for level in levels)}), {options.records} records each. Real runs "
-        "will fall short of these numbers: the GA control plane throttles, and retries cost wall "
+        "will fall short of these numbers: the target control plane throttles, and retries cost wall "
         "time this model does not spend."
     )
     return 0

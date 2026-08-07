@@ -136,7 +136,7 @@ const cases = [
   },
   {
     // check reports the run you are about to make. Without --live forwarded it answered about a dry
-    // run -- "will NOT write to any GA registry" -- for someone who asked about a live one.
+    // run -- "will NOT write to any target registry" -- for someone who asked about a live one.
     name: 'check --live forwards the write decision to the pre-flight',
     args: ['check', '--config', deployed, '--offline', '--live'],
     expect: (call) => call.includes('--live true'),

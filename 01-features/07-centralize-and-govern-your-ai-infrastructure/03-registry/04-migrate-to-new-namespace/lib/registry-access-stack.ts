@@ -10,8 +10,8 @@ export interface RegistryAccessStackProps extends StackProps {
   readonly externalId: string;
   readonly previewReadActions: string[];
   readonly previewRegistryResources: string[];
-  readonly gaWriteActions: string[];
-  readonly gaRegistryResources: string[];
+  readonly targetWriteActions: string[];
+  readonly targetRegistryResources: string[];
 }
 
 export class RegistryAccessStack extends Stack {
@@ -51,25 +51,25 @@ export class RegistryAccessStack extends Stack {
       }
     }
 
-    if (props.gaRegistryResources.length > 0) {
-      if (props.gaWriteActions.length > 0) {
+    if (props.targetRegistryResources.length > 0) {
+      if (props.targetWriteActions.length > 0) {
         this.accessRole.addToPolicy(
           new iam.PolicyStatement({
-            sid: 'WriteGaRegistries',
-            actions: props.gaWriteActions,
-            resources: props.gaRegistryResources,
+            sid: 'WriteTargetRegistries',
+            actions: props.targetWriteActions,
+            resources: props.targetRegistryResources,
           }),
         );
       } else {
         Annotations.of(this).addWarning(
-          'No GA Registry IAM actions were configured; add the finalized GA actions before disabling dry-run loading.',
+          'No target Registry IAM actions were configured; add the finalized actions before disabling dry-run loading.',
         );
       }
     }
 
     const recordWildcardFindings = [
       ...props.previewRegistryResources,
-      ...props.gaRegistryResources,
+      ...props.targetRegistryResources,
     ]
       .filter(
         (resource) =>

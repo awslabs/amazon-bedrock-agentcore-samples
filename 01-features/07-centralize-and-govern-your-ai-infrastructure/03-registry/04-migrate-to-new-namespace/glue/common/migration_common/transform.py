@@ -1,22 +1,22 @@
-"""Preview-to-GA record and registry schema transformation.
+"""Preview-to-new-version record and registry schema transformation.
 
 This module owns every breaking-change mapping between the Public Preview shape and the
-July 2026 GA contract:
+July 2026 target API contract:
 
 * the Preview ``descriptors`` discriminated union (``agent``/``mcp``/``agentSkills``/
-  ``custom``) becomes a GA struct-dict keyed by a single granular primary descriptor
+  ``custom``) becomes a target struct-dict keyed by a single granular primary descriptor
   (``a2aAgentCard``/``mcpServer``/``agentSkillsDefinition``/``custom``), with
   supplementary descriptors moved under the primary's ``additionalData``;
 * ``inlineContent`` becomes ``data`` and the schema/protocol version fields collapse to
   ``dataSchemaVersion``;
 * the single top-level ``synchronizationConfiguration`` becomes a per-descriptor
   ``source.fromUrl``;
-* the Preview record's name is carried over as the GA ``name`` -- the new required dedup key --
-  and also becomes GA ``displayName``. GA accepts the same name shape the Preview API enforces,
+* the Preview record's name is carried over as the target registry ``name`` -- the new required dedup key --
+  and also becomes the target ``displayName``. The service accepts the same name shape the Preview API enforces,
   so the two stay identical; only an unusable or absent name falls back to a generated one.
 
 The Preview reader is lenient (it accepts several equivalent input spellings), while the
-GA writer is strict: ``_validate_ga_record`` enforces the "exactly one valid primary per
+target writer is strict: ``_validate_target_record`` enforces the "exactly one valid primary per
 recordType" rule before any record leaves this module.
 """
 
@@ -30,27 +30,27 @@ from typing import Any
 
 
 class TransformError(ValueError):
-    """Raised when a Preview record cannot be mapped onto a valid GA record."""
+    """Raised when a Preview record cannot be mapped onto a valid target record."""
 
 
 @dataclass(frozen=True)
 class TransformResult:
-    """A transformed GA record plus non-fatal warnings and the source record id."""
+    """A transformed target record plus non-fatal warnings and the source record id."""
 
     record: dict[str, Any]
     warnings: list[str]
     old_record_id: str | None
-    # The status the record had in the Preview registry. Not part of the GA payload -- status is
+    # The status the record had in the Preview registry. Not part of the target registry payload -- status is
     # server-managed and every created record starts at DRAFT -- but carried here so the load stage
     # can drive the new record to the same status, and so the two can be reconciled in the report.
     source_status: str | None = None
-    # The name the record had in Preview, kept alongside the GA name for the crosswalk even when
+    # The name the record had in Preview, kept alongside the target name for the crosswalk even when
     # the two are identical.
     preview_name: str | None = None
 
 
-# GA primary descriptor keys. ``agentSkillsMd`` is a Preview-side selection result only: the live
-# GA service does not accept it as a primary descriptor, so a markdown-only skill is normalized onto
+# Target primary descriptor keys. ``agentSkillsMd`` is a Preview-side selection result only: the live
+# new service does not accept it as a primary descriptor, so a markdown-only skill is normalized onto
 # ``agentSkillsDefinition`` before it leaves this module (see
 # :func:`_markdown_skill_to_definition`). It stays in this tuple because the selection logic below
 # still needs to recognise the Preview shape by that name.
@@ -64,7 +64,7 @@ _PRIMARY_KEYS = (
 # Preview discriminated-union variant keys. ``a2a`` is an accepted spelling of ``agent``.
 _VARIANT_KEYS = ("agent", "a2a", "mcp", "agentSkills", "custom")
 # Within each Preview variant, the primary descriptor may be spelled in more than one way.
-# Each entry maps an accepted Preview alias to its canonical GA primary key.
+# Each entry maps an accepted Preview alias to its canonical target primary key.
 _PRIMARY_ALIASES_BY_VARIANT: dict[str, tuple[tuple[str, str], ...]] = {
     "agent": (
         ("a2aAgentCard", "a2aAgentCard"),
@@ -95,7 +95,7 @@ _PRIMARY_SOURCE_ALIASES = {
     alias: canonical for aliases in _PRIMARY_ALIASES_BY_VARIANT.values() for alias, canonical in aliases
 }
 _PRIMARY_SOURCE_KEYS = tuple(_PRIMARY_SOURCE_ALIASES)
-# Supplementary (non-primary) descriptors and the GA ``additionalData`` child they map to.
+# Supplementary (non-primary) descriptors and the target registry ``additionalData`` child they map to.
 _SUPPLEMENTARY_ALIASES = {
     "tools": "tools",
     "skillsMd": "skillMd",
@@ -107,25 +107,25 @@ _ALLOWED_ADDITIONAL_DATA = {
     "agentSkillsDefinition": {"skillMd"},
 }
 _SOURCE_SUPPORTED_DESCRIPTORS = {"a2aAgentCard", "mcpServer", "agentSkillsMd", "skillMd"}
-# What the GA registry's customJWTAuthorizer actually models. Preview registries carry
+# What the target registry's customJWTAuthorizer actually models. Preview registries carry
 # ``bedrock-agentcore``'s authorizer shape, which is shared with Gateway and Runtime and therefore
-# has members GA's registry API does not (advertisedScopeMapping, allowedWorkloadConfiguration,
+# has members the target registry's registry API does not (advertisedScopeMapping, allowedWorkloadConfiguration,
 # privateEndpoint, privateEndpointOverrides). Anything outside this set is dropped with a warning
 # rather than copied into a payload the service would refuse.
-_GA_JWT_AUTHORIZER_FIELDS = (
+_TARGET_JWT_AUTHORIZER_FIELDS = (
     "discoveryUrl",
     "allowedAudience",
     "allowedClients",
     "allowedScopes",
     "customClaims",
 )
-# GA record names follow the same shape the Preview API enforces, so a preview name is normally
+# Target record names follow the same shape the Preview API enforces, so a preview name is normally
 # usable as-is. Kept here as the single definition of what may be carried over unchanged.
-_GA_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_\-./]*$")
-_GA_NAME_MAX_LENGTH = 255
+_TARGET_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_\-./]*$")
+_TARGET_NAME_MAX_LENGTH = 255
 # Source statuses the load stage can put a migrated record into. The rest (CREATING, UPDATING,
 # CREATE_FAILED, UPDATE_FAILED) are transient or describe a failed operation on the source record,
-# so they say nothing a new GA record could be set to.
+# so they say nothing a new target record could be set to.
 _REPRODUCIBLE_SOURCE_STATUSES = frozenset({"DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "DEPRECATED"})
 
 _SERVER_MANAGED_FIELDS = {
@@ -171,10 +171,10 @@ _DESCRIPTOR_CONTROL_FIELDS = {
 
 
 class RecordTransformer:
-    """Maps a single Preview registry record onto a valid GA registry record."""
+    """Maps a single Preview registry record onto a valid target registry record."""
 
     def __init__(self, transform_config: dict[str, Any]) -> None:
-        # Only used for records whose own name cannot be carried over (absent, or not a shape GA
+        # Only used for records whose own name cannot be carried over (absent, or not a shape the service
         # accepts). A migrated record normally keeps the name it had in the Preview registry.
         configured_prefix = transform_config.get(
             "namePrefix",
@@ -189,12 +189,12 @@ class RecordTransformer:
         if unsupported_passthrough:
             raise TransformError(
                 "transform.passthroughFields contains fields that are not supported "
-                "end-to-end by the GA create/update contract: " + ", ".join(unsupported_passthrough)
+                "end-to-end by the target create/update contract: " + ", ".join(unsupported_passthrough)
             )
         self._passthrough_fields = configured_passthrough
 
     def transform(self, preview_record: dict[str, Any], context: dict[str, Any]) -> TransformResult:
-        """Transform one Preview record into a validated GA record plus warnings."""
+        """Transform one Preview record into a validated target record plus warnings."""
         if not isinstance(preview_record, dict):
             raise TransformError("Preview record must be an object")
         warnings: list[str] = []
@@ -216,7 +216,7 @@ class RecordTransformer:
 
         if _optional_text(preview_record.get("identifier")):
             warnings.append(
-                "Preview identifier was not carried over: the GA dedup key is name "
+                "Preview identifier was not carried over: the target dedup key is name "
                 "(+ recordVersion), which takes the source record's name."
             )
         name = self._resolve_name(preview_record, context, old_record_id, warnings)
@@ -241,7 +241,7 @@ class RecordTransformer:
         if ignored:
             warnings.append(f"Ignored unmapped preview fields: {', '.join(ignored)}")
 
-        # Approval state is not part of the create payload -- GA creates every record in DRAFT -- so
+        # Approval state is not part of the create payload -- target creates every record in DRAFT -- so
         # it travels on the result for the load stage to reproduce through the status APIs. Warn only
         # about statuses no new record can be put into, since those describe what happened to the
         # *source* record rather than a state a migrated record could hold.
@@ -249,10 +249,10 @@ class RecordTransformer:
         if source_status and source_status.upper() not in _REPRODUCIBLE_SOURCE_STATUSES:
             warnings.append(
                 f"Source record was {source_status}, which describes that record's own history and "
-                "cannot be reproduced on a newly created GA record; it will be left in DRAFT."
+                "cannot be reproduced on a newly created target record; it will be left in DRAFT."
             )
 
-        _validate_ga_record(result)
+        _validate_target_record(result)
         return TransformResult(
             record=result,
             warnings=warnings,
@@ -277,7 +277,7 @@ class RecordTransformer:
         inherited_source: Any,
         warnings: list[str],
     ) -> dict[str, Any]:
-        """Build the GA primary descriptor and merge supplementary ``additionalData`` children."""
+        """Build the target primary descriptor and merge supplementary ``additionalData`` children."""
         primary_descriptor = _transform_descriptor(primary_value, inherited_source, primary_key, warnings)
         additional_data = _collect_additional_data(
             descriptor_container, primary_key, primary_value, inherited_source, warnings
@@ -300,7 +300,7 @@ class RecordTransformer:
         if inherited_source not in (None, {}) and not _contains_source(primary_descriptor):
             warnings.append(
                 "Preview synchronizationConfiguration could not be represented because the "
-                f"GA {primary_key} descriptor shape does not support source; it was omitted."
+                f"Target {primary_key} descriptor shape does not support source; it was omitted."
             )
         return primary_descriptor
 
@@ -310,9 +310,9 @@ class RecordTransformer:
         old_record_id: str,
         warnings: list[str],
     ) -> str:
-        """Derive the GA ``displayName`` from the Preview ``name``, with a bounded fallback.
+        """Derive the target registry ``displayName`` from the Preview ``name``, with a bounded fallback.
 
-        The Preview ``name`` wins over a Preview ``displayName`` on purpose: GA's ``name`` is the
+        The Preview ``name`` wins over a Preview ``displayName`` on purpose: the target registry's ``name`` is the
         dedup key and what records are looked up by, and keeping the two identical is what makes a
         migrated record recognisable. But a record that carried its own, different ``displayName``
         is losing it, so that is now said out loud -- it used to be dropped silently, and a
@@ -326,14 +326,14 @@ class RecordTransformer:
             warnings.append("Preview record had no name; a deterministic fallback displayName was generated.")
         elif preview_name and preview_display_name and preview_display_name != preview_name:
             warnings.append(
-                f"Preview displayName {preview_display_name!r} was not carried over: the GA "
+                f"Preview displayName {preview_display_name!r} was not carried over: the target registry "
                 f"displayName is the record's name ({preview_name!r}), so the two stay identical. "
-                "Set the GA displayName afterwards if the distinct label matters."
+                "Set the target registry displayName afterwards if the distinct label matters."
             )
         return display_name[:255]
 
     def _record_type(self, primary_key: str, preview_variant: str | None) -> str:
-        """Infer the GA ``recordType`` from the Preview variant, then the primary key."""
+        """Infer the target registry ``recordType`` from the Preview variant, then the primary key."""
         if preview_variant in {"agent", "a2a"}:
             return "AGENT"
         if preview_variant == "mcp":
@@ -357,21 +357,21 @@ class RecordTransformer:
         old_record_id: str,
         warnings: list[str],
     ) -> str:
-        """Return the GA ``name``: the source record's own name, carried over unchanged.
+        """Return the target registry ``name``: the source record's own name, carried over unchanged.
 
-        ``name`` is the GA dedup key and the thing you filter and look records up by, so it has to
+        ``name`` is the target dedup key and the thing you filter and look records up by, so it has to
         stay recognisable. The Preview API already constrains record names to
-        ``[a-zA-Z0-9][a-zA-Z0-9_\\-./]*`` within 255 characters -- the same shape GA accepts -- so a
+        ``[a-zA-Z0-9][a-zA-Z0-9_\\-./]*`` within 255 characters -- the same shape the service accepts -- so a
         preview name is normally usable verbatim, and that is what happens here.
 
         Two fallbacks, each warned about because the result is no longer identical to the source:
 
-        * a name that does not fit the GA shape (possible for records created through older APIs)
+        * a name that does not fit the target shape (possible for records created through older APIs)
           is sanitised, with a short digest appended so two different names cannot sanitise to one;
         * a record with no name at all gets the deterministic ``<prefix>-<digest>`` form.
 
-        Preview did not require names to be unique within a registry and GA does; a name shared with
-        another source record is not resolved here -- the load stage's GA client refuses the second
+        Preview did not require names to be unique within a registry and the target registry does; a name shared with
+        another source record is not resolved here -- the load stage's target client refuses the second
         claimant rather than silently overwriting the first, and that failure is reported per record.
         """
         preview_name = _optional_text(preview_record.get("name"))
@@ -382,21 +382,21 @@ class RecordTransformer:
             )
             return self._generated_name(context, old_record_id)
 
-        if _GA_NAME_PATTERN.match(preview_name) and len(preview_name) <= _GA_NAME_MAX_LENGTH:
+        if _TARGET_NAME_PATTERN.match(preview_name) and len(preview_name) <= _TARGET_NAME_MAX_LENGTH:
             return preview_name
 
         sanitized = _sanitize_name(preview_name)
         if not sanitized:
             warnings.append(
-                f"Preview name {preview_name!r} contains no characters GA accepts in a name; "
+                f"Preview name {preview_name!r} contains no characters the service accepts in a name; "
                 "a deterministic name was generated instead."
             )
             return self._generated_name(context, old_record_id)
-        # The digest keeps two different source names from collapsing onto one GA name.
+        # The digest keeps two different source names from collapsing onto one target name.
         suffix = hashlib.sha256(preview_name.encode("utf-8")).hexdigest()[:8]
-        final = f"{sanitized[: _GA_NAME_MAX_LENGTH - len(suffix) - 1]}-{suffix}"
+        final = f"{sanitized[: _TARGET_NAME_MAX_LENGTH - len(suffix) - 1]}-{suffix}"
         warnings.append(
-            f"Preview name {preview_name!r} is not a valid GA name, so it was migrated as "
+            f"Preview name {preview_name!r} is not a valid target name, so it was migrated as "
             f"{final!r}. Look records up by that name, or rename the source record."
         )
         return final
@@ -430,7 +430,7 @@ def transform_registry_configuration(
     warnings: list[str] | None = None,
     source_registry_id: str | None = None,
 ) -> dict[str, Any]:
-    """Builds a final-GA CreateRegistry payload from a Preview Registry response.
+    """Builds a final target CreateRegistry payload from a Preview Registry response.
 
     ``warnings`` collects anything about the derived payload a person has to decide on before
     applying it -- a preview-only authorizer field that had to be dropped, or an audience that
@@ -483,7 +483,7 @@ def transform_registry_configuration(
             approval["autoApprovalRules"] = ["APPROVE_ALL"] if auto_approval is True else []
         rules = approval.get("autoApprovalRules", [])
         if not isinstance(rules, list) or any(rule != "APPROVE_ALL" for rule in rules):
-            raise TransformError("Only the APPROVE_ALL auto-approval rule is supported at GA")
+            raise TransformError("Only the APPROVE_ALL auto-approval rule is supported in the new version")
         result["approvalConfiguration"] = approval
 
     tags = preview_registry.get("tags")
@@ -500,17 +500,17 @@ def _transform_authorizer_configuration(
     source_registry_id: str | None,
     warnings: list[str],
 ) -> dict[str, Any]:
-    """Project a Preview registry authorizer configuration onto the GA shape.
+    """Project a Preview registry authorizer configuration onto the target shape.
 
     The two shapes are not the same, which a straight copy hid. Preview registries share
     ``bedrock-agentcore``'s authorizer structure with Gateway and Runtime, so a preview
-    ``customJWTAuthorizer`` can carry fields the GA registry API has no member for
+    ``customJWTAuthorizer`` can carry fields the target registry API has no member for
     (``advertisedScopeMapping``, ``allowedWorkloadConfiguration``, the private-endpoint fields).
-    Copying those through produces a payload the GA service rejects, so they are dropped and named
+    Copying those through produces a payload the new Registry service rejects, so they are dropped and named
     -- dropped because there is nowhere to put them, named because a scope mapping or a workload
     restriction is an access-control decision and losing one silently is the worst outcome here.
 
-    What survives is only what GA models: ``discoveryUrl``, ``allowedAudience``, ``allowedClients``,
+    What survives is only whin the new version models: ``discoveryUrl``, ``allowedAudience``, ``allowedClients``,
     ``allowedScopes`` and ``customClaims``.
     """
     if not isinstance(value, dict):
@@ -518,7 +518,8 @@ def _transform_authorizer_configuration(
     unsupported_variants = sorted(set(value) - {"customJWTAuthorizer"})
     if unsupported_variants:
         raise TransformError(
-            "authorizerConfiguration supports only customJWTAuthorizer at GA; found: " + ", ".join(unsupported_variants)
+            "authorizerConfiguration supports only customJWTAuthorizer in the new version; found: "
+            + ", ".join(unsupported_variants)
         )
     jwt_value = value.get("customJWTAuthorizer")
     if jwt_value is None:
@@ -528,13 +529,13 @@ def _transform_authorizer_configuration(
 
     jwt: dict[str, Any] = {
         key: copy.deepcopy(jwt_value[key])
-        for key in _GA_JWT_AUTHORIZER_FIELDS
+        for key in _TARGET_JWT_AUTHORIZER_FIELDS
         if key in jwt_value and jwt_value[key] is not None
     }
-    dropped = sorted(str(key) for key in jwt_value if key not in _GA_JWT_AUTHORIZER_FIELDS)
+    dropped = sorted(str(key) for key in jwt_value if key not in _TARGET_JWT_AUTHORIZER_FIELDS)
     if dropped:
         warnings.append(
-            "Dropped authorizer field(s) the GA registry API does not accept: "
+            "Dropped authorizer field(s) the target registry API does not accept: "
             + ", ".join(dropped)
             + ". They exist on the Preview shape because it is shared with Gateway and Runtime. "
             "Re-apply the equivalent access control by hand if you relied on them."
@@ -555,7 +556,7 @@ def _warn_on_stale_registry_references(
 
     A registry's own endpoint is a legitimate audience, so an ``allowedAudience`` entry like
     ``https://bedrock-agentcore.us-west-2.amazonaws.com/registry/<id>/mcp`` is a value pointing at
-    the registry being migrated away from. It cannot be corrected here: the GA registry does not
+    the registry being migrated away from. It cannot be corrected here: the target registry does not
     exist yet, so its id is not knowable until the ``CreateRegistry`` this payload feeds has
     returned. Rewriting it to a guess would be worse than leaving it -- an audience that validates
     tokens against the wrong resource is an authorization bug, not a cosmetic one.
@@ -573,10 +574,10 @@ def _warn_on_stale_registry_references(
     if not stale:
         return
     warnings.append(
-        f"Authorizer value(s) name the Preview registry {source_registry_id}, which the GA "
+        f"Authorizer value(s) name the Preview registry {source_registry_id}, which the target registry "
         "registry replaces: "
         + "; ".join(sorted(stale))
-        + ". The GA registry id is only known once CreateRegistry has run, so these cannot be "
+        + ". The target registry id is only known once CreateRegistry has run, so these cannot be "
         "corrected here. Create the registry, then update the authorizer with the new id "
         "(UpdateRegistry) before pointing clients at it."
     )
@@ -597,7 +598,7 @@ def _select_primary_descriptor(descriptors: Any) -> tuple[str, Any, dict[str, An
     """Locate the single Preview primary descriptor across the accepted input shapes.
 
     Tries, in order: a discriminated-union variant key, a ``recordType`` discriminator,
-    then a flat search for a known primary/markdown key. Returns the canonical GA primary
+    then a flat search for a known primary/markdown key. Returns the canonical target primary
     key, its value, and the container the supplementary descriptors were found in.
     """
     if not isinstance(descriptors, dict) or not descriptors:
@@ -697,7 +698,7 @@ def _collect_additional_data(
     inherited_source: Any,
     warnings: list[str],
 ) -> dict[str, Any]:
-    """Collect and transform supplementary descriptors into GA ``additionalData`` children."""
+    """Collect and transform supplementary descriptors into the target registry ``additionalData`` children."""
     allowed = _ALLOWED_ADDITIONAL_DATA.get(primary_key, set())
     collected: dict[str, Any] = {}
     if isinstance(primary_value, dict):
@@ -709,7 +710,7 @@ def _collect_additional_data(
                 output_key = _SUPPLEMENTARY_ALIASES.get(str(key), str(key))
                 if output_key not in allowed:
                     raise TransformError(
-                        f"GA primary descriptor {primary_key!r} does not support additionalData.{output_key}"
+                        f"Target primary descriptor {primary_key!r} does not support additionalData.{output_key}"
                     )
                 if output_key in collected:
                     warnings.append(
@@ -731,7 +732,7 @@ def _collect_additional_data(
         if output_key not in allowed:
             if value != primary_value:
                 raise TransformError(
-                    f"GA primary descriptor {primary_key!r} does not support additionalData.{output_key}"
+                    f"Target primary descriptor {primary_key!r} does not support additionalData.{output_key}"
                 )
             continue
         if output_key in collected:
@@ -749,9 +750,9 @@ def _markdown_skill_to_definition(
     descriptor: dict[str, Any],
     warnings: list[str],
 ) -> tuple[str, dict[str, Any]]:
-    """Normalize a markdown-only skill onto the GA ``agentSkillsDefinition`` primary.
+    """Normalize a markdown-only skill onto the target registry ``agentSkillsDefinition`` primary.
 
-    GA has no ``agentSkillsMd`` primary descriptor. The live service answers a record that uses one
+    the new version has no ``agentSkillsMd`` primary descriptor. The live service answers a record that uses one
     with "Exactly one valid descriptor is allowed for record type SKILL. Valid descriptors:
     [agentSkillsDefinition, custom]", so the Preview shape has to be carried by one of those two.
 
@@ -761,7 +762,7 @@ def _markdown_skill_to_definition(
     under ``additionalData.skillMd`` and carrying no ``data`` of its own -- the same place a skill that
     *has* a definition already puts its Markdown, which keeps one shape for both kinds of skill.
 
-    ``source`` stays on the ``skillMd`` child, where the GA contract allows it, rather than moving to
+    ``source`` stays on the ``skillMd`` child, where the target API contract allows it, rather than moving to
     the definition primary, which does not support it.
     """
     child = {key: value for key, value in descriptor.items() if key != "additionalData"}
@@ -775,7 +776,7 @@ def _markdown_skill_to_definition(
             definition["additionalData"].setdefault(key, value)
     warnings.append(
         "Preview markdown-only skill was migrated as an agentSkillsDefinition carrying the Markdown "
-        "under additionalData.skillMd, because GA accepts no agentSkillsMd descriptor."
+        "under additionalData.skillMd, because the service accepts no agentSkillsMd descriptor."
     )
     return "agentSkillsDefinition", definition
 
@@ -786,7 +787,7 @@ def _transform_descriptor(
     descriptor_key: str,
     warnings: list[str],
 ) -> dict[str, Any]:
-    """Map one Preview descriptor to GA: ``inlineContent``->``data``, version collapse, source."""
+    """Map one Preview descriptor to the target registry: ``inlineContent``->``data``, version collapse, source."""
     if isinstance(value, str):
         result: dict[str, Any] = {"data": value}
         if inherited_source not in (None, {}) and descriptor_key in _SOURCE_SUPPORTED_DESCRIPTORS:
@@ -825,7 +826,7 @@ def _transform_descriptor(
     if descriptor_source not in (None, {}):
         if descriptor_key not in _SOURCE_SUPPORTED_DESCRIPTORS:
             if explicit_source is not None:
-                raise TransformError(f"GA descriptor {descriptor_key!r} does not support source")
+                raise TransformError(f"Target descriptor {descriptor_key!r} does not support source")
         else:
             result["source"] = _normalize_source(descriptor_source, warnings)
 
@@ -833,18 +834,18 @@ def _transform_descriptor(
     if ignored:
         warnings.append(f"Ignored unmapped fields on {descriptor_key} descriptor: {', '.join(ignored)}")
     if not result:
-        raise TransformError(f"Descriptor {descriptor_key!r} produced an empty GA payload")
+        raise TransformError(f"Descriptor {descriptor_key!r} produced an empty target payload")
     return result
 
 
 def _normalize_source(value: Any, warnings: list[str]) -> dict[str, Any]:
-    """Normalize a Preview sync config to a GA ``{"fromUrl": {...}}`` source (URL-only at GA)."""
+    """Normalize a Preview sync config to a target ``{"fromUrl": {...}}`` source (URL-only in the new version)."""
     if value in (None, {}):
         raise TransformError("Descriptor source cannot be empty")
     if not isinstance(value, dict):
         raise TransformError("Descriptor source/synchronizationConfiguration must be an object")
     if value.get("fromAws") is not None:
-        raise TransformError("source.fromAws is post-GA and cannot be migrated by this engine")
+        raise TransformError("source.fromAws is created in the new version and cannot be migrated by this engine")
 
     if isinstance(value.get("fromUrl"), dict):
         source_value = value["fromUrl"]
@@ -853,7 +854,7 @@ def _normalize_source(value: Any, warnings: list[str]) -> dict[str, Any]:
     elif value.get("url"):
         source_value = value
     else:
-        raise TransformError("Only URL-backed descriptor sources are supported at GA")
+        raise TransformError("Only URL-backed descriptor sources are supported in the new version")
 
     if not source_value.get("url"):
         raise TransformError("source.fromUrl.url is required")
@@ -883,7 +884,7 @@ def _normalize_source(value: Any, warnings: list[str]) -> dict[str, Any]:
         warnings.append(f"Ignored unsupported source fields: {', '.join(ignored)}")
     if any(key in source_value or key in value for key in ("syncMode", "synchronizationMode")):
         warnings.append(
-            "Preview synchronization mode was omitted because the GA source.fromUrl shape does not contain syncMode."
+            "Preview synchronization mode was omitted because the target registry source.fromUrl shape does not contain syncMode."
         )
     return {"fromUrl": from_url}
 
@@ -953,25 +954,25 @@ def _normalize_variant(value: str) -> str | None:
     }.get(normalized)
 
 
-def _validate_ga_record(record: dict[str, Any]) -> None:
-    """Enforce the GA contract: valid name, and exactly one primary valid for the recordType."""
+def _validate_target_record(record: dict[str, Any]) -> None:
+    """Enforce the target API contract: valid name, and exactly one primary valid for the recordType."""
     for field in ("name", "recordType", "descriptors"):
         if record.get(field) in (None, "", {}):
             raise TransformError(f"Transformed record is missing required field {field}")
     name = str(record["name"])
     # The same pattern and bound `_resolve_name` produced the name against. Reusing them rather than
     # restating them here: this used to carry its own copy of the character class, so a change to
-    # the GA name contract had to be made in two places or the producer and the validator disagreed.
-    if len(name) > _GA_NAME_MAX_LENGTH or not _GA_NAME_PATTERN.match(name):
-        raise TransformError("Transformed record name does not satisfy the GA name contract")
+    # the target name contract had to be made in two places or the producer and the validator disagreed.
+    if len(name) > _TARGET_NAME_MAX_LENGTH or not _TARGET_NAME_PATTERN.match(name):
+        raise TransformError("Transformed record name does not satisfy the target name contract")
 
     descriptors = record["descriptors"]
     if not isinstance(descriptors, dict) or len(descriptors) != 1:
         raise TransformError("Transformed record must contain exactly one primary descriptor")
     primary_key = next(iter(descriptors))
     # Deliberately matches _FINAL_PRIMARY_RECORD_TYPES in registry_api.py. `agentSkillsMd` used to be
-    # listed for SKILL, which the live GA service refuses as a primary descriptor -- so this, the
-    # looser of the two validators, would have passed a body `validate_ga_request` then rejected.
+    # listed for SKILL, which the live service refuses as a primary descriptor -- so this, the
+    # looser of the two validators, would have passed a body `validate_target_request` then rejected.
     # Unreachable in practice (`_markdown_skill_to_definition` normalizes it away first), but a
     # permission that only holds because of ordering elsewhere is one worth not granting.
     allowed_primaries = {
@@ -982,36 +983,36 @@ def _validate_ga_record(record: dict[str, Any]) -> None:
     }
     record_type = str(record["recordType"])
     if record_type not in allowed_primaries:
-        raise TransformError(f"Unsupported GA recordType: {record_type}")
+        raise TransformError(f"Unsupported target recordType: {record_type}")
     if primary_key not in allowed_primaries[record_type]:
-        raise TransformError(f"GA primary descriptor {primary_key!r} is invalid for recordType {record_type!r}")
+        raise TransformError(f"Target primary descriptor {primary_key!r} is invalid for recordType {record_type!r}")
     _validate_source_placement(primary_key, descriptors[primary_key])
     if _contains_key(record, "syncMode") or _contains_key(record, "synchronizationMode"):
-        raise TransformError("Transformed GA record must not contain a synchronization mode")
+        raise TransformError("Transformed target record must not contain a synchronization mode")
 
 
 def _validate_source_placement(primary_key: str, descriptor: Any) -> None:
-    """Ensure ``source`` and ``additionalData`` appear only where the GA contract allows."""
+    """Ensure ``source`` and ``additionalData`` appear only where the target API contract allows."""
     if not isinstance(descriptor, dict):
-        raise TransformError(f"GA primary descriptor {primary_key!r} must be an object")
+        raise TransformError(f"Target primary descriptor {primary_key!r} must be an object")
     if "source" in descriptor and primary_key not in _SOURCE_SUPPORTED_DESCRIPTORS:
-        raise TransformError(f"GA descriptor {primary_key!r} does not support source")
+        raise TransformError(f"Target descriptor {primary_key!r} does not support source")
     additional = descriptor.get("additionalData")
     if additional is None:
         return
     if not isinstance(additional, dict):
-        raise TransformError("GA descriptor additionalData must be an object")
+        raise TransformError("Target descriptor additionalData must be an object")
     allowed = _ALLOWED_ADDITIONAL_DATA.get(primary_key, set())
     unsupported = set(additional) - allowed
     if unsupported:
         raise TransformError(
-            f"GA descriptor {primary_key!r} has unsupported additionalData keys: " + ", ".join(sorted(unsupported))
+            f"Target descriptor {primary_key!r} has unsupported additionalData keys: " + ", ".join(sorted(unsupported))
         )
     for key, value in additional.items():
         if not isinstance(value, dict):
-            raise TransformError(f"GA additionalData.{key} must be an object")
+            raise TransformError(f"Target additionalData.{key} must be an object")
         if "source" in value and key not in _SOURCE_SUPPORTED_DESCRIPTORS:
-            raise TransformError(f"GA additionalData.{key} does not support source")
+            raise TransformError(f"Target additionalData.{key} does not support source")
 
 
 def _contains_source(value: Any) -> bool:
@@ -1038,7 +1039,7 @@ def _name_part(value: Any) -> str:
 
 
 def _sanitize_name(value: str) -> str:
-    """Coerce a string into the GA record-name shape, or return '' when nothing usable remains."""
+    """Coerce a string into the target record-name shape, or return '' when nothing usable remains."""
     cleaned = re.sub(r"[^A-Za-z0-9._/-]", "-", value).strip("-./")
     while cleaned and not cleaned[0].isalnum():
         cleaned = cleaned[1:]

@@ -25,11 +25,11 @@ sys.path.insert(0, os.path.dirname(__file__))
 from migration_common import __main__ as engine
 from migration_common.jobs import extract as extract_job
 from migration_common.jobs import transform_load as load_job
-from test_jobs_end_to_end import FakeGaClient, FakePreviewClient, preview_record
+from test_jobs_end_to_end import FakePreviewClient, FakeTargetClient, preview_record
 
 RUN_ID = "run-local-0001"
 SOURCE = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-preview"}
-TARGET = {"accountId": "111122223333", "region": "us-west-2", "registryId": "reg-ga"}
+TARGET = {"accountId": "111122223333", "region": "us-west-2", "registryId": "reg-new"}
 
 
 class _NoAws:
@@ -49,7 +49,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         # anything that module's last test left behind is still set. reset() clears all of it; this
         # used to clear three of the nine attributes and passed only by coincidence.
         FakePreviewClient.reset()
-        FakeGaClient.reset()
+        FakeTargetClient.reset()
         FakePreviewClient.records = [
             preview_record(1, updated_at="2026-07-01T10:00:00Z"),
             preview_record(2, updated_at="2026-07-02T10:00:00Z"),
@@ -65,7 +65,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         for module in (extract_job, load_job):
             self._patch(module, "invoker_for_endpoint", lambda endpoint, run_id, purpose: "invoker")
         self._patch(extract_job, "PreviewRegistryClient", FakePreviewClient)
-        self._patch(load_job, "GaRegistryClient", FakeGaClient)
+        self._patch(load_job, "TargetRegistryClient", FakeTargetClient)
 
     def _patch(self, module, name: str, value) -> None:
         original = getattr(module, name)
@@ -132,7 +132,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         self.assertEqual(summary["status"], "SUCCEEDED")
         self.assertFalse(summary["dryRun"])
         self.assertEqual(summary["registries"][0]["created"], 2)
-        self.assertEqual(len(FakeGaClient.created), 2)
+        self.assertEqual(len(FakeTargetClient.created), 2)
 
         # Artifact locations are filesystem paths a reader can open, not s3:// URIs.
         for location in summary["artifacts"]:
@@ -142,10 +142,10 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         crosswalk = (self._attempt_root() / "id-crosswalk/mapping=map-a.csv").read_text(encoding="utf-8")
         rows = list(csv.DictReader(crosswalk.splitlines()))
         self.assertEqual(
-            [(row["oldRecordId"], row["newRecordId"]) for row in rows], [("rec-1", "ga-1"), ("rec-2", "ga-2")]
+            [(row["oldRecordId"], row["newRecordId"]) for row in rows], [("rec-1", "new-1"), ("rec-2", "new-2")]
         )
 
-    def test_a_dry_run_writes_reports_and_no_ga_records(self):
+    def test_a_dry_run_writes_reports_and_no_target_records(self):
         extract_job.main(self._arguments(dry_run=True))
         load_job.main(self._arguments(dry_run=True))
 
@@ -153,7 +153,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         self.assertTrue(summary["dryRun"])
         self.assertEqual(summary["registries"][0]["dryRun"], 2)
         self.assertEqual(summary["registries"][0]["created"], 0)
-        self.assertEqual(FakeGaClient.created, [])
+        self.assertEqual(FakeTargetClient.created, [])
 
     def test_the_replay_fingerprint_still_guards_a_local_run(self):
         """The adapter is built locally, so the guard has to work off the same document.
@@ -179,7 +179,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
                     RUN_ID,
                 ]
             )
-        self.assertEqual(FakeGaClient.created, [])
+        self.assertEqual(FakeTargetClient.created, [])
 
     def test_a_run_id_cannot_be_reused_locally_either(self):
         extract_job.main(self._arguments(dry_run=True))
@@ -192,7 +192,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         staged.write_text(staged.read_text(encoding="utf-8").replace("SERVER_1", "TAMPERED"), encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "reconciliation failed"):
             load_job.main(self._arguments(dry_run=False))
-        self.assertEqual(FakeGaClient.created, [])
+        self.assertEqual(FakeTargetClient.created, [])
 
     def test_naming_both_a_directory_and_a_bucket_is_refused(self):
         with self.assertRaisesRegex(Exception, "not both"):
@@ -217,7 +217,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
         summary = json.loads((self._attempt_root() / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["status"], "SUCCEEDED")
         self.assertFalse(summary["dryRun"])
-        self.assertEqual(len(FakeGaClient.created), 2)
+        self.assertEqual(len(FakeTargetClient.created), 2)
         self.assertEqual(engine.main(["report", *arguments]), 0)
 
     def test_the_job_reports_its_preflight_once_and_briefly_when_it_passes(self):
@@ -254,7 +254,7 @@ class LocalRunNeedsNoAwsInfrastructure(unittest.TestCase):
 
         summary = json.loads((self._attempt_root() / "summary.json").read_text(encoding="utf-8"))
         self.assertTrue(summary["dryRun"])
-        self.assertEqual(FakeGaClient.created, [])
+        self.assertEqual(FakeTargetClient.created, [])
 
 
 if __name__ == "__main__":

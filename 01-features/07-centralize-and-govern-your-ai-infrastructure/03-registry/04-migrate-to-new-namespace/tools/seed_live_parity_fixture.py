@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Create the two Preview fixtures the new behaviours need, and a GA registry to migrate them into.
+"""Create the two Preview fixtures the new behaviours need, and a target registry to migrate them into.
 
 The existing test matrix cannot exercise either feature:
 
-* its duplicate pair carries *different* recordVersions, so GA's (name, recordVersion) key never
+* its duplicate pair carries *different* recordVersions, so the target registry's (name, recordVersion) key never
   collides -- a real collision needs two records with the same name and the same (here, absent)
   version;
-* it has approved records, but migrating them into a GA registry that carries
+* it has approved records, but migrating them into a target registry that carries
   ``autoApprovalRules: [APPROVE_ALL]`` proves nothing about the tool, because the service would
   approve them regardless.
 
@@ -15,10 +15,10 @@ So this creates:
 * a Preview registry with ``autoApproval`` on, holding two records that share the name
   ``shared-name`` (no recordVersion), one approved and one left in DRAFT, plus a solo approved
   record, a solo DRAFT record and a deprecated one;
-* a GA registry with **no** auto-approval rules, so reproducing APPROVED requires both
+* a target registry with **no** auto-approval rules, so reproducing APPROVED requires both
   ``SubmitRegistryRecordForApproval`` and ``UpdateRegistryRecordStatus``.
 
-Usage: python3 tools/seed_live_parity_fixture.py [--preview-region us-east-1] [--ga-region us-west-2]
+Usage: python3 tools/seed_live_parity_fixture.py [--preview-region us-east-1] [--target-region us-west-2]
 """
 
 from __future__ import annotations
@@ -43,14 +43,14 @@ _POLL_WAIT = Event()
 # glue/common at position 0 placed it ahead of the standard library for the whole process, so a
 # module in there sharing a stdlib name would have shadowed it.
 
-GA_ENDPOINT = "https://agent-registry-control.{region}.api.aws"
+TARGET_ENDPOINT = "https://agent-registry-control.{region}.api.aws"
 
-#: Per-request timeout for the hand-signed GA calls below.
+#: Per-request timeout for the hand-signed target calls below.
 _HTTP_TIMEOUT_SECONDS = 30
 
 
-def ga_request(region: str, method: str, path: str, body: dict | None = None) -> dict:
-    """Call a GA control-plane operation with raw SigV4.
+def target_request(region: str, method: str, path: str, body: dict | None = None) -> dict:
+    """Call a target control-plane operation with raw SigV4.
 
     The migration performs record-level operations only -- creating a registry is not something it
     does -- so creating the target registry for this fixture is signed by hand rather than routed
@@ -64,14 +64,14 @@ def ga_request(region: str, method: str, path: str, body: dict | None = None) ->
     import urllib.request
 
     session = boto3.Session()
-    url = GA_ENDPOINT.format(region=region) + path
+    url = TARGET_ENDPOINT.format(region=region) + path
     # Checked before anything is signed or sent. urlopen honours whatever scheme the URL carries,
     # including file: and any registered custom handler. This URL is built from a hardcoded https
     # template, so it cannot be anything else today; asserting it means a later change that makes
-    # GA_ENDPOINT configurable cannot silently turn a signed API call into a local-file read.
+    # TARGET_ENDPOINT configurable cannot silently turn a signed API call into a local-file read.
     scheme = urllib.parse.urlsplit(url).scheme
     if scheme != "https":
-        raise RuntimeError(f"Refusing to call the GA control plane over {scheme!r}: {url}")
+        raise RuntimeError(f"Refusing to call the target control plane over {scheme!r}: {url}")
     payload = json.dumps(body or {}).encode() if body is not None else b""
     request = AWSRequest(
         method=method,
@@ -89,10 +89,10 @@ def ga_request(region: str, method: str, path: str, body: dict | None = None) ->
         ) as response:
             raw = response.read()
     except urllib.error.HTTPError as error:
-        raise RuntimeError(f"GA {method} {path} failed: {error.code} {error.read().decode()}") from error
+        raise RuntimeError(f"Target {method} {path} failed: {error.code} {error.read().decode()}") from error
     except OSError as error:
         # URLError (DNS, connection refused) and socket.timeout both land here.
-        raise RuntimeError(f"GA {method} {path} could not be reached: {error}") from error
+        raise RuntimeError(f"Target {method} {path} could not be reached: {error}") from error
     return json.loads(raw) if raw else {}
 
 
@@ -127,7 +127,7 @@ def wait_for_record(client, registry_id: str, record_id: str, *, attempts: int =
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--preview-region", default="us-east-1")
-    parser.add_argument("--ga-region", default="us-west-2")
+    parser.add_argument("--target-region", default="us-west-2")
     parser.add_argument(
         "--preview-registry-id",
         help="reuse an already-seeded Preview fixture instead of creating another one",
@@ -224,31 +224,31 @@ def finish(
     preview_registry_id: str,
     seeded: list[tuple[str, str, str]],
 ) -> int:
-    """Create the GA target registry and print the mapping to migrate with."""
+    """Create the target registry and print the mapping to migrate with."""
     stamp = int(time.time())
-    ga_name = f"parity-target-{stamp}"
-    print(f"\nCreating GA registry {ga_name} in {args.ga_region} (NO auto-approval)")
-    ga_created = ga_request(
-        args.ga_region,
+    target_name = f"parity-target-{stamp}"
+    print(f"\nCreating target registry {target_name} in {args.target_region} (NO auto-approval)")
+    target_created = target_request(
+        args.target_region,
         "POST",
         "/registries",
         {
-            "name": ga_name,
+            "name": target_name,
             "description": "Target for duplicate-name and status-parity verification",
             "discoveryConfiguration": {"authorizerType": "AWS_IAM"},
             "clientToken": str(uuid.uuid4()),
         },
     )
-    ga_registry_id = str(ga_created["registryArn"]).rsplit("/", 1)[-1]
-    ga_status = "CREATING"
+    target_registry_id = str(target_created["registryArn"]).rsplit("/", 1)[-1]
+    target_status = "CREATING"
     for _ in range(60):
-        ga_status = ga_request(args.ga_region, "GET", f"/registries/{ga_registry_id}")["status"]
-        if ga_status != "CREATING":
+        target_status = target_request(args.target_region, "GET", f"/registries/{target_registry_id}")["status"]
+        if target_status != "CREATING":
             break
         _POLL_WAIT.wait(5)
-    print(f"  registryId={ga_registry_id} status={ga_status}")
-    if ga_status != "READY":
-        print("GA registry never became READY")
+    print(f"  registryId={target_registry_id} status={target_status}")
+    if target_status != "READY":
+        print("Target registry never became READY")
         return 1
 
     print("\nMapping to add to config/migration.json:")
@@ -263,8 +263,8 @@ def finish(
                 },
                 "target": {
                     "accountId": account,
-                    "region": args.ga_region,
-                    "registryId": ga_registry_id,
+                    "region": args.target_region,
+                    "registryId": target_registry_id,
                 },
             },
             indent=2,

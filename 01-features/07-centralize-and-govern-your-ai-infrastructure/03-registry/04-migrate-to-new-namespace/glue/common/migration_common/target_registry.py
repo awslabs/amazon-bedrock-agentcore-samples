@@ -1,9 +1,9 @@
-"""Derive each GA registry's configuration from the Preview registry it will replace.
+"""Derive each target registry's configuration from the Preview registry it will replace.
 
 This tool migrates *records*. The registry itself is not created for you, because its
 ``discoveryConfiguration`` decides who may read it and its ``approvalConfiguration`` decides what
 happens to submitted records -- decisions, not data to be copied. What this module removes is the
-guesswork: it reads a source registry (read-only) and returns the equivalent GA ``CreateRegistry``
+guesswork: it reads a source registry (read-only) and returns the equivalent target ``CreateRegistry``
 input with the preview shape already translated:
 
 * top-level ``authorizerType`` / ``authorizerConfiguration`` nested under ``discoveryConfiguration``
@@ -26,7 +26,7 @@ from .transform import transform_registry_configuration
 LOGGER = logging.getLogger("agent-registry-migration.target-registry")
 
 #: Endpoint template for the command an operator runs with a derived payload.
-GA_CONTROL_ENDPOINT = "https://agent-registry-control.{region}.api.aws"
+TARGET_CONTROL_ENDPOINT = "https://agent-registry-control.{region}.api.aws"
 
 
 def derive_create_registry_inputs(
@@ -35,7 +35,7 @@ def derive_create_registry_inputs(
     *,
     mapping_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Return one entry per mapping describing the GA registry to create.
+    """Return one entry per mapping describing the target registry to create.
 
     Each entry carries ``mappingId``, the ``source`` endpoint it was derived from, the target
     ``region`` the registry belongs in, and either a ``payload`` (the ``CreateRegistry`` input) or
@@ -56,7 +56,7 @@ def derive_create_registry_inputs(
                 "region": source.get("region"),
                 "registryId": source.get("registryId"),
             },
-            # Where the GA registry has to be created for this mapping to load into it.
+            # Where the target registry has to be created for this mapping to load into it.
             "region": target.get("region") or source.get("region"),
             "payload": None,
             # What about this payload needs a decision before it is applied -- a preview-only
@@ -80,7 +80,7 @@ def derive_create_registry_inputs(
             # The message goes in the report; the traceback goes to the log. Without it an
             # unexpected failure here is a one-line string with no way to find out what raised it.
             LOGGER.debug(
-                "Could not derive the GA registry configuration for mapping %s",
+                "Could not derive the target registry configuration for mapping %s",
                 mapping_id,
                 exc_info=True,
             )
@@ -93,7 +93,7 @@ def create_registry_command(entry: dict[str, Any], payload_path: str) -> str:
     return (
         "aws agent-registry-control create-registry"
         f" --cli-input-json file://{payload_path}"
-        f" --endpoint-url {GA_CONTROL_ENDPOINT.format(region=entry.get('region'))}"
+        f" --endpoint-url {TARGET_CONTROL_ENDPOINT.format(region=entry.get('region'))}"
         " --query registryArn --output text"
     )
 
@@ -110,14 +110,14 @@ def create_registry_prerequisite() -> str:
     be copied and run, and a copied command that cannot run is worse than no command at all.
     """
     return (
-        "The AWS CLI does not ship the GA service model yet, so the command above fails with\n"
+        "The AWS CLI does not ship the new Registry service model yet, so the command above fails with\n"
         "\"Invalid choice: 'agent-registry-control'\" until you install it once:\n"
         "\n"
         "  mkdir -p ~/.aws/models/agent-registry-control/2025-12-01\n"
         "  cp agent-registry-control-2025-12-01.normal.json \\\n"
         "     ~/.aws/models/agent-registry-control/2025-12-01/service-2.json\n"
         "\n"
-        "The same model is what boto3 needs for this tool to reach the GA control plane, so\n"
+        "The same model is what boto3 needs for this tool to reach the target control plane, so\n"
         "installing it once covers both."
     )
 

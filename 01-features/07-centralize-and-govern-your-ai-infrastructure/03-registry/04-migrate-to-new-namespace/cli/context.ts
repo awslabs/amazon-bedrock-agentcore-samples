@@ -163,7 +163,7 @@ let cachedPython: string | undefined;
 
 // What the local interpreter has to be able to do, rather than what version it has to be. The
 // requirement is really "an SDK carrying both service models": `bedrock-agentcore-control` for the
-// Preview source and `agent-registry-control` for the GA target. The latter first shipped in
+// Preview source and `agent-registry-control` for the target. The latter first shipped in
 // botocore 1.43.66, which needs Python >= 3.10 -- but an operator who has registered the model
 // another way (AWS_DATA_PATH, ~/.aws/models) is equally able to run this, and a version comparison
 // would turn that working setup away. So probe the capability and let the message name the versions.
@@ -196,7 +196,7 @@ export function pythonBin(): string {
   }
   throw new CliError(
     'This tool needs Python 3.10+ with boto3 1.43.66 or newer, which is how it talks to both\n' +
-      '  registry APIs. Older SDKs have no model for the GA control plane, so a load would fail\n' +
+      '  registry APIs. Older SDKs have no model for the target control plane, so a load would fail\n' +
       "  part-way through with UnknownServiceError: 'agent-registry-control'.\n" +
       `  Tried: ${problems.join('; ')}\n` +
       "  Install with: python3 -m pip install 'boto3>=1.43.66'\n" +

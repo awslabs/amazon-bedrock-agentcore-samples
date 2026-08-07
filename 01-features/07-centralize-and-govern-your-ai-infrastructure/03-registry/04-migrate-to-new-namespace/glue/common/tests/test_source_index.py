@@ -1,7 +1,7 @@
-"""Tests for how the loader matches a record to an existing GA record, and for the cost of it.
+"""Tests for how the loader matches a record to an existing target record, and for the cost of it.
 
-Three routes, tried in order: the GA recordId a previous run recorded for this source record, then
-name(+recordVersion), then -- for a record synchronized from a URL, whose name GA rewrote during
+Three routes, tried in order: the target recordId a previous run recorded for this source record, then
+name(+recordVersion), then -- for a record synchronized from a URL, whose name the service rewrote during
 synchronization -- its descriptor sources.
 
 The last of those used to be done with a per-record registry scan, which made a load quadratic:
@@ -34,7 +34,7 @@ def source(url: str) -> dict:
 
 
 def desired(url: str, *, name: str | None = None, version: str | None = None) -> dict:
-    # Each record carries its own name now (the GA name is the source record's name), so the fixture
+    # Each record carries its own name now (the target name is the source record's name), so the fixture
     # derives one from the URL unless a test is specifically exercising a name mismatch.
     name = name or "svc-" + url.rstrip("/").rsplit("/", 1)[-1]
     record = {
@@ -72,7 +72,7 @@ def plain(name: str, *, record_id: str | None = None, version: str | None = None
 
 
 def _unwrap_patch(value):
-    """Strip GA's `optionalValue` PATCH wrappers, the way the service does when it stores a record."""
+    """Strip the target registry's `optionalValue` PATCH wrappers, the way the service does when it stores a record."""
     if isinstance(value, dict):
         if set(value) == {"optionalValue"}:
             return _unwrap_patch(value["optionalValue"])
@@ -80,8 +80,8 @@ def _unwrap_patch(value):
     return value
 
 
-class CountingClient(registry_api.GaRegistryClient):
-    """A GA client with the transport replaced by an in-memory registry that counts calls."""
+class CountingClient(registry_api.TargetRegistryClient):
+    """A target client with the transport replaced by an in-memory registry that counts calls."""
 
     def __init__(self, records: list[dict], *, registry: str = REGISTRY) -> None:
         self.records = {(registry, record["recordId"]): record for record in records}
@@ -129,7 +129,7 @@ class CountingClient(registry_api.GaRegistryClient):
                     if owner == registry_id and r["name"] == wanted
                 ]
                 return {"registryRecords": items}
-            # Unfiltered scan, paginated: summaries carry no descriptors, as at GA.
+            # Unfiltered scan, paginated: summaries carry no descriptors, as in the new version.
             page_size = int(body.get("maxResults", 2))
             token = int(body.get("nextToken", 0) or 0)
             ordered = [r for (owner, _rid), r in self.records.items() if owner == registry_id]
@@ -179,7 +179,7 @@ class CountingClient(registry_api.GaRegistryClient):
             # What the service answers for a record that is not there, error code included, because
             # that code is how the client tells "deleted in the target" from "cannot read it".
             raise registry_api.RegistryApiError(
-                f"GA API call agent-registry.get failed: ResourceNotFoundException: {record_id}",
+                f"new Registry API call agent-registry.get failed: ResourceNotFoundException: {record_id}",
                 error_code="ResourceNotFoundException",
             ) from None
 
@@ -233,9 +233,9 @@ class SourceIdentityMatching(unittest.TestCase):
 
 
 class NameCollisionCannotOverwrite(unittest.TestCase):
-    """Two source records sharing a name must not silently become one GA record.
+    """Two source records sharing a name must not silently become one target record.
 
-    The GA name is the source record's own name, and Preview never required names to be unique, so
+    The target name is the source record's own name, and Preview never required names to be unique, so
     this is reachable with real data. Without the claim check the second record matches the first by
     name and *updates* it -- the run reports created: 1, updated: 1 and the first record's content is
     gone.
@@ -332,23 +332,23 @@ class NameCollisionCannotOverwrite(unittest.TestCase):
 
 
 class SharedSyncUrlCannotCollapseRecords(unittest.TestCase):
-    """Source records syncing from one URL must not silently become one GA record.
+    """Source records syncing from one URL must not silently become one target record.
 
     This is the name-collision case's harder sibling, and it was found live rather than reasoned
     about. Four Preview records pointing at one MCP endpoint -- distinct names, distinct content --
-    all landed on a single GA record: one created it and the rest *updated* it, so the run reported
+    all landed on a single target record: one created it and the rest *updated* it, so the run reported
     three successes and the id-crosswalk mapped four old ids to one new id.
 
     The name claim cannot catch it. These records ask for different names, so they pass that check.
-    GA then overwrites the name and recordVersion of each one with the values from the fetched
+    The service then overwrites the name and recordVersion of each one with the values from the fetched
     document, the name lookup misses (the service renamed what we created), and source-identity
     matching -- which deliberately excludes the name -- resolves every one of them to the first
-    record. Only a claim on the *resolved GA record* closes it.
+    record. Only a claim on the *resolved target record* closes it.
     """
 
     SHARED = "https://mcp.example.com/shared-upstream"
 
-    def test_a_second_record_resolving_to_the_same_ga_record_is_refused(self):
+    def test_a_second_record_resolving_to_the_same_target_record_is_refused(self):
         # "renamed-by-sync" is what the service left behind, so neither incoming name matches it and
         # both fall through to source-identity matching -- exactly the live sequence.
         client = CountingClient([existing("rec-1", self.SHARED)])
@@ -424,7 +424,7 @@ class SharedSyncUrlCannotCollapseRecords(unittest.TestCase):
         self.assertEqual([first.action, second.action], ["created", "created"])
         self.assertNotEqual(first.new_record_id, second.new_record_id)
 
-    def test_concurrent_claims_on_one_ga_record_leave_exactly_one_winner(self):
+    def test_concurrent_claims_on_one_target_record_leave_exactly_one_winner(self):
         # The load stage runs this client from several threads, so the check has to hold under a race.
         client = CountingClient([existing("rec-1", self.SHARED)])
         outcomes: list[str] = []
@@ -556,10 +556,10 @@ class SourceIdentityFunction(unittest.TestCase):
 
 
 class RecordedIdTakesPrecedence(unittest.TestCase):
-    """What the loader does with the GA recordId an earlier run recorded for this source record."""
+    """What the loader does with the target recordId an earlier run recorded for this source record."""
 
     def test_a_renamed_record_updates_the_record_it_was_migrated_to(self):
-        # The whole point. The GA record is still called what Preview called it last time; the
+        # The whole point. The target record is still called what Preview called it last time; the
         # source record has since been renamed, so nothing but the recorded id can find it.
         client = CountingClient([plain("old-name", record_id="rec-1")])
         result = client.upsert(
@@ -570,7 +570,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         )
         self.assertEqual(result.action, "updated")
         self.assertEqual(result.new_record_id, "rec-1")
-        self.assertEqual(client.calls["create"], 0, "a rename must not create a second GA record")
+        self.assertEqual(client.calls["create"], 0, "a rename must not create a second target record")
         self.assertEqual(client.records[(REGISTRY, "rec-1")]["name"], "new-name")
 
     def test_without_the_recorded_id_the_same_rename_duplicates(self):
@@ -581,7 +581,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         self.assertEqual(client.calls["create"], 1)
 
     def test_the_recorded_id_is_checked_before_the_name(self):
-        # Two GA records: the one this source record was migrated to, and an unrelated one that
+        # Two target records: the one this source record was migrated to, and an unrelated one that
         # happens to hold the name this record now wants. The recorded id has to win, otherwise a
         # rename would start updating somebody else's record.
         client = CountingClient([plain("old-name", record_id="rec-1"), plain("new-name", record_id="rec-other")])
@@ -607,7 +607,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         self.assertEqual(result.action, "existing")
         self.assertEqual(client.calls["update"], 0)
 
-    def test_a_recorded_record_deleted_in_ga_falls_back_to_the_name(self):
+    def test_a_recorded_record_deleted_in_the_target_falls_back_to_the_name(self):
         # Somebody deleted the migrated record in the target registry. The recorded id is stale, but
         # a record with that name is there, so it is the one to update -- not a third copy.
         client = CountingClient([plain("the-name", record_id="rec-live")])
@@ -620,7 +620,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         self.assertEqual(result.new_record_id, "rec-live")
         self.assertEqual(client.calls["create"], 0)
 
-    def test_a_recorded_record_deleted_in_ga_is_reported_not_silently_replaced(self):
+    def test_a_recorded_record_deleted_in_the_target_is_reported_not_silently_replaced(self):
         client = CountingClient([])
         result = client.upsert(
             registry_id=REGISTRY,
@@ -640,7 +640,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         class Denied(CountingClient):
             def _get_record(self, *, registry_id, record_id):
                 raise registry_api.RegistryApiError(
-                    "GA API call agent-registry.get failed: AccessDeniedException",
+                    "new Registry API call agent-registry.get failed: AccessDeniedException",
                     error_code="AccessDeniedException",
                 )
 

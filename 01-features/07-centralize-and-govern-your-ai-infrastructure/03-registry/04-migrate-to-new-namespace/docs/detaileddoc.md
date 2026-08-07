@@ -15,7 +15,7 @@
 
 The migration tool handles all schema transformations automatically. You are not required to edit records manually.
 
-| Preview | GA |
+| Preview | New version |
 | --- | --- |
 | `descriptors` nested under a protocol layer (`a2a`, `mcp`, `agentSkills`, `custom`) | One granular primary key (`a2aAgentCard`, `mcpServer`, `agentSkillsDefinition`, `custom`), with supplementary descriptors (`tools`, `skillMd`) moved under the primary's `additionalData` |
 | `inlineContent` | `data` |
@@ -26,7 +26,7 @@ The migration tool handles all schema transformations automatically. You are not
 | — | `recordType` — **required**. Inferred from the preview descriptor shape |
 | `bedrock-agentcore` endpoints, ARNs, and IAM actions | `agent-registry` |
 
-Descriptor content is never rewritten — only re-keyed. The record comparison report shows both the preview and GA versions of every record so you can confirm the transformation.
+Descriptor content is never rewritten — only re-keyed. The record comparison report shows both the preview and new versions of every record so you can confirm the transformation.
 
 **Items not handled by this tool** — the following must be updated separately: your IAM policies, service endpoints, SDK clients, CLI commands, resource ARNs, and observability integrations. For the complete list of affected surfaces, see the [AWS migration guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-faq.html).
 
@@ -38,21 +38,21 @@ Descriptor content is never rewritten — only re-keyed. The record comparison r
 
 | Command | Description |
 | --- | --- |
-| `init` | Prompts for registry information and writes the configuration file. Derives the GA registry configuration automatically. |
+| `init` | Prompts for registry information and writes the configuration file. Derives the target registry configuration automatically. |
 | `check` | Validates the configuration and verifies that every registry and the staging location is reachable. Exits with a non-zero code on any failure, making it suitable for use as a pipeline gate. |
-| `extract` | Reads all records from the preview registries into staging and prints the run ID. Does not write to GA. There is no `--live` flag for this command. |
+| `extract` | Reads all records from the preview registries into staging and prints the run ID. Does not write to the target registry. There is no `--live` flag for this command. |
 | `load` | Transforms and loads a staged extract. Defaults to the most recent extract; use `--run-id` to specify another. Does not write without `--live`. |
 | `run` | Runs both phases in a single command: check, extract, transform, load, and report. Does not write without `--live`. |
 | `report` | Displays the outcome of a run and the paths to its output files. Defaults to the most recent run. |
 | `deploy` / `destroy` | Optional. Deploys or removes the AWS Glue migration engine. See [Managed migration with AWS Glue](../README.md#managed-migration-with-aws-glue). |
-| `target-config` | Analyses a preview registry and derives the configuration its GA registry should be created with, translated to the GA schema. `init` performs this step automatically during setup; run `target-config` directly when adding a mapping later. |
+| `target-config` | Analyses a preview registry and derives the configuration its target registry should be created with, translated to the new schema. `init` performs this step automatically during setup; run `target-config` directly when adding a mapping later. |
 
 ### Available options
 
 | Option | Applies to | Description |
 | --- | --- | --- |
 | `--config <path>` | All commands | Path to the configuration file. Default: `./migration.config.json`, then `./config/migration.json`. |
-| `--live` | `run`, `load`, `check` | Creates records in GA. Disabled by default. When passed to `check`, reports the run that is about to execute, including confirmation that it will write. |
+| `--live` | `run`, `load`, `check` | Creates records in the target registry. Disabled by default. When passed to `check`, reports the run that is about to execute, including confirmation that it will write. |
 | `--dry-run` | `run`, `load`, `check` | Transforms and reports without writing. This is the default behavior; the flag is available for explicit declaration. |
 | `--run-id <id>` | `load`, `report` | Specifies a run by ID. Default: the most recent run. |
 | `--resume [run-id]` | `run` | Loads a previously reviewed extract instead of performing a new extraction. With no ID specified, uses the most recent extract. |
@@ -79,11 +79,11 @@ The following procedure describes a complete first migration. Steps 1, 2, 4, and
 | Step | Action | Command | Required |
 | --- | --- | --- | --- |
 | 1 | Write the configuration | `init` | **Required** — once |
-| 2 | Create the GA registry | `target-config` derives its settings from the preview registry | **Required** — once per registry |
+| 2 | Create the target registry | `target-config` derives its settings from the preview registry | **Required** — once per registry |
 | 3 | Validate access | `check` | Optional, strongly recommended |
 | 4 | Extract from the preview registries | `extract` | **Required** |
 | 5 | Review what would be written | `load --dry-run` | Optional, strongly recommended |
-| 6 | Create the GA records | `load --live` | **Required** |
+| 6 | Create the target records | `load --live` | **Required** |
 
 Steps 4 through 6 can be combined into a single `run --live` command if an intermediate review is not required.
 
@@ -103,37 +103,37 @@ Registry pair 1
   Account of the Preview registry [111122223333]:
   Region of the Preview registry [us-east-1]:
   Preview registry id: Sl81LNGuAmntzOLC
-  Account for the GA registry [111122223333]:
-  Region for the GA registry [us-east-1]:
-  GA registry id (leave empty and I will help you create it):
+  Account for the target registry [111122223333]:
+  Region for the target registry [us-east-1]:
+  Target registry id (leave empty and I will help you create it):
 
 Migrate another registry? (y/n) [n]:
 
 Wrote /home/you/migration.config.json
 ```
 
-Each side of the registry pair is prompted separately because each can be in a different account or Region. The most common case — where the GA registry is in the same account and Region as its preview registry — requires only pressing Enter at each prompt.
+Each side of the registry pair is prompted separately because each can be in a different account or Region. The most common case — where the target registry is in the same account and Region as its preview registry — requires only pressing Enter at each prompt.
 
 If you specify a different Region, no additional configuration is required. If you specify a different account, the migration must assume a role in that account. The `init` command explains this requirement and describes the two available options. For details, see [Registries in other accounts and regions](#registries-in-other-accounts-and-regions).
 
-### Step 2: Create the GA registry — Required (unless it already exists)
+### Step 2: Create the target registry — Required (unless it already exists)
 
-A registry's `discoveryConfiguration` determines who can read it, so a registry's settings are a configuration decision rather than data to be copied. The `init` command analyses the preview registry, translates its authorizer and approval settings into the GA schema, writes them to a payload file, and accepts the resulting registry ID back into your configuration.
+A registry's `discoveryConfiguration` determines who can read it, so a registry's settings are a configuration decision rather than data to be copied. The `init` command analyses the preview registry, translates its authorizer and approval settings into the new schema, writes them to a payload file, and accepts the resulting registry ID back into your configuration.
 
 ```bash
-For registry-1, create the GA registry yourself, then give its id below.
+For registry-1, create the target registry yourself, then give its id below.
   These are its settings, translated from your Preview registry:
-  /home/you/ga-registry-payloads/registry-1.json
+  /home/you/new-registry-payloads/registry-1.json
 
   (creation is asynchronous; wait for the registry status to reach READY before loading)
 
-  GA registry id for registry-1 (empty to add it later): dnrwr3bpZ5w0i7Ps
+  Target registry id for registry-1 (empty to add it later): dnrwr3bpZ5w0i7Ps
 ```
 
 > **Note**
-> Until the GA service model ships in the public AWS SDK and CLI, creating the registry is a step you perform yourself using the derived settings above. Create the registry, wait for its status to reach `READY`, then supply its ID. The migration itself calls only record-level operations.
+> Until the new Registry service model ships in the public AWS SDK and CLI, creating the registry is a step you perform yourself using the derived settings above. Create the registry, wait for its status to reach `READY`, then supply its ID. The migration itself calls only record-level operations.
 
-Registry creation also requires three `bedrock-agentcore` workload-identity IAM permissions that are easy to overlook. For details, see [Permissions — Creating the GA registries](iam.md#creating-ga-registries).
+Registry creation also requires three `bedrock-agentcore` workload-identity IAM permissions that are easy to overlook. For details, see [Permissions — Creating the target registries](iam.md#creating-target-registries).
 
 ### Step 3: Validate access (`check`) — Optional, strongly recommended
 
@@ -142,12 +142,12 @@ Every command performs access validation internally, so running `check` first is
 ```bash
 $ agent-registry-migration check
 [PASS] config.loadMode: FULL (changedAfter=unset)
-[PASS] config.dryRun: dryRun=true: transform/load will NOT write to any GA registry
+[PASS] config.dryRun: dryRun=true: transform/load will NOT write to any target registry
 [PASS] registries.registry-1.shape: 111122223333/us-east-1/Sl81LNGuAmntzOLC -> 111122223333/us-east-1/dnrwr3bpZ5w0i7Ps
 [PASS] staging.writable: /home/you/migration-runs accepts writes
 [PASS] staging.readable: /home/you/migration-runs is readable
 [PASS] source.registry-1.reachable: Preview registry 111122223333/us-east-1/Sl81LNGuAmntzOLC is reachable
-[PASS] target.registry-1.reachable: GA registry 111122223333/us-east-1/dnrwr3bpZ5w0i7Ps is reachable
+[PASS] target.registry-1.reachable: target registry 111122223333/us-east-1/dnrwr3bpZ5w0i7Ps is reachable
 
 Pre-flight validation PASSED
 ```
@@ -159,19 +159,19 @@ To preview the settings for a live run before executing it, pass `--live`:
 ```bash
 $ agent-registry-migration check --live
 ...
-[WARN] config.dryRun: dryRun=false: transform/load WILL write to the GA registries
+[WARN] config.dryRun: dryRun=false: transform/load WILL write to the target registries
          fix: Drop --live to transform and report without writing anything
 ```
 
 ### Step 4: Extract from the preview registries (`extract`) — Required
 
-The `extract` command reads every record from the preview registries into staging and prints the run ID. This command does not write to GA and has no `--live` flag.
+The `extract` command reads every record from the preview registries into staging and prints the run ID. This command does not write to the target registry and has no `--live` flag.
 
 For large registries, the tool logs progress every 100 records.
 
 ```bash
 $ agent-registry-migration extract
-Reading the Preview registries. Nothing is written to GA.
+Reading the Preview registries. Nothing is written to the target registry.
   configuration : /home/you/migration.config.json
   registries    : 1
   staging       : /home/you/migration-runs
@@ -190,11 +190,11 @@ Extract: SUCCEEDED -- 5 record(s) from 1 registry mapping(s)
 
 Load: not run yet for this extract
 
-Extracted, and nothing has been written to GA. This run id is 20260806T143000Z-a1b2c3d4
+Extracted, and nothing has been written to the target registry. This run id is 20260806T143000Z-a1b2c3d4
 
 Review it, then load it:
   agent-registry-migration load --dry-run   # transform and report, still writing nothing
-  agent-registry-migration load --live      # create the GA records
+  agent-registry-migration load --live      # create the target records
 
 Both default to this extract, the most recent one. Pass --run-id 20260806T143000Z-a1b2c3d4 to be
 explicit, or name an older run id to load that one instead.
@@ -202,11 +202,11 @@ explicit, or name an older run id to load that one instead.
 
 ### Step 5: Review the transformation (`load --dry-run`) — Optional, strongly recommended
 
-The `load --dry-run` command transforms every staged record to the GA schema and validates it against the GA API contract, without calling any GA write APIs. A `dryRun` count equal to the extracted record count indicates that all records transformed successfully.
+The `load --dry-run` command transforms every staged record to the new schema and validates it against the new Registry API contract, without calling any target write APIs. A `dryRun` count equal to the extracted record count indicates that all records transformed successfully.
 
 ```bash
 $ agent-registry-migration load --dry-run
-Dry run -- nothing will be written to GA
+Dry run -- nothing will be written to the target registry
   configuration : /home/you/migration.config.json
   registries    : 1
   staging       : /home/you/migration-runs
@@ -219,30 +219,30 @@ Run 20260806T143000Z-a1b2c3d4
 Extract: SUCCEEDED -- 5 record(s) from 1 registry mapping(s)
   registry-1: 5 record(s) (CUSTOM=5)
 
-Load: SUCCEEDED -- DRY RUN (nothing written to GA)
+Load: SUCCEEDED -- DRY RUN (nothing written to the target registry)
   registry-1: created=0 updated=0 unchanged=0 dryRun=5 failed=0
 
 Report: /home/you/migration-runs/reports/run_id=20260806T143000Z-a1b2c3d4/attempt=7b41c0de-9f3a-4d55-9a41-2c6e8f0b91aa/summary.html
 
-Nothing was written to GA. When the report above looks right:
+Nothing was written to the target registry. When the report above looks right:
   agent-registry-migration load --live --run-id 20260806T143000Z-a1b2c3d4
 ```
 
 Review `summary.html` to verify all checks pass with the current run's values. You can also inspect the record comparison files to see the exact payload that would be sent for each record.
 
-### Step 6: Create the GA records (`load --live`) — Required
+### Step 6: Create the target records (`load --live`) — Required
 
-The `load --live` command writes the same staged data reviewed in the dry run. The content written to GA is identical to what the dry run reported. This is the only step in the tool that writes to GA.
+The `load --live` command writes the same staged data reviewed in the dry run. The content written to the target registry is identical to what the dry run reported. This is the only step in the tool that writes to the target registry.
 
 ```bash
 $ agent-registry-migration load --live
-LIVE -- records will be created in the GA registries
+LIVE -- records will be created in the target registries
   configuration : /home/you/migration.config.json
   registries    : 1
   staging       : /home/you/migration-runs
   run id        : 20260806T143000Z-a1b2c3d4 (the most recent extract)
 
-Creating the GA records...
+Creating the target records...
 
 Run 20260806T143000Z-a1b2c3d4
 
@@ -255,13 +255,13 @@ Load: SUCCEEDED -- LIVE, attempt 2 of 2
 
 A `created` count equal to the extracted record count indicates a complete first migration. `attempt 2 of 2` includes the dry run as the first attempt against this extract.
 
-Records are created in GA in the same approval status they hold in the preview registry. An approved record is approved upon creation and is immediately returned by data-plane search and browse APIs. The `approval` block in the report serves as the confirmation:
+Records are created in the target registry in the same approval status they hold in the preview registry. An approved record is approved upon creation and is immediately returned by data-plane search and browse APIs. The `approval` block in the report serves as the confirmation:
 
 ```jsonc
 "approval": {
   "matchSourceStatus": true,
   "sourceStatusCounts": { "DEPRECATED": 1, "APPROVED": 2, "DRAFT": 2 },
-  "gaStatusCounts":     { "DEPRECATED": 1, "APPROVED": 2, "DRAFT": 2 },
+  "targetStatusCounts":     { "DEPRECATED": 1, "APPROVED": 2, "DRAFT": 2 },
   "statusesApplied": 3,
   "statusesNotApplied": 0,
   "recordsNeedingResubmission": 0,
@@ -270,10 +270,10 @@ Records are created in GA in the same approval status they hold in the preview r
 ```
 
 > **Important**
-> Every migrated record receives a new `recordId` in GA. Retain the ID crosswalk file. It maps each old `recordId` to its new value and is required to update any references in your systems.
+> Every migrated record receives a new `recordId` in the target registry. Retain the ID crosswalk file. It maps each old `recordId` to its new value and is required to update any references in your systems.
 
 ```csv
-oldRecordId,newRecordId,previewName,name,displayName,recordType,recordVersion,action,status,gaStatus
+oldRecordId,newRecordId,previewName,name,displayName,recordType,recordVersion,action,status,targetStatus
 i4IVzeKpm2YD,gNz5OlIkKeb0,solo-deprecated,solo-deprecated,solo-deprecated,CUSTOM,,created,SUCCEEDED,DEPRECATED
 mcJjICOUb0nN,2ky2X3eyL8LP,payments-mcp,payments-mcp,payments-mcp,CUSTOM,,created,SUCCEEDED,APPROVED
 is93g8PdDE93,bNXHw0OtubBd,solo-approved,solo-approved,solo-approved,CUSTOM,,created,SUCCEEDED,APPROVED
@@ -287,7 +287,7 @@ If `statusesNotApplied` is non-zero, the per-record `statusError` field in the c
 
 ```bash
 aws agent-registry-control submit-registry-record-for-approval \
-  --registry-id <ga-registry-id> --record-id <new-record-id> \
+  --registry-id <new-registry-id> --record-id <new-record-id> \
   --endpoint-url https://agent-registry-control.<region>.api.aws
 ```
 
@@ -315,7 +315,7 @@ reports/run_id=<run-id>/
     summary.html                                    the report as a page: every check, answered against this run
     summary.json                                    the same data, in machine-readable format
     id-crosswalk/mapping=<id>.csv                   old recordId to new recordId mapping
-    record-comparison/mapping=<id>/part-*.json      per record: preview, transformed, and GA versions
+    record-comparison/mapping=<id>/part-*.json      per record: preview, transformed, and new versions
     failures/mapping=<id>.json                      present only when records failed
 ```
 
@@ -326,11 +326,11 @@ The `report` command prints the summary and artifact paths, and generates `summa
 | `summary.html` | **Start here.** A complete view of the run: all checks answered against this run's data, read-side results (registry warnings and name collisions are visible here, not only on the load side), record counts, approval status, failures, and artifact paths. |
 | `extract-summary.json` | Totals, per-registry record counts, record-type and source-status distributions, duplicate record names, warnings, and the time window covered by an incremental run. |
 | `summary.json` | Per-attempt results: created, updated, unchanged, and failed counts; the approval block; the replay fingerprint; and paths to all artifacts. |
-| `id-crosswalk/mapping=<id>.csv` | **Retain this file.** One row per source record: `oldRecordId`, `newRecordId`, `previewName`, `name`, `displayName`, `recordType`, `recordVersion`, `action`, `status`, `gaStatus`. |
-| `record-comparison/…` | Per-record detail: the preview record as extracted, the exact payload sent to GA, and the GA record as returned by the service. |
+| `id-crosswalk/mapping=<id>.csv` | **Retain this file.** One row per source record: `oldRecordId`, `newRecordId`, `previewName`, `name`, `displayName`, `recordType`, `recordVersion`, `action`, `status`, `targetStatus`. |
+| `record-comparison/…` | Per-record detail: the preview record as extracted, the exact payload sent to the target registry, and the target record as returned by the service. |
 | `failures/…` | Failed records with the service error message, the staged source object, and a traceback. |
 
-The five load counters summarize the outcome of each attempt: `created` (new GA record), `updated` (existing record with changes), `unchanged` (existing record already matching — no API call made), `dryRun` (transformation validated, nothing written), `failed`. On a successful first live load, `created` equals the extracted record count.
+The five load counters summarize the outcome of each attempt: `created` (new target record), `updated` (existing record with changes), `unchanged` (existing record already matching — no API call made), `dryRun` (transformation validated, nothing written), `failed`. On a successful first live load, `created` equals the extracted record count.
 
 A crosswalk row with an empty `newRecordId` indicates that nothing was written for that record. A **failed** row with a `newRecordId` indicates that the record was created but failed to settle — it exists in the target registry, and the ID can be used to locate it.
 
@@ -340,8 +340,8 @@ A crosswalk row with an empty `newRecordId` indicates that nothing was written f
 
 Running a load against the same records more than once is safe and is the standard approach to recover from a partial failure. Before writing, the tool looks up each record in the target registry using the following order of precedence:
 
-1. **The GA record ID from a previous run.** Each live load stores the old-to-new record ID mapping as engine state in `state/idmap/mapping=<id>.json`, adjacent to the watermark. This is checked first because it is the only identifier that remains valid if the source record is renamed in the preview registry.
-2. **`name` (and `recordVersion`)**, which is the GA deduplication key.
+1. **The target record ID from a previous run.** Each live load stores the old-to-new record ID mapping as engine state in `state/idmap/mapping=<id>.json`, adjacent to the watermark. This is checked first because it is the only identifier that remains valid if the source record is renamed in the preview registry.
+2. **`name` (and `recordVersion`)**, which is the target deduplication key.
 3. For records synchronized from a URL, the **descriptor source URL**, because the service rewrites the record name with the value from the fetched document.
 
 Example outcomes across two loads:
@@ -366,7 +366,7 @@ The ID map is written even when part of a run fails, and even for records that w
 > **Note**
 > Dry runs never write to the ID map, because they create no records.
 
-To ensure that a load uses the exact bytes you reviewed in the dry run, pass `--resume` with the same run ID. A `deploy` between extract and load forces a re-extract, because the replay fingerprint covers the transform and GA adapter settings, and a deployment updates them. Records are never loaded under different logic than the one used during staging.
+To ensure that a load uses the exact bytes you reviewed in the dry run, pass `--resume` with the same run ID. A `deploy` between extract and load forces a re-extract, because the replay fingerprint covers the transform and target adapter settings, and a deployment updates them. Records are never loaded under different logic than the one used during staging.
 
 ---
 
@@ -388,7 +388,7 @@ agent-registry-migration run --since 2026-08-01T00:00:00Z --live   # migrates fr
 - Cutoff precedence: an explicit value from `--since` or `changedAfter` takes priority; otherwise the saved watermark is used, minus a five-minute overlap to capture records updated during the previous run window. Re-processing an already-migrated record is harmless because the load performs an upsert.
 - That overlap is visible in the counts: for a registry that was active shortly before the last load, or populated in one burst, an incremental extract can legitimately report the same record count as a full one. `changedAfterReason` in `extract-summary.json` names the cutoff it used and where it came from, which distinguishes this from a lost watermark.
 - A partial failure or a dry run does not advance the watermark.
-- A record edited in the preview registry after migration is picked up on the next incremental run and updated in place, retaining its GA `recordId`. Editing a record returns it to `DRAFT` status at the source; GA does the same on update. When the owner re-approves the record in preview, the next incremental run re-approves it in GA, even if the content did not change.
+- A record edited in the preview registry after migration is picked up on the next incremental run and updated in place, retaining its target `recordId`. Editing a record returns it to `DRAFT` status at the source; the service does the same on update. When the owner re-approves the record in preview, the next incremental run re-approves it in the target registry, even if the content did not change.
 
 Run a full load at least once before using `--incremental`. An incremental run with no watermark and no `--since` value fails the `check` step with an explanatory message rather than silently processing all records.
 
@@ -417,23 +417,23 @@ Every failure message includes guidance on the recommended corrective action. Th
 
 | Message or symptom | Cause | Resolution |
 | --- | --- | --- |
-| `This tool needs Python 3.10+ with boto3 1.43.66 or newer` | The CLI could not locate a Python interpreter whose boto3 models both registry APIs. The GA control plane's model first shipped in botocore 1.43.66, which requires Python 3.10. | Run `python3 -m pip install 'boto3>=1.43.66'`, or set the `PYTHON` environment variable to the path of a supported interpreter. |
-| `this SDK has no service model for agent-registry-control` | A pre-flight check found an SDK too old to write GA records. On AWS Glue the SDK is installed by the job's `--additional-python-modules`, so this means the deployment predates that setting. | Locally, upgrade boto3 as above. On AWS Glue, redeploy with `agent-registry-migration deploy`. |
+| `This tool needs Python 3.10+ with boto3 1.43.66 or newer` | The CLI could not locate a Python interpreter whose boto3 models both registry APIs. The new Registry control plane's model first shipped in botocore 1.43.66, which requires Python 3.10. | Run `python3 -m pip install 'boto3>=1.43.66'`, or set the `PYTHON` environment variable to the path of a supported interpreter. |
+| `this SDK has no service model for agent-registry-control` | A pre-flight check found an SDK too old to write target records. On AWS Glue the SDK is installed by the job's `--additional-python-modules`, so this means the deployment predates that setting. | Locally, upgrade boto3 as above. On AWS Glue, redeploy with `agent-registry-migration deploy`. |
 | `No configuration at …` | No configuration file was found at the expected path. | Run `agent-registry-migration init`, or pass `--config <path>` to specify the file location. |
-| `still has a placeholder GA registry id` | The `init` command could not complete because the GA registry did not exist at the time. | Create the GA registry and update `target.registryId` in the configuration file. |
+| `still has a placeholder target registry id` | The `init` command could not complete because the target registry did not exist at the time. | Create the target registry and update `target.registryId` in the configuration file. |
 | `Pre-flight validation failed` | A configuration or access check failed. No records were read. | Resolve each `[FAIL]` item and re-run. |
-| `AccessDeniedException` reading preview records | The `bedrock-agentcore` IAM policy on the source registry is missing required permissions, or the assume-role path is incorrect. | Verify permissions for both namespaces. The preview registry uses `bedrock-agentcore`; the GA registry uses `agent-registry`. See [Permissions](iam.md). |
-| `AccessDeniedException` writing GA records | The `agent-registry` IAM policy on the target registry is missing required permissions, or the account is not allowlisted for the GA endpoint. | Verify the policy, then confirm allowlisting with the service team. |
-| `N record name(s) are used by more than one source record` | The preview registry permitted duplicate record names. GA requires unique names, and migrated records retain their preview names, so loading both would cause one to overwrite the other. No records were extracted or loaded for that registry. | The error and the `registries[].duplicateNames` field in the extract summary list each colliding name and the record IDs involved. In the preview registry, rename all but one record in each set or assign distinct `recordVersion` values, then re-run. If the source cannot be modified, set `runtime.transform.duplicateNames` to `"suffix"` — the error message provides the exact configuration to add. |
+| `AccessDeniedException` reading preview records | The `bedrock-agentcore` IAM policy on the source registry is missing required permissions, or the assume-role path is incorrect. | Verify permissions for both namespaces. The preview registry uses `bedrock-agentcore`; the target registry uses `agent-registry`. See [Permissions](iam.md). |
+| `AccessDeniedException` writing target records | The `agent-registry` IAM policy on the target registry is missing required permissions, or the account is not allowlisted for the target endpoint. | Verify the policy, then confirm allowlisting with the service team. |
+| `N record name(s) are used by more than one source record` | The preview registry permitted duplicate record names. The new version requires unique names, and migrated records retain their preview names, so loading both would cause one to overwrite the other. No records were extracted or loaded for that registry. | The error and the `registries[].duplicateNames` field in the extract summary list each colliding name and the record IDs involved. In the preview registry, rename all but one record in each set or assign distinct `recordVersion` values, then re-run. If the source cannot be modified, set `runtime.transform.duplicateNames` to `"suffix"` — the error message provides the exact configuration to add. |
 | Extract succeeded but warns `... will be migrated under a DIFFERENT name` | `duplicateNames = "suffix"` is set, and colliding records were automatically renamed. | This is expected behavior when that setting is enabled. The crosswalk maps `previewName` to `name`; `displayName` retains the preview name. |
 | `approval.statusesNotApplied` is non-zero | A record could not be transitioned to its preview status — either the transition was refused or the source status (such as `CREATE_FAILED`) cannot be applied to a new record. | The record is created and otherwise correct; only its status differs. The `statusError` field in the per-record comparison report identifies the cause. Use `submit-registry-record-for-approval` to complete the approval for eligible records. |
-| `Replay configuration validation failed` | The transform or GA adapter settings changed after the extract was taken, typically due to a `deploy`. | Re-run without `--resume` so records are re-extracted under the current configuration. |
+| `Replay configuration validation failed` | The transform or target adapter settings changed after the extract was taken, typically due to a `deploy`. | Re-run without `--resume` so records are re-extracted under the current configuration. |
 | `Immutable … key already exists` | The run ID was already used. Run IDs are single-use. | Re-run without `--resume` to start a new run. |
 | `Extract manifest for run … is not successful` | The extraction failed or completed only partially. | Review `extract-summary.json` to identify the cause, resolve it, and re-run. |
 | `Staged object reconciliation failed` | The staged data no longer matches the manifest. | Re-extract. Do not force the load. |
-| `Existing GA record <id> is in failure status CREATE_FAILED` | A previous load created the record and it never settled — typically because a `source.fromUrl` URL could not be fetched by the service. The tool refuses to overwrite the broken record on re-run. | Fix the URL in the source record, or delete the broken GA record, then re-run the load. |
-| `Exactly one valid descriptor is allowed for record type SKILL` | A `SKILL` record was sent to GA with a descriptor other than `agentSkillsDefinition` or `custom`. | Markdown-only skills are migrated as `agentSkillsDefinition` with the Markdown content under `additionalData.skillMd`. If this error still occurs, the record contains an unexpected skill descriptor. Inspect it using the record comparison report. |
-| `Unable to create workload identity because access was denied` from `create-registry` | GA registry creation provisions an AgentCore Identity workload identity in the `bedrock-agentcore` namespace. | Add the three workload-identity IAM actions listed in [Permissions — Creating the GA registries](iam.md#creating-ga-registries). These permissions are not required by the migration tool itself. |
+| `Existing target record <id> is in failure status CREATE_FAILED` | A previous load created the record and it never settled — typically because a `source.fromUrl` URL could not be fetched by the service. The tool refuses to overwrite the broken record on re-run. | Fix the URL in the source record, or delete the broken target record, then re-run the load. |
+| `Exactly one valid descriptor is allowed for record type SKILL` | A `SKILL` record was sent to the target registry with a descriptor other than `agentSkillsDefinition` or `custom`. | Markdown-only skills are migrated as `agentSkillsDefinition` with the Markdown content under `additionalData.skillMd`. If this error still occurs, the record contains an unexpected skill descriptor. Inspect it using the record comparison report. |
+| `Unable to create workload identity because access was denied` from `create-registry` | Target registry creation provisions an AgentCore Identity workload identity in the `bedrock-agentcore` namespace. | Add the three workload-identity IAM actions listed in [Permissions — Creating the target registries](iam.md#creating-target-registries). These permissions are not required by the migration tool itself. |
 | `No deployed engine found for stack …` | The `--glue` flag was passed but the Glue engine has not been deployed. | Run `agent-registry-migration deploy`, or remove the `--glue` flag to run locally. |
 | `No extract that is ready to load was found` | `load` or `--resume` was invoked but no staged extract is available. | Run `agent-registry-migration extract` first. The command prints the run ID that `load` will use by default. |
 | A few records fail but the rest succeed | `failOnRecordError = false` causes the tool to log failures and continue. | Review `failures/mapping=<id>.json` for per-record errors and tracebacks. Fix the cause and re-run. Records that succeeded are detected as unchanged on re-run and are not duplicated. |
@@ -457,7 +457,5 @@ The deployed stack creates an S3 bucket, two Glue jobs, and an SSM Parameter Sto
 30 minutes per job is a conservative upper bound — most migrations complete well under that, and billing is per second with a one-minute minimum.
 
 Both jobs run on AWS Glue 5.0 with the default `engine.glueWorkerType` of `G.1X` and `engine.glueNumberOfWorkers` of `2`, which is the smallest configuration AWS Glue accepts for a batch job — 2 DPU. Raising either only costs more: each job is a single-threaded loop that uses one worker and never distributes work, so a wider or larger cluster does nothing for a migration.
-
-The jobs run as Spark jobs for one reason, and it is not parallelism. The GA control plane's service model first shipped in botocore 1.43.66, which requires Python 3.10 or newer, and an AWS Glue Python shell job is Python 3.9 at every Glue version. Glue 5.0's Spark runtime is Python 3.11, so it is the only AWS Glue runtime that this SDK installs on. Neither job creates a `SparkContext`.
 
 Pricing shown is for `us-east-1`. Rates may vary by region. See [AWS Glue pricing](https://aws.amazon.com/glue/pricing/) for current rates.

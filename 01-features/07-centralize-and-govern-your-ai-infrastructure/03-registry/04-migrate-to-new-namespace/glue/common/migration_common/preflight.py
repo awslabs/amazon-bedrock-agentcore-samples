@@ -161,7 +161,7 @@ def check_mapping_shapes(mappings: list[dict[str, Any]]) -> list[CheckResult]:
                 )
             )
 
-        # A GA registry is normally created alongside its preview registry, and record content can
+        # A target registry is normally created alongside its preview registry, and record content can
         # carry region-bound ARNs (an OAuth credential provider, an iamCredentialProvider region)
         # that are copied across verbatim. Crossing regions is allowed -- some estates consolidate
         # deliberately -- but it is worth naming before a run rather than after.
@@ -221,7 +221,7 @@ def check_load_settings(settings: dict[str, Any]) -> list[CheckResult]:
             CheckResult(
                 name="config.dryRun",
                 status=PASS,
-                detail="dryRun=true: transform/load will NOT write to any GA registry",
+                detail="dryRun=true: transform/load will NOT write to any target registry",
             )
         )
     else:
@@ -229,7 +229,7 @@ def check_load_settings(settings: dict[str, Any]) -> list[CheckResult]:
             CheckResult(
                 name="config.dryRun",
                 status=WARN,
-                detail="dryRun=false: transform/load WILL write to the GA registries",
+                detail="dryRun=false: transform/load WILL write to the target registries",
                 remedy="Drop --live to transform and report without writing anything",
             )
         )
@@ -386,7 +386,7 @@ def check_registry_access(
 #: Service models the run cannot proceed without, and which side of the migration each one serves.
 REQUIRED_SERVICE_MODELS = {
     "bedrock-agentcore-control": "read Preview records",
-    "agent-registry-control": "write GA records",
+    "agent-registry-control": "write target records",
 }
 
 #: First botocore release carrying ``agent-registry-control``. Named in the remedy, not compared
@@ -398,7 +398,7 @@ def check_sdk_models(available_services: Iterable[str] | None = None) -> list[Ch
     """Check the SDK on this worker models both control planes.
 
     This is the failure that used to arrive latest and cost most. The extract stage reads Preview
-    with ``bedrock-agentcore-control`` and only the load stage writes GA with
+    with ``bedrock-agentcore-control`` and only the load stage writes the target registry with
     ``agent-registry-control``, so an SDK carrying one model and not the other stages a full run
     successfully and then dies on the first create with ``UnknownServiceError``. Asserting both
     up front turns that into a sentence before anything is read.
@@ -467,7 +467,7 @@ def run_checks(
     if source_prober is not None:
         results.extend(check_registry_access(mappings, side="source", prober=source_prober, label="Preview registry"))
     if target_prober is not None:
-        results.extend(check_registry_access(mappings, side="target", prober=target_prober, label="GA registry"))
+        results.extend(check_registry_access(mappings, side="target", prober=target_prober, label="target registry"))
     return PreflightReport(results=results)
 
 

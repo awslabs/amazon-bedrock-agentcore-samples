@@ -2,7 +2,7 @@
 
 Two things matter here. The dispatcher must route to the right stage and pass arguments through
 untouched, so the CLI and Glue reach identical code. And ``--live`` must be the only thing that can
-turn a review run into a live one -- it decides whether records reach a customer's GA registry, so
+turn a review run into a live one -- it decides whether records reach a customer's target registry, so
 it is pinned from both ends: the dispatcher forwards it, and the settings layer applies it.
 """
 
@@ -76,7 +76,7 @@ class Dispatch(unittest.TestCase):
         cannot catch what it was named for: substring matching passes spuriously ("load" matches
         "payload", "report" matches "reports"), and a docstring mention is not a handler. The
         dispatcher it was guarding fell through to the load stage, so a command added to COMMANDS
-        and forgotten in the chain silently wrote to a GA registry.
+        and forgotten in the chain silently wrote to a target registry.
         """
         for command in engine.COMMANDS:
             self.assertIn(command, engine._HANDLERS, command)
@@ -307,7 +307,7 @@ class ReportsAreFoundWithoutARunId(unittest.TestCase):
     def test_a_status_that_could_not_be_applied_is_named_in_the_report(self):
         """A record that loaded but kept the wrong status is the one failure a clean run can hide.
 
-        It is not a record failure -- the content is in GA -- so it never reaches errorCount, and
+        It is not a record failure -- the content is in the target registry -- so it never reaches errorCount, and
         before this it appeared only in summary.json. A record left below its source status is
         invisible to data-plane search, which is the whole point of migrating it.
         """
@@ -367,10 +367,10 @@ class ReportsAreFoundWithoutARunId(unittest.TestCase):
         self.assertIn("not run yet", rendered)
 
 
-class TheGaModelPrerequisiteIsPrintedOnce(unittest.TestCase):
+class TheTargetModelPrerequisiteIsPrintedOnce(unittest.TestCase):
     """The note belongs to whoever is talking to the person, and only one of them is.
 
-    `target-config` emits a create-registry command the AWS CLI cannot run until the GA model is
+    `target-config` emits a create-registry command the AWS CLI cannot run until the target service model is
     installed, so the note has to travel with it. But `init` shells to `target-config --json` and
     inherits its stderr while printing its own copy in position -- which put the same six lines on
     screen twice. `--json` means something is reading this rather than someone, so the note is the

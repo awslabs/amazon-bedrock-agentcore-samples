@@ -1,6 +1,6 @@
-"""Characterization tests for the Preview -> GA record/registry transform.
+"""Characterization tests for the Preview -> target record/registry transform.
 
-These lock the exact GA output shape for representative Preview records (the breaking-change
+These lock the exact target output shape for representative Preview records (the breaking-change
 mappings from the design doc): descriptor restructure, inlineContent->data, version collapse,
 per-descriptor source placement, recordType inference, and the markdown-only skill rule that
 regressed once before (now settled against the live service: it becomes an agentSkillsDefinition
@@ -24,7 +24,7 @@ from migration_common.transform import (
 )
 
 SOURCE = {"accountId": "111122223333", "region": "us-east-1", "registryId": "reg-abc"}
-# Only used when a record has no usable name of its own; see GaNameCarriesOverFromTheSource.
+# Only used when a record has no usable name of its own; see TargetNameCarriesOverFromTheSource.
 GENERATED_NAME_RE = re.compile(r"^migrated-[0-9a-f]{32}$")
 
 
@@ -37,7 +37,7 @@ def _transform(preview, *, config=None, context=None):
 def _record_without_name(result):
     """Drop `name` after asserting it equals the source record's own name.
 
-    The GA name is the dedup key and what you filter by, so it must stay the source name rather
+    The target name is the dedup key and what you filter by, so it must stay the source name rather
     than anything generated. The rest of the record is compared field by field by the caller.
     """
     record = dict(result.record)
@@ -136,7 +136,7 @@ class RecordTransformCharacterization(unittest.TestCase):
         )
 
     def test_markdown_only_skill_maps_to_definition_with_markdown_in_additional_data(self):
-        # Settled against the live GA service, which rejects the two shapes this mapping has
+        # Settled against the live service, which rejects the two shapes this mapping has
         # flip-flopped between before. Verified by direct CreateRegistryRecord calls:
         #
         #   {"agentSkillsMd": {"data": md}}                  -> 400 "Exactly one valid descriptor is
@@ -159,7 +159,7 @@ class RecordTransformCharacterization(unittest.TestCase):
             [
                 (
                     "Preview markdown-only skill was migrated as an agentSkillsDefinition carrying "
-                    "the Markdown under additionalData.skillMd, because GA accepts no agentSkillsMd "
+                    "the Markdown under additionalData.skillMd, because the service accepts no agentSkillsMd "
                     "descriptor."
                 )
             ],
@@ -252,7 +252,7 @@ class RecordTransformCharacterization(unittest.TestCase):
         by_record_id = _transform(preview)
         by_context = _transform(preview, context={"source": SOURCE, "oldRecordId": "CTX"})
         self.assertEqual(by_context.old_record_id, "CTX")
-        # The reported old record id changes, but the GA name is the source record's own name and
+        # The reported old record id changes, but the target name is the source record's own name and
         # therefore does not depend on which id the extract stage reported.
         self.assertEqual(by_record_id.record["name"], "N")
         self.assertEqual(by_context.record["name"], "N")
@@ -278,8 +278,8 @@ class RecordTransformCharacterization(unittest.TestCase):
             _transform({"recordId": "r", "name": "N", "descriptors": {}})
 
 
-class GaNameCarriesOverFromTheSource(unittest.TestCase):
-    """The GA `name` is the dedup key, the filter key and the lookup key.
+class TargetNameCarriesOverFromTheSource(unittest.TestCase):
+    """The target `name` is the dedup key, the filter key and the lookup key.
 
     It has to be the name the record already had, or dual-write dedup and
     `--filters name=<name>` both stop working against migrated records.
@@ -309,7 +309,7 @@ class GaNameCarriesOverFromTheSource(unittest.TestCase):
     def test_a_name_needing_sanitising_keeps_a_recognisable_form_and_warns(self):
         result = self._name("Payments MCP")
         self.assertTrue(result.record["name"].startswith("Payments-MCP-"), result.record["name"])
-        self.assertIn("not a valid GA name", result.warnings[0])
+        self.assertIn("not a valid target name", result.warnings[0])
         # displayName keeps the original text; only the key was coerced.
         self.assertEqual(result.record["displayName"], "Payments MCP")
 
@@ -321,7 +321,7 @@ class GaNameCarriesOverFromTheSource(unittest.TestCase):
     def test_sanitising_is_deterministic(self):
         self.assertEqual(self._name("Payments MCP").record["name"], self._name("Payments MCP").record["name"])
 
-    def test_an_over_long_name_is_truncated_within_the_ga_limit(self):
+    def test_an_over_long_name_is_truncated_within_the_target_limit(self):
         result = self._name("Bad name " + "y" * 300)
         self.assertLessEqual(len(result.record["name"]), 255)
 
@@ -333,7 +333,7 @@ class GaNameCarriesOverFromTheSource(unittest.TestCase):
     def test_a_name_with_nothing_usable_falls_back_to_a_generated_one(self):
         result = self._name("...")
         self.assertRegex(result.record["name"], GENERATED_NAME_RE)
-        self.assertTrue(any("no characters GA accepts" in w for w in result.warnings), result.warnings)
+        self.assertTrue(any("no characters the service accepts" in w for w in result.warnings), result.warnings)
 
     def test_the_generated_fallback_uses_the_configured_prefix(self):
         result = self._name(None, config={"namePrefix": "wave1"})
@@ -406,11 +406,11 @@ class RegistryConfigurationTransform(unittest.TestCase):
         self.assertEqual(result["approvalConfiguration"], {"autoApprovalRules": []})
 
 
-class RegistryAuthorizerIsProjectedOntoTheGaShape(unittest.TestCase):
-    """The Preview registry authorizer is not the GA one, so it cannot be copied verbatim.
+class RegistryAuthorizerIsProjectedOntoTheTargetShape(unittest.TestCase):
+    """The Preview registry authorizer is not the target one, so it cannot be copied verbatim.
 
     Preview registries carry ``bedrock-agentcore``'s authorizer structure, shared with Gateway and
-    Runtime, so it has members the GA registry API does not model. Copying those through builds a
+    Runtime, so it has members the target registry API does not model. Copying those through builds a
     payload the service refuses -- and because this payload is applied by hand, the failure lands on
     a person with no explanation of which field caused it.
     """
@@ -436,7 +436,7 @@ class RegistryAuthorizerIsProjectedOntoTheGaShape(unittest.TestCase):
             },
         }
 
-    def test_every_ga_supported_field_is_carried_over(self):
+    def test_every_target_supported_field_is_carried_over(self):
         warnings: list[str] = []
         result = transform_registry_configuration(
             self._preview(
@@ -484,7 +484,7 @@ class RegistryAuthorizerIsProjectedOntoTheGaShape(unittest.TestCase):
             self.assertIn(dropped, warnings[0])
 
     def test_an_audience_naming_the_preview_registry_is_reported(self):
-        """The value cannot be corrected here -- the GA registry id does not exist yet."""
+        """The value cannot be corrected here -- the target registry id does not exist yet."""
         stale = "https://bedrock-agentcore.us-west-2.amazonaws.com/registry/7UTnSjchy17rHV0u/mcp"
         warnings: list[str] = []
         result = transform_registry_configuration(

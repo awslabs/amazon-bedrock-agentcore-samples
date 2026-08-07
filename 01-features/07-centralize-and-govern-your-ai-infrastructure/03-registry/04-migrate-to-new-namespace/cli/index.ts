@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `agent-registry-migration` -- migrate AWS Agent Registry records from Public Preview to GA.
+ * `agent-registry-migration` -- migrate AWS Agent Registry records to the new version of Registry.
  *
  * Nine commands, one configuration file, and one flag that decides whether anything is written.
  *
@@ -38,7 +38,7 @@ const GLOBAL_FLAGS: Record<string, FlagSpec> = {
 };
 
 const FLAGS: Record<string, FlagSpec> = {
-  '--live': { help: 'Create the records in the GA registries. Off by default' },
+  '--live': { help: 'Create the records in the target registries. Off by default' },
   '--dry-run': { help: 'Transform and report without writing. The default; say it to be sure' },
   '--resume': {
     argument: '[run-id]',
@@ -64,10 +64,10 @@ const COMMANDS: Record<string, CommandSpec> = {
   init: {
     summary: 'Ask for your registries once, and write the configuration file.',
     detail:
-      'Asks for each preview registry and the GA registry to migrate it into, and writes the\n' +
+      'Asks for each preview registry and the target registry to migrate it into, and writes the\n' +
       'configuration every other command reads. Your account and region come from your\n' +
       'credentials, and each side of a pair can be in a different account or region.\n' +
-      'When you have no GA registry yet, init derives its configuration from the preview one,\n' +
+      'When you have no target registry yet, init derives its configuration from the preview one,\n' +
       'gives you the single command that creates it, and takes the resulting id back into the file.',
     flags: ['--force'],
   },
@@ -99,7 +99,7 @@ const COMMANDS: Record<string, CommandSpec> = {
   run: {
     summary: 'The whole migration in one command. Writes nothing unless --live.',
     detail:
-      'Validate, read the preview registries, transform every record to the GA shape, load, and\n' +
+      'Validate, read the preview registries, transform every record to the target shape, load, and\n' +
       'report -- in one command. Without --live nothing is written: you get the transformed payloads\n' +
       'and the full report to review first, and can then load exactly those records.\n\n' +
       'Prefer `extract` and `load` when reading and writing are separate decisions, taken at\n' +
@@ -108,8 +108,8 @@ const COMMANDS: Record<string, CommandSpec> = {
       'writes the old -> new crosswalk.',
     flags: ['--live', '--dry-run', '--resume', '--incremental', '--since', '--glue', '--local'],
     examples: [
-      'run --dry-run                # read, transform and report every record. Calls no GA write API',
-      'run --live                   # the same, and create the GA records as it goes',
+      'run --dry-run                # read, transform and report every record. Calls no target write API',
+      'run --live                   # the same, and create the target records as it goes',
       'run --live --resume          # skip the read: load the extract you last reviewed, byte for byte',
       'run --live --resume <run-id> # the same, for an extract you name rather than the latest',
       'run --incremental --live     # only records changed since this pair last loaded successfully',
@@ -117,10 +117,10 @@ const COMMANDS: Record<string, CommandSpec> = {
     ],
   },
   extract: {
-    summary: 'Read the preview registries into staging, and print the run id. Never writes to GA.',
+    summary: 'Read the preview registries into staging, and print the run id. Never writes to the target registry.',
     detail:
       'The first half of a migration on its own: validate, then read every record into staging and\n' +
-      'report what was read. Nothing is written to GA, and nothing can be -- this command has no\n' +
+      'report what was read. Nothing is written to the target registry, and nothing can be -- this command has no\n' +
       '--live.\n\n' +
       'It prints the run id, which is what `load` and `report` take. `load` defaults to the most\n' +
       'recent extract, so in the common case you do not have to pass it anywhere.',
@@ -134,7 +134,7 @@ const COMMANDS: Record<string, CommandSpec> = {
   load: {
     summary: 'Transform and load an extract, the most recent by default. Writes nothing unless --live.',
     detail:
-      'The second half: transform every staged record to the GA shape and load it, then report.\n' +
+      'The second half: transform every staged record to the target shape and load it, then report.\n' +
       'Defaults to the most recent extract -- normally the one you just reviewed -- and --run-id\n' +
       'names any other.\n\n' +
       'Loading the same extract twice is safe: a record already in the target is recognised by name\n' +
@@ -142,7 +142,7 @@ const COMMANDS: Record<string, CommandSpec> = {
     flags: ['--live', '--dry-run', '--run-id', '--glue', '--local'],
     examples: [
       'load --dry-run            # transform the most recent extract and report it, writing nothing',
-      'load --live               # create the GA records from that same extract',
+      'load --live               # create the target records from that same extract',
       'load --live --run-id <id> # create them from the extract you name instead of the latest',
     ],
   },
@@ -167,16 +167,16 @@ const COMMANDS: Record<string, CommandSpec> = {
   destroy: {
     summary: 'Remove the Glue engine. Never deletes migrated records.',
     detail:
-      'Deletes the engine stack. Migrated GA records are never touched, whatever you pass.\n' +
+      'Deletes the engine stack. Migrated target records are never touched, whatever you pass.\n' +
       'Without --yes it only prints what would go and what would survive. The staging bucket is\n' +
       'kept unless you add --delete-data, because it holds your reports and crosswalks.',
     flags: ['--yes', '--delete-data', '--keep-reports'],
   },
   'target-config': {
-    summary: "Derive a GA registry's configuration from its Preview registry.",
+    summary: "Derive a target registry's configuration from its Preview registry.",
     detail:
-      'Reads a preview registry and writes the settings the matching GA registry should be created\n' +
-      'with, translated to the GA shape. Creates nothing -- you create the registry and supply its\n' +
+      'Reads a preview registry and writes the settings the matching target registry should be created\n' +
+      'with, translated to the target shape. Creates nothing -- you create the registry and supply its\n' +
       'id. init does this during setup; use it directly when you add a mapping later.',
     flags: [],
   },
@@ -186,12 +186,12 @@ const EXAMPLES = `A first migration, one step at a time:
   init                 asks for your registries once, and writes migration.config.json
   check                assumes every role and calls both registries. Writes nothing  (optional)
   extract              reads every preview record into staging, and prints the run id
-  load --dry-run       transforms that extract to the GA schema and reports it       (optional)
-  load --live          creates the GA records from exactly those staged bytes
+  load --dry-run       transforms that extract to the new schema and reports it       (optional)
+  load --live          creates the target records from exactly those staged bytes
 
 Or the whole thing in one command:
-  run --dry-run        read, transform and report. Calls no GA write API
-  run --live           the same, creating the GA records as it goes
+  run --dry-run        read, transform and report. Calls no target write API
+  run --live           the same, creating the target records as it goes
 
 Afterwards:
   report               what a run did, and where its files are
@@ -235,7 +235,7 @@ function renderGlobalHelp(): string {
     [...Object.entries(GLOBAL_FLAGS), ...Object.entries(FLAGS)],
     true,
   ).join('\n');
-  return `agent-registry-migration -- move Agent Registry records from Public Preview to GA
+  return `agent-registry-migration -- move Agent Registry records to the new version of Registry
 
 Usage: agent-registry-migration <command> [options]
 
@@ -350,7 +350,7 @@ function parse(argv: string[]): Parsed {
   // The one decision that matters most, asked for both ways at once.
   if (flags.has('--live') && flags.has('--dry-run')) {
     throw usageError(
-      '--live creates the GA records; --dry-run writes nothing. Pass one -- and note that ' +
+      '--live creates the target records; --dry-run writes nothing. Pass one -- and note that ' +
         'dry run is what you get with neither.',
     );
   }

@@ -6,7 +6,7 @@ transform has to handle -- nested supplementary descriptors, per-descriptor sync
 credential providers, versions, unicode, and large payloads -- so a migration run can be validated
 end to end without touching a production registry. On top of that base matrix it also covers:
 
-  * dedup-key gaps -- the GA key is (name, recordVersion), and Preview enforces neither part,
+  * dedup-key gaps -- the target key is (name, recordVersion), and Preview enforces neither part,
   * lifecycle states beyond the DRAFT/PENDING_APPROVAL/APPROVED/REJECTED set (DEPRECATED),
   * boundary values at the limits the service actually enforces,
   * records whose own history matters (edited after approval, so updatedAt > createdAt).
@@ -28,7 +28,7 @@ retires a migration risk that code reading alone leaves open:
     supported for the specified descriptor type". So a descriptor-less record, an empty descriptor,
     a tools-only MCP record, two descriptor variants at once, and a descriptorType contradicting
     its body are all impossible in a customer registry. In particular the transform-vs-validate
-    stage disagreement (transform accepts a content-free descriptor, validate_ga_request then
+    stage disagreement (transform accepts a content-free descriptor, validate_target_request then
     rejects it) is unreachable, and descriptorType can never disagree with the inferred recordType.
   * The one descriptor-less form that IS accepted is a sync config with no descriptors (fixture A8,
     since removed -- see ONE_SYNC_FIXTURE_ONLY). It does not yield a content-free record: the service
@@ -48,15 +48,15 @@ more -- the fixtures that produced them were removed and the conclusions kept he
 
   * A successful URL sync OVERWRITES the record's name and recordVersion with the values from the
     fetched document. All eight fixtures pointing at one MCP endpoint were renamed to the same
-    (name, recordVersion) -- "contextstudios-mcp" / "1.2.1" -- which is exactly the GA dedup key.
-    The same overwrite happens again on the GA side when the migration recreates the record, so a
+    (name, recordVersion) -- "contextstudios-mcp" / "1.2.1" -- which is exactly the target dedup key.
+    The same overwrite happens again on the target side when the migration recreates the record, so a
     registry holding two records synced from one upstream cannot be migrated at all: renaming them
     in Preview only moves the collision from the extract stage's duplicate-name guard to the load
     stage. This is the headline migration risk in this matrix, and it cost the tool a real defect --
-    the loader used to perform the collapse silently, merging four source records into one GA record
+    the loader used to perform the collapse silently, merging four source records into one target record
     and reporting three of them as successes. It now refuses instead (``_claim_target_record``).
     Only one fixture is seeded on the shared URL; see ONE_SYNC_FIXTURE_ONLY.
-  * GA's dedup key is (name, recordVersion) and Preview enforced neither part, so a Preview
+  * the target dedup key is (name, recordVersion) and Preview enforced neither part, so a Preview
     registry may legitimately hold two records with one name and no version. The tool handles this
     correctly -- extract detects the clash, names the offending records, and resolves it once
     ``runtime.transform.duplicateNames`` is set to ``suffix`` -- so a duplicate pair is no longer
@@ -114,10 +114,10 @@ DEFAULT_MCP_SYNC_URL = "https://mcp.contextstudios.ai/api/public/mcp"
 #
 # A successful URL sync overwrites the record's name AND recordVersion with the values from the
 # fetched document. That happens on BOTH sides: in the Preview registry when the fixture is seeded,
-# and again in the GA registry when the migration recreates it. So N records synced from one URL
-# collapse into one (name, recordVersion) -- which is exactly the GA dedup key -- no matter what
+# and again in the target registry when the migration recreates it. So N records synced from one URL
+# collapse into one (name, recordVersion) -- which is exactly the target dedup key -- no matter what
 # names they were given. Renaming them after creation gets the Preview side past the extract stage's
-# duplicate-name guard, but GA renames them again on create, so the collision simply moves to the
+# duplicate-name guard, but the service renames them again on create, so the collision simply moves to the
 # load stage. There is no way to seed two records from one upstream and have both survive.
 #
 # This matrix therefore keeps ONE fixture on the shared URL (mcp-sync-url-reachable), which covers
@@ -127,7 +127,7 @@ DEFAULT_MCP_SYNC_URL = "https://mcp.contextstudios.ai/api/public/mcp"
 # further distinct, genuinely reachable MCP endpoint per fixture, not a second name for this one.
 #
 # The loader refuses this collapse rather than performing it: see _claim_target_record in
-# registry_api.py, added after a live run silently merged four source records into one GA record.
+# registry_api.py, added after a live run silently merged four source records into one target record.
 MCP_SCHEMA_VERSION = "2025-12-11"
 MCP_PROTOCOL_VERSION = "2024-11-05"
 A2A_SCHEMA_VERSION = "0.3"
@@ -336,7 +336,7 @@ def build_matrix(
             "why": "top-level sync config must move onto the mcpServer descriptor as source.fromUrl "
             "(uses a reachable URL so the record reaches DRAFT)",
             # The sync overwrites name and recordVersion with the values from the fetched document,
-            # so restore the intended name to keep this fixture identifiable in the run reports. GA
+            # so restore the intended name to keep this fixture identifiable in the run reports. The service
             # renames it again when the migration recreates it, which is expected and harmless while
             # this is the only record on the URL -- see ONE_SYNC_FIXTURE_ONLY.
             "post_create_update": {"name": "mcp-sync-url-reachable"},
@@ -385,7 +385,7 @@ def build_matrix(
         },
         {
             "scenario": "a2a-card-no-schema-version",
-            "why": "descriptor with no explicit version: GA dataSchemaVersion must simply be absent",
+            "why": "descriptor with no explicit version: target dataSchemaVersion must simply be absent",
             "name": "a2a-card-no-schema-version",
             "descriptorType": "A2A",
             "descriptors": {"a2a": {"agentCard": {"inlineContent": A2A_CARD}}},
@@ -393,7 +393,7 @@ def build_matrix(
         # The A2A sync fixture is opt-in on --a2a-sync-url, like the credential-provider fixtures are
         # on --with-credential-providers, because it needs infrastructure this script cannot conjure.
         # It used to fall back to an unreachable placeholder URL, on the grounds that the resulting
-        # CREATE_FAILED source record was itself a useful fixture. It is not worth the cost: GA
+        # CREATE_FAILED source record was itself a useful fixture. It is not worth the cost: the service
         # cannot fetch that URL either, so the record is recreated in CREATE_FAILED and the load
         # stage reports a failed record on every single run. That failure says nothing about the
         # migration -- the tool faithfully migrated a record whose upstream does not exist -- and it
@@ -436,7 +436,7 @@ def build_matrix(
         },
         {
             "scenario": "skills-md-only",
-            "why": "markdown-only skill: KNOWN GA REJECTION (GA allows only agentSkillsDefinition/custom for SKILL)",
+            "why": "markdown-only skill: KNOWN REJECTION (the service allows only agentSkillsDefinition/custom for SKILL)",
             "name": "skills-md-only",
             "descriptorType": "AGENT_SKILLS",
             "descriptors": {"agentSkills": {"skillMd": {"inlineContent": SKILL_MD}}},
@@ -510,7 +510,7 @@ def build_matrix(
             "descriptors": {"custom": {"inlineContent": json.dumps({"note": "max length name scenario"})}},
         },
         # A duplicate-name pair (two records sharing one name with no recordVersion) used to sit
-        # here. It was removed: it is not a tool defect. GA's dedup key is (name, recordVersion),
+        # here. It was removed: it is not a tool defect. The target dedup key is (name, recordVersion),
         # Preview enforced neither, and the extract stage already detects the clash, aborts with a
         # named DuplicateRecordNames error that lists the offending names, and resolves it once
         # ``runtime.transform.duplicateNames`` is set to ``suffix``. Keeping the pair only forced
@@ -527,7 +527,7 @@ def build_matrix(
         # recorded in the module docstring -- the service fetches the URL and materializes the
         # content, so the migration never sees a content-free record -- and it can no longer be
         # seeded alongside the other sync fixtures. See ONE_SYNC_FIXTURE_ONLY.
-        # ---- dedup-key gaps: the GA key is (name, recordVersion), Preview enforces neither -
+        # ---- dedup-key gaps: the target key is (name, recordVersion), Preview enforces neither -
         # A B1 pair (two records syncing from the SAME url under DIFFERENT names) used to sit here.
         # Its finding is CONFIRMED and recorded in the module docstring, and it is service
         # behaviour rather than a tool defect, so the fixtures were removed. It also could not
@@ -536,9 +536,9 @@ def build_matrix(
         # restoring distinct names after creation for how the remaining sync fixtures avoid it.
         {
             "scenario": "B2-case-only-name-difference-upper",
-            "why": "the name pattern is case-sensitive, but nothing states whether GA's (name, recordVersion) key is",
+            "why": "the name pattern is case-sensitive, but nothing states whether the target registry's (name, recordVersion) key is",
             "expect": "the migration treats these as two distinct records and issues two creates. If "
-            "the GA key is case-insensitive the second create collides at the service",
+            "the target key is case-insensitive the second create collides at the service",
             "name": "B2-Payments-MCP",
             "descriptorType": "CUSTOM",
             "descriptors": {"custom": {"inlineContent": json.dumps({"case": "upper"})}},
@@ -554,7 +554,7 @@ def build_matrix(
         {
             "scenario": "B3-name-without-trailing-slash",
             "why": "the name pattern permits a trailing '/', so two names can differ only by a separator",
-            "expect": "the migration treats these as distinct. If GA normalizes separators the second create collides",
+            "expect": "the migration treats these as distinct. If the service normalizes separators the second create collides",
             "name": "b3-team/svc",
             "descriptorType": "CUSTOM",
             "descriptors": {"custom": {"inlineContent": json.dumps({"variant": "no-trailing-slash"})}},
@@ -570,7 +570,7 @@ def build_matrix(
         {
             "scenario": "B3c-name-with-double-slash",
             "why": "the pattern permits '//' inside a name",
-            "expect": "accepted by the GA name pattern too; included to prove neither side rejects it",
+            "expect": "accepted by the target name pattern too; included to prove neither side rejects it",
             "name": "b3c-team//svc",
             "descriptorType": "CUSTOM",
             "descriptors": {"custom": {"inlineContent": json.dumps({"variant": "double-slash"})}},
@@ -580,7 +580,7 @@ def build_matrix(
             "why": "RegistryRecordVersion permits both cases, and _normalized_version is an exact "
             "string compare, so 'V1.0' and 'v1.0' are two different keys to the migration",
             "expect": "two records with the SAME name are created, distinguished only by version "
-            "case. _claim_name does not fire. If GA compares versions case-insensitively the second "
+            "case. _claim_name does not fire. If the service compares versions case-insensitively the second "
             "create collides at the service",
             "name": "b4-shared-name",
             "recordVersion": "V1.0",
@@ -613,7 +613,7 @@ def build_matrix(
             "scenario": "C1-deprecated",
             "why": "DEPRECATED is in the status enum and no other fixture reaches it. It is in the "
             "migration's REPRODUCIBLE_SOURCE_STATUSES, so it is replayed rather than warned about",
-            "expect": "transform emits NO warning, and the load stage drives the GA record to "
+            "expect": "transform emits NO warning, and the load stage drives the target record to "
             "DEPRECATED via UpdateRegistryRecordStatus. Confirms the deprecation survives",
             "target_status": "DEPRECATED",
             "name": "c1-deprecated",
@@ -642,7 +642,7 @@ def build_matrix(
             f"{TOTAL_CONTENT_MAX} summed ACROSS descriptors (a fixture at exactly {INLINE_CONTENT_MAX} "
             "was rejected with 'Total descriptor content size exceeds maximum of 100KB'), so this "
             f"sits just under it. The other large-payload fixtures stop at ~60 KB",
-            "expect": "transform and validate_ga_request both accept it; the GA create body carries a "
+            "expect": "transform and validate_target_request both accept it; the target create body carries a "
             "~100 KB descriptor. The largest single-descriptor request the migration will issue",
             "name": "d1-inline-content-near-max",
             "descriptorType": "CUSTOM",
@@ -651,7 +651,7 @@ def build_matrix(
         {
             "scenario": "D2-description-at-max",
             "why": f"Description max is {DESCRIPTION_MAX} and is marked sensitive in the model",
-            "expect": "carried through unchanged as the GA description",
+            "expect": "carried through unchanged as the target registry description",
             "name": "d2-description-at-max",
             "description": "D" * DESCRIPTION_MAX,
             "descriptorType": "CUSTOM",
@@ -663,7 +663,7 @@ def build_matrix(
             "scenario": "D3-record-version-at-max",
             "why": f"RegistryRecordVersion max is {RECORD_VERSION_MAX} with pattern [a-zA-Z0-9.-]+ "
             "(note: no underscore)",
-            "expect": "carried through unchanged and used as half the GA dedup key",
+            "expect": "carried through unchanged and used as half the target dedup key",
             "name": "d3-record-version-at-max",
             "recordVersion": "1." + "9" * (RECORD_VERSION_MAX - 2),
             "descriptorType": "CUSTOM",
@@ -791,7 +791,7 @@ def wait_until_ready(client, registry_id: str, attempts: int = 40, delay: int = 
 def apply_status(client, registry_id: str, record_id: str, target_status: str) -> tuple[bool, str]:
     """Drive a DRAFT record to ``target_status``, returning (ok, detail).
 
-    Mirrors the GA ladder the migration itself uses, because the Preview state machine is the
+    Mirrors the target registry ladder the migration itself uses, because the Preview state machine is the
     same shape: PENDING_APPROVAL is one submit; APPROVED/REJECTED are only reachable from
     PENDING_APPROVAL; DEPRECATED is attempted directly first and falls back to going through
     approval, since a service may require the record to have left DRAFT.
@@ -935,7 +935,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Creating Preview registry {registry_name} in {args.region} (account {matrix_account})...")
         created = client.create_registry(
             name=registry_name,
-            description="Preview test matrix for the Agent Registry GA migration tool",
+            description="Preview test matrix for the Agent Registry migration tool",
             authorizerType="AWS_IAM",
             approvalConfiguration={"autoApproval": False},
             clientToken=str(uuid.uuid4()),

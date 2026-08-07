@@ -6,7 +6,7 @@ time, the engine remembers one per registry mapping and uses it automatically.
 The watermark records the **last successful load**, not the last extract. That distinction
 matters: if extraction succeeds but the load fails, advancing the watermark would permanently skip
 those records. So extraction only proposes a *candidate* (written into the extract manifest), and
-transform/load commits it once the records for that mapping are actually in the GA registry.
+transform/load commits it once the records for that mapping are actually in the target registry.
 
 Cutoff selection, in order:
 
@@ -20,7 +20,7 @@ records updated *during* the previous run. Re-processing is harmless because the
 idempotent upsert.
 
 This module also holds the **id map**, the other thing a run has to remember for the next one:
-which GA record each source record became. Both are committed state under ``state/``, keyed per
+which target record each source record became. Both are committed state under ``state/``, keyed per
 mapping, read at the start of a run and written at the end, so they live together rather than in
 two near-identical modules. Their names are prefixed (``read_idmap`` beside ``read``) because their
 commit rules are deliberately *not* the same -- see ``read_idmap`` below.
@@ -191,7 +191,7 @@ def write(store: Any, mapping_id: str, value: dict[str, Any]) -> str:
 
 
 def idmap_key(mapping_id: str) -> str:
-    """Return the S3 key holding the committed source-recordId -> GA-recordId map."""
+    """Return the S3 key holding the committed source-recordId -> target-recordId map."""
     return f"{IDMAP_PREFIX}/mapping={safe_segment(mapping_id)}.json"
 
 
@@ -203,12 +203,12 @@ def read_idmap(store: Any, mapping_id: str) -> dict[str, str]:
     them on the next run: without it, a second run has only two ways to recognise a record it
     already migrated -- the name, and, for URL-synchronized records, the descriptor source. A record
     renamed in Preview between two runs defeats both, so it would be migrated a second time as a new
-    GA record, leaving the one it was migrated to the first time behind as an orphan. The source
+    target record, leaving the one it was migrated to the first time behind as an orphan. The source
     recordId is the only identifier that survives a rename, so it is the one worth persisting.
 
     Unlike the watermark, this is committed even when part of a run failed, and even for a record
     that was created and then failed to settle. Both follow from what the map is for: the entries
-    name records that already exist in the GA registry, and forgetting one does not make the next
+    name records that already exist in the target registry, and forgetting one does not make the next
     run re-read it safely -- it makes the next run create a second copy of it. Dry runs write no map,
     having created nothing to remember.
 

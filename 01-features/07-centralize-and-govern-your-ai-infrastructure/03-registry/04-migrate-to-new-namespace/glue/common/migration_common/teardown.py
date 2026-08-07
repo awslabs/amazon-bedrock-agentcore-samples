@@ -6,7 +6,7 @@
 * the stack has termination protection on, so the delete is refused;
 * the staging bucket is deliberately RETAINed, so the stack goes away while every staged record,
   report, watermark and old-to-new id map stays (and keeps costing);
-* the migrated GA records are real resources in your registry and must never be touched by a
+* the migrated target records are real resources in your registry and must never be touched by a
   teardown -- they are the point of having run the tool.
 
 So this shows exactly what it would remove, and removes nothing until you say so. It is driven by
@@ -16,7 +16,7 @@ the CLI::
     agent-registry-migration destroy --yes           # delete the engine, KEEP the bucket and data
     agent-registry-migration destroy --yes --delete-data   # also empty and delete the bucket
 
-Migrated GA records are never deleted, whatever is passed.
+Migrated target records are never deleted, whatever is passed.
 """
 
 from __future__ import annotations
@@ -179,7 +179,7 @@ def render_plan(plan: dict, options: dict) -> str:
             lines.append("    reports/ is kept, so the bucket itself is kept too")
 
     lines += ["", "WILL SURVIVE"]
-    lines.append("  Every migrated record in the GA registries -- a teardown never deletes records")
+    lines.append("  Every migrated record in the target registries -- a teardown never deletes records")
     lines.append("  The Preview registries and their records")
     if plan["bucket"] and not options["delete_data"]:
         lines += [
@@ -228,7 +228,7 @@ def _execute(cloudformation: object, s3: object, plan: dict, options: dict) -> N
     elif bucket:
         print(f"Kept s3://{bucket} and everything in it")
 
-    print("\nTeardown complete. Migrated GA records were not touched.")
+    print("\nTeardown complete. Migrated target records were not touched.")
 
 
 def empty_bucket(s3: object, bucket: str, *, prefixes: tuple[str, ...] | None = None) -> int:

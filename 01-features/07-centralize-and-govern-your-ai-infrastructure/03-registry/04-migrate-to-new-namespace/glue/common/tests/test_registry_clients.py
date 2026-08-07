@@ -1,4 +1,4 @@
-"""Offline wire-equivalence tests for the SDK-based Preview/GA registry clients.
+"""Offline wire-equivalence tests for the SDK-based Preview/target registry clients.
 
 No network: a botocore ``before-send`` hook captures each signed request (proving the modeled
 boto3 operations serialize to the exact REST method/URI/body the control planes expect, and
@@ -67,7 +67,7 @@ PREVIEW_API = {
         "recordTypePath": "descriptorType",
     },
 }
-GA_API = {
+TARGET_API = {
     "transport": "sigv4RestJson",
     "serviceName": "agent-registry-control",
     "signingName": "agent-registry",
@@ -121,7 +121,7 @@ def _resp(status: int, body: dict) -> AWSResponse:
 
 
 def _conflict() -> AWSResponse:
-    """The concurrent-update conflict GA returns for a status call that arrives mid-transition.
+    """The concurrent-update conflict the service returns for a status call that arrives mid-transition.
 
     Carries the error code in both the header and the body, which is where botocore's rest-json
     parser looks for it, so the client sees a real ``ConflictException`` rather than a bare 409.
@@ -170,15 +170,15 @@ def _invoker():
 
 
 class PollBudgets(unittest.TestCase):
-    """``ga.poll`` decides how long a write and a status transition are waited on.
+    """``target.poll`` decides how long a write and a status transition are waited on.
 
     Status waits used to be hard-coded to ``min(maxAttempts, 15)``, so raising ``maxAttempts`` for a
     slowly-settling registry changed the record poll and silently did nothing here. The cap is now a
     named, overridable setting bounded by the record budget.
     """
 
-    def _client(self, poll: dict) -> registry_api.GaRegistryClient:
-        return registry_api.GaRegistryClient(_invoker(), {**GA_API, "poll": poll}, REGION)
+    def _client(self, poll: dict) -> registry_api.TargetRegistryClient:
+        return registry_api.TargetRegistryClient(_invoker(), {**TARGET_API, "poll": poll}, REGION)
 
     def test_defaults_come_from_the_module_constants(self):
         client = self._client({})
@@ -211,7 +211,7 @@ class PreviewDescribeRegistryWire(unittest.TestCase):
     """``describe_registry``, the registry-level read behind ``target-config``.
 
     Untested until now, while every record-level call was pinned. It is the sole input to
-    ``target_registry.derive_create_registry_inputs``, so what it returns becomes the GA registry an
+    ``target_registry.derive_create_registry_inputs``, so what it returns becomes the target registry an
     operator creates by hand.
     """
 
@@ -367,9 +367,9 @@ class PreviewIncrementalFiltering(unittest.TestCase):
         self.assertEqual(sorted(ids), ["new", "old"])
 
 
-class GaClientWire(unittest.TestCase):
+class TargetClientWire(unittest.TestCase):
     def test_create_path_wire_and_parse(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         self.assertEqual(boto.meta.service_model.metadata.get("signingName"), "agent-registry")
 
@@ -401,7 +401,7 @@ class GaClientWire(unittest.TestCase):
                         "recordVersion": "1",
                     },
                 )
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         cap = _capture(boto, responder)
         result = client.upsert(registry_id="reg-1", record=desired)
@@ -423,7 +423,7 @@ class GaClientWire(unittest.TestCase):
         self.assertIn("/agent-registry/aws4_request", _auth(create_req))
 
     def test_update_path_uses_patch_and_optional_value_wrappers(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         desired = {
             "name": "svc-beta",
@@ -458,7 +458,7 @@ class GaClientWire(unittest.TestCase):
             if m == "PATCH" and url.endswith("/records/rec-x"):
                 state["updated"] = True
                 return _resp(202, {"recordId": "rec-x", "status": "UPDATING"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         cap = _capture(boto, responder)
         result = client.upsert(registry_id="reg-1", record=desired)
@@ -473,7 +473,7 @@ class GaClientWire(unittest.TestCase):
 
 
 class NameCollisionGuard(unittest.TestCase):
-    """The load-time backstop for two source records sharing one GA name.
+    """The load-time backstop for two source records sharing one target name.
 
     Extraction no longer detects this up front, so this guard is now the only thing standing
     between two colliding source records and one of them silently overwriting the other: the
@@ -482,7 +482,7 @@ class NameCollisionGuard(unittest.TestCase):
     """
 
     def test_a_second_source_record_claiming_the_same_name_is_refused(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         new_arn = "arn:aws:agent-registry:us-east-1:123456789012:registry/reg-1/record/rec-new"
 
@@ -504,7 +504,7 @@ class NameCollisionGuard(unittest.TestCase):
                         "descriptors": {"custom": {"data": "payload"}},
                     },
                 )
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(boto, responder)
         record = {
@@ -520,7 +520,7 @@ class NameCollisionGuard(unittest.TestCase):
             client.upsert(registry_id="reg-1", record=record, source_record_id="rec-2")
 
     def test_re_processing_the_same_source_record_is_not_a_collision(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         new_arn = "arn:aws:agent-registry:us-east-1:123456789012:registry/reg-1/record/rec-new"
         calls = {"list": 0}
@@ -549,7 +549,7 @@ class NameCollisionGuard(unittest.TestCase):
                         "descriptors": {"custom": {"data": "payload"}},
                     },
                 )
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(boto, responder)
         record = {
@@ -565,14 +565,14 @@ class NameCollisionGuard(unittest.TestCase):
 
 
 class StatusParityWire(unittest.TestCase):
-    """The GA record has to end up in the status its Preview record held.
+    """The target record has to end up in the status its Preview record held.
 
-    GA creates every record in DRAFT, and DRAFT records are not returned by data-plane search or the
+    target creates every record in DRAFT, and DRAFT records are not returned by data-plane search or the
     browsing APIs, so these two operations are what keeps an approved record approved.
     """
 
     def test_approved_is_submit_then_set_status_when_the_registry_does_not_auto_approve(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         state = {"status": "DRAFT"}
 
@@ -586,7 +586,7 @@ class StatusParityWire(unittest.TestCase):
                 return _resp(202, {"recordId": "rec-1", "status": state["status"]})
             if m == "GET" and url.endswith("/records/rec-1"):
                 return _resp(200, {"recordId": "rec-1", "status": state["status"]})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         cap = _capture(boto, responder)
         result = client.apply_status(
@@ -614,7 +614,7 @@ class StatusParityWire(unittest.TestCase):
         self.assertNotIn("registryId", body)
 
     def test_a_registry_that_auto_approves_needs_only_the_submit(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
 
         def responder(request):
@@ -624,7 +624,7 @@ class StatusParityWire(unittest.TestCase):
             if m == "GET" and url.endswith("/records/rec-1"):
                 # APPROVE_ALL: the service promotes the record without a second call.
                 return _resp(200, {"recordId": "rec-1", "status": "APPROVED"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         cap = _capture(boto, responder)
         result = client.apply_status(
@@ -636,7 +636,7 @@ class StatusParityWire(unittest.TestCase):
         self.assertEqual([r.method for r in cap if r.method == "PATCH"], [])
 
     def test_a_source_status_that_no_new_record_can_hold_is_reported_not_attempted(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         cap = _capture(client._client, lambda request: _resp(500, {}))
 
         result = client.apply_status(
@@ -648,10 +648,10 @@ class StatusParityWire(unittest.TestCase):
 
         self.assertFalse(result.reproducible)
         self.assertEqual(result.actions, [])
-        self.assertEqual(cap, [], "no call should be made for a status GA cannot be put into")
+        self.assertEqual(cap, [], "no call should be made for a status the service cannot be put into")
 
     def test_a_draft_source_record_costs_no_calls(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         cap = _capture(client._client, lambda request: _resp(500, {}))
 
         result = client.apply_status(
@@ -664,7 +664,7 @@ class StatusParityWire(unittest.TestCase):
 
     def test_a_refused_transition_is_returned_not_raised(self):
         """The record is loaded and correct; the caller decides what a status failure means."""
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
 
         def responder(request):
             if request.method == "POST":
@@ -681,7 +681,7 @@ class StatusParityWire(unittest.TestCase):
         self.assertFalse(result.matched)
 
     def test_deprecated_is_set_directly(self):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         state = {"status": "DRAFT"}
 
@@ -692,7 +692,7 @@ class StatusParityWire(unittest.TestCase):
                 return _resp(202, {"recordId": "rec-1", "status": state["status"]})
             if m == "GET":
                 return _resp(200, {"recordId": "rec-1", "status": state["status"]})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         cap = _capture(boto, responder)
         result = client.apply_status(
@@ -705,7 +705,7 @@ class StatusParityWire(unittest.TestCase):
 
 
 class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
-    """GA answers a status call that arrives before the previous write settled with a conflict.
+    """The service answers a status call that arrives before the previous write settled with a conflict.
 
     "ConflictException ... Concurrent update detected. Please retry." is exactly what a migration
     provokes: it creates a record and immediately drives it to its source status. Observed live on
@@ -714,11 +714,11 @@ class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
     (a 409 is not throttling or 5xx), so the client has to.
     """
 
-    # Same GA settings, minus the waiting: the delay is real in production and pointless in a test.
-    API: ClassVar[dict] = {**GA_API, "poll": {**GA_API["poll"], "conflictRetryDelaySeconds": 0}}
+    # Same target settings, minus the waiting: the delay is real in production and pointless in a test.
+    API: ClassVar[dict] = {**TARGET_API, "poll": {**TARGET_API["poll"], "conflictRetryDelaySeconds": 0}}
 
     def _client(self):
-        return registry_api.GaRegistryClient(_invoker(), self.API, REGION)
+        return registry_api.TargetRegistryClient(_invoker(), self.API, REGION)
 
     def test_a_conflict_on_update_status_is_retried_until_it_succeeds(self):
         client = self._client()
@@ -736,7 +736,7 @@ class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
                 return _resp(202, {"recordId": "rec-1", "status": state["status"]})
             if m == "GET":
                 return _resp(200, {"recordId": "rec-1", "status": state["status"]})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(client._client, responder)
         result = client.apply_status(
@@ -763,7 +763,7 @@ class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
                 return _resp(202, {"recordId": "rec-1", "status": "PENDING_APPROVAL"})
             if m == "GET":
                 return _resp(200, {"recordId": "rec-1", "status": "PENDING_APPROVAL"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(client._client, responder)
         result = client.apply_status(
@@ -791,7 +791,7 @@ class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
                 return _resp(200, {"recordId": "rec-1", "status": "PENDING_APPROVAL"})
             if m == "POST":
                 return _resp(202, {"recordId": "rec-1", "status": "PENDING_APPROVAL"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(client._client, responder)
         result = client.apply_status(
@@ -820,7 +820,7 @@ class ConcurrentUpdateConflictsAreRetried(unittest.TestCase):
                 return _resp(200, {"recordId": "rec-1", "status": "DRAFT"})
             if m == "POST":
                 return _resp(202, {"recordId": "rec-1", "status": "PENDING_APPROVAL"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(client._client, responder)
         result = client.apply_status(
@@ -844,7 +844,7 @@ class SettledStatusHandling(unittest.TestCase):
     """
 
     def _update_against_existing_status(self, existing_status: str):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         desired = {
             "name": "svc-beta",
@@ -875,7 +875,7 @@ class SettledStatusHandling(unittest.TestCase):
             if m == "PATCH" and url.endswith("/records/rec-x"):
                 state["updated"] = True
                 return _resp(202, {"recordId": "rec-x", "status": "UPDATING"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(boto, responder)
         return client.upsert(registry_id="reg-1", record=desired)
@@ -903,7 +903,7 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
     """
 
     def _create_then(self, poll_response):
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         desired = {
             "name": "svc-sync",
@@ -921,7 +921,7 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
                 return _resp(202, {"recordArn": new_arn, "status": "CREATING"})
             if m == "GET" and url.endswith("/records/rec-orphan"):
                 return poll_response()
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(boto, responder)
         with self.assertRaises(registry_api.RegistryApiError) as caught:
@@ -950,7 +950,7 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
     def test_a_failed_status_read_after_create_still_carries_the_record_id(self):
         # The poll request itself fails, which is what a transport error looks like once _call has
         # wrapped it. The record was still created, so the id has to survive that path too.
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
         new_arn = "arn:aws:agent-registry:us-east-1:123456789012:registry/reg-1/record/rec-orphan"
 
@@ -960,12 +960,12 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
                 return _resp(200, {"registryRecords": []})
             if m == "POST" and url.endswith("/records"):
                 return _resp(202, {"recordArn": new_arn, "status": "CREATING"})
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(boto, responder)
 
         def failing_get(**_kwargs):
-            raise registry_api.RegistryApiError("GA API call agent-registry-control.get failed")
+            raise registry_api.RegistryApiError("new Registry API call agent-registry-control.get failed")
 
         client._get_record = failing_get
         with self.assertRaises(registry_api.RegistryApiError) as caught:
@@ -990,7 +990,7 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
         A re-run finds the record by name, sees CREATE_FAILED, and refuses it. That record is the
         one the reader has to go and fix or delete, so the row must name it.
         """
-        client = registry_api.GaRegistryClient(_invoker(), GA_API, REGION)
+        client = registry_api.TargetRegistryClient(_invoker(), TARGET_API, REGION)
         boto = client._client
 
         def responder(request):
@@ -1009,7 +1009,7 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
                         "descriptors": {"custom": {"data": "payload"}},
                     },
                 )
-            raise AssertionError(f"unexpected GA request {m} {url}")
+            raise AssertionError(f"unexpected target request {m} {url}")
 
         _capture(boto, responder)
         with self.assertRaises(registry_api.RegistryApiError) as caught:
@@ -1023,13 +1023,13 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
                 },
             )
         self.assertEqual(caught.exception.record_id, "rec-stuck")
-        self.assertIn("Existing GA record rec-stuck", str(caught.exception))
+        self.assertIn("Existing target record rec-stuck", str(caught.exception))
 
 
 class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
     """The hand-maintained length bounds must not be tighter than the Preview model's own.
 
-    This tool copies Preview records into GA, so a bound below what Preview accepts rejects records
+    This tool copies Preview records into the target registry, so a bound below what Preview accepts rejects records
     that demonstrably exist -- before the service is ever asked. That is not a theoretical case: the
     bounds were briefly set to description 1024 and recordVersion 64, and the seed fixtures
     `D2-description-at-max` and `D3-record-version-at-max` create records at exactly the Preview
@@ -1040,7 +1040,7 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
     day the Preview traits change this test says so instead of silently agreeing with a stale copy.
     """
 
-    #: Preview shape -> the GA field the migration carries it into.
+    #: Preview shape -> the target registry field the migration carries it into.
     SHAPE_FOR_FIELD: ClassVar[dict[str, str]] = {
         "name": "RegistryRecordName",
         "description": "Description",
@@ -1065,7 +1065,7 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
         for field, preview_max in self._preview_maxima().items():
             with self.subTest(field=field):
                 self.assertGreaterEqual(
-                    registry_api._GA_FIELD_MAX_LENGTHS[field],
+                    registry_api._TARGET_FIELD_MAX_LENGTHS[field],
                     preview_max,
                     f"{field} is capped below the {preview_max} Preview accepts, so a legal "
                     "Preview record cannot be migrated",
@@ -1083,7 +1083,7 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
 
     def test_a_record_at_every_preview_maximum_is_accepted(self):
         maxima = self._preview_maxima()
-        registry_api.validate_ga_request(
+        registry_api.validate_target_request(
             self._record(
                 name="n" * maxima["name"],
                 displayName="d" * 255,
@@ -1104,14 +1104,14 @@ class LengthBoundsMatchWhatPreviewAccepts(unittest.TestCase):
                 self.subTest(field=field),
                 self.assertRaisesRegex(registry_api.RegistryApiError, "at most"),
             ):
-                registry_api.validate_ga_request(self._record(**{field: value}))
+                registry_api.validate_target_request(self._record(**{field: value}))
 
 
 class DryRunAppliesTheServiceContract(unittest.TestCase):
-    """validate_ga_request is what the live load enforces, so a dry run must run it too."""
+    """validate_target_request is what the live load enforces, so a dry run must run it too."""
 
     def test_a_valid_record_passes(self):
-        registry_api.validate_ga_request(
+        registry_api.validate_target_request(
             {
                 "name": "svc",
                 "displayName": "svc",
@@ -1122,7 +1122,7 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
 
     def test_a_primary_invalid_for_the_record_type_is_rejected(self):
         with self.assertRaisesRegex(registry_api.RegistryApiError, "incompatible with recordType"):
-            registry_api.validate_ga_request(
+            registry_api.validate_target_request(
                 {
                     "name": "svc",
                     "displayName": "svc",
@@ -1133,7 +1133,7 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
 
     def test_more_than_one_primary_descriptor_is_rejected(self):
         with self.assertRaisesRegex(registry_api.RegistryApiError, "exactly one primary descriptor"):
-            registry_api.validate_ga_request(
+            registry_api.validate_target_request(
                 {
                     "name": "svc",
                     "displayName": "svc",
@@ -1146,7 +1146,7 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
         # The live service accepts this exact shape for a markdown-only skill and rejects every
         # alternative (see test_transform for the recorded responses), so the validator has to let a
         # missing ``data`` through when additionalData.skillMd carries the content.
-        registry_api.validate_ga_request(
+        registry_api.validate_target_request(
             {
                 "name": "md-skill",
                 "displayName": "md-skill",
@@ -1155,14 +1155,14 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
             }
         )
 
-    def test_agent_skills_md_is_refused_as_a_ga_primary_descriptor(self):
-        # GA has no agentSkillsMd primary. The live service answers one with "Exactly one valid
+    def test_agent_skills_md_is_refused_as_a_target_primary_descriptor(self):
+        # The new version has no agentSkillsMd primary. The live service answers one with "Exactly one valid
         # descriptor is allowed for record type SKILL. Valid descriptors: [agentSkillsDefinition,
         # custom]", so the validator must refuse it locally rather than let a dry run PASS a body
         # the service then rejects. Nothing emits this shape any more -- the transform normalizes it
-        # -- which is exactly why it needs a guard: a regression there would otherwise reach GA.
+        # -- which is exactly why it needs a guard: a regression there would otherwise reach the target registry.
         with self.assertRaises(registry_api.RegistryApiError):
-            registry_api.validate_ga_request(
+            registry_api.validate_target_request(
                 {
                     "name": "md-skill",
                     "displayName": "md-skill",
@@ -1183,7 +1183,7 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
                 self.subTest(descriptors=descriptors),
                 self.assertRaises(registry_api.RegistryApiError),
             ):
-                registry_api.validate_ga_request(
+                registry_api.validate_target_request(
                     {
                         "name": "svc",
                         "displayName": "svc",
@@ -1194,7 +1194,7 @@ class DryRunAppliesTheServiceContract(unittest.TestCase):
 
     def test_data_is_still_required_on_the_markdown_child_itself(self):
         with self.assertRaisesRegex(registry_api.RegistryApiError, "requires non-empty string data"):
-            registry_api.validate_ga_request(
+            registry_api.validate_target_request(
                 {
                     "name": "md-skill",
                     "displayName": "md-skill",

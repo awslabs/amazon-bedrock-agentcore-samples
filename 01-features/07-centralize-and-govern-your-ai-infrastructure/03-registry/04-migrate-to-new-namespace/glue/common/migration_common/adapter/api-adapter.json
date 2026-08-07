@@ -26,7 +26,7 @@
       "recordTypePath": "descriptorType"
     }
   },
-  "ga": {
+  "target": {
     "transport": "sigv4RestJson",
     "serviceName": "agent-registry-control",
     "signingName": "agent-registry",

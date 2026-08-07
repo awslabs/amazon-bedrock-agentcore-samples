@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assert that the replay fingerprint agrees across every way this tool can be installed.
 
-A live load refuses to run unless the transform + GA adapter fingerprint matches the one recorded
+A live load refuses to run unless the transform + target adapter fingerprint matches the one recorded
 when the records were staged. Part of that fingerprint is ``implementationHash``: a hash of the
 runtime Python under ``glue/``, computed in three independent places.
 

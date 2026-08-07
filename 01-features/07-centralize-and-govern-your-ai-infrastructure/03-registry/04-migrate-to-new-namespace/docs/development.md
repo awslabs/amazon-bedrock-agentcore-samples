@@ -27,15 +27,15 @@ glue/
   common/migration_common/
     __main__.py         Single entry point invoked by the CLI
     jobs/               Stage 1 (extract) and stage 2 (transform-load) implementations
-    transform.py        Preview-to-GA record transformation logic
-    registry_api.py     Control-plane clients for both namespaces and the GA request contract
+    transform.py        Preview-to-new-version record transformation logic
+    registry_api.py     Control-plane clients for both namespaces and the target request contract
     settings.py         Configuration loading, validation, and the --live override
     preflight.py        Checks performed by the `check` command
     report_html.py      HTML run report generation
     storage.py          Amazon S3 staging
     local_store.py      Local filesystem staging
     teardown.py         Resources removed by the `destroy` command
-    target_registry.py  GA registry configuration derivation for the `init` command
+    target_registry.py  Target registry configuration derivation for the `init` command
     adapter/            Shared API contract
   common/tests/         Offline test suite (no AWS calls, no credentials required)
 tools/                  Development utilities: wheel and fingerprint verification,
@@ -77,8 +77,8 @@ organized by the behavior each file protects:
 
 | Test file | What it protects |
 | --- | --- |
-| `test_transform.py` | Exact GA payloads produced by the transform |
-| `test_load_guards.py` | Guards between staged data and the GA registry |
+| `test_transform.py` | Exact target registry payloads produced by the transform |
+| `test_load_guards.py` | Guards between staged data and the target registry |
 | `test_engine_entrypoint.py` | That `--live` is the only flag that enables writes |
 | `test_report_html.py` | The set of items a run report presents for reviewer action |
 | `test_jobs_end_to_end.py` | That the load stage consumes exactly what the extract stage produced, using an in-memory S3 |
@@ -97,7 +97,7 @@ covering every descriptor variant and the edge cases the transform must handle:
 - Per-descriptor sync sources
 - Versions, Unicode characters, and large payloads
 - Boundary-length names
-- GA `(name, recordVersion)` deduplication key edge cases: case-only name differences,
+- Target `(name, recordVersion)` deduplication key edge cases: case-only name differences,
   separator-only name differences, and records with no version
 - `DEPRECATED` status records
 - Boundary values at the service-enforced limit (descriptor content is capped at 100 KB summed
@@ -128,8 +128,8 @@ causing two records synced from the same upstream to collapse onto a single dedu
 ### Parity fixture
 
 `tools/seed_live_parity_fixture.py` creates a small preview registry with two records that share a
-name and have no `recordVersion` (a real GA collision), plus records in approved, draft, and
-deprecated status. It also creates a GA registry with auto-approval disabled. This combination
+name and have no `recordVersion` (a real collision in the new version), plus records in approved, draft, and
+deprecated status. It also creates a target registry with auto-approval disabled. This combination
 validates duplicate-name handling and approval-status parity end to end.
 
 ```bash
@@ -143,7 +143,7 @@ manually.
 
 ## Throughput and benchmarking
 
-Loading a record requires one GA create call followed by polling until the record settles. The
+Loading a record requires one target create call followed by polling until the record settles. The
 operation is almost entirely network I/O, which is why increasing `loadConcurrency` reduces run
 time — it overlaps waiting periods rather than adding compute.
 
@@ -151,8 +151,8 @@ time — it overlaps waiting periods rather than adding compute.
 npm run benchmark -- --records 96 --latency-ms 50
 ```
 
-This command runs a simulation: the real load loop executes with a configurable sleep replacing GA
-latency. Treat the result as an upper bound. A live run produces lower throughput because the GA
+This command runs a simulation: the real load loop executes with a configurable sleep replacing target-service
+latency. Treat the result as an upper bound. A live run produces lower throughput because the target
 control plane throttles requests and retries consume wall time that the simulation does not model.
 
 The benchmark establishes two properties: throughput scales near-linearly until the service becomes
@@ -164,16 +164,16 @@ because results are emitted in input order.
 The migration tool communicates with both control planes through modeled `boto3` operations. Neither
 service model lives in this repository: both come from the installed `boto3`/`botocore`, so the SDK
 on whatever runs the tool has to carry `bedrock-agentcore-control` (Preview, the source) and
-`agent-registry-control` (GA, the target). Building a client raises `UnknownServiceError` when it
+`agent-registry-control` (the new version, the target). Building a client raises `UnknownServiceError` when it
 does not. Two consequences worth knowing about:
 
 * Tests that read a model (`test_registry_clients.py`, `test_target_registry.py`) skip rather than
   fail when the SDK has no such model — the same condition the tool itself reports at run time.
 * The deployed jobs get their SDK from `--additional-python-modules`, pinned in
-  `GLUE_SDK_MODULES` (`lib/migration-engine-stack.ts`), because no AWS Glue image ships the GA
-  model: the Python shell runtime is boto3 1.21 and the Glue 5.0 Spark runtime is boto3 1.34. That
-  pin is also why the jobs are `glueetl` jobs on Glue 5.0 — botocore 1.43.66 requires Python 3.10,
-  and an AWS Glue Python shell job is Python 3.9 at every Glue version. Neither job uses Spark.
+  `GLUE_SDK_MODULES` (`lib/migration-engine-stack.ts`), because no AWS Glue image ships an SDK new
+  enough to carry the target service model. The pin is exact rather than a floor, so two runs of one
+  cutover cannot stage and load with different SDKs. `agent-registry-migration check` reports the
+  version each side actually got.
 
 What *is* bundled into the wheel is the API contract:
 
@@ -189,8 +189,8 @@ fingerprint.
 
 ## Descriptor validation is this tool's job, not the SDK's
 
-In the GA model, `descriptors` and `filters` are typed as `Document`, so botocore validates only
-top-level members. All descriptor-level validation happens in `validate_ga_request`
+In the target service model, `descriptors` and `filters` are typed as `Document`, so botocore validates only
+top-level members. All descriptor-level validation happens in `validate_target_request`
 (`registry_api.py`).
 
 Should a later SDK fully type those shapes, botocore starts rejecting client-side any payload the

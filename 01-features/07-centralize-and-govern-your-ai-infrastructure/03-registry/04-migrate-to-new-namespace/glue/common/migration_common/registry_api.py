@@ -1,19 +1,19 @@
-"""Preview and GA registry control-plane clients built on modeled boto3 operations.
+"""Preview and target registry control-plane clients built on modeled boto3 operations.
 
 The clients talk to the control plane through modeled ``boto3`` (SDK) calls rather than
 hand-rolled SigV4 REST. Both models come from the installed SDK: ``bedrock-agentcore-control``
-for the Preview reader and ``agent-registry-control`` for the GA writer. The HTTP method/URI,
-signing name, and shapes therefore come from the service model, so a GA wire change is a model
-swap, not a code change -- and an SDK without the GA model fails at client construction.
+for the Preview reader and ``agent-registry-control`` for the target writer. The HTTP method/URI,
+signing name, and shapes therefore come from the service model, so a target wire change is a model
+swap, not a code change -- and an SDK without the target service model fails at client construction.
 
 The request/response *field paths* the jobs read (item lists, ids, tokens) still come from
 the baked API adapter; because those paths equal the model member names, the same
 higher-level list/get/upsert logic works unchanged against the SDK-parsed responses.
 
 * :class:`PreviewRegistryClient` reads (list + optional get) and paginates the source.
-* :class:`GaRegistryClient` performs an idempotent ``upsert``: match an existing record by
+* :class:`TargetRegistryClient` performs an idempotent ``upsert``: match an existing record by
   name(+version) or by descriptor-source identity, then create or update and poll to a
-  terminal state. The module-level helpers build and validate the GA create/update bodies
+  terminal state. The module-level helpers build and validate the target create/update bodies
   and compare a live record against the desired one.
 """
 
@@ -46,7 +46,7 @@ _POLL_WAIT = threading.Event()
 # route name -> boto3 client method. The clients drive modeled SDK operations; the wire
 # contract (HTTP method/URI/signing) lives in the service model, not in this code.
 _PREVIEW_OPERATIONS = {"list": "list_registry_records", "get": "get_registry_record"}
-_GA_OPERATIONS = {
+_TARGET_OPERATIONS = {
     "list": "list_registry_records",
     "create": "create_registry_record",
     "get": "get_registry_record",
@@ -58,13 +58,13 @@ _GA_OPERATIONS = {
 # Statuses a migration can put a record into. Everything else a Preview record might be sitting in
 # is either transient (CREATING, UPDATING) or a failure of an operation that never happened here
 # (CREATE_FAILED, UPDATE_FAILED), so it describes the source record's history rather than a state a
-# freshly created GA record can hold.
+# freshly created target record can hold.
 REPRODUCIBLE_STATUSES = frozenset({"DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "DEPRECATED"})
 
 # Retry budget for a status transition the service refuses with ConflictException ("Concurrent
 # update detected. Please retry."). Deliberately short: the conflict clears in the time it takes
 # the previous write on that record to settle, so a few doubling waits either work or mean
-# something other than a race is wrong. Overridable through the GA poll settings, which is only
+# something other than a race is wrong. Overridable through the target poll settings, which is only
 # needed by tests that want no waiting at all.
 DEFAULT_CONFLICT_RETRY_ATTEMPTS = 5
 DEFAULT_CONFLICT_RETRY_DELAY_SECONDS = 0.5
@@ -78,7 +78,7 @@ DEFAULT_POLL_INTERVAL_SECONDS = 2.0
 # updateStatus only moves a flag, so it settles in seconds. Spending the record-level budget (90
 # attempts x 2s = 3 minutes) on every transition would multiply a large run's duration for nothing.
 #
-# It is a named, overridable setting (``ga.poll.statusMaxAttempts``) rather than the literal 15 it
+# It is a named, overridable setting (``target.poll.statusMaxAttempts``) rather than the literal 15 it
 # used to be: that literal was applied as ``min(maxAttempts, 15)``, so an operator who raised
 # ``maxAttempts`` for a slowly-settling registry got no change here and no indication why. The
 # record-level ``maxAttempts`` still acts as the ceiling, so a configuration that shortens overall
@@ -87,9 +87,9 @@ DEFAULT_STATUS_POLL_ATTEMPTS = 15
 
 
 class RegistryApiError(RuntimeError):
-    """Raised for any Preview/GA control-plane request or contract violation.
+    """Raised for any Preview/target control-plane request or contract violation.
 
-    ``record_id`` carries the GA recordId when the failure happened *after* the record was
+    ``record_id`` carries the target recordId when the failure happened *after* the record was
     created -- a create that returns an id and then settles into CREATE_FAILED, or never settles
     at all. The record exists in the target registry either way, so the id has to travel with the
     error: without it the reports describe a failure with no new id, and the record nobody can
@@ -172,7 +172,7 @@ class PreviewRegistryClient:
     def describe_registry(self, *, registry_id: str) -> dict[str, Any]:
         """Return the Preview registry itself (not its records).
 
-        Used to derive the GA registry configuration a customer has to re-apply by hand: this tool
+        Used to derive the target registry configuration a customer has to re-apply by hand: this tool
         migrates records, and who may read a registry is a decision rather than data to copy.
 
         Failures are wrapped in :class:`RegistryApiError` like every other call on this client, so a
@@ -325,9 +325,9 @@ class PreviewRegistryClient:
 class LoadResult:
     action: str
     new_record_id: str | None
-    # The GA record as the service describes it after the write settles. Captured from the status
+    # The target record as the service describes it after the write settles. Captured from the status
     # poll that upsert already performs, so reports can compare the Preview record against the
-    # real GA record without issuing another GetRegistryRecord call.
+    # real target record without issuing another GetRegistryRecord call.
     record: dict[str, Any] | None = None
     # Anything about *this record's* load a reviewer should see, merged into the record's report
     # warnings. Per-record rather than per-client, because it describes one record's history.
@@ -336,7 +336,7 @@ class LoadResult:
 
 @dataclass
 class StatusResult:
-    """What reproducing one source status on the GA record actually achieved."""
+    """What reproducing one source status on the target record actually achieved."""
 
     requested: str
     achieved: str | None
@@ -348,14 +348,14 @@ class StatusResult:
 
     @property
     def matched(self) -> bool:
-        """Whether the GA record ended up in the status the source record holds."""
+        """Whether the target record ended up in the status the source record holds."""
         return self.achieved is not None and self.achieved == self.requested
 
 
-class GaNameClaims:
-    """Thread-safe claims for the GA ``(registry, name, recordVersion)`` identity.
+class TargetNameClaims:
+    """Thread-safe claims for the target registry ``(registry, name, recordVersion)`` identity.
 
-    Preview permits multiple records with the same identity while GA requires it to be unique.
+    Preview permits multiple records with the same identity while the new version requires it to be unique.
     Keeping this guard independent of the API client lets dry runs enforce the same cross-record
     invariant as live loads without constructing a client or making an AWS call.
     """
@@ -365,7 +365,7 @@ class GaNameClaims:
         claimed: dict[tuple[str, str, str | None], str] | None = None,
         lock: Any | None = None,
     ) -> None:
-        # ``GaRegistryClient`` keeps these established attributes because transport-replacing
+        # ``TargetRegistryClient`` keeps these established attributes because transport-replacing
         # subclasses initialize them directly. Wrapping caller-owned state preserves that extension
         # point while standalone dry-run guards get fresh state.
         self._claimed = claimed if claimed is not None else {}
@@ -378,7 +378,7 @@ class GaNameClaims:
         record_version: Any,
         source_record_id: str,
     ) -> None:
-        """Reserve one transformed GA identity for one Preview source record."""
+        """Reserve one transformed target identity for one Preview source record."""
         key = (registry_id, name, _normalized_version(record_version))
         with self._lock:
             claimed_by = self._claimed.get(key)
@@ -388,35 +388,35 @@ class GaNameClaims:
             if claimed_by == source_record_id:
                 return
         raise RegistryApiError(
-            f"Preview records {claimed_by!r} and {source_record_id!r} both migrate to GA name "
+            f"Preview records {claimed_by!r} and {source_record_id!r} both migrate to the target registry name "
             f"{name!r}"
             + (f" (recordVersion {record_version!r})" if record_version not in (None, "") else "")
-            + f". That GA identity is already claimed in registry {registry_id}; GA requires it "
+            + f". That identity is already claimed in registry {registry_id}; the new version requires it "
             "to be unique, so loading the second "
             "would overwrite the first. Rename one of them in the source registry, or give them "
             "distinct recordVersions, and re-extract."
         )
 
 
-class GaRegistryClient:
-    """Model-independent GA control-plane client using the baked REST/JSON contract."""
+class TargetRegistryClient:
+    """Model-independent target control-plane client using the baked REST/JSON contract."""
 
     def __init__(self, invoker: AwsApiInvoker, api_config: dict[str, Any], region: str) -> None:
         self._config = api_config
-        self._service_name = _required_string(api_config, "serviceName", "GA API")
+        self._service_name = _required_string(api_config, "serviceName", "new Registry API")
         # signingName stays in config for documentation/validation; botocore derives the
-        # actual SigV4 signing name from the GA service model (``agent-registry``).
-        _required_string(api_config, "signingName", "GA API")
-        endpoint_url = _ga_endpoint_url(api_config, region)
+        # actual SigV4 signing name from the new Registry service model (``agent-registry``).
+        _required_string(api_config, "signingName", "new Registry API")
+        endpoint_url = _target_endpoint_url(api_config, region)
         self._client = build_control_plane_client(
             session=invoker.session(),
             service_name=self._service_name,
             region=region,
             endpoint_url=endpoint_url,
         )
-        self._request_config = _dict(api_config.get("request"), "ga.request")
-        self._response_config = _dict(api_config.get("response"), "ga.response")
-        self._poll_config = _dict(api_config.get("poll"), "ga.poll")
+        self._request_config = _dict(api_config.get("request"), "target.request")
+        self._response_config = _dict(api_config.get("response"), "target.response")
+        self._poll_config = _dict(api_config.get("poll"), "target.poll")
         # Lifecycle status sets are read once here and reused by the poll loop.
         self._in_progress_statuses = _status_set(self._poll_config, "inProgressStatuses", ["CREATING", "UPDATING"])
         self._failure_statuses = _status_set(self._poll_config, "failureStatuses", ["CREATE_FAILED", "UPDATE_FAILED"])
@@ -457,8 +457,8 @@ class GaRegistryClient:
         # them directly; the reusable guard wraps them so dry runs can enforce the same invariant.
         self._claimed_names: dict[tuple[str, str, str | None], str] = {}
         self._claimed_names_lock = threading.Lock()
-        self._name_claims = GaNameClaims(self._claimed_names, self._claimed_names_lock)
-        # (registry, GA recordId) -> the source record that claimed it (see _claim_target_record).
+        self._name_claims = TargetNameClaims(self._claimed_names, self._claimed_names_lock)
+        # (registry, target recordId) -> the source record that claimed it (see _claim_target_record).
         # _claimed_names is keyed on the name we *ask* for; this is keyed on the record we actually
         # resolve to, which is the only thing that catches a collision the service itself creates.
         self._claimed_targets: dict[tuple[str, str], str] = {}
@@ -466,17 +466,17 @@ class GaRegistryClient:
 
     def _bind_claim_guards(
         self,
-        name_claims: GaNameClaims,
+        name_claims: TargetNameClaims,
         claimed_targets: dict[tuple[str, str], str],
         claimed_targets_lock: Any,
     ) -> None:
-        """Share final write guards across access routes to the same canonical GA target."""
+        """Share final write guards across access routes to the same canonical target."""
         self._name_claims = name_claims
         self._claimed_targets = claimed_targets
         self._claimed_targets_lock = claimed_targets_lock
 
     def _configure_poll_budgets(self) -> None:
-        """Resolve and validate the poll budgets from ``ga.poll``, once.
+        """Resolve and validate the poll budgets from ``target.poll``, once.
 
         Separate from ``__init__`` so a subclass that replaces the transport (the test doubles do)
         can adopt the real budgets with one call instead of hand-copying the fields -- copying them
@@ -489,7 +489,7 @@ class GaRegistryClient:
         self._poll_attempts = int(self._poll_config.get("maxAttempts", DEFAULT_POLL_ATTEMPTS))
         self._poll_interval_seconds = float(self._poll_config.get("intervalSeconds", DEFAULT_POLL_INTERVAL_SECONDS))
         if self._poll_attempts < 1 or self._poll_interval_seconds < 0:
-            raise RegistryApiError("GA poll settings must use maxAttempts >= 1 and intervalSeconds >= 0")
+            raise RegistryApiError("Target poll settings must use maxAttempts >= 1 and intervalSeconds >= 0")
         # Status transitions settle faster than creates, so they get their own smaller budget --
         # capped by the record-level budget so shortening that shortens this too. See
         # DEFAULT_STATUS_POLL_ATTEMPTS.
@@ -509,9 +509,9 @@ class GaRegistryClient:
         source_record_id: str | None = None,
         known_record_id: str | None = None,
     ) -> LoadResult:
-        """Idempotently create or update ``record`` in the GA registry and return the mapping.
+        """Idempotently create or update ``record`` in the target registry and return the mapping.
 
-        Matches an existing record by the GA recordId a previous run recorded for this source
+        Matches an existing record by the target recordId a previous run recorded for this source
         record first, then by name(+recordVersion), then -- for source-backed records whose name the
         service may rewrite on synchronization -- by descriptor-source identity. Waits for the
         record to reach a terminal state before returning.
@@ -521,18 +521,18 @@ class GaRegistryClient:
         than allowed to update -- and so overwrite -- the first one's content. Re-processing the same
         source record is still idempotent.
 
-        ``known_record_id`` is the GA record this same source record was migrated to by an earlier
+        ``known_record_id`` is the target record this same source record was migrated to by an earlier
         run, from the persisted id map. It takes precedence over the name because it is the only
         identifier that survives the source record being renamed.
         """
-        name = _required_string(record, "name", "GA record")
+        name = _required_string(record, "name", "target record")
         record_version = record.get("recordVersion")
         if source_record_id:
             self._claim_name(registry_id, name, record_version, source_record_id)
         load_warnings: list[str] = []
-        # Identity first: this source record was already migrated, and *that* GA record is the one to
+        # Identity first: this source record was already migrated, and *that* target record is the one to
         # update, whatever it is called now. Checked before the name so that renaming a record in
-        # Preview updates its existing GA record instead of creating a second one and orphaning the
+        # Preview updates its existing target record instead of creating a second one and orphaning the
         # first -- a rename changes the name on the source side only, and nothing else about the
         # record carries its identity across runs.
         existing = None
@@ -546,7 +546,7 @@ class GaRegistryClient:
         # rather than a duplicator. Its limit: a record already in the target under this name that
         # this migration did not create -- a dual-write record, or one migrated earlier from another
         # source registry -- is indistinguishable from that, so it is updated. Closing this needs
-        # provenance on the record itself; see "Swapping in the official GA model" in docs/development.md,
+        # provenance on the record itself; see "Swapping in the official service model" in docs/development.md,
         # which waits on `metadata` being accepted by CreateRegistryRecord.
         if existing is None:
             existing = self._find_existing(
@@ -562,15 +562,15 @@ class GaRegistryClient:
         if existing is not None:
             existing_record_id = get_path(
                 existing,
-                _required_string(self._response_config, "recordIdPath", "ga.response"),
+                _required_string(self._response_config, "recordIdPath", "target.response"),
             )
             if existing_record_id in (None, ""):
-                raise RegistryApiError("Existing GA record is missing its recordId")
+                raise RegistryApiError("Existing target record is missing its recordId")
             record_id = str(existing_record_id)
             if source_record_id:
                 self._claim_target_record(registry_id, record_id, source_record_id)
             current = self._get_record(registry_id=registry_id, record_id=record_id)
-            current_status = _required_string(current, "status", "GA GetRegistryRecord response")
+            current_status = _required_string(current, "status", "target GetRegistryRecord response")
             if self._is_in_progress(current_status):
                 current = self._wait_for_terminal(
                     registry_id=registry_id,
@@ -580,7 +580,7 @@ class GaRegistryClient:
             elif self._is_failure(current_status):
                 reason = _optional_string(current.get("statusReason")) or "No status reason returned"
                 raise RegistryApiError(
-                    f"Existing GA record {record_id} is in failure status {current_status}: {reason}",
+                    f"Existing target record {record_id} is in failure status {current_status}: {reason}",
                     record_id=record_id,
                 )
             if _record_matches_desired(current, record):
@@ -597,10 +597,10 @@ class GaRegistryClient:
                 record_id=record_id,
                 body=_build_update_body(record, current),
             )
-            update_status = _required_string(response, "status", "GA update response")
+            update_status = _required_string(response, "status", "target update response")
             if update_status != "UPDATING":
                 raise RegistryApiError(
-                    f"GA update returned status {update_status!r}; expected 'UPDATING'",
+                    f"Target update returned status {update_status!r}; expected 'UPDATING'",
                     record_id=record_id,
                 )
             returned_id = get_path(response, "recordId", record_id)
@@ -625,19 +625,19 @@ class GaRegistryClient:
             record_id=None,
             body=create_body,
         )
-        create_status = _required_string(response, "status", "GA create response")
+        create_status = _required_string(response, "status", "target create response")
         if create_status != "CREATING":
-            raise RegistryApiError(f"GA create returned status {create_status!r}; expected 'CREATING'")
+            raise RegistryApiError(f"Target create returned status {create_status!r}; expected 'CREATING'")
         record_arn_path = _required_string(
             self._response_config,
             "recordArnPath",
-            "ga.response",
+            "target.response",
         )
         record_arn = get_path(response, record_arn_path)
         record_id = _record_id_from_arn(record_arn)
         if not record_id:
             raise RegistryApiError(
-                "GA create returned no usable recordArn; the old-to-new ID mapping cannot be completed"
+                "Target create returned no usable recordArn; the old-to-new ID mapping cannot be completed"
             )
         if source_record_id:
             # Claim it even though we just created it: the service may rename a source-backed record
@@ -676,14 +676,14 @@ class GaRegistryClient:
         current_status: str | None = None,
         reason: str | None = None,
     ) -> StatusResult:
-        """Drive a freshly loaded GA record to the status its Preview record holds.
+        """Drive a freshly loaded target record to the status its Preview record holds.
 
-        GA creates every record in DRAFT regardless of the source, so an approved Preview record
+        target creates every record in DRAFT regardless of the source, so an approved Preview record
         would arrive invisible to the data plane -- `ListDiscoverableRegistryRecords` and search only
         return approved records. Reproducing the status is therefore part of migrating the record,
         not an optional follow-up.
 
-        The ladder mirrors the GA state machine rather than assuming a single call gets there:
+        The ladder mirrors the target state machine rather than assuming a single call gets there:
 
         * DRAFT needs nothing -- that is where a created record already is.
         * PENDING_APPROVAL is one ``SubmitRegistryRecordForApproval``. If the target registry carries
@@ -816,7 +816,7 @@ class GaRegistryClient:
         """Invoke a status-transition route, retrying the conflict the service asks us to retry.
 
         A migration creates a record and immediately drives it to its source status, which is
-        exactly the shape of request GA answers with ``ConflictException: ... Concurrent update
+        exactly the shape of request the service answers with ``ConflictException: ... Concurrent update
         detected. Please retry.`` -- the previous write on that record has not settled yet. It is
         transient and self-correcting: observed live, a second run of the same migration put the
         affected records into their status with no other change, which is the definition of
@@ -843,7 +843,7 @@ class GaRegistryClient:
                 if error.error_code != "ConflictException" or attempt >= self._conflict_retry_attempts:
                     raise
                 LOGGER.info(
-                    "GA %s on record %s hit a concurrent-update conflict (attempt %d of %d); retrying in %.1fs",
+                    "Target %s on record %s hit a concurrent-update conflict (attempt %d of %d); retrying in %.1fs",
                     route_name,
                     record_id,
                     attempt,
@@ -855,7 +855,7 @@ class GaRegistryClient:
                 delay_seconds *= 2
         # Unreachable: the loop either returns or re-raises on its final attempt.
         raise RegistryApiError(
-            f"GA {route_name} exhausted its conflict retries for record {record_id}",
+            f"Target {route_name} exhausted its conflict retries for record {record_id}",
             record_id=record_id,
         )
 
@@ -897,7 +897,7 @@ class GaRegistryClient:
         Used by pre-flight validation as the cheapest call that proves the registry exists and the
         configured credentials may read it.
         """
-        page_size_field = _required_string(self._request_config, "pageSizeField", "ga.request")
+        page_size_field = _required_string(self._request_config, "pageSizeField", "target.request")
         return self._call(
             route_name="list",
             registry_id=registry_id,
@@ -912,7 +912,7 @@ class GaRegistryClient:
         record_id: str,
         warnings: list[str],
     ) -> dict[str, Any] | None:
-        """Fetch the GA record a previous run migrated this source record to, or None if it is gone.
+        """Fetch the target record a previous run migrated this source record to, or None if it is gone.
 
         A recorded record that no longer exists is not an error: somebody may have deleted it in the
         target registry between runs, and the right answer then is to fall back to matching by name
@@ -925,7 +925,7 @@ class GaRegistryClient:
         except RegistryApiError as error:
             if error.error_code == "ResourceNotFoundException":
                 warnings.append(
-                    f"GA record {record_id}, recorded by an earlier migration of this source "
+                    f"Target record {record_id}, recorded by an earlier migration of this source "
                     "record, no longer exists in the target registry; matched by name instead, and "
                     "created again if there was no match."
                 )
@@ -940,24 +940,24 @@ class GaRegistryClient:
         record_version: Any,
     ) -> dict[str, Any] | None:
         """Find the unique existing record matching ``name`` and ``recordVersion``, if any."""
-        filters_field = _required_string(self._request_config, "filtersField", "ga.request")
-        page_size_field = _required_string(self._request_config, "pageSizeField", "ga.request")
-        page_token_field = _required_string(self._request_config, "pageTokenField", "ga.request")
-        items_path = _required_string(self._response_config, "itemsPath", "ga.response")
+        filters_field = _required_string(self._request_config, "filtersField", "target.request")
+        page_size_field = _required_string(self._request_config, "pageSizeField", "target.request")
+        page_token_field = _required_string(self._request_config, "pageTokenField", "target.request")
+        items_path = _required_string(self._response_config, "itemsPath", "target.response")
         next_token_path = _required_string(
             self._response_config,
             "nextTokenPath",
-            "ga.response",
+            "target.response",
         )
         record_name_path = _required_string(
             self._response_config,
             "recordNamePath",
-            "ga.response",
+            "target.response",
         )
         record_version_path = _required_string(
             self._response_config,
             "recordVersionPath",
-            "ga.response",
+            "target.response",
         )
         base_request: dict[str, Any] = {
             filters_field: [{"name": "name", "values": [name]}],
@@ -979,13 +979,13 @@ class GaRegistryClient:
             )
             items = get_path(response, items_path, [])
             if not isinstance(items, list):
-                raise RegistryApiError(f"GA list response path {items_path!r} is not an array")
+                raise RegistryApiError(f"Target list response path {items_path!r} is not an array")
             for item in items:
                 if not isinstance(item, dict):
-                    raise RegistryApiError("GA list response contains a non-object record")
+                    raise RegistryApiError("Target list response contains a non-object record")
                 item_name = get_path(item, record_name_path)
                 if item_name in (None, ""):
-                    raise RegistryApiError(f"GA list result is missing name at response path {record_name_path!r}")
+                    raise RegistryApiError(f"Target list result is missing name at response path {record_name_path!r}")
                 if str(item_name) != name:
                     continue
                 item_version = get_path(item, record_version_path)
@@ -997,12 +997,12 @@ class GaRegistryClient:
                 break
             token_key = str(next_token)
             if token_key in seen_tokens:
-                raise RegistryApiError("GA list pagination returned a repeated next token")
+                raise RegistryApiError("Target list pagination returned a repeated next token")
             seen_tokens.add(token_key)
 
         if len(matches) > 1:
             raise RegistryApiError(
-                f"GA registry returned multiple records for name={name!r}, recordVersion={record_version!r}"
+                f"Target registry returned multiple records for name={name!r}, recordVersion={record_version!r}"
             )
         return matches[0] if matches else None
 
@@ -1012,9 +1012,9 @@ class GaRegistryClient:
         registry_id: str,
         record: dict[str, Any],
     ) -> dict[str, Any] | None:
-        """Find a prior record by descriptor-source identity when the GA name was rewritten.
+        """Find a prior record by descriptor-source identity when the target name was rewritten.
 
-        GA URL synchronization can replace the requested name, so a source-backed record whose name
+        Target URL synchronization can replace the requested name, so a source-backed record whose name
         lookup missed is matched on its exact descriptor sources plus recordType and recordVersion.
 
         The registry is indexed **once per target registry**, not once per record. Scanning per
@@ -1035,13 +1035,13 @@ class GaRegistryClient:
         record_version: Any,
         source_record_id: str,
     ) -> None:
-        """Apply the live client's backstop for a duplicate transformed GA identity."""
+        """Apply the live client's backstop for a duplicate transformed target identity."""
         name_claims = getattr(self, "_name_claims", None)
         if name_claims is None:
             # Transport-replacing subclasses may deliberately bypass ``__init__`` while retaining
             # the established claim map and lock. Adapt those lazily; concurrent wrappers still
             # share the same lock and map, so exactly one claimant wins.
-            name_claims = GaNameClaims(self._claimed_names, self._claimed_names_lock)
+            name_claims = TargetNameClaims(self._claimed_names, self._claimed_names_lock)
             self._name_claims = name_claims
         name_claims.claim(registry_id, name, record_version, source_record_id)
 
@@ -1051,19 +1051,19 @@ class GaRegistryClient:
         record_id: str,
         source_record_id: str,
     ) -> None:
-        """Reserve one GA record for one source record, refusing a second claimant.
+        """Reserve one target record for one source record, refusing a second claimant.
 
-        ``_claim_name`` guards the name we *ask* the service for, which is not enough: GA URL
+        ``_claim_name`` guards the name we *ask* the service for, which is not enough: target URL
         synchronization overwrites a record's name and recordVersion with the values from the fetched
         document. Several source records syncing from one upstream therefore ask for distinct names,
         pass the name claim, miss the name lookup (the service renamed what we created), and are then
         all matched to that one record by ``_find_existing_by_source`` -- because the source identity
         deliberately excludes the name. Without this guard they each "succeed": the first is created
-        and the rest update it, so N source records silently collapse into one GA record and the
+        and the rest update it, so N source records silently collapse into one target record and the
         id-crosswalk records the loss as N successful migrations.
 
         Observed live: four Preview records (a renamed one, a content-edited one, a
-        description-edited one, and one with no description) all resolved onto a single GA record.
+        description-edited one, and one with no description) all resolved onto a single target record.
 
         Re-processing the same source record stays idempotent, which is what makes a re-run an
         upsert rather than a duplicator.
@@ -1077,9 +1077,9 @@ class GaRegistryClient:
             if claimed_by == source_record_id:
                 return
         raise RegistryApiError(
-            f"Preview records {claimed_by!r} and {source_record_id!r} both resolve to GA record "
+            f"Preview records {claimed_by!r} and {source_record_id!r} both resolve to target record "
             f"{record_id} in registry {registry_id}, so loading the second would overwrite the "
-            "first. This happens when several source records synchronize from one URL: GA replaces "
+            "first. This happens when several source records synchronize from one URL: the service replaces "
             "each record's name and version with the values from the fetched document, so they "
             "become the same record. Point them at distinct URLs, or migrate only one of them and "
             "recreate the others by hand, then re-extract.",
@@ -1145,10 +1145,10 @@ class GaRegistryClient:
         for summary in self._iter_all_records(registry_id):
             record_id = get_path(
                 summary,
-                _required_string(self._response_config, "recordIdPath", "ga.response"),
+                _required_string(self._response_config, "recordIdPath", "target.response"),
             )
             if record_id in (None, ""):
-                raise RegistryApiError("GA list result is missing recordId while indexing the target registry")
+                raise RegistryApiError("Target list result is missing recordId while indexing the target registry")
             # List summaries carry no descriptors, so the sources are only visible on the record
             # itself. This is the one Get per existing record that the index pays for.
             current = self._get_record(registry_id=registry_id, record_id=str(record_id))
@@ -1158,13 +1158,13 @@ class GaRegistryClient:
                 continue
             if identity in index:
                 raise RegistryApiError(
-                    "GA registry holds multiple records with the same descriptor source identity, "
+                    "Target registry holds multiple records with the same descriptor source identity, "
                     f"recordType and recordVersion (records {index[identity].get('recordId')!r} "
                     f"and {current.get('recordId')!r}); resolve the duplicate before loading"
                 )
             index[identity] = current
         LOGGER.info(
-            "Indexed %d source-backed record(s) from %d existing record(s) in GA registry %s",
+            "Indexed %d source-backed record(s) from %d existing record(s) in target registry %s",
             len(index),
             scanned,
             registry_id,
@@ -1173,13 +1173,13 @@ class GaRegistryClient:
 
     def _iter_all_records(self, registry_id: str) -> Iterator[dict[str, Any]]:
         """Yield every record summary in the registry, following pagination."""
-        page_size_field = _required_string(self._request_config, "pageSizeField", "ga.request")
-        page_token_field = _required_string(self._request_config, "pageTokenField", "ga.request")
-        items_path = _required_string(self._response_config, "itemsPath", "ga.response")
+        page_size_field = _required_string(self._request_config, "pageSizeField", "target.request")
+        page_token_field = _required_string(self._request_config, "pageTokenField", "target.request")
+        items_path = _required_string(self._response_config, "itemsPath", "target.response")
         next_token_path = _required_string(
             self._response_config,
             "nextTokenPath",
-            "ga.response",
+            "target.response",
         )
         base_request: dict[str, Any] = {
             page_size_field: int(self._request_config.get("pageSize", 100)),
@@ -1199,10 +1199,10 @@ class GaRegistryClient:
             )
             items = get_path(response, items_path, [])
             if not isinstance(items, list):
-                raise RegistryApiError(f"GA list response path {items_path!r} is not an array")
+                raise RegistryApiError(f"Target list response path {items_path!r} is not an array")
             for item in items:
                 if not isinstance(item, dict):
-                    raise RegistryApiError("GA list response contains a non-object record")
+                    raise RegistryApiError("Target list response contains a non-object record")
                 yield item
 
             next_token = get_path(response, next_token_path)
@@ -1210,7 +1210,7 @@ class GaRegistryClient:
                 break
             token_key = str(next_token)
             if token_key in seen_tokens:
-                raise RegistryApiError("GA list pagination returned a repeated next token")
+                raise RegistryApiError("Target list pagination returned a repeated next token")
             seen_tokens.add(token_key)
 
     def _get_record(self, *, registry_id: str, record_id: str) -> dict[str, Any]:
@@ -1241,7 +1241,7 @@ class GaRegistryClient:
             response = self._get_record(registry_id=registry_id, record_id=record_id)
             status = _optional_string(response.get("status"))
             if not status:
-                raise RegistryApiError("GA GetRegistryRecord response is missing status")
+                raise RegistryApiError("Target GetRegistryRecord response is missing status")
             if status in self._success_statuses:
                 if expected_record is None or _record_matches_desired(response, expected_record):
                     return response
@@ -1250,19 +1250,19 @@ class GaRegistryClient:
             elif status in self._failure_statuses or status.endswith("_FAILED"):
                 reason = _optional_string(response.get("statusReason")) or "No status reason returned"
                 raise RegistryApiError(
-                    f"GA record {record_id} reached failure status {status}: {reason}",
+                    f"Target record {record_id} reached failure status {status}: {reason}",
                     record_id=record_id,
                 )
             elif status not in self._in_progress_statuses:
                 raise RegistryApiError(
-                    f"GA record {record_id} returned unknown lifecycle status {status!r}",
+                    f"Target record {record_id} returned unknown lifecycle status {status!r}",
                     record_id=record_id,
                 )
             if attempt + 1 < max_attempts:
                 _POLL_WAIT.wait(interval_seconds)
 
         raise RegistryApiError(
-            f"Timed out waiting for GA record {record_id} to reach a settled state showing the "
+            f"Timed out waiting for target record {record_id} to reach a settled state showing the "
             f"requested content "
             f"after {max_attempts} status checks",
             record_id=record_id,
@@ -1283,16 +1283,16 @@ class GaRegistryClient:
         record_id: str | None,
         body: dict[str, Any] | None,
     ) -> dict[str, Any]:
-        """Invoke the modeled GA operation for ``route_name``.
+        """Invoke the modeled target operation for ``route_name``.
 
         ``registryId``/``recordId`` are the path members; ``body`` carries the remaining
         modeled members (the create/update payload or the list filters + pagination). They
         are merged into one kwargs mapping because botocore routes each member to the URI or
         the JSON body per the service model.
         """
-        method_name = _GA_OPERATIONS.get(route_name)
+        method_name = _TARGET_OPERATIONS.get(route_name)
         if method_name is None:
-            raise RegistryApiError(f"Unsupported GA route {route_name!r}")
+            raise RegistryApiError(f"Unsupported target route {route_name!r}")
         params: dict[str, Any] = dict(body) if body else {}
         params["registryId"] = registry_id
         if record_id is not None:
@@ -1301,19 +1301,19 @@ class GaRegistryClient:
             response = getattr(self._client, method_name)(**params)
         except (ClientError, BotoCoreError) as error:
             raise RegistryApiError(
-                f"GA API call {self._service_name}.{route_name} failed: {error}",
+                f"new Registry API call {self._service_name}.{route_name} failed: {error}",
                 error_code=_client_error_code(error),
             ) from error
         return _without_response_metadata(response)
 
 
-# GA contract tables: which recordTypes each primary is valid for, which additionalData
+# Target API contract tables: which recordTypes each primary is valid for, which additionalData
 # children and which descriptors may carry a source, and which may carry a version.
 _FINAL_PRIMARY_RECORD_TYPES: dict[str, set[str]] = {
     "a2aAgentCard": {"AGENT"},
     "mcpServer": {"AGENT", "MCP"},
     "agentSkillsDefinition": {"SKILL"},
-    # No ``agentSkillsMd``: the live GA service answers a record that uses one with "Exactly one
+    # No ``agentSkillsMd``: the live service answers a record that uses one with "Exactly one
     # valid descriptor is allowed for record type SKILL. Valid descriptors: [agentSkillsDefinition,
     # custom]". Accepting it here would let a dry run PASS a body the service then refuses. The
     # transform normalizes the Preview markdown-only shape away before it reaches this module.
@@ -1325,7 +1325,7 @@ _FINAL_ADDITIONAL_DATA: dict[str, set[str]] = {
 }
 _FINAL_SOURCE_DESCRIPTORS = {"a2aAgentCard", "mcpServer", "skillMd"}
 # The one primary that may omit ``data``, mapping it to the additionalData child that carries the
-# content instead. A markdown-only skill has nowhere else to go: GA has no agentSkillsMd primary, and
+# content instead. A markdown-only skill has nowhere else to go: the new version has no agentSkillsMd primary, and
 # it parses every ``data`` as JSON, which Markdown is not. Every other descriptor requires ``data``.
 _FINAL_CONTENT_IN_ADDITIONAL_DATA = {"agentSkillsDefinition": "skillMd"}
 _FINAL_VERSIONED_DESCRIPTORS = {
@@ -1336,22 +1336,22 @@ _FINAL_VERSIONED_DESCRIPTORS = {
     "skillMd",
 }
 
-# Maximum lengths for the GA record's string fields.
+# Maximum lengths for the target record's string fields.
 #
-# Maintained here rather than read from the GA service model, because the model does not supply
+# Maintained here rather than read from the new Registry service model, because the model does not supply
 # them: `name`, `displayName`, `description` and
 # `recordVersion` are all the bare `String` shape with no `min`/`max`/`pattern`, and `descriptors` is
 # a `Document`. So botocore validates none of it, and this module is the only thing standing between
 # a dry run that passes and a live load that does not. Replace these with the model's own traits when
-# the official GA model ships (see "Swapping in the official GA model" in docs/development.md).
+# the official service model ships (see "Swapping in the official service model" in docs/development.md).
 #
 # The values are taken from the *Preview* model's own traits, which is the only defensible source
-# for them: this tool copies Preview records into GA, so any bound tighter than what Preview accepts
+# for them: this tool copies Preview records into the target registry, so any bound tighter than what Preview accepts
 # rejects records that demonstrably exist. Preview publishes Description max 4096 and
 # RegistryRecordVersion max 255 (RegistryRecordName and the display name are 255), and the seed
 # fixtures deliberately create records at exactly those boundaries -- so guessing lower here turns a
 # migration that worked into one that refuses its own test data before the service ever sees it.
-_GA_FIELD_MAX_LENGTHS = {
+_TARGET_FIELD_MAX_LENGTHS = {
     "name": 255,
     "displayName": 255,
     "description": 4096,
@@ -1360,14 +1360,14 @@ _GA_FIELD_MAX_LENGTHS = {
 
 
 def _validate_length(field: str, value: str) -> None:
-    limit = _GA_FIELD_MAX_LENGTHS.get(field)
+    limit = _TARGET_FIELD_MAX_LENGTHS.get(field)
     if limit is not None and len(value) > limit:
-        raise RegistryApiError(f"GA record {field} must be at most {limit} characters, got {len(value)}")
+        raise RegistryApiError(f"Target record {field} must be at most {limit} characters, got {len(value)}")
 
 
 def _build_create_body(record: dict[str, Any]) -> dict[str, Any]:
-    """Validate a transformed record and project it to a GA CreateRegistryRecord body."""
-    validate_ga_request(record)
+    """Validate a transformed record and project it to a target CreateRegistryRecord body."""
+    validate_target_request(record)
     body: dict[str, Any] = {
         "name": copy.deepcopy(record["name"]),
         "displayName": copy.deepcopy(record["displayName"]),
@@ -1380,38 +1380,40 @@ def _build_create_body(record: dict[str, Any]) -> dict[str, Any]:
     return body
 
 
-def validate_ga_request(record: dict[str, Any]) -> None:
-    """Enforce the GA create contract on a record before it is sent to the service.
+def validate_target_request(record: dict[str, Any]) -> None:
+    """Enforce the target create contract on a record before it is sent to the service.
 
     Public because a dry run has to apply exactly the same rules a live load would. This is the
     stricter of the two validators -- the transform checks what it can produce, this checks what
     the service will accept -- so if it only ran on the live path, a dry run could pass and the
     load then fail, which would defeat the point of staging.
 
-    The length bounds are maintained here by hand, and have to be: the GA model
+    The length bounds are maintained here by hand, and have to be: the target service model
     types every one of these members as a bare ``String`` with no ``min``, ``max`` or ``pattern``, so
-    botocore validates none of them. See :data:`_GA_FIELD_MAX_LENGTHS`.
+    botocore validates none of them. See :data:`_TARGET_FIELD_MAX_LENGTHS`.
     """
-    name = _required_string(record, "name", "GA record")
-    display_name = _required_string(record, "displayName", "GA record")
-    record_type = _required_string(record, "recordType", "GA record")
+    name = _required_string(record, "name", "target record")
+    display_name = _required_string(record, "displayName", "target record")
+    record_type = _required_string(record, "recordType", "target record")
     _validate_length("name", name)
     _validate_length("displayName", display_name)
     if record_type not in {"AGENT", "MCP", "SKILL", "CUSTOM"}:
-        raise RegistryApiError(f"Unsupported GA recordType {record_type!r}")
+        raise RegistryApiError(f"Unsupported target recordType {record_type!r}")
     descriptors = record.get("descriptors")
     if not isinstance(descriptors, dict) or len(descriptors) != 1:
-        raise RegistryApiError("GA record requires exactly one primary descriptor")
+        raise RegistryApiError("Target record requires exactly one primary descriptor")
     primary_key, descriptor = next(iter(descriptors.items()))
     allowed_types = _FINAL_PRIMARY_RECORD_TYPES.get(str(primary_key))
     if allowed_types is None or record_type not in allowed_types:
-        raise RegistryApiError(f"GA primary descriptor {primary_key!r} is incompatible with recordType {record_type!r}")
+        raise RegistryApiError(
+            f"Target primary descriptor {primary_key!r} is incompatible with recordType {record_type!r}"
+        )
     _validate_final_descriptor(str(primary_key), descriptor, allow_additional=True)
     for field_name in ("description", "recordVersion"):
         value = record.get(field_name)
         if field_name in record:
             if not isinstance(value, str) or not value:
-                raise RegistryApiError(f"GA record {field_name} must be a non-empty string when supplied")
+                raise RegistryApiError(f"Target record {field_name} must be a non-empty string when supplied")
             # Bounded for the same reason name and displayName are: an over-long value passed a dry
             # run and then failed the live load, which is precisely the outcome staging exists to
             # rule out. These two were unbounded.
@@ -1424,41 +1426,41 @@ def _validate_final_descriptor(
     *,
     allow_additional: bool,
 ) -> None:
-    """Validate a single GA descriptor's fields, source placement, and additionalData."""
+    """Validate a single target descriptor's fields, source placement, and additionalData."""
     if not isinstance(descriptor, dict):
-        raise RegistryApiError(f"GA descriptor {descriptor_key!r} must be an object")
+        raise RegistryApiError(f"Target descriptor {descriptor_key!r} must be an object")
     unsupported = set(descriptor) - {"data", "dataSchemaVersion", "source", "additionalData"}
     if unsupported:
         raise RegistryApiError(
-            f"GA descriptor {descriptor_key!r} has unsupported fields: "
+            f"Target descriptor {descriptor_key!r} has unsupported fields: "
             + ", ".join(sorted(str(value) for value in unsupported))
         )
     data = descriptor.get("data")
     if not _content_lives_in_additional_data(descriptor_key, descriptor, allow_additional) and (
         not isinstance(data, str) or not data
     ):
-        raise RegistryApiError(f"GA descriptor {descriptor_key!r} requires non-empty string data")
+        raise RegistryApiError(f"Target descriptor {descriptor_key!r} requires non-empty string data")
     version = descriptor.get("dataSchemaVersion")
     if "dataSchemaVersion" in descriptor:
         if descriptor_key not in _FINAL_VERSIONED_DESCRIPTORS:
-            raise RegistryApiError(f"GA descriptor {descriptor_key!r} does not support dataSchemaVersion")
+            raise RegistryApiError(f"Target descriptor {descriptor_key!r} does not support dataSchemaVersion")
         if not isinstance(version, str) or not version:
-            raise RegistryApiError(f"GA descriptor {descriptor_key!r} dataSchemaVersion must be a non-empty string")
+            raise RegistryApiError(f"Target descriptor {descriptor_key!r} dataSchemaVersion must be a non-empty string")
     source = descriptor.get("source")
     if source is not None:
         if descriptor_key not in _FINAL_SOURCE_DESCRIPTORS:
-            raise RegistryApiError(f"GA descriptor {descriptor_key!r} does not support source")
+            raise RegistryApiError(f"Target descriptor {descriptor_key!r} does not support source")
         _validate_final_source(source, descriptor_key)
     additional = descriptor.get("additionalData")
     if additional is None:
         return
     if not allow_additional or not isinstance(additional, dict):
-        raise RegistryApiError(f"GA descriptor {descriptor_key!r} has invalid additionalData")
+        raise RegistryApiError(f"Target descriptor {descriptor_key!r} has invalid additionalData")
     allowed_children = _FINAL_ADDITIONAL_DATA.get(descriptor_key, set())
     unsupported_children = set(additional) - allowed_children
     if unsupported_children:
         raise RegistryApiError(
-            f"GA descriptor {descriptor_key!r} has unsupported additionalData keys: "
+            f"Target descriptor {descriptor_key!r} has unsupported additionalData keys: "
             + ", ".join(sorted(str(value) for value in unsupported_children))
         )
     for child_key, child in additional.items():
@@ -1493,28 +1495,30 @@ def _content_lives_in_additional_data(
 
 
 def _validate_final_source(source: Any, descriptor_key: str) -> None:
-    """Require a GA source to be exactly ``{"fromUrl": {"url": ...}}`` (URL-only at GA)."""
+    """Require a target source to be exactly ``{"fromUrl": {"url": ...}}`` (URL-only in the new version)."""
     if not isinstance(source, dict) or set(source) != {"fromUrl"}:
-        raise RegistryApiError(f"GA descriptor {descriptor_key!r} source must contain exactly one fromUrl object")
+        raise RegistryApiError(f"Target descriptor {descriptor_key!r} source must contain exactly one fromUrl object")
     from_url = source.get("fromUrl")
     if not isinstance(from_url, dict) or not isinstance(from_url.get("url"), str) or not from_url["url"]:
-        raise RegistryApiError(f"GA descriptor {descriptor_key!r} source.fromUrl.url is required")
+        raise RegistryApiError(f"Target descriptor {descriptor_key!r} source.fromUrl.url is required")
     unsupported = set(from_url) - {"url", "credentialProviderConfigurations"}
     if unsupported:
         raise RegistryApiError(
-            f"GA descriptor {descriptor_key!r} source.fromUrl has unsupported fields: "
+            f"Target descriptor {descriptor_key!r} source.fromUrl has unsupported fields: "
             + ", ".join(sorted(str(value) for value in unsupported))
         )
     credentials = from_url.get("credentialProviderConfigurations")
     if credentials is not None and not isinstance(credentials, list):
-        raise RegistryApiError(f"GA descriptor {descriptor_key!r} credentialProviderConfigurations must be an array")
+        raise RegistryApiError(
+            f"Target descriptor {descriptor_key!r} credentialProviderConfigurations must be an array"
+        )
 
 
 def _build_update_body(
     record: dict[str, Any],
     current_record: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build a GA UpdateRegistryRecord body of ``optionalValue`` wrappers from desired vs current.
+    """Build a target UpdateRegistryRecord body of ``optionalValue`` wrappers from desired vs current.
 
     Fields present in the desired record are set via ``{"optionalValue": ...}``; fields present
     only in the current record are cleared via ``{}``. ``triggerSynchronization`` is added when
@@ -1547,7 +1551,7 @@ def _build_update_body(
 def _wrap_final_descriptors(desired: Any, current: Any) -> dict[str, Any]:
     """Wrap the single primary descriptor for update and clear any other current primaries."""
     if not isinstance(desired, dict) or len(desired) != 1:
-        raise RegistryApiError("GA update requires exactly one primary descriptor")
+        raise RegistryApiError("Target update requires exactly one primary descriptor")
     current_descriptors = current if isinstance(current, dict) else {}
     primary_key, descriptor = next(iter(desired.items()))
     current_descriptor = current_descriptors.get(primary_key)
@@ -1568,7 +1572,7 @@ def _wrap_final_descriptors(desired: Any, current: Any) -> dict[str, Any]:
 def _wrap_final_descriptor(desired: Any, current: Any) -> dict[str, Any]:
     """Recursively wrap one descriptor's fields and additionalData children for update."""
     if not isinstance(desired, dict):
-        raise RegistryApiError("GA update descriptor must be an object")
+        raise RegistryApiError("Target update descriptor must be an object")
     current_value = current if isinstance(current, dict) else {}
     wrapped: dict[str, Any] = {}
     for field_name in ("data", "dataSchemaVersion", "source"):
@@ -1759,11 +1763,11 @@ def _normalize_a2a_schema_version(value: Any) -> str:
     return ".".join(parts)
 
 
-def _ga_endpoint_url(config: dict[str, Any], region: str) -> str:
-    """Resolve and pin the GA endpoint to the fixed regional agent-registry-control host."""
+def _target_endpoint_url(config: dict[str, Any], region: str) -> str:
+    """Resolve and pin the target endpoint to the fixed regional agent-registry-control host."""
     if _optional_string(config.get("endpointUrl")) is not None:
-        raise RegistryApiError("GA endpointUrl overrides are not supported; the regional api.aws endpoint is fixed")
-    template = _required_string(config, "endpointUrlTemplate", "GA API")
+        raise RegistryApiError("Target endpointUrl overrides are not supported; the regional api.aws endpoint is fixed")
+    template = _required_string(config, "endpointUrlTemplate", "new Registry API")
     endpoint = template.replace("{region}", region)
     parsed = urlparse(endpoint)
     expected_host = f"agent-registry-control.{region}.api.aws"
@@ -1774,12 +1778,14 @@ def _ga_endpoint_url(config: dict[str, Any], region: str) -> str:
         or parsed.query
         or parsed.fragment
     ):
-        raise RegistryApiError(f"GA endpointUrlTemplate must resolve to https://{expected_host} for region {region}")
+        raise RegistryApiError(
+            f"Target endpointUrlTemplate must resolve to https://{expected_host} for region {region}"
+        )
     return endpoint.rstrip("/")
 
 
 def _record_id_from_arn(value: Any) -> str | None:
-    """Extract the record id from a GA record ARN, or None if it is not present."""
+    """Extract the record id from a target record ARN, or None if it is not present."""
     if not isinstance(value, str) or "/record/" not in value:
         return None
     record_id = value.rsplit("/record/", 1)[-1]
