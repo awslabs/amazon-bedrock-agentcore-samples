@@ -297,6 +297,7 @@ class OktaSetup:
             # Refetch to ensure we have credentials.
             print(f"ℹ️  Reusing existing OIDC app: {existing.id}")
             app = existing
+            app_status = "reused"
         else:
             from okta.models import (
                 OAuthGrantType,
@@ -381,6 +382,7 @@ class OktaSetup:
             if err:
                 raise RuntimeError(f"Failed to create OIDC app: {err}")
             print(f"✅ OIDC app created: {app.id}")
+            app_status = "created"
 
         # Fetch credentials (Okta returns these via the create response, but
         # idempotent path needs an explicit fetch).
@@ -412,6 +414,7 @@ class OktaSetup:
             "app_id": app.id,
             "app_client_id": client_id,
             "app_client_secret": client_secret,
+            "status": app_status,
         }
 
     async def create_exchange_app(self, app_label: str) -> dict[str, str]:
@@ -437,6 +440,7 @@ class OktaSetup:
         if existing:
             print(f"ℹ️  Reusing existing OBO exchange app: {existing.id}")
             app = existing
+            app_status = "reused"
         else:
             from okta.models import (
                 OAuthGrantType,
@@ -509,6 +513,7 @@ class OktaSetup:
             if err:
                 raise RuntimeError(f"Failed to create OBO exchange app: {err}")
             print(f"✅ OBO exchange app created: {app.id}")
+            app_status = "created"
 
         client_id = app.credentials.oauth_client.client_id
         client_secret = app.credentials.oauth_client.client_secret
@@ -536,6 +541,7 @@ class OktaSetup:
             "app_id": app.id,
             "exchange_client_id": client_id,
             "exchange_client_secret": client_secret,
+            "status": app_status,
         }
 
     async def create_auth_server(self) -> dict[str, str]:
@@ -548,6 +554,7 @@ class OktaSetup:
         if existing:
             print(f"ℹ️  Reusing existing auth server: {existing.id}")
             server = existing
+            server_status = "reused"
         else:
             from okta.models import AuthorizationServer
 
@@ -562,6 +569,7 @@ class OktaSetup:
             if err:
                 raise RuntimeError(f"Failed to create auth server: {err}")
             print(f"✅ Auth server created: {server.id}")
+            server_status = "created"
 
         # Create scopes on the auth server (idempotent: skip if already present).
         scope_definitions = [
@@ -624,6 +632,7 @@ class OktaSetup:
         return {
             "auth_server_id": server.id,
             "discovery_url": discovery_url,
+            "status": server_status,
         }
 
     async def create_auth_server_access_policy(self, server_id: str, app_client_id: str, exchange_client_id: str):
@@ -790,11 +799,14 @@ class OktaSetup:
             ("administrators", "Administrators group"),
         ]
         result = {}
+        # Track reuse so the summary can report created-vs-reused honestly.
+        self.reused_groups = set()
         for group_name, description in groups_config:
             existing = await self.find_existing_group(group_name)
             if existing:
                 print(f"ℹ️  Group already exists: {group_name} ({existing.id})")
                 result[group_name] = existing.id
+                self.reused_groups.add(group_name)
                 continue
 
             group = Group(
@@ -843,7 +855,7 @@ class OktaSetup:
             if existing:
                 print(f"ℹ️  Test user already exists: {u['login']} (sub: {existing.id})")
                 await self._add_user_to_group(existing.id, group_ids[u["group"]], u["group"])
-                results.append({"login": u["login"], "sub": existing.id, "group": u["group"]})
+                results.append({"login": u["login"], "sub": existing.id, "group": u["group"], "status": "reused"})
                 continue
 
             user_profile = UserProfile(
@@ -868,7 +880,7 @@ class OktaSetup:
                     raise RuntimeError(f"Failed to create user {u['login']}: {err}")
                 print(f"✅ Test user created: {u['login']} (sub: {created.id})")
                 await self._add_user_to_group(created.id, group_ids[u["group"]], u["group"])
-                results.append({"login": u["login"], "sub": created.id, "group": u["group"]})
+                results.append({"login": u["login"], "sub": created.id, "group": u["group"], "status": "created"})
             except Exception as e:
                 print(f"⚠️  Error creating user {u['login']}: {e}")
 
@@ -988,6 +1000,13 @@ class OktaSetup:
             "administrators_group_id": group_ids["administrators"],
             "api_token": self.api_token,
             "users": users,
+            # Created-vs-reused, so the summary below reports what actually
+            # happened rather than asserting creation unconditionally. setup_okta
+            # is idempotent, so a re-run legitimately reuses most objects.
+            "app_status": app_result["status"],
+            "obo_app_status": exchange_result["status"],
+            "auth_server_status": auth_server["status"],
+            "reused_groups": sorted(getattr(self, "reused_groups", set())),
         }
         self.store_parameters_in_ssm(config)
 
@@ -1022,19 +1041,40 @@ def main():
     print("   • /app/lakehouse-agent/okta-adjusters-group-id")
     print("   • /app/lakehouse-agent/okta-administrators-group-id")
 
-    print("\n👥 Test Users Created (with TempPass123!, must change on first login):")
+    # Created-vs-reused, reported per object. This script is idempotent, so a
+    # re-run legitimately reuses most objects — announcing everything as "created"
+    # turns the summary into misleading evidence (it reads as proof that a fresh
+    # object was made when nothing was touched). Only newly-created users get the
+    # temporary-password note, because a reused user's password is whatever it
+    # already was.
+    created_users = [u for u in config["users"] if u.get("status") == "created"]
+    reused_users = [u for u in config["users"] if u.get("status") == "reused"]
+    print(f"\n👥 Test Users: {len(created_users)} created, {len(reused_users)} reused")
     for u in config["users"]:
-        print(f"   • {u['login']} → {u['group']} (sub: {u['sub']})")
+        status = u.get("status", "unknown")
+        note = "  (password: TempPass123!, must change on first login)" if status == "created" else ""
+        print(f"   • {u['login']} → {u['group']} [{status}] (sub: {u['sub']}){note}")
+    if reused_users:
+        print("     Reused users kept their existing credentials and enrolled MFA factors.")
 
-    print("\n👥 Okta Groups:")
-    print(f"   • policyholders ({config['policyholders_group_id']})")
-    print(f"   • adjusters     ({config['adjusters_group_id']})")
-    print(f"   • administrators ({config['administrators_group_id']})")
+    reused_groups = set(config.get("reused_groups") or [])
+    n_reused_groups = len(reused_groups)
+    print(f"\n👥 Okta Groups: {3 - n_reused_groups} created, {n_reused_groups} reused")
+    for name, key in (
+        ("policyholders", "policyholders_group_id"),
+        ("adjusters", "adjusters_group_id"),
+        ("administrators", "administrators_group_id"),
+    ):
+        status = "reused" if name in reused_groups else "created"
+        print(f"   • {name:<15} ({config[key]}) [{status}]")
 
     print("\n🔑 OIDC Application:")
-    print(f"   • Client ID: {config['app_client_id']}")
-    print(f"   • OBO Exchange Client ID: {config['obo_client_id']} ({OKTA_EXCHANGE_APP_NAME})")
-    print(f"   • Auth Server ID: {config['auth_server_id']}")
+    print(f"   • Client ID: {config['app_client_id']} [{config.get('app_status', 'unknown')}]")
+    print(
+        f"   • OBO Exchange Client ID: {config['obo_client_id']} "
+        f"({OKTA_EXCHANGE_APP_NAME}) [{config.get('obo_app_status', 'unknown')}]"
+    )
+    print(f"   • Auth Server ID: {config['auth_server_id']} [{config.get('auth_server_status', 'unknown')}]")
     print(f"   • Audience: {config['resource_server_audience']}")
     print(f"   • Discovery URL: {config['discovery_url']}")
     print("   • Scopes: claims.query, claims.submit, claims.update, claims.approve, opensearch.search")
