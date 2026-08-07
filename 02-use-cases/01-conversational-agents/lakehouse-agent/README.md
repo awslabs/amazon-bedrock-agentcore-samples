@@ -707,7 +707,7 @@ See [deployment/README.md](deployment/README.md) for full cleanup details.
 
 **Expected output**:
 ```
-✅ Token obtained: eyJraWQiOiJxxx...
+✅ Token obtained: <JWT>...
 ✅ Agent response received
 ✅ Tool calls: 1
 📝 Agent output: "I found 9 claims in the database..."
