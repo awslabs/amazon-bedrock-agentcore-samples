@@ -69,16 +69,16 @@ role, and passes those credentials to the Claims MCP server.
 **User Story**: Sarah, a policy holder (`policyholder001@example.com`), logs into the claims portal to check the status of her recent hospital claim.
 
 **What Sarah Can See**:
-| claim_id | patient_name | patient_dob | claim_amount | claim_status | provider_name | adjuster_id |
+| claim_id | patient_name | policyholder_dob | claim_amount | claim_status | provider_name | adjuster_user_id |
 |----------|--------------|-------------|--------------|--------------|---------------|-------------|
 | CLM-2024-001 | Sarah Chen | 1985-03-15 | $1,250.00 | approved | City Medical | ████████ |
 | CLM-2024-003 | Sarah Chen | 1985-03-15 | $3,500.00 | in_review | General Hospital | ████████ |
 
 **What Sarah Cannot See**:
 - Claims belonging to other policy holders
-- The `adjuster_id` column (masked by Lake Formation column-level security)
+- The `adjuster_user_id` column (masked by Lake Formation column-level security)
 
-**How**: Control access to the data through query conditions controlled by tools and parameters curated by Interceptor. The `adjuster_id` column is protected by Lake Formation column masking (to be added to Claims table).
+**How**: Control access to the data through query conditions controlled by tools and parameters curated by Interceptor. The `adjuster_user_id` column is protected by Lake Formation column masking (to be added to Claims table).
 
 ```
 ┌────────┐      ┌──────┐        ┌───────┐       ┌────────┐      ┌─────────┐      ┌────────┐      ┌──────────┐      ┌────────┐
@@ -113,7 +113,7 @@ role, and passes those credentials to the Claims MCP server.
     │               │               │               │                │               │                 │──────────────>│
     │               │               │               │                │               │                 │               │
     │               │               │               │                │               │                 │ note: Row filter applied
-    │               │               │               │                │               │                 │ note: adjuster_id masked
+    │               │               │               │                │               │                 │ note: adjuster_user_id masked
     │               │               │               │                │               │                 │               │
     │               │               │               │                │               │                 │<──────────────│
     │               │               │               │                │               │<────────────────│               │
@@ -137,7 +137,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 **User Story**: Michael, a claims adjuster (`adjuster001@example.com`), logs in to review claims assigned to him.
 
 **What Michael Can See**:
-| claim_id | patient_name | patient_dob | claim_amount | claim_status | adjuster_id |
+| claim_id | patient_name | policyholder_dob | claim_amount | claim_status | adjuster_user_id |
 |----------|--------------|-------------|--------------|--------------|-------------|
 | CLM-2024-001 | Sarah Chen | ██████████ | $1,250.00 | approved | adjuster001 |
 | CLM-2024-005 | Jane Smith | ██████████ | $850.00 | approved | adjuster001 |
@@ -145,7 +145,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 **What Michael Cannot See**:
 - Claims assigned to other adjusters
-- `patient_dob` column (masked for HIPAA compliance — adjusters don't need DOB)
+- `policyholder_dob` column (masked for HIPAA compliance — adjusters don't need DOB)
 - Claims not assigned to any adjuster
 
 ```
@@ -178,11 +178,12 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
      │                │               │               │                │               │────────────────>│               │
      │                │               │               │                │               │                 │ Query w/      │
      │                │               │               │                │               │                 │ WHERE         │
-     │                │               │               │                │               │                 │ adjuster_id   │
+     │                │               │               │                │               │                 │ adjuster_user_│
+     │                │               │               │                │               │                 │ id            │
      │                │               │               │                │               │                 │──────────────>│
      │                │               │               │                │               │                 │               │
      │                │               │               │                │               │                 │ note: Row filter applied
-     │                │               │               │                │               │                 │ note: patient_dob masked
+     │                │               │               │                │               │                 │ note: policyholder_dob masked
      │                │               │               │                │               │                 │               │
      │                │               │               │                │               │                 │<──────────────│
      │                │               │               │                │               │<────────────────│               │
@@ -196,7 +197,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 **Security Controls**:
 - **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the bound identity predicate inside those tools, not by a distinct tool)
 - **Row-Level**: `WHERE adjuster_user_id = '{authenticated_adjuster}'` (application-level predicate, bound as an Athena execution parameter)
-- **Column-Level**: Lake Formation masks `patient_dob` for `adjuster` role
+- **Column-Level**: Lake Formation masks `policyholder_dob` for `adjuster` role
 
 ---
 
@@ -325,9 +326,10 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 Column counts are the grants issued by
 `deployment/3-s3tables-setup/setup_lakeformation_permissions.py` against the
-21-column `claims` schema in `setup_s3tables.py`. The scenario walkthroughs above
-use the earlier display names `patient_dob` / `adjuster_id` for the fields the
-live schema calls `policyholder_dob` / `adjuster_user_id`.
+21-column `claims` schema in `setup_s3tables.py`.
+
+One display-name carry-over remains in the scenario tables above: `patient_name`
+is the field the live schema calls `policyholder_name`.
 
 Note the division of labour once more: the **Columns** column is Lake Formation's
 contribution, the **Rows** column is the tool layer's. Neither is doing the
@@ -482,6 +484,6 @@ two admin views. They are not duplicated here.
 
 ## Implementation Priority
 
-1. **Scenario 1** (Easiest): Add `adjuster_id` column + Lake Formation column mask
+1. **Scenario 1** (Easiest): Add `adjuster_user_id` column + Lake Formation column mask
 2. **Scenario 2** (Medium): Add new tool + role-based tool filtering in interceptor
 3. **Scenario 3** (Complex): DynamoDB login-audit table + Cognito post-auth trigger + role-mapping table + `query_login_audit` MCP tool
