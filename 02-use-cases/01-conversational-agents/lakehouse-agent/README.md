@@ -300,6 +300,84 @@ Key Points:
 
 ## Prerequisites
 
+### [OKTA] Okta Prerequisites (and how it meshes)
+
+> **`IDP_PROVIDER=okta` only.** On the default `cognito` path nothing here
+> applies — skip straight to [AWS Account Setup](#aws-account-setup).
+
+This is **not** an Okta tutorial — it's the minimum you must have in place plus the few assumptions the code hard-codes. For the full walkthrough / by-hand reproduction / OBO troubleshooting, see the deep-dive: **[deployment/1-okta-setup/README.md](deployment/1-okta-setup/README.md)** (ships a read-only `verify_okta_setup.py`).
+
+**To run notebook `01-deploy-idp.ipynb` on the Okta path:** a free Okta developer org ([developer.okta.com/signup](https://developer.okta.com/signup)) and an admin **API token**, supplied in `.env` as:
+
+- `OKTA_ORG_URL` — e.g. `dev-12345678.okta.com` (tenant URL only; no scheme, no `-admin` suffix)
+- `OKTA_API_TOKEN` — Okta admin console → Security → API → Tokens
+
+`deployment/1-okta-setup/setup_okta.py` (run by `01-deploy-idp.ipynb`) provisions the rest via the Okta SDK, idempotently: **1** custom authorization server (audience `api://lakehouse-api`), **2** OIDC apps (user-login + OBO exchange), **5** scopes, a `groups` claim, **3** groups, and **5** test users.
+
+> #### 🔴 Redirect URIs — register your callback or login fails
+>
+> Okta only redirects to **registered** callback URIs. `setup_okta.py` registers **`http://localhost:8501/`** on the user-login app — fine for a local Streamlit run. **If you run the Streamlit UI from SageMaker Studio (or any remote host), login WILL fail** until you add that environment's callback URL to the user-login app's redirect URIs. For Studio that is the Studio **proxy** URL, not localhost:
+>
+> ```
+> https://<studio-domain-id>.studio.<region>.sagemaker.aws/jupyterlab/default/proxy/8501/
+> ```
+>
+> Add it via the Okta admin console (Applications → `lakehouse-agent-app` → General → Sign-in redirect URIs) or by editing the `redirectUris` list in `setup_okta.py` before running `01-deploy-idp.ipynb`. Register both local and Studio URIs if you use both.
+
+> #### ⚠️ Groups are the access-control linchpin
+>
+> The claims gateway (GW1) derives a user's tenant role and tool set from the **`groups`** claim. The request interceptor takes the **first non-`Everyone` group** on the token and looks it up (as `["<group>"]`) in the `lakehouse_tenant_role_map` DynamoDB table. Group names must be **exactly**:
+>
+> | Okta group | Tenant IAM role | Allowed tools (GW1 tool-gate) | Data scope |
+> |---|---|---|---|
+> | `policyholders` | `lakehouse-policyholders-role` | `get_claims_summary`, `get_claim_details`, `query_claims` | own claims only (`WHERE user_id='<caller>'`); LF excludes `adjuster_user_id`, `created_by`, `last_modified_by`, `last_modified_date`, `notes`, `denial_reason` |
+> | `adjusters` | `lakehouse-adjusters-role` | `get_claims_summary`, `get_claim_details`, `query_claims` | rows scoped by the same identity predicate; LF excludes `policyholder_dob` |
+> | `administrators` | `lakehouse-administrators-role` | `query_login_audit`, `text_to_sql` | portfolio-wide — admin full-table LF grant, incl. PII; `query_login_audit` is a direct DynamoDB read (no Lake Formation involvement) |
+>
+> The authoritative source for this group → role → `allowed_tools` mapping is `get_seed_data()` in [deployment/5a-gateway-setup/interceptor-request/setup_dynamodb_tenant_role_maps.py](deployment/5a-gateway-setup/interceptor-request/setup_dynamodb_tenant_role_maps.py).
+>
+> **v1 assumption:** each user belongs to exactly **ONE** app-mapped group. A user in more than one non-`Everyone` group is nondeterministic (first group on the token wins). The notes gateway (GW2, `notes/` tools) is **not** group-gated — its single tool `search_claim_notes` is available to any authenticated user and scoped per-user by `owner_user_sub` (below).
+
+> #### ⚠️ `token.sub` = email on this Okta config — seed identities accordingly
+>
+> On this tenant the access token's **`sub` claim is the user's email** (not the `00u…` Okta user id — that's the separate `uid` claim). Two consequences:
+>
+> - **OBO / OpenSearch RLS:** the OpenSearch (notes) MCP server filters notes by `owner_user_sub = <sub>`. The seed values in SSM `/app/lakehouse-agent/okta-user-<label>-sub` (written by **`setup_okta.py`**, notebook `01-deploy-idp.ipynb` — notebook `07` only *consumes* them) MUST be the **email**, or the filter matches nothing and the isolation test passes **vacuously** (silent fake "green").
+> - **Interceptor / Athena:** the principal used for `WHERE user_id='<caller>'` is `email` (falling back to `sub`) — same value here.
+>
+> If you bring your own users, seed `owner_user_sub` with whatever your tokens actually carry as `sub`.
+
+> #### Two Okta apps — why?
+>
+> This demo provisions **one authorization server fronted by two Okta applications**:
+>
+> - a **user-login app** (`lakehouse-agent-app`) that issues the subject token your users sign in with, and
+> - a **dedicated OBO exchange app** (`lakehouse-obo-exchange-client`) — a service client that performs the RFC 8693 token exchange for the notes gateway (GW2).
+>
+> Okta requires the client performing a token exchange to be **distinct from** the client that issued the subject token. A single app attempting both legs is rejected (`unsupported_token_exchange_flow`). `setup_okta.py` creates both apps and `03_create_oauth_provider.py` wires the OBO credential provider to the exchange app. The claims gateway (GW1) path uses only the user-login app.
+
+> #### First login: authenticator (MFA) enrollment
+>
+> On their **first** sign-in through the Streamlit UI, a test user may be prompted by Okta to enroll an authenticator (MFA factor). This is expected Okta behavior on the demo tenant — complete the enrollment once, and subsequent logins proceed normally. If you provision your own test users, expect the same first-login prompt.
+
+#### [OKTA] Okta configuration in SSM Parameter Store
+
+`setup_okta.py` (notebook `01-deploy-idp.ipynb`) writes the Okta config to SSM under `/app/lakehouse-agent/` (secrets as `SecureString`). Names and purpose only:
+
+| SSM parameter (`/app/lakehouse-agent/…`) | Purpose | Written by |
+|---|---|---|
+| `okta-org-url` | Tenant org URL | `setup_okta.py` (`01`) |
+| `okta-auth-server-id` | Custom authorization server ID | `setup_okta.py` (`01`) |
+| `okta-discovery-url` | OIDC discovery URL (feeds both gateway `customJWTAuthorizer`s) | `setup_okta.py` (`01`) |
+| `okta-resource-server-audience` | JWT `aud` (`api://lakehouse-api`) | `setup_okta.py` (`01`) |
+| `okta-app-client-id` / `okta-app-client-secret` 🔒 | User-login app credentials (Streamlit, interceptor M2M provider) | `setup_okta.py` (`01`) |
+| `okta-obo-client-id` / `okta-obo-client-secret` 🔒 | OBO exchange app credentials (RFC 8693 provider) | `setup_okta.py` (`01`) |
+| `okta-{policyholders,adjusters,administrators}-group-id` | Okta group IDs | `setup_okta.py` (`01`) |
+| `okta-api-token` 🔒 | Okta management API token | `setup_okta.py` (`01`) |
+| `okta-user-<label>-sub` | Per-test-user identity for `owner_user_sub` seeding (= email on this config) | `setup_okta.py` (`01`) |
+
+> **Bringing your own users/groups?** Match the exact group names (`policyholders` / `adjusters` / `administrators`), keep each user in exactly one of them, and seed `owner_user_sub` with the value your tokens carry as `sub` (= email on this config). Anything else silently breaks tool-gating or row-scoping.
+
 ### AWS Account Setup
 
 1. **AWS Account**:
@@ -759,6 +837,22 @@ Processed Date: 2024-01-18"
 | **Invalid token** | Token expired or wrong client | Get new token from Cognito |
 | **Gateway timeout** | MCP server slow | Increase Lambda timeout to 300s |
 | **Athena permission denied** | Missing IAM permissions | Check execution role has Athena access |
+| **[OKTA] Okta login loops to the same user** | Silent SSO re-uses the browser session | See the `prompt=login` callout below |
+| **[OKTA] `unsupported_token_exchange_flow`** | OBO exchange client is the same as the subject-token issuer | See the two-app callout below |
+| **[OKTA] Empty results on every query** | `owner_user_sub` seed form ≠ extracted `sub` form | On this Okta tenant `sub` = the user's **email**; seed `okta-user-<label>-sub` with the email |
+| **[OKTA] Invalid token** | Token expired or wrong audience | Obtain a fresh token from Okta; confirm `aud = api://lakehouse-api` |
+
+The rows tagged **[OKTA]** apply only when `IDP_PROVIDER=okta`; the two callouts
+below are likewise Okta-only. Cognito readers can skip to
+[Credential Troubleshooting](#credential-troubleshooting).
+
+> #### [OKTA] Okta `prompt=login` — persona switching
+>
+> The Streamlit UI sets `extras_params={"prompt": "login"}` on the authorize request. Without it, Okta silently re-authenticates the existing browser session's user on every redirect — even in an incognito window — so you cannot switch between policyholder001 and policyholder002. Forcing `prompt=login` surfaces the Okta login screen each time, which is what enables the persona switching the isolation demo depends on. This is permanent, not a debugging aid.
+
+> #### [OKTA] Two Okta apps — `unsupported_token_exchange_flow`
+>
+> If the OBO exchange fails with `unsupported_token_exchange_flow`, the OBO credential provider is wired to the **user-login app** (`lakehouse-agent-app`) instead of the **dedicated exchange app** (`lakehouse-obo-exchange-client`). Okta requires the token-exchange client to be distinct from the subject-token issuer. `setup_okta.py` provisions both apps and `03_create_oauth_provider.py` wires the provider to the exchange app.
 
 ### Credential Troubleshooting
 

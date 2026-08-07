@@ -2,16 +2,27 @@
 """
 Test AgentCore Gateway with User Authentication
 
-This script tests the complete authentication flow:
-1. User authenticates with Cognito (gets user JWT token)
+Works on both IdPs (IDP_PROVIDER = "cognito" | "okta"). This script tests the
+complete authentication flow:
+1. A user JWT is supplied — either pasted via --token, or (Cognito only) minted
+   from --username/--password
 2. User sends request to Gateway with JWT token
 3. Gateway validates user JWT token
-4. Gateway gets M2M token from Cognito (automatic via OAuth provider)
+4. Gateway gets M2M token from the IdP (automatic via OAuth provider)
 5. Gateway forwards request to MCP Runtime with M2M token
 6. Runtime validates M2M token and processes request
 7. Gateway returns response to user
 
+Okta Identity Engine tenants block the Resource Owner Password Credentials
+(ROPC) grant, so --username/--password cannot mint a token on the Okta path.
+There, sign in through the Streamlit UI (notebook 08, Authorization Code +
+PKCE), copy the access token, and paste it with --token.
+
 Usage:
+    # Both IdPs — paste a token you already hold
+    python test_gateway.py --token <jwt>
+
+    # Cognito only — mint a token from test-user credentials
     python test_gateway.py --username <username> --password <password>
     python test_gateway.py --username testuser --password TestPass123!
 """
@@ -19,29 +30,44 @@ Usage:
 import argparse
 import base64
 import json
+import os
 import sys
 
 import boto3
 import requests
 
+# Make the repo's utils/ importable (idp_config lives there) when this script
+# runs from its own deployment subdir.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from utils.idp_config import get_idp_provider
 
-def get_user_token(username: str, password: str):
+# Fail-fast guidance shown when a reader tries the Cognito credential path on Okta.
+OKTA_ROPC_HELP = (
+    "❌ --username/--password is a Cognito-only convenience path, but IDP_PROVIDER='okta'.\n"
+    "   Okta Identity Engine tenants block the Resource Owner Password Credentials (ROPC)\n"
+    "   grant, so a username + password cannot mint a token here.\n"
+    "   ➜ Sign in through the Streamlit UI (notebook 08, Authorization Code + PKCE), copy\n"
+    "     the access token, then re-run:\n"
+    "         python test_gateway.py --token <jwt>"
+)
+
+
+def get_user_token(region: str, username: str, password: str):
     """
-    Authenticate user with Cognito and get JWT token.
+    Authenticate user with Cognito and get JWT token (Cognito path only).
 
     Args:
+        region: AWS region
         username: Cognito username
         password: User password
 
     Returns:
-        Tuple of (access_token, id_token, region)
+        Tuple of (access_token, id_token)
     """
     print("=" * 70)
     print("Step 1: User Authentication with Cognito")
     print("=" * 70)
 
-    session = boto3.Session()
-    region = session.region_name
     ssm = boto3.client("ssm", region_name=region)
     cognito = boto3.client("cognito-idp", region_name=region)
 
@@ -58,7 +84,7 @@ def get_user_token(username: str, password: str):
         print(f"   User Pool: {user_pool_id}")
     except Exception as e:
         print(f"❌ Error loading configuration: {e}")
-        return None, None, region
+        return None, None
 
     # Authenticate user using ADMIN_USER_PASSWORD_AUTH
     # This flow doesn't require USER_PASSWORD_AUTH to be enabled on the client
@@ -118,17 +144,17 @@ def get_user_token(username: str, password: str):
         print("\n🔑 Access Token (first 100 chars):")
         print(f"   {access_token[:100]}...")
 
-        return access_token, id_token, region
+        return access_token, id_token
 
     except cognito.exceptions.NotAuthorizedException:
         print("❌ Authentication failed: Invalid username or password")
-        return None, None, region
+        return None, None
     except cognito.exceptions.UserNotFoundException:
         print(f"❌ User not found: {username}")
-        return None, None, region
+        return None, None
     except Exception as e:
         print(f"❌ Authentication error: {e}")
-        return None, None, region
+        return None, None
 
 
 def test_gateway(access_token: str, region: str):
@@ -136,7 +162,7 @@ def test_gateway(access_token: str, region: str):
     Test Gateway by sending MCP requests with user token.
 
     Args:
-        access_token: User's access token from Cognito
+        access_token: User's access token (Cognito- or Okta-issued JWT)
         region: AWS region
     """
     print("\n" + "=" * 70)
@@ -366,21 +392,66 @@ def test_gateway(access_token: str, region: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test AgentCore Gateway with user authentication")
-    parser.add_argument("--username", required=True, help="Cognito username")
-    parser.add_argument("--password", required=True, help="User password")
+    parser = argparse.ArgumentParser(
+        description="Test AgentCore Gateway with user authentication (Cognito or Okta)",
+        epilog=(
+            "--token works on BOTH IdPs. --username/--password is a Cognito-only convenience "
+            "path: Okta Identity Engine tenants block the ROPC grant, so use --token there "
+            "with a token from the Streamlit UI login (notebook 08)."
+        ),
+    )
+    parser.add_argument(
+        "--token",
+        help="User JWT to present to the Gateway (works on both IdPs; paste a token you already hold)",
+    )
+    parser.add_argument(
+        "--username",
+        help="Cognito username (Cognito only; mints a token via ADMIN_USER_PASSWORD_AUTH)",
+    )
+    parser.add_argument(
+        "--password",
+        help="Cognito user password (Cognito only; used together with --username)",
+    )
     args = parser.parse_args()
+
+    # --token and --username/--password are mutually exclusive token sources.
+    if args.token and (args.username or args.password):
+        parser.error("--token cannot be combined with --username/--password — supply one token source, not both.")
+    if not args.token and not (args.username and args.password):
+        parser.error(
+            "No token source supplied. Either paste a token with --token <jwt> (works on Cognito "
+            "and Okta), or supply BOTH --username and --password (Cognito only)."
+        )
 
     print("\n" + "=" * 70)
     print("AgentCore Gateway Test with User Authentication")
     print("=" * 70 + "\n")
 
-    # Step 1: Authenticate user and get token
-    access_token, _id_token, region = get_user_token(args.username, args.password)
+    session = boto3.Session()
+    region = session.region_name
+    ssm = boto3.client("ssm", region_name=region)
+    idp_provider = get_idp_provider(ssm)
+    print(f"📍 IDP_PROVIDER: {idp_provider}\n")
 
-    if not access_token:
-        print("\n❌ Failed to authenticate user. Exiting.")
-        sys.exit(1)
+    # Step 1: Obtain the user token
+    if args.token:
+        print("=" * 70)
+        print("Step 1: Using Pasted User Token")
+        print("=" * 70)
+        print("   Source: --token (no IdP call made)")
+        access_token = args.token
+        minted_locally = False
+    else:
+        if idp_provider != "cognito":
+            print(OKTA_ROPC_HELP)
+            sys.exit(1)
+
+        access_token, _id_token = get_user_token(region, args.username, args.password)
+        minted_locally = True
+
+        if not access_token:
+            print("\n❌ Failed to authenticate user. Exiting.")
+            sys.exit(1)
 
     # Step 2: Test Gateway with user token
     test_gateway(access_token, region)
@@ -389,7 +460,10 @@ def main():
     print("Test Complete")
     print("=" * 70)
     print("\n✅ Authentication Flow Validated:")
-    print("   1. User authenticated with Cognito ✓")
+    if minted_locally:
+        print("   1. User authenticated with Cognito ✓")
+    else:
+        print(f"   1. User token supplied via --token (minted out-of-band on {idp_provider}) ✓")
     print("   2. User token sent to Gateway ✓")
     print("   3. Gateway validated user token ✓")
     print("   4. Gateway obtained M2M token (automatic) ✓")
