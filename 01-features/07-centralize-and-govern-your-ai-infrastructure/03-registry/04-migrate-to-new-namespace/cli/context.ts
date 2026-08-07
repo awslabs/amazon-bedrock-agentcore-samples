@@ -245,10 +245,21 @@ export function runEngine(
   return { status: result.status ?? 1, stdout: result.stdout ?? '' };
 }
 
-/** Run the engine and parse its JSON output, or return undefined when it failed. */
-export function runEngineJson<T>(args: string[], options: { quiet?: boolean } = {}): T | undefined {
+/**
+ * Run the engine and parse its JSON output, or return undefined when it failed.
+ *
+ * `partial` keeps the output of a command that reported a failure and still printed usable JSON.
+ * Commands that work per mapping do exactly that -- one registry that cannot be read or created
+ * exits non-zero while the rest of the report is complete and correct -- and discarding it would
+ * turn one bad mapping into no results at all, which for a create means losing the ids of the
+ * registries that *were* created.
+ */
+export function runEngineJson<T>(
+  args: string[],
+  options: { quiet?: boolean; partial?: boolean } = {},
+): T | undefined {
   const result = runEngine(args, { capture: true, quiet: options.quiet });
-  if (result.status !== 0) {
+  if (result.status !== 0 && !options.partial) {
     return undefined;
   }
   try {

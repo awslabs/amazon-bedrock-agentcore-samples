@@ -297,7 +297,7 @@ export async function init(options: Options): Promise<number> {
     const targetAccount = await askAccount('  Account for the target registry', sourceAccount);
     const targetRegion = await askRegion('  Region for the target registry', sourceRegion);
     const targetRegistryId = await askRegistryId(
-      '  Target registry id (leave empty and I will help you create it)',
+      '  Target registry id (leave empty and I will create the new-version registry for you)',
       { required: false },
     );
     registries.push({
@@ -356,16 +356,22 @@ async function helpCreateTargetRegistries(
   );
   // Ask for JSON so the derived payload path comes back from the engine that wrote it, rather than
   // being reconstructed here from assumptions about the output directory.
-  const derived = runEngineJson<DerivedTarget[]>([
-    'target-config',
-    '--config-file',
-    configPath,
-    '--output-dir',
-    outputDir,
-    '--json',
-    '--mapping',
-    missing.map((mapping) => mapping.id).join(','),
-  ]);
+  const derived = runEngineJson<DerivedTarget[]>(
+    [
+      'target-config',
+      '--config-file',
+      configPath,
+      '--output-dir',
+      outputDir,
+      '--json',
+      '--mapping',
+      missing.map((mapping) => mapping.id).join(','),
+    ],
+    // One registry that cannot be read must not cost the others their configuration: the engine
+    // reports that mapping's error and still describes the rest, and the loop below says which one
+    // was left out.
+    { partial: true },
+  );
   if (!derived || derived.length === 0) {
     // Name the two things that actually cause this. The reason is printed above, by the engine, but
     // "Unable to locate credentials" on its own reads like a problem with the answers just given
@@ -469,17 +475,23 @@ async function createTargetRegistries(
     `\nCreating ${pending.length === 1 ? 'the target registry' : `${pending.length} target registries`}. ` +
       'Each one provisions a workload identity, so this\ntakes a moment.\n',
   );
-  const created = runEngineJson<DerivedTarget[]>([
-    'target-config',
-    '--config-file',
-    configPath,
-    '--output-dir',
-    outputDir,
-    '--json',
-    '--create',
-    '--mapping',
-    pending.map((mapping) => mapping.id).join(','),
-  ]);
+  const created = runEngineJson<DerivedTarget[]>(
+    [
+      'target-config',
+      '--config-file',
+      configPath,
+      '--output-dir',
+      outputDir,
+      '--json',
+      '--create',
+      '--mapping',
+      pending.map((mapping) => mapping.id).join(','),
+    ],
+    // A create that failed for one mapping still created the others, and their ids only exist in
+    // this output. Dropping it would leave real registries nobody can name, and the next run would
+    // create a second one for each.
+    { partial: true },
+  );
   if (!created) {
     process.stdout.write(
       '\nNothing was created -- see the reason above. The derived payloads are still in\n' +

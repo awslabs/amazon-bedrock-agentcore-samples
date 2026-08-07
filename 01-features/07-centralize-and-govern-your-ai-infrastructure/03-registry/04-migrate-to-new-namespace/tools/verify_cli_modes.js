@@ -439,6 +439,65 @@ if (!glueNextCarriesScope) {
   console.log(`       suggested: ${suggestions.join('\n                  ')}`);
 }
 
+// One registry that cannot be created must not cost the others their ids. The engine works per
+// mapping and exits non-zero when any of them failed, so the JSON it printed describes the
+// successes *and* the failure -- discarding it on the exit code alone leaves registries that exist
+// in the account and appear nowhere in the configuration, and the next run creates them again.
+// Asserted here because only the CLI decides what to do with a partial result.
+const multi = path.join(workspace, 'multi.json');
+fs.writeFileSync(
+  multi,
+  JSON.stringify(
+    {
+      engine: { account: '111122223333', region: 'us-east-1' },
+      registries: ['map-a', 'map-b'].map((id) => ({
+        id,
+        source: { accountId: '111122223333', region: 'us-east-1', registryId: `src-${id}` },
+        target: { accountId: '111122223333', region: 'us-east-1', registryId: '<new-registry-id>' },
+      })),
+    },
+    null,
+    2,
+  ),
+);
+fs.writeFileSync(
+  stub,
+  [
+    '#!/usr/bin/env node',
+    'const argv = process.argv.slice(2);',
+    'if (argv[0] === "-c") { console.log("(3, 12)"); process.exit(0); }',
+    'const derived = ["map-a", "map-b"].map((id) => ({ mappingId: id, region: "us-east-1",',
+    '  payload: { name: id }, payloadPath: "/tmp/" + id + ".json", warnings: [] }));',
+    'if (argv.includes("target-config") && argv.includes("--create")) {',
+    '  derived[0].registryId = "CREATED-A"; derived[0].status = "READY";',
+    '  derived[1].createError = "AccessDeniedException on CreateRegistry";',
+    '  console.log(JSON.stringify(derived));',
+    // What the engine does when any mapping failed, and the whole point of the case.
+    '  process.exit(1);',
+    '}',
+    'if (argv.includes("target-config")) { console.log(JSON.stringify(derived)); }',
+    'process.exit(0);',
+  ].join('\n'),
+  { mode: 0o755 },
+);
+const partial = spawnSync(process.execPath, [CLI, 'target-config', '--config', multi, '--create'], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  env: { ...process.env, PYTHON: stub },
+});
+const written = JSON.parse(fs.readFileSync(multi, 'utf8'));
+const partialKept =
+  written.registries[0].target.registryId === 'CREATED-A' &&
+  written.registries[1].target.registryId === '<new-registry-id>' &&
+  /CREATED-A/.test(partial.stdout ?? '') &&
+  /AccessDeniedException/.test(partial.stdout ?? '');
+console.log(`  ${partialKept ? 'ok  ' : 'FAIL'} a create that failed for one mapping still records the ids of the others`);
+if (!partialKept) {
+  failures += 1;
+  console.log(`       recorded ids: ${written.registries.map((r) => r.target.registryId).join(', ')}`);
+  console.log(`       stdout: ${(partial.stdout ?? '').split('\n').join('\n               ')}`);
+}
+
 fs.rmSync(workspace, { recursive: true, force: true });
 
 if (failures) {

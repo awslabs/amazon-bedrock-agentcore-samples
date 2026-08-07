@@ -106,7 +106,7 @@ Registry pair 1
   Preview registry id: Sl81LNGuAmntzOLC
   Account for the target registry [111122223333]:
   Region for the target registry [us-east-1]:
-  Target registry id (leave empty and I will help you create it):
+  Target registry id (leave empty and I will create the new-version registry for you):
 
 Migrate another registry? (y/n) [n]:
 
