@@ -3,6 +3,25 @@
 
 set -e
 
+# Resolve the Python interpreter explicitly rather than trusting PATH (finding O4).
+# A reader who has not activated the sample venv would otherwise get the system
+# interpreter, installing the Lambda dependencies against a different Python than
+# the one that runs the rest of the tutorial. Prefer the sample venv, fall back to
+# python3, and allow an override for anyone using a different environment.
+SAMPLE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+if [ -z "${PYTHON_BIN:-}" ]; then
+    if [ -x "$SAMPLE_ROOT/.venv/bin/python" ]; then
+        PYTHON_BIN="$SAMPLE_ROOT/.venv/bin/python"
+    else
+        PYTHON_BIN="$(command -v python3 || command -v python)"
+    fi
+fi
+if [ -z "$PYTHON_BIN" ]; then
+    echo "❌ Error: no Python interpreter found (set PYTHON_BIN to override)"
+    exit 1
+fi
+echo "   Python: $PYTHON_BIN"
+
 # Ensure common tool paths are available (e.g. when run from a notebook subprocess)
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
@@ -92,7 +111,7 @@ echo ""
 echo "📦 Packaging Lambda function..."
 
 mkdir -p dist
-pip install -r requirements.txt -t dist/ --platform manylinux2014_x86_64 --only-binary=:all:
+"$PYTHON_BIN" -m pip install -r requirements.txt -t dist/ --platform manylinux2014_x86_64 --only-binary=:all:
 cp lambda_function.py dist/
 cp token_exchange.py dist/
 cp tool_validation.py dist/
@@ -107,7 +126,7 @@ echo "✅ Package created: interceptor-lambda.zip"
 echo ""
 echo "🔑 Creating Lambda execution role..."
 cd ..
-python create_lambda_role.py
+"$PYTHON_BIN" create_lambda_role.py
 cd interceptor-request
 
 # Get the role ARN from SSM Parameter Store (stored by create_lambda_role.py)
@@ -229,7 +248,7 @@ echo "✅ Log group $LOG_GROUP_NAME retention set to 30 days"
 # Setup DynamoDB tenant-role mapping table
 echo ""
 echo "📊 Setting up DynamoDB tenant-role mapping table..."
-python setup_dynamodb_tenant_role_maps.py
+"$PYTHON_BIN" setup_dynamodb_tenant_role_maps.py
 
 if [ $? -ne 0 ]; then
     echo "❌ Failed to setup DynamoDB table"
