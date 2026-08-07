@@ -223,7 +223,7 @@ export function migrationApiAdapter(): ApiConfig {
     target: structuredClone(DEFAULT_TARGET_API),
   };
   validateApiEndpoint(api.preview, 'migration adapter preview API');
-  validateApiEndpoint(api.target, 'migration adapter new Registry API');
+  validateApiEndpoint(api.target, 'migration adapter target API');
   validatePreviewApiContract(api.preview);
   validateTargetApiContract(api.target);
   return api;

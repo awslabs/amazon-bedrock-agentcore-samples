@@ -403,10 +403,10 @@ class TargetRegistryClient:
 
     def __init__(self, invoker: AwsApiInvoker, api_config: dict[str, Any], region: str) -> None:
         self._config = api_config
-        self._service_name = _required_string(api_config, "serviceName", "new Registry API")
+        self._service_name = _required_string(api_config, "serviceName", "target API")
         # signingName stays in config for documentation/validation; botocore derives the
         # actual SigV4 signing name from the new Registry service model (``agent-registry``).
-        _required_string(api_config, "signingName", "new Registry API")
+        _required_string(api_config, "signingName", "target API")
         endpoint_url = _target_endpoint_url(api_config, region)
         self._client = build_control_plane_client(
             session=invoker.session(),
@@ -1301,7 +1301,7 @@ class TargetRegistryClient:
             response = getattr(self._client, method_name)(**params)
         except (ClientError, BotoCoreError) as error:
             raise RegistryApiError(
-                f"new Registry API call {self._service_name}.{route_name} failed: {error}",
+                f"Target API call {self._service_name}.{route_name} failed: {error}",
                 error_code=_client_error_code(error),
             ) from error
         return _without_response_metadata(response)
@@ -1767,7 +1767,7 @@ def _target_endpoint_url(config: dict[str, Any], region: str) -> str:
     """Resolve and pin the target endpoint to the fixed regional agent-registry-control host."""
     if _optional_string(config.get("endpointUrl")) is not None:
         raise RegistryApiError("Target endpointUrl overrides are not supported; the regional api.aws endpoint is fixed")
-    template = _required_string(config, "endpointUrlTemplate", "new Registry API")
+    template = _required_string(config, "endpointUrlTemplate", "target API")
     endpoint = template.replace("{region}", region)
     parsed = urlparse(endpoint)
     expected_host = f"agent-registry-control.{region}.api.aws"

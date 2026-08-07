@@ -341,7 +341,7 @@ class ProcessOneRecord(unittest.TestCase):
         self.assertEqual(outcome.record_type, "MCP")
         self.assertEqual(outcome.primary_descriptor_type, "mcpServer")
         self.assertIsNone(outcome.new_record_id)
-        self.assertEqual(client.calls, [], "a dry run must not call the new Registry API")
+        self.assertEqual(client.calls, [], "a dry run must not call the target API")
 
     def test_no_client_pool_is_treated_as_a_dry_run(self):
         outcome = self._process(envelope(), clients=None, dry_run=False)

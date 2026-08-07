@@ -396,7 +396,7 @@ def _process_record(
                 outcome.target_status = load_result.record.get("status")
             if not outcome.new_record_id:
                 raise RuntimeError(
-                    "new Registry API did not return a recordId, so the required old-to-new ID mapping could not be produced"
+                    "The target API did not return a recordId, so the required old-to-new ID mapping could not be produced"
                 )
             if match_source_status:
                 _apply_source_status(outcome, client, str(target["registryId"]))
@@ -487,7 +487,7 @@ def _iter_outcomes(
 ) -> Iterator[RecordOutcome]:
     """Run ``worker`` over staged records in parallel while yielding results in input order.
 
-    The per-record cost is almost entirely waiting on the new Registry API (create, then poll until the
+    The per-record cost is almost entirely waiting on the target API (create, then poll until the
     record settles), so threads -- not processes -- overlap that waiting without extra capacity.
     ``executor.map`` preserves report order. The production worker carries an internal marker that
     asks this helper to pass the staged-input position used to serialize only the duplicate claim;
@@ -1070,7 +1070,7 @@ def _validate_replay_configuration(
     else:
         expected_sha256 = str(declared["sha256"])
         if expected_sha256 != current_sha256:
-            reason = "transform or new Registry API adapter settings changed after extraction"
+            reason = "transform or target API adapter settings changed after extraction"
 
     matches = reason is None
     if not matches and not allow_drift:

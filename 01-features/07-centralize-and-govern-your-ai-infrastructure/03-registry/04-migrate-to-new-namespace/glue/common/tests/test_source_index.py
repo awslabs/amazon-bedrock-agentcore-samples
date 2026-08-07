@@ -179,7 +179,7 @@ class CountingClient(registry_api.TargetRegistryClient):
             # What the service answers for a record that is not there, error code included, because
             # that code is how the client tells "deleted in the target" from "cannot read it".
             raise registry_api.RegistryApiError(
-                f"new Registry API call agent-registry.get failed: ResourceNotFoundException: {record_id}",
+                f"Target API call agent-registry.get failed: ResourceNotFoundException: {record_id}",
                 error_code="ResourceNotFoundException",
             ) from None
 
@@ -640,7 +640,7 @@ class RecordedIdTakesPrecedence(unittest.TestCase):
         class Denied(CountingClient):
             def _get_record(self, *, registry_id, record_id):
                 raise registry_api.RegistryApiError(
-                    "new Registry API call agent-registry.get failed: AccessDeniedException",
+                    "Target API call agent-registry.get failed: AccessDeniedException",
                     error_code="AccessDeniedException",
                 )
 

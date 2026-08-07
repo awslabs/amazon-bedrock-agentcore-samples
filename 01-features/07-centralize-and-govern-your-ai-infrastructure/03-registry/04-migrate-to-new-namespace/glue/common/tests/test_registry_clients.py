@@ -965,7 +965,7 @@ class ACreatedRecordThatFailsToSettleIsStillNamed(unittest.TestCase):
         _capture(boto, responder)
 
         def failing_get(**_kwargs):
-            raise registry_api.RegistryApiError("new Registry API call agent-registry-control.get failed")
+            raise registry_api.RegistryApiError("Target API call agent-registry-control.get failed")
 
         client._get_record = failing_get
         with self.assertRaises(registry_api.RegistryApiError) as caught:
