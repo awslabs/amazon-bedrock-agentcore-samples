@@ -15,12 +15,13 @@ Usage:
     python setup_dynamodb_tenant_role_maps.py --table-name custom-table-name
 """
 
-import boto3
+import argparse
 import json
 import os
 import sys
-import argparse
 from typing import Dict, List
+
+import boto3
 from botocore.exceptions import ClientError
 
 # Repo utils (idp flag reader) — deployment/5a-gateway-setup/interceptor-request/ → ../../..
@@ -131,7 +132,7 @@ class TenantRoleMappingSetup:
             print(f"❌ Unexpected error: {e}")
             return False
 
-    def get_role_arns_from_ssm(self) -> Dict[str, str]:
+    def get_role_arns_from_ssm(self) -> dict[str, str]:
         """
         Get IAM role ARNs from SSM Parameter Store.
 
@@ -158,7 +159,7 @@ class TenantRoleMappingSetup:
 
         return role_arns
 
-    def get_seed_data(self, role_arns: Dict[str, str]) -> List[Dict[str, str]]:
+    def get_seed_data(self, role_arns: dict[str, str]) -> list[dict[str, str]]:
         """
         Get seed data for tenant-role mappings.
 

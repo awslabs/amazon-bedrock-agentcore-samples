@@ -16,12 +16,13 @@ Usage:
     python test_gateway.py --username testuser --password TestPass123!
 """
 
+import argparse
+import base64
+import json
+import sys
+
 import boto3
 import requests
-import json
-import base64
-import argparse
-import sys
 
 
 def get_user_token(username: str, password: str):
@@ -64,8 +65,8 @@ def get_user_token(username: str, password: str):
     print(f"\n🔐 Authenticating user: {username}")
     try:
         # Calculate SECRET_HASH
-        import hmac
         import hashlib
+        import hmac
 
         message = username + client_id
         secret_hash = base64.b64encode(

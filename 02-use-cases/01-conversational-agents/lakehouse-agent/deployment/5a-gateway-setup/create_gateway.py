@@ -18,16 +18,17 @@ Usage:
     python create_gateway.py
 """
 
-import boto3
-import sys
-import os
 import json
-from typing import Dict, Any
+import os
+import sys
+from typing import Any, Dict
+
+import boto3
 
 # Make the repo's utils/ importable (idp_config lives there) when this script
 # runs from its own deployment subdir.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-from utils.idp_config import get_idp_provider, assert_gateway_idp_matches
+from utils.idp_config import assert_gateway_idp_matches, get_idp_provider
 
 
 class SSMConfig:
@@ -304,7 +305,7 @@ class GatewaySetup:
             print(f"❌ Error creating role: {e}")
             raise
 
-    def create_gateway(self, gateway_name: str = "lakehouse-gateway") -> Dict[str, Any]:
+    def create_gateway(self, gateway_name: str = "lakehouse-gateway") -> dict[str, Any]:
         """
         Create an AgentCore Gateway with JWT authentication.
 
@@ -440,7 +441,7 @@ class GatewaySetup:
                             "gatewayArn": gateway_arn,
                             "gatewayName": gateway_name,
                         }
-            print(f"❌ Error creating gateway: {str(e)}")
+            print(f"❌ Error creating gateway: {e!s}")
             raise
 
     def create_oauth_provider(
@@ -576,7 +577,7 @@ class GatewaySetup:
         mcp_server_url: str,
         oauth_provider_arn: str,
         scopes: list = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a gateway target pointing to the MCP server runtime with OAuth authentication.
 
@@ -621,7 +622,7 @@ class GatewaySetup:
             if "already exists" in str(e):
                 print(f"ℹ️  Target {target_name} already exists")
                 return {}
-            print(f"❌ Error creating gateway target: {str(e)}")
+            print(f"❌ Error creating gateway target: {e!s}")
             raise
 
     def wait_for_gateway_active(self, gateway_id: str, max_wait_seconds: int = 300) -> bool:
@@ -806,7 +807,7 @@ def main():
         print("\n" + "=" * 70)
 
     except Exception as e:
-        print(f"\n❌ Gateway creation failed: {str(e)}")
+        print(f"\n❌ Gateway creation failed: {e!s}")
         import traceback
 
         traceback.print_exc()

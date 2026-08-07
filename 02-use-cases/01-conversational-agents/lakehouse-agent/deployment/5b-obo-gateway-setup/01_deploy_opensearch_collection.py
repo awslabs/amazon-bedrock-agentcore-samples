@@ -34,11 +34,11 @@ Usage:
     python 01_deploy_opensearch_collection.py
 """
 
-import boto3
 import json
 import sys
 import time
 
+import boto3
 
 # Collection name — short, kebab-case, scoped to this demo's purpose.
 COLLECTION_NAME = "lakehouse-claim-notes"
@@ -410,7 +410,7 @@ def main():
         print("\n" + "=" * 70)
 
     except Exception as e:
-        print(f"\n❌ AOSS collection setup failed: {str(e)}")
+        print(f"\n❌ AOSS collection setup failed: {e!s}")
         import traceback
 
         traceback.print_exc()

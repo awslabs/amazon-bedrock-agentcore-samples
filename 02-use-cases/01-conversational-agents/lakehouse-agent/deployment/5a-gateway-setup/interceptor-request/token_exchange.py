@@ -14,8 +14,9 @@ The exchange process:
 
 import logging
 import os
+from typing import Any, Dict, Optional
+
 import boto3
-from typing import Dict, Any, Optional
 
 logger = logging.getLogger()
 
@@ -36,7 +37,7 @@ def _resolve_idp_provider() -> str:
 IDP_PROVIDER = _resolve_idp_provider()
 
 
-def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> Optional[Dict[str, Any]]:
+def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> dict[str, Any] | None:
     """
     Exchange JWT claim to IAM temporary credentials via DynamoDB role mapping.
 
@@ -140,14 +141,14 @@ def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> Optional[Dict[str,
         }
 
     except Exception as e:
-        logger.error(f"❌ Error exchanging JWT to IAM credentials: {str(e)}")
+        logger.error(f"❌ Error exchanging JWT to IAM credentials: {e!s}")
         import traceback
 
         logger.error(f"Stack trace: {traceback.format_exc()}")
         return None
 
 
-def get_claim_for_exchange(claims: Dict[str, Any]) -> Optional[tuple]:
+def get_claim_for_exchange(claims: dict[str, Any]) -> tuple | None:
     """
     Extract the appropriate claim for token exchange from JWT claims.
 

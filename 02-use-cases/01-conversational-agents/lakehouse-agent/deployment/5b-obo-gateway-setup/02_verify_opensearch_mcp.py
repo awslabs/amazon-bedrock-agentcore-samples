@@ -24,9 +24,9 @@ Usage:
     python 02_verify_opensearch_mcp.py
 """
 
-import boto3
 import sys
 
+import boto3
 
 SSM_PREFIX = "/app/lakehouse-agent/"
 RUNTIME_ARN_KEY = f"{SSM_PREFIX}opensearch-mcp-runtime-arn"

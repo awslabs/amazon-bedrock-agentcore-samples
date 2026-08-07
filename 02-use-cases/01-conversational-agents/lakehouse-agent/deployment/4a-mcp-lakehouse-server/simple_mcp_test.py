@@ -8,10 +8,11 @@ This script:
 3. Uses token to invoke MCP server and get tool list
 """
 
+import base64
+import json
+
 import boto3
 import requests
-import json
-import base64
 
 
 def get_m2m_token():

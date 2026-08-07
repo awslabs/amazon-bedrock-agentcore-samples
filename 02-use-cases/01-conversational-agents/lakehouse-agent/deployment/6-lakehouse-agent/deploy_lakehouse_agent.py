@@ -16,10 +16,11 @@ Usage:
     python deploy_lakehouse_agent.py
 """
 
-import sys
-import os
-import boto3
 import json
+import os
+import sys
+
+import boto3
 
 # Make the repo's utils/ importable (idp_config lives there) when this script
 # runs from its own deployment subdir.
@@ -370,7 +371,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         }
 
     except Exception as e:
-        print(f"\n❌ Error deploying runtime: {str(e)}")
+        print(f"\n❌ Error deploying runtime: {e!s}")
         import traceback
 
         traceback.print_exc()
@@ -459,7 +460,7 @@ def main():
         print("\n" + "=" * 70)
 
     except Exception as e:
-        print(f"\n❌ Deployment failed: {str(e)}")
+        print(f"\n❌ Deployment failed: {e!s}")
         import traceback
 
         traceback.print_exc()

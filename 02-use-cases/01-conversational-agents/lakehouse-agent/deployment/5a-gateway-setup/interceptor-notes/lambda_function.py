@@ -24,10 +24,11 @@ Cognito GW2 path (Okta GW2 is interceptor-less / OBO).
 import json
 import logging
 import os
-import boto3
-from typing import Dict, Any, Optional
 import urllib.request
-from jose import jwt, JWTError
+from typing import Any, Dict, Optional
+
+import boto3
+from jose import JWTError, jwt
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -53,7 +54,7 @@ def _resolve_idp_provider() -> str:
 IDP_PROVIDER = _resolve_idp_provider()
 
 
-def get_config() -> Dict[str, str]:
+def get_config() -> dict[str, str]:
     """Get IdP configuration from environment variables or SSM (DR-8 branch)."""
     global _config
 
@@ -126,7 +127,7 @@ def get_config() -> Dict[str, str]:
     return _config
 
 
-def get_public_keys() -> Dict[str, Any]:
+def get_public_keys() -> dict[str, Any]:
     """Fetch IdP public keys for JWT validation (DR-8: Cognito vs Okta JWKS URL)."""
     global _jwks
 
@@ -146,11 +147,11 @@ def get_public_keys() -> Dict[str, Any]:
             logger.info("Successfully fetched public keys")
             return _jwks
     except Exception as e:
-        logger.error(f"Error fetching public keys: {str(e)}")
+        logger.error(f"Error fetching public keys: {e!s}")
         raise
 
 
-def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
+def validate_and_decode_jwt(token: str) -> dict[str, Any] | None:
     """Validate JWT and decode claims (DR-8 Cognito|Okta branch, mirrors GW1)."""
     try:
         config = get_config()
@@ -207,14 +208,14 @@ def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
         return claims
 
     except JWTError as e:
-        logger.error(f"JWT validation error: {str(e)}")
+        logger.error(f"JWT validation error: {e!s}")
         return None
     except Exception as e:
-        logger.error(f"Error validating JWT: {str(e)}")
+        logger.error(f"Error validating JWT: {e!s}")
         return None
 
 
-def extract_bearer_token_from_mcp(event: Dict[str, Any]) -> Optional[str]:
+def extract_bearer_token_from_mcp(event: dict[str, Any]) -> str | None:
     """Extract the bearer token from the MCP gateway request structure."""
     try:
         headers = event.get("mcp", {}).get("gatewayRequest", {}).get("headers", {})
@@ -227,11 +228,11 @@ def extract_bearer_token_from_mcp(event: Dict[str, Any]) -> Optional[str]:
             return parts[1]
         return auth_header
     except Exception as e:
-        logger.error(f"❌ Error extracting bearer token: {str(e)}")
+        logger.error(f"❌ Error extracting bearer token: {e!s}")
         return None
 
 
-def build_error_response(message: str, body: Dict[str, Any], status_code: int = 401) -> Dict[str, Any]:
+def build_error_response(message: str, body: dict[str, Any], status_code: int = 401) -> dict[str, Any]:
     """Return an MCP-style error response (fail-closed: no data without identity)."""
     return {
         "interceptorOutputVersion": "1.0",
@@ -248,7 +249,7 @@ def build_error_response(message: str, body: Dict[str, Any], status_code: int = 
     }
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Validate the Cognito JWT, extract the caller `sub`, and inject it into the
     MCP request body context (`params.arguments.context.user_id`) so the
@@ -305,11 +306,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"❌ Error in notes interceptor: {str(e)}")
+        logger.error(f"❌ Error in notes interceptor: {e!s}")
         import traceback
 
         logger.error(f"Stack trace: {traceback.format_exc()}")
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": "Internal Server Error", "message": f"Error processing request: {str(e)}"}),
+            "body": json.dumps({"error": "Internal Server Error", "message": f"Error processing request: {e!s}"}),
         }

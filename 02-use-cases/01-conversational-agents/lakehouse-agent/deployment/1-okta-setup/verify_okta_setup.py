@@ -40,9 +40,7 @@ import os
 import sys
 
 import boto3
-
 from okta.client import Client as OktaClient
-
 
 # Mirror setup_okta.py's resource names (idempotency keys).
 OKTA_APP_NAME = "lakehouse-agent-app"

@@ -29,7 +29,6 @@ import boto3
 from okta.client import Client as OktaClient
 from okta.errors.okta_api_error import OktaAPIError
 
-
 # Single source of truth for the resource-server audience (used as JWT 'aud'
 # claim value). The original demo used 'lakehouse-api'; we keep the same
 # logical identifier and prefix it with 'api://' per Okta convention so the
@@ -149,7 +148,7 @@ class OktaSetup:
     # SSM persistence (mirrors setup_cognito.store_parameters_in_ssm)
     # ─────────────────────────────────────────────────────────────────
 
-    def store_parameters_in_ssm(self, config: Dict):
+    def store_parameters_in_ssm(self, config: dict):
         """
         Store Okta configuration in SSM Parameter Store under
         /app/lakehouse-agent/okta-* per design §8b.
@@ -265,7 +264,7 @@ class OktaSetup:
     # Resource creation — app, auth server, scopes, groups, users
     # ─────────────────────────────────────────────────────────────────
 
-    async def create_oidc_app(self, app_label: str) -> Dict[str, str]:
+    async def create_oidc_app(self, app_label: str) -> dict[str, str]:
         """
         Create or find the Okta OIDC application. Returns dict with
         app_id, app_client_id, app_client_secret.
@@ -276,14 +275,16 @@ class OktaSetup:
             print(f"ℹ️  Reusing existing OIDC app: {existing.id}")
             app = existing
         else:
-            from okta.models import OpenIdConnectApplication
-            from okta.models import OpenIdConnectApplicationSettings
-            from okta.models import OpenIdConnectApplicationSettingsClient
-            from okta.models import OpenIdConnectApplicationType
-            from okta.models import OpenIdConnectApplicationConsentMethod
-            from okta.models import OpenIdConnectApplicationIssuerMode
-            from okta.models import OAuthGrantType
-            from okta.models import OAuthResponseType
+            from okta.models import (
+                OAuthGrantType,
+                OAuthResponseType,
+                OpenIdConnectApplication,
+                OpenIdConnectApplicationConsentMethod,
+                OpenIdConnectApplicationIssuerMode,
+                OpenIdConnectApplicationSettings,
+                OpenIdConnectApplicationSettingsClient,
+                OpenIdConnectApplicationType,
+            )
 
             # NOTE: Okta SDK 2.9.x model classes read config via camelCase keys
             # (mirroring the Okta REST API JSON envelope). Snake_case keys are
@@ -390,7 +391,7 @@ class OktaSetup:
             "app_client_secret": client_secret,
         }
 
-    async def create_exchange_app(self, app_label: str) -> Dict[str, str]:
+    async def create_exchange_app(self, app_label: str) -> dict[str, str]:
         """
         Create or find the dedicated OBO token-exchange service application.
 
@@ -414,13 +415,15 @@ class OktaSetup:
             print(f"ℹ️  Reusing existing OBO exchange app: {existing.id}")
             app = existing
         else:
-            from okta.models import OpenIdConnectApplication
-            from okta.models import OpenIdConnectApplicationSettings
-            from okta.models import OpenIdConnectApplicationSettingsClient
-            from okta.models import OpenIdConnectApplicationType
-            from okta.models import OpenIdConnectApplicationConsentMethod
-            from okta.models import OpenIdConnectApplicationIssuerMode
-            from okta.models import OAuthGrantType
+            from okta.models import (
+                OAuthGrantType,
+                OpenIdConnectApplication,
+                OpenIdConnectApplicationConsentMethod,
+                OpenIdConnectApplicationIssuerMode,
+                OpenIdConnectApplicationSettings,
+                OpenIdConnectApplicationSettingsClient,
+                OpenIdConnectApplicationType,
+            )
 
             # camelCase keys per the Okta SDK 2.9.x note in create_oidc_app.
             app_settings_client = OpenIdConnectApplicationSettingsClient(
@@ -454,9 +457,11 @@ class OktaSetup:
             # clientAuthenticationMethod='CLIENT_SECRET_BASIC'). The
             # token_endpoint_auth_method lives on credentials.oauthClient (NOT on
             # the settings-client — Okta SDK shape).
-            from okta.models import OAuthApplicationCredentials
-            from okta.models import ApplicationCredentialsOAuthClient
-            from okta.models import OAuthEndpointAuthenticationMethod
+            from okta.models import (
+                ApplicationCredentialsOAuthClient,
+                OAuthApplicationCredentials,
+                OAuthEndpointAuthenticationMethod,
+            )
 
             app_credentials = OAuthApplicationCredentials(
                 {
@@ -510,7 +515,7 @@ class OktaSetup:
             "exchange_client_secret": client_secret,
         }
 
-    async def create_auth_server(self) -> Dict[str, str]:
+    async def create_auth_server(self) -> dict[str, str]:
         """
         Create or find the custom authorization server with audience
         api://lakehouse-api. Returns dict with auth_server_id and the
@@ -749,7 +754,7 @@ class OktaSetup:
             raise RuntimeError(f"Failed to create auth-server policy rule: {err}")
         print(f"✅ Auth-server policy rule created: {rule_name}")
 
-    async def create_groups(self) -> Dict[str, str]:
+    async def create_groups(self) -> dict[str, str]:
         """
         Create three groups matching the original demo's archetypes.
         Returns dict mapping group name to group ID.
@@ -791,13 +796,13 @@ class OktaSetup:
 
         return result
 
-    async def create_test_users(self, group_ids: Dict[str, str]) -> List[Dict]:
+    async def create_test_users(self, group_ids: dict[str, str]) -> list[dict]:
         """
         Create the 5 test users matching the original demo's user list.
         Each user is created with a temporary password and assigned to its
         archetype group. Returns list of user dicts (login, sub, group_name).
         """
-        from okta.models import User, UserProfile, UserCredentials, PasswordCredential
+        from okta.models import PasswordCredential, User, UserCredentials, UserProfile
 
         # Test users — same list as the original demo. Okta's free Developer
         # accounts allow @example.com email addresses for test users.
@@ -888,7 +893,7 @@ class OktaSetup:
             else:
                 print(f"   ⚠️  Error adding to group {group_name}: {e}")
 
-    async def assign_app_to_groups(self, app_id: str, group_ids: Dict[str, str]):
+    async def assign_app_to_groups(self, app_id: str, group_ids: dict[str, str]):
         """Assign all three groups to the OIDC application so users in those
         groups can authenticate against it."""
         from okta.models import ApplicationGroupAssignment
@@ -911,7 +916,7 @@ class OktaSetup:
     # Top-level flow (mirrors setup_cognito.setup)
     # ─────────────────────────────────────────────────────────────────
 
-    async def setup(self) -> Dict:
+    async def setup(self) -> dict:
         """Run the complete Okta setup flow."""
         # 1. Create / reuse the OIDC application.
         app_result = await self.create_oidc_app(OKTA_APP_NAME)

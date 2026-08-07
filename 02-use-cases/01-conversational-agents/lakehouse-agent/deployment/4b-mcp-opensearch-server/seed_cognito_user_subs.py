@@ -28,7 +28,6 @@ import sys
 
 import boto3
 
-
 SSM_PREFIX = "/app/lakehouse-agent/"
 
 

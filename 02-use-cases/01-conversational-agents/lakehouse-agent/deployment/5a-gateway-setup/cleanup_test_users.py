@@ -8,8 +8,9 @@ Usage:
     python cleanup_test_users.py
 """
 
-import boto3
 import sys
+
+import boto3
 
 
 def cleanup_users():

@@ -9,9 +9,10 @@ Usage:
     python refresh_gateway_target.py
 """
 
-import boto3
 import sys
 import time
+
+import boto3
 
 
 def main():

@@ -14,8 +14,9 @@ The validation process:
 
 import logging
 import os
+from typing import Any, Dict, Optional, Tuple
+
 import boto3
-from typing import Dict, Any, Optional, Tuple
 
 logger = logging.getLogger()
 
@@ -97,14 +98,14 @@ def check_tool_authorization(claim_name: str, claim_value: str, tool_name: str) 
         return is_allowed
 
     except Exception as e:
-        logger.error(f"❌ Error checking tool authorization: {str(e)}")
+        logger.error(f"❌ Error checking tool authorization: {e!s}")
         import traceback
 
         logger.error(f"Stack trace: {traceback.format_exc()}")
         return False
 
 
-def get_tool_name_from_request(body: Dict[str, Any]) -> Optional[str]:
+def get_tool_name_from_request(body: dict[str, Any]) -> str | None:
     """
     Extract the tool name from MCP request body.
 
@@ -156,11 +157,11 @@ def get_tool_name_from_request(body: Dict[str, Any]) -> Optional[str]:
         return tool_name
 
     except Exception as e:
-        logger.error(f"❌ Error extracting tool name from request: {str(e)}")
+        logger.error(f"❌ Error extracting tool name from request: {e!s}")
         return None
 
 
-def validate_tool_access(claims: Dict[str, Any], body: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[str]]:
+def validate_tool_access(claims: dict[str, Any], body: dict[str, Any]) -> tuple[bool, str | None, str | None]:
     """
     Validate if the user has access to the requested tool.
 
@@ -211,7 +212,7 @@ def validate_tool_access(claims: Dict[str, Any], body: Dict[str, Any]) -> Tuple[
     return (True, None, tool_name)
 
 
-def get_claim_for_authorization(claims: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+def get_claim_for_authorization(claims: dict[str, Any]) -> tuple[str, str] | None:
     """
     Extract the appropriate claim for authorization check from JWT claims.
 

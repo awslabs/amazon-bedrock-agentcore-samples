@@ -20,11 +20,10 @@ from pathlib import Path
 # Make the project root importable so `utils` resolves when run from anywhere.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.idp_config import (  # noqa: E402
+from utils.idp_config import (
     assert_gateway_idp_matches,
     detect_gateway_idp,
 )
-
 
 # --- Fixtures: minimal live-gateway shapes (get_gateway response subset) ---
 COGNITO_GW = {

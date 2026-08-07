@@ -15,11 +15,12 @@ Usage:
     python cleanup_gateway.py [--keep-ssm]
 """
 
-import boto3
-import sys
-import os
 import argparse
+import os
+import sys
 import time
+
+import boto3
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.aws_session_utils import get_aws_session

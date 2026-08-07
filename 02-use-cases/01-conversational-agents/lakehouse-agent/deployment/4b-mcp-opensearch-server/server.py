@@ -24,10 +24,11 @@ Configuration:
 - Auto-detects region from boto3 session
 """
 
-import sys
-import os
 import logging
+import os
+import sys
 from typing import Any, Dict, Optional
+
 import boto3
 import jwt
 from mcp.server.fastmcp import FastMCP
@@ -83,7 +84,7 @@ def _resolve_idp_provider() -> str:
 IDP_PROVIDER = _resolve_idp_provider()
 
 
-def get_config() -> Dict[str, Optional[str]]:
+def get_config() -> dict[str, str | None]:
     """
     Load configuration from environment variables and SSM Parameter Store.
     """
@@ -117,7 +118,7 @@ def get_config() -> Dict[str, Optional[str]]:
 
     ssm = boto3.client("ssm", region_name=config["region"])
 
-    def get_param(name: str, env_var: str = None, default: str = None) -> Optional[str]:
+    def get_param(name: str, env_var: str = None, default: str = None) -> str | None:
         if env_var and env_var in os.environ:
             value = os.environ[env_var]
             print(f"✅ {name} from environment: {value}")
@@ -147,7 +148,7 @@ def get_config() -> Dict[str, Optional[str]]:
     return config
 
 
-def validate_config(config: Dict[str, Optional[str]]) -> bool:
+def validate_config(config: dict[str, str | None]) -> bool:
     required_params = [
         ("region", "AWS Region"),
         ("opensearch_collection_endpoint", "OpenSearch Serverless Collection Endpoint"),
@@ -186,7 +187,7 @@ def get_opensearch_tools():
     return opensearch_tools
 
 
-def extract_user_sub_from_headers() -> Optional[str]:
+def extract_user_sub_from_headers() -> str | None:
     """
     Extract the Okta `sub` claim from the validated Authorization header.
 
@@ -255,7 +256,7 @@ def extract_user_sub_from_headers() -> Optional[str]:
         "live in the lakehouse and are served by the claims/* tools."
     ),
 )
-def search_claim_notes(query: str, limit: int = 10, context: Dict[str, Any] = None) -> Dict[str, Any]:
+def search_claim_notes(query: str, limit: int = 10, context: dict[str, Any] = None) -> dict[str, Any]:
     """Search claim notes for the authenticated user.
 
     `context` carries interceptor-injected identity on the Cognito path
@@ -345,8 +346,8 @@ def search_claim_notes(query: str, limit: int = 10, context: Dict[str, Any] = No
         return result
 
     except Exception as e:
-        logger.error(f"❌ ERROR in search_claim_notes: {str(e)}")
-        print(f"❌ ERROR in search_claim_notes: {str(e)}")
+        logger.error(f"❌ ERROR in search_claim_notes: {e!s}")
+        print(f"❌ ERROR in search_claim_notes: {e!s}")
         import traceback
 
         error_trace = traceback.format_exc()

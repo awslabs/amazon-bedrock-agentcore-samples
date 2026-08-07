@@ -42,7 +42,7 @@ DEFAULT_VALUE = "cognito"
 SSM_PARAM_NAME = "/app/lakehouse-agent/idp-provider"
 
 
-def validate_idp_provider(value: Optional[str]) -> str:
+def validate_idp_provider(value: str | None) -> str:
     """
     Validate an IDP_PROVIDER value and return it normalized (lower-case).
 
@@ -70,7 +70,7 @@ def validate_idp_provider(value: Optional[str]) -> str:
     return normalized
 
 
-def set_idp_provider(ssm_client, value: Optional[str] = None, verbose: bool = True) -> str:
+def set_idp_provider(ssm_client, value: str | None = None, verbose: bool = True) -> str:
     """
     Resolve, validate, and persist the IDP_PROVIDER flag to SSM (notebook 01).
 

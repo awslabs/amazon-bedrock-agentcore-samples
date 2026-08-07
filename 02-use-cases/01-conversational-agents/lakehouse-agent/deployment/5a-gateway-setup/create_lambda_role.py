@@ -3,9 +3,10 @@
 Create IAM role for Gateway Interceptor Lambda
 """
 
-import boto3
 import json
 import sys
+
+import boto3
 
 
 def create_lambda_role():

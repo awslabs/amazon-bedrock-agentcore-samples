@@ -53,9 +53,9 @@ Usage:
     python 03_create_oauth_provider.py
 """
 
-import boto3
 import sys
 
+import boto3
 
 PROVIDER_NAME = "lakehouse-obo-okta-provider"  # design §7d code snippet
 SSM_PREFIX = "/app/lakehouse-agent/"

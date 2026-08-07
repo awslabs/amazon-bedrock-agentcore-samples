@@ -48,17 +48,17 @@ Usage:
     python 04_create_obo_gateway.py
 """
 
-import boto3
 import json
 import os
 import sys
 import time
-from typing import Dict, Any
+from typing import Any, Dict
+
+import boto3
 
 # Make the repo's utils/ importable (idp_config lives there).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-from utils.idp_config import get_idp_provider, assert_gateway_idp_matches
-
+from utils.idp_config import assert_gateway_idp_matches, get_idp_provider
 
 # Pattern naming over data-store naming.
 GATEWAY_NAME = "lakehouse-notes-gateway"
@@ -311,7 +311,7 @@ def create_obo_gateway_role(config: SSMConfig) -> str:
         return role_arn
 
 
-def create_obo_gateway(client, config: SSMConfig, role_arn: str) -> Dict[str, Any]:
+def create_obo_gateway(client, config: SSMConfig, role_arn: str) -> dict[str, Any]:
     """
     Create the OBO_Gateway with Okta customJWTAuthorizer + MCP protocol.
 
@@ -410,7 +410,7 @@ def get_runtime_mcp_url(runtime_arn: str, region: str) -> str:
     return f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
 
 
-def create_obo_target(client, config: SSMConfig, gateway_id: str) -> Dict[str, Any]:
+def create_obo_target(client, config: SSMConfig, gateway_id: str) -> dict[str, Any]:
     """
     Create the OBO_Gateway target pointing at the OpenSearch_MCP_Server
     runtime, with TOKEN_EXCHANGE grant on the OBO credential provider.
@@ -578,7 +578,7 @@ def create_notes_cognito_provider(client, config: SSMConfig) -> str:
         raise
 
 
-def create_notes_interceptor_gateway(client, config: SSMConfig, role_arn: str) -> Dict[str, Any]:
+def create_notes_interceptor_gateway(client, config: SSMConfig, role_arn: str) -> dict[str, Any]:
     """Create the GW2 notes gateway (Cognito): customJWTAuthorizer + REQUEST interceptor.
 
     Same GW2 name/keys as the OBO path (topology symmetric, DR-1) — only the auth
@@ -645,7 +645,7 @@ def create_notes_interceptor_gateway(client, config: SSMConfig, role_arn: str) -
         raise
 
 
-def create_notes_target(client, config: SSMConfig, gateway_id: str, provider_arn: str) -> Dict[str, Any]:
+def create_notes_target(client, config: SSMConfig, gateway_id: str, provider_arn: str) -> dict[str, Any]:
     """Create the notes gateway target → OpenSearch MCP runtime (Cognito M2M provider).
 
     client_credentials (scopes []); NO grantType TOKEN_EXCHANGE. Identity reaches

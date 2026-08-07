@@ -9,9 +9,10 @@ Usage:
     python update_interceptor_env.py
 """
 
-import boto3
 import os
 import sys
+
+import boto3
 
 # Make the repo's utils/ importable (idp_config lives there).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))

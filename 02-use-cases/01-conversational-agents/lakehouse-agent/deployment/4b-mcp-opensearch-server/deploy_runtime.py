@@ -18,10 +18,11 @@ Usage:
     python deploy_runtime.py
 """
 
-import boto3
 import json
 import os
 import sys
+
+import boto3
 
 # Make the repo's utils/ importable (idp_config lives there).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -351,7 +352,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         return {"runtime_arn": runtime_arn, "runtime_id": runtime_id, "role_arn": role_arn}
 
     except Exception as e:
-        print(f"\n❌ Error deploying runtime: {str(e)}")
+        print(f"\n❌ Error deploying runtime: {e!s}")
         import traceback
 
         traceback.print_exc()
@@ -416,7 +417,7 @@ def main():
         print("\n" + "=" * 70)
 
     except Exception as e:
-        print(f"\n❌ Deployment failed: {str(e)}")
+        print(f"\n❌ Deployment failed: {e!s}")
         import traceback
 
         traceback.print_exc()

@@ -26,9 +26,7 @@ import os
 import sys
 
 import boto3
-
 from okta.client import Client as OktaClient
-
 
 # Constants matching setup_okta.py
 OKTA_APP_NAME = "lakehouse-agent-app"

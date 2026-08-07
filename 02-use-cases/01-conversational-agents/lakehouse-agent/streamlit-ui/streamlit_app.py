@@ -7,27 +7,26 @@ once at startup and branches ONLY the login widget + config load; the chat UI,
 agent invocation, and the per-persona tools panel are IdP-agnostic and shared.
 """
 
-import os
-import sys
-import json
-import uuid
-import urllib.parse
-
-import boto3
-import requests
-import jwt  # PyJWT — unverified decode of id_token for display only (Okta path).
-
 # The Okta /v1/token endpoint already authenticated this token via HTTPS +
 # client_secret, so a display-side decode does not require independent
 # signature verification.
 import asyncio
+import json
+import os
+import sys
 import threading
-import nest_asyncio
-import streamlit as st
+import urllib.parse
+import uuid
 from typing import Optional
-from streamlit_oauth import OAuth2Component
-from mcp.client.streamable_http import streamablehttp_client
+
+import boto3
+import jwt  # PyJWT — unverified decode of id_token for display only (Okta path).
+import nest_asyncio
+import requests
+import streamlit as st
 from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+from streamlit_oauth import OAuth2Component
 
 # utils/ lives one level up from streamlit-ui/; put it on the path so we can read
 # the IDP_PROVIDER flag through the same shared helper the notebooks use.
@@ -267,7 +266,7 @@ def load_config_from_ssm():
         return {"region": _resolve_region()}
 
 
-def authenticate_user(username: str, password: str, user_pool_id: str, client_id: str, region: str) -> Optional[dict]:
+def authenticate_user(username: str, password: str, user_pool_id: str, client_id: str, region: str) -> dict | None:
     """Authenticate user with Cognito using USER_PASSWORD_AUTH flow"""
     try:
         client = boto3.client("cognito-idp", region_name=region)
@@ -284,9 +283,9 @@ def authenticate_user(username: str, password: str, user_pool_id: str, client_id
             return None
 
         # Calculate SECRET_HASH
-        import hmac
-        import hashlib
         import base64
+        import hashlib
+        import hmac
 
         message = bytes(username + client_id, "utf-8")
         secret = bytes(client_secret, "utf-8")
@@ -336,7 +335,7 @@ def set_new_password(
     user_pool_id: str,
     client_id: str,
     region: str,
-) -> Optional[dict]:
+) -> dict | None:
     """Set new password for user with NEW_PASSWORD_REQUIRED challenge"""
     try:
         client = boto3.client("cognito-idp", region_name=region)
@@ -353,9 +352,9 @@ def set_new_password(
             return None
 
         # Calculate SECRET_HASH
-        import hmac
-        import hashlib
         import base64
+        import hashlib
+        import hmac
 
         message = bytes(username + client_id, "utf-8")
         secret = bytes(client_secret, "utf-8")
@@ -477,9 +476,9 @@ def invoke_agent(runtime_arn: str, prompt: str, access_token: str, id_token: str
                 return response.text
 
     except requests.exceptions.RequestException as e:
-        return f"❌ Request error: {str(e)}"
+        return f"❌ Request error: {e!s}"
     except Exception as e:
-        return f"❌ Error: {str(e)}"
+        return f"❌ Error: {e!s}"
 
 
 # Load configuration from SSM on first run

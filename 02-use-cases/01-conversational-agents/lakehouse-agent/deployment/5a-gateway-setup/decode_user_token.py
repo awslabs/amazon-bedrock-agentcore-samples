@@ -12,11 +12,12 @@ Usage:
     python decode_user_token.py --username <username> --password <password>
 """
 
-import boto3
-import json
-import base64
 import argparse
+import base64
+import json
 import sys
+
+import boto3
 
 
 def decode_jwt(token):
@@ -59,8 +60,8 @@ def get_user_tokens(username, password):
     # Authenticate user
     print(f"\n🔐 Authenticating user: {username}")
 
-    import hmac
     import hashlib
+    import hmac
 
     message = username + client_id
     secret_hash = base64.b64encode(hmac.new(client_secret.encode(), message.encode(), hashlib.sha256).digest()).decode()

@@ -25,10 +25,11 @@ Configuration:
 - Tenant credentials provided by Gateway interceptor
 """
 
-import sys
-import os
 import logging
+import os
+import sys
 from typing import Any, Dict, Optional
+
 import boto3
 from mcp.server.fastmcp import FastMCP
 
@@ -67,7 +68,7 @@ athena_tools = None
 _config_cache = None
 
 
-def get_config() -> Dict[str, Optional[str]]:
+def get_config() -> dict[str, str | None]:
     """
     Load configuration from environment variables and SSM Parameter Store.
     """
@@ -101,7 +102,7 @@ def get_config() -> Dict[str, Optional[str]]:
 
     ssm = boto3.client("ssm", region_name=config["region"])
 
-    def get_param(name: str, env_var: str = None, default: str = None) -> Optional[str]:
+    def get_param(name: str, env_var: str = None, default: str = None) -> str | None:
         if env_var and env_var in os.environ:
             value = os.environ[env_var]
             print(f"✅ {name} from environment: {value}")
@@ -151,7 +152,7 @@ def get_config() -> Dict[str, Optional[str]]:
     return config
 
 
-def validate_config(config: Dict[str, Optional[str]]) -> bool:
+def validate_config(config: dict[str, str | None]) -> bool:
     required_params = [
         ("region", "AWS Region"),
         ("s3_bucket_name", "S3 Bucket Name"),
@@ -198,8 +199,8 @@ def get_athena_tools():
 
 
 def get_user_id_with_fallback(
-    context_arg: Dict[str, Any] = None,
-) -> tuple[str, Optional[Dict[str, str]]]:
+    context_arg: dict[str, Any] = None,
+) -> tuple[str, dict[str, str] | None]:
     """
     Get user ID and tenant credentials from context argument or fallback to test user.
 
@@ -245,8 +246,8 @@ def query_claims(
     claim_type: str = None,
     start_date: str = None,
     end_date: str = None,
-    context: Dict[str, Any] = None,
-) -> Dict[str, Any]:
+    context: dict[str, Any] = None,
+) -> dict[str, Any]:
     """Query lakehouse data for the authenticated user."""
     # Log to both logger and stderr to ensure visibility
     msg = f"{'=' * 60}\n🔧 TOOL INVOKED: query_claims\n{'=' * 60}"
@@ -339,8 +340,8 @@ def query_claims(
         return result
 
     except Exception as e:
-        logger.error(f"❌ ERROR in query_claims: {str(e)}")
-        print(f"❌ ERROR in query_claims: {str(e)}")
+        logger.error(f"❌ ERROR in query_claims: {e!s}")
+        print(f"❌ ERROR in query_claims: {e!s}")
         import traceback
 
         error_trace = traceback.format_exc()
@@ -356,7 +357,7 @@ def query_claims(
     name="get_claim_details",
     description="Get detailed information about a specific claim by ID",
 )
-def get_claim_details(claim_id: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+def get_claim_details(claim_id: str, context: dict[str, Any] = None) -> dict[str, Any]:
     """Get details of a specific claim."""
     print("=" * 60)
     print("🔧 TOOL INVOKED: get_claim_details")
@@ -391,7 +392,7 @@ def get_claim_details(claim_id: str, context: Dict[str, Any] = None) -> Dict[str
         return result
 
     except Exception as e:
-        print(f"❌ ERROR in get_claim_details: {str(e)}")
+        print(f"❌ ERROR in get_claim_details: {e!s}")
         import traceback
 
         print(f"   Stack trace: {traceback.format_exc()}")
@@ -403,7 +404,7 @@ def get_claim_details(claim_id: str, context: Dict[str, Any] = None) -> Dict[str
     name="get_claims_summary",
     description="Get summary statistics of all claims for the authenticated user",
 )
-def get_claims_summary(context: Dict[str, Any] = None) -> Dict[str, Any]:
+def get_claims_summary(context: dict[str, Any] = None) -> dict[str, Any]:
     """Get claims summary for the user."""
     print("=" * 60)
     print("🔧 TOOL INVOKED: get_claims_summary")
@@ -438,7 +439,7 @@ def get_claims_summary(context: Dict[str, Any] = None) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        print(f"❌ ERROR in get_claims_summary: {str(e)}")
+        print(f"❌ ERROR in get_claims_summary: {e!s}")
         import traceback
 
         print(f"   Stack trace: {traceback.format_exc()}")
@@ -451,8 +452,8 @@ def query_login_audit(
     user_id: str = None,
     limit: int = 10,
     start_date: str = None,
-    context: Dict[str, Any] = None,
-) -> Dict[str, Any]:
+    context: dict[str, Any] = None,
+) -> dict[str, Any]:
     """
     Query login audit logs from DynamoDB.
 
@@ -605,7 +606,7 @@ def query_login_audit(
             return {"success": False, "error": error_msg}
 
     except Exception as e:
-        print(f"❌ ERROR in query_login_audit: {str(e)}")
+        print(f"❌ ERROR in query_login_audit: {e!s}")
         import traceback
 
         print(f"   Stack trace: {traceback.format_exc()}")
@@ -619,7 +620,7 @@ def query_login_audit(
     Convert natural language query to SQL and execute it against the lakehouse database. 
     Automatically reads schema from data catalog and generates appropriate SQL query.""",
 )
-def text_to_sql(natural_language_query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+def text_to_sql(natural_language_query: str, context: dict[str, Any] = None) -> dict[str, Any]:
     """
     Convert natural language to SQL and execute.
 
@@ -667,7 +668,7 @@ def text_to_sql(natural_language_query: str, context: Dict[str, Any] = None) -> 
         return result
 
     except Exception as e:
-        print(f"❌ ERROR in text_to_sql: {str(e)}")
+        print(f"❌ ERROR in text_to_sql: {e!s}")
         import traceback
 
         print(f"   Stack trace: {traceback.format_exc()}")

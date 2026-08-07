@@ -4,15 +4,16 @@ Health Lakehouse Data Agent using Strands and AgentCore Gateway
 Connects to Gateway tools for querying and managing lakehouse data with OAuth-based access control
 """
 
-import os
 import logging
+import os
+from typing import Any, Dict, Optional
+
+import boto3
+from bedrock_agentcore import BedrockAgentCoreApp
+from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
-from mcp.client.streamable_http import streamablehttp_client
-from bedrock_agentcore import BedrockAgentCoreApp
-from typing import Dict, Any, Optional
-import boto3
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -67,7 +68,7 @@ If you are working for administrators group, try to use text_to_sql tool in case
 MODEL_ID = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 
-def get_config() -> Dict[str, Optional[str]]:
+def get_config() -> dict[str, str | None]:
     """
     Load configuration from environment variables and SSM Parameter Store.
 
@@ -179,7 +180,7 @@ def _extract_tool_events(agent_obj) -> list:
 
 
 @app.entrypoint
-def handle_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Handle requests to the lakehouse agent.
 

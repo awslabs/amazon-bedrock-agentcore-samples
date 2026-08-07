@@ -9,12 +9,13 @@ Usage:
     python setup_s3tables.py --table-bucket-name my-lakehouse
 """
 
-import boto3
-import sys
-import os
 import argparse
+import os
 import random
 import string
+import sys
+
+import boto3
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))

@@ -5,9 +5,10 @@ Check CloudWatch Logs for MCP Server
 This script helps you find and view logs from the MCP server running on AgentCore Runtime.
 """
 
-import boto3
 import sys
 from datetime import datetime, timedelta
+
+import boto3
 
 
 def main():

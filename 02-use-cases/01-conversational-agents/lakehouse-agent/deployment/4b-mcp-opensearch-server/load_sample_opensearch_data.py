@@ -29,20 +29,19 @@ Usage:
     python load_sample_opensearch_data.py
 """
 
-import boto3
 import json
 import os
 import sys
 from datetime import datetime, timezone
-from typing import List, Dict
+from typing import Dict, List
 
-from opensearchpy import OpenSearch, RequestsHttpConnection, helpers
+import boto3
 from aws_requests_auth.aws_auth import AWSRequestsAuth
+from opensearchpy import OpenSearch, RequestsHttpConnection, helpers
 
 # Make the repo's utils/ importable (idp_config lives there).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.idp_config import get_idp_provider
-
 
 CLAIM_NOTES_INDEX = "claim-notes"
 SSM_PREFIX = "/app/lakehouse-agent/"
@@ -82,7 +81,7 @@ INDEX_MAPPING = {
 # user asks about damage descriptions, adjuster commentary, call history,
 # etc., and pick the claims/* tools when the user asks about totals,
 # pending counts, or specific claim_id lookups.
-NOTES_BY_LABEL: Dict[str, List[tuple]] = {
+NOTES_BY_LABEL: dict[str, list[tuple]] = {
     # policyholder001 — storm / water-intrusion narratives
     "policyholder001": [
         (
@@ -279,7 +278,7 @@ def ensure_index(client: OpenSearch) -> None:
         raise
 
 
-def discover_user_subs(ssm) -> List[Dict[str, str]]:
+def discover_user_subs(ssm) -> list[dict[str, str]]:
     """
     Discover test-user sub identifiers from SSM.
 
@@ -326,7 +325,7 @@ def discover_user_subs(ssm) -> List[Dict[str, str]]:
     return found
 
 
-def assert_label_coverage(users: List[Dict[str, str]]) -> None:
+def assert_label_coverage(users: list[dict[str, str]]) -> None:
     """
     Fail-fast if any discovered user LABEL has no NOTES_BY_LABEL entry.
 
@@ -344,7 +343,7 @@ def assert_label_coverage(users: List[Dict[str, str]]) -> None:
         )
 
 
-def build_documents_for_user(user_sub: str, user_label: str) -> List[Dict]:
+def build_documents_for_user(user_sub: str, user_label: str) -> list[dict]:
     """
     Build the disjoint note documents for a user, keyed by the user's LABEL.
 
@@ -368,7 +367,7 @@ def build_documents_for_user(user_sub: str, user_label: str) -> List[Dict]:
     return docs
 
 
-def bulk_load(client: OpenSearch, docs: List[Dict]) -> None:
+def bulk_load(client: OpenSearch, docs: list[dict]) -> None:
     """Bulk-index documents into the claim-notes index."""
     if not docs:
         print("   ⏭️  No documents to load")

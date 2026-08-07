@@ -8,11 +8,12 @@ Usage:
     python setup_cognito.py
 """
 
-import boto3
 import json
 import re
 from pathlib import Path
 from typing import Dict, Optional
+
+import boto3
 
 
 class CognitoSetup:
@@ -30,7 +31,7 @@ class CognitoSetup:
 
         print(f"Initialized Cognito setup for region: {self.region}")
 
-    def find_existing_user_pool(self, pool_name: str) -> Optional[str]:
+    def find_existing_user_pool(self, pool_name: str) -> str | None:
         """Find existing user pool by name."""
         try:
             paginator = self.cognito.get_paginator("list_user_pools")
@@ -43,7 +44,7 @@ class CognitoSetup:
             print(f"⚠️  Error searching for user pool: {e}")
         return None
 
-    def get_user_pool_client(self, user_pool_id: str, client_name: str) -> Optional[Dict]:
+    def get_user_pool_client(self, user_pool_id: str, client_name: str) -> dict | None:
         """Get existing app client by name."""
         try:
             paginator = self.cognito.get_paginator("list_user_pool_clients")
@@ -60,7 +61,7 @@ class CognitoSetup:
             print(f"⚠️  Error searching for app client: {e}")
         return None
 
-    def get_user_pool_domain(self, user_pool_id: str) -> Optional[str]:
+    def get_user_pool_domain(self, user_pool_id: str) -> str | None:
         """Get existing domain for user pool."""
         try:
             response = self.cognito.describe_user_pool(UserPoolId=user_pool_id)
@@ -73,7 +74,7 @@ class CognitoSetup:
             print(f"⚠️  Error getting domain: {e}")
         return None
 
-    def store_parameters_in_ssm(self, config: Dict):
+    def store_parameters_in_ssm(self, config: dict):
         """
         Store Cognito configuration in SSM Parameter Store.
 
@@ -125,7 +126,7 @@ class CognitoSetup:
         ]
 
         # Store client secret as SecureString if available
-        if "client_secret" in config and config["client_secret"]:
+        if config.get("client_secret"):
             try:
                 self.ssm.put_parameter(
                     Name="/app/lakehouse-agent/cognito-app-client-secret",
@@ -140,7 +141,7 @@ class CognitoSetup:
                 raise
 
         # Store M2M client secret as SecureString
-        if "m2m_client_secret" in config and config["m2m_client_secret"]:
+        if config.get("m2m_client_secret"):
             try:
                 self.ssm.put_parameter(
                     Name="/app/lakehouse-agent/cognito-m2m-client-secret",
@@ -173,7 +174,7 @@ class CognitoSetup:
                 )  # codeql[py/clear-text-logging-sensitive-data]
                 raise
 
-    def write_to_env(self, config: Dict):
+    def write_to_env(self, config: dict):
         """
         Write configuration to .env file.
 
@@ -218,7 +219,7 @@ class CognitoSetup:
             print(f"❌ Error writing to .env file: {e}")
             raise
 
-    def setup(self, pool_name: str = "lakehouse-pool") -> Dict:
+    def setup(self, pool_name: str = "lakehouse-pool") -> dict:
         # Check for existing User Pool
         user_pool_id = self.find_existing_user_pool(pool_name)
 
@@ -474,7 +475,7 @@ class CognitoSetup:
 
         return result
 
-    def create_m2m_client(self, user_pool_id: str) -> Dict:
+    def create_m2m_client(self, user_pool_id: str) -> dict:
         """
         Create M2M-only app client with client_credentials OAuth flow.
 

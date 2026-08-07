@@ -20,13 +20,13 @@ from pathlib import Path
 # Make the project root importable so `utils` resolves when run from anywhere.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.idp_config import (  # noqa: E402
-    validate_idp_provider,
-    set_idp_provider,
-    get_idp_provider,
-    SSM_PARAM_NAME,
-    FLAG_NAME,
+from utils.idp_config import (
     DEFAULT_VALUE,
+    FLAG_NAME,
+    SSM_PARAM_NAME,
+    get_idp_provider,
+    set_idp_provider,
+    validate_idp_provider,
 )
 
 

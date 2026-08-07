@@ -25,11 +25,12 @@ JWT) plus agent-supplied filters, all passed as Athena execution parameters (not
 interpolated); the only tool that runs model-authored SQL is the admin-only ``text_to_sql``.
 """
 
-import boto3
+import json
 import os
 import time
-import json
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import boto3
 
 
 class SecureAthenaClaimsTools:
@@ -43,7 +44,7 @@ class SecureAthenaClaimsTools:
         region: str,
         database_name: str,
         s3_output_location: str,
-        catalog_name: Optional[str] = None,
+        catalog_name: str | None = None,
     ):
         """
         Initialize secure Athena tools.
@@ -76,7 +77,7 @@ class SecureAthenaClaimsTools:
         # Cache for schema information
         self._schema_cache = None
 
-    def _get_athena_client(self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None):
+    def _get_athena_client(self, user_id: str, tenant_credentials: dict[str, str] | None = None):
         """
         Get Athena client with tenant-specific credentials from interceptor.
 
@@ -131,9 +132,9 @@ class SecureAthenaClaimsTools:
         user_id: str,
         query: str,
         wait_for_results: bool = True,
-        tenant_credentials: Optional[Dict[str, str]] = None,
-        execution_parameters: Optional[List[str]] = None,
-    ) -> Optional[List[Dict[str, Any]]]:
+        tenant_credentials: dict[str, str] | None = None,
+        execution_parameters: list[str] | None = None,
+    ) -> list[dict[str, Any]] | None:
         """
         Execute Athena query with tenant-scoped credentials.
 
@@ -188,7 +189,7 @@ class SecureAthenaClaimsTools:
             if self.catalog_name:
                 query_context["Catalog"] = self.catalog_name
 
-            start_params: Dict[str, Any] = {
+            start_params: dict[str, Any] = {
                 "QueryString": query,
                 "QueryExecutionContext": query_context,
                 "ResultConfiguration": {"OutputLocation": self.s3_output_location},
@@ -241,9 +242,9 @@ class SecureAthenaClaimsTools:
             return data
 
         except Exception as e:
-            raise Exception(f"Error executing secure Athena query: {str(e)}")
+            raise Exception(f"Error executing secure Athena query: {e!s}")
 
-    def _is_policyholder_role(self, tenant_credentials: Optional[Dict[str, str]] = None) -> bool:
+    def _is_policyholder_role(self, tenant_credentials: dict[str, str] | None = None) -> bool:
         """Check if the tenant role is a policyholder (restricted column access)."""
         if not tenant_credentials:
             return False
@@ -253,9 +254,9 @@ class SecureAthenaClaimsTools:
     def query_claims(
         self,
         user_id: str,
-        filters: Optional[Dict[str, Any]] = None,
-        tenant_credentials: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        filters: dict[str, Any] | None = None,
+        tenant_credentials: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """
         Query claims
 
@@ -290,7 +291,7 @@ class SecureAthenaClaimsTools:
             is_policyholder = self._is_policyholder_role(tenant_credentials)
 
             if is_policyholder:
-                params: List[str] = [
+                params: list[str] = [
                     f"'{user_id}'",  # c.user_id = ?
                 ]
                 query = f"""
@@ -325,11 +326,11 @@ class SecureAthenaClaimsTools:
             # Add optional filters (bound as parameters, appended OUTSIDE the
             # parenthesized identity group so they apply to every returned row).
             if filters:
-                if "claim_status" in filters and filters["claim_status"]:
+                if filters.get("claim_status"):
                     query += " AND claim_status = ?"
                     params.append(f"'{filters['claim_status']}'")
 
-                if "claim_type" in filters and filters["claim_type"]:
+                if filters.get("claim_type"):
                     query += " AND claim_type = ?"
                     params.append(f"'{filters['claim_type']}'")
 
@@ -353,15 +354,15 @@ class SecureAthenaClaimsTools:
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Error querying claims: {str(e)}",
+                "message": f"Error querying claims: {e!s}",
             }
 
     def get_claim_details(
         self,
         user_id: str,
         claim_id: str,
-        tenant_credentials: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        tenant_credentials: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """
         Get claim details - row-scoped by the bound identity SQL predicate so a caller
         only sees their own claims (Lake Formation does column masking, not row filtering).
@@ -386,7 +387,7 @@ class SecureAthenaClaimsTools:
                     WHERE claim_id = ?
                         AND user_id = ?
                 """
-                params: List[str] = [f"'{claim_id}'", f"'{user_id}'"]
+                params: list[str] = [f"'{claim_id}'", f"'{user_id}'"]
             else:
                 query = f"""
                     SELECT *
@@ -418,10 +419,10 @@ class SecureAthenaClaimsTools:
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Error retrieving claim: {str(e)}",
+                "message": f"Error retrieving claim: {e!s}",
             }
 
-    def get_claims_summary(self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def get_claims_summary(self, user_id: str, tenant_credentials: dict[str, str] | None = None) -> dict[str, Any]:
         """
         Get claims summary - row-scoped to the caller by the bound identity SQL predicate
         (Lake Formation does column masking, not row filtering).
@@ -441,7 +442,7 @@ class SecureAthenaClaimsTools:
             # they stay inline. Push params in positional "?" order.
             if is_policyholder:
                 where_clause = "user_id = ?"
-                params: List[str] = [f"'{user_id}'"]
+                params: list[str] = [f"'{user_id}'"]
             else:
                 where_clause = "(user_id = ? OR adjuster_user_id = ?)"
                 params = [f"'{user_id}'", f"'{user_id}'"]
@@ -498,10 +499,10 @@ class SecureAthenaClaimsTools:
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Error retrieving summary: {str(e)}",
+                "message": f"Error retrieving summary: {e!s}",
             }
 
-    def get_database_schema(self, tenant_credentials: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def get_database_schema(self, tenant_credentials: dict[str, str] | None = None) -> dict[str, Any]:
         """
         Get database schema from Glue Data Catalog.
 
@@ -604,15 +605,15 @@ class SecureAthenaClaimsTools:
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Error retrieving schema: {str(e)}",
+                "message": f"Error retrieving schema: {e!s}",
             }
 
     def text_to_sql(
         self,
         user_id: str,
         natural_language_query: str,
-        tenant_credentials: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        tenant_credentials: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         """
         Convert natural language query to SQL and execute it.
 
@@ -727,5 +728,5 @@ SQL Query:"""
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Error in text-to-SQL: {str(e)}",
+                "message": f"Error in text-to-SQL: {e!s}",
             }

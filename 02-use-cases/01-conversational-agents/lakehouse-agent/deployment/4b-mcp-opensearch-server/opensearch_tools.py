@@ -23,11 +23,11 @@ Security Flow:
    term: { owner_user_sub: <sub> }.
 """
 
-import boto3
-from typing import List, Dict, Any, Optional
-from opensearchpy import OpenSearch, RequestsHttpConnection
-from aws_requests_auth.aws_auth import AWSRequestsAuth
+from typing import Any, Dict, List, Optional
 
+import boto3
+from aws_requests_auth.aws_auth import AWSRequestsAuth
+from opensearchpy import OpenSearch, RequestsHttpConnection
 
 # Index name for claim notes (matches load_sample_opensearch_data.py)
 CLAIM_NOTES_INDEX = "claim-notes"
@@ -89,7 +89,7 @@ class OpenSearchClaimNotesTools:
 
         print("✅ OpenSearch client initialized")
 
-    def search_claim_notes(self, user_sub: str, query: str, limit: int = 10) -> Dict[str, Any]:
+    def search_claim_notes(self, user_sub: str, query: str, limit: int = 10) -> dict[str, Any]:
         """
         Search claim notes (free-text), scoped to the caller's identity.
 
@@ -183,4 +183,4 @@ class OpenSearchClaimNotesTools:
             }
 
         except Exception as e:
-            return {"success": False, "error": str(e), "message": f"Error searching claim notes: {str(e)}"}
+            return {"success": False, "error": str(e), "message": f"Error searching claim notes: {e!s}"}
