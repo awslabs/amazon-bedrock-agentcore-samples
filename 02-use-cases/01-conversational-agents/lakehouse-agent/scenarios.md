@@ -69,7 +69,7 @@ role, and passes those credentials to the Claims MCP server.
 **User Story**: Sarah, a policy holder (`policyholder001@example.com`), logs into the claims portal to check the status of her recent hospital claim.
 
 **What Sarah Can See**:
-| claim_id | patient_name | policyholder_dob | claim_amount | claim_status | provider_name | adjuster_user_id |
+| claim_id | policyholder_name | policyholder_dob | claim_amount | claim_status | provider_name | adjuster_user_id |
 |----------|--------------|-------------|--------------|--------------|---------------|-------------|
 | CLM-2024-001 | Sarah Chen | 1985-03-15 | $1,250.00 | approved | City Medical | ████████ |
 | CLM-2024-003 | Sarah Chen | 1985-03-15 | $3,500.00 | in_review | General Hospital | ████████ |
@@ -137,7 +137,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 **User Story**: Michael, a claims adjuster (`adjuster001@example.com`), logs in to review claims assigned to him.
 
 **What Michael Can See**:
-| claim_id | patient_name | policyholder_dob | claim_amount | claim_status | adjuster_user_id |
+| claim_id | policyholder_name | policyholder_dob | claim_amount | claim_status | adjuster_user_id |
 |----------|--------------|-------------|--------------|--------------|-------------|
 | CLM-2024-001 | Sarah Chen | ██████████ | $1,250.00 | approved | adjuster001 |
 | CLM-2024-005 | Jane Smith | ██████████ | $850.00 | approved | adjuster001 |
@@ -327,9 +327,6 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 Column counts are the grants issued by
 `deployment/3-s3tables-setup/setup_lakeformation_permissions.py` against the
 21-column `claims` schema in `setup_s3tables.py`.
-
-One display-name carry-over remains in the scenario tables above: `patient_name`
-is the field the live schema calls `policyholder_name`.
 
 Note the division of labour once more: the **Columns** column is Lake Formation's
 contribution, the **Rows** column is the tool layer's. Neither is doing the

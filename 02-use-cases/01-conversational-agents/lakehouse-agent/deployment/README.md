@@ -362,7 +362,7 @@ Lake Formation permissions configured:
 
 - Grants database and table permissions to tenant roles (from Step 2)
 - Configures per-role column-level masking (e.g. hiding `adjuster_user_id` /
-  `patient_dob` from roles that shouldn't see them)
+  `policyholder_dob` from roles that shouldn't see them)
 - Does **not** configure Lake Formation row filters. Per-user row scope is the bound
   identity SQL predicate (`WHERE user_id = ?`) applied by the claims tools; LF
   data-cell filters ship uninvoked (documented tutorial limitation)
