@@ -41,7 +41,7 @@ mcp = FastMCP(host="0.0.0.0", port=8000, stateless_http=True)
 ...
 mcp.run(transport="streamable-http")
 ```
-
+ 
 1. **`port=8000`** — the service contract. Wrong port, unreachable server.
 2. **`host="0.0.0.0"`** — FastMCP defaults to `127.0.0.1`, which is unreachable
    from outside the instance.
