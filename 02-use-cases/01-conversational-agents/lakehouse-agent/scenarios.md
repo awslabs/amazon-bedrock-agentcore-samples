@@ -1,4 +1,4 @@
-# Lakehouse Agent: Role-Based Access Control Scenarios
+# Lakehouse Agent: Access-Control Scenarios
 
 > **Applies to both identity providers.** These RBAC scenarios are
 > **IdP-agnostic** — the same personas (policyholders / adjusters /
@@ -11,6 +11,57 @@
 > shown with Cognito claim names for concreteness.
 
 ---
+
+## Two isolation axes (the lesson)
+
+This sample isolates data on **two architecturally different paths**, and the
+scenarios below are organized around that contrast. Read this section first — it
+is the lesson the rest of the document illustrates.
+
+| Axis | Gateway | Data store | What scopes a result | How it is enforced |
+|---|---|---|---|---|
+| **Per-role** | **Claims Gateway (GW1)** | Athena / S3 Tables (Iceberg) | The caller's **group** (policyholders vs adjusters vs administrators) | **Columns** by Lake Formation (per-role grants / wildcard exclusions) plus the tenant-role **table grants**; **rows** at the tool layer — the claims tools bind the caller into a `WHERE user_id = ?` predicate. Same on both IdPs. |
+| **Per-user** | **Notes Gateway (GW2)** | OpenSearch Serverless | The caller's **individual identity** (`sub`) | Per-document `owner_user_sub` field with a query-time `term` filter. How the caller's `sub` arrives is IdP-branched: **`[OKTA]`** the OBO-exchanged bearer (RFC 8693 `TOKEN_EXCHANGE`, no interceptor Lambda); **`[COGNITO]`** a thin notes REQUEST interceptor injecting it on the body-context channel (`params.arguments.context.user_id`, DR-9). |
+
+Both paths start from the **same** inbound `Authorization: Bearer <user_jwt>`.
+They diverge in *what* the result is scoped to, and *where* enforcement lands:
+
+- **GW1 is a per-role story.** A custom REQUEST interceptor validates the JWT,
+  maps the group claim to a tenant IAM role, and hands the Claims MCP server
+  that role's temporary credentials. Lake Formation governs **which columns**
+  the role may read; the tool layer governs **which rows**. Two policyholders
+  see the same *shape* of data, each scoped to their own rows.
+- **GW2 is a per-user story.** Scoping keys on the individual `sub`, not the
+  group, so two users in the *same* group see disjoint note sets. Only the
+  identity-propagation mechanism differs between IdPs; the filter is identical.
+
+> Each store keeps its **native** scoping mechanism. This sample deliberately
+> does not unify them — the contrast *is* the teaching point. Note in particular
+> that Lake Formation is doing **column** work here, not row work: LF row-level
+> data-cell filters are not configured (the setup script's machinery exists but
+> is uninvoked), and the tenant roles are per-**group** with no per-user session
+> tags. Per-user row scope comes from the bound predicate alone.
+
+The document has three parts:
+
+- **Part 1 — Per-role** (GW1 → Athena): the policyholder, adjuster, and
+  administrator personas.
+- **Part 2 — Per-user** (GW2 → OpenSearch): free-text claim-notes search scoped
+  to the individual caller.
+- **Part 3 — Two-user isolation test** (notebook
+  `07-optional-multi-user-isolation-test`): the proof that neither path leaks
+  across users, even inside one shared agent session.
+
+---
+
+# Part 1 — Per-role access control (Claims Gateway GW1 → Athena)
+
+All three personas call the **same** claims tools against the **same** `claims`
+table. What differs is the **columns** each role's Lake Formation grant exposes
+and the **rows** the tool layer scopes to. Identity is propagated by the REQUEST
+interceptor: it validates the JWT, extracts the group claim, looks the group up
+in the `lakehouse_tenant_role_map` DynamoDB table, assumes the mapped tenant IAM
+role, and passes those credentials to the Claims MCP server.
 
 ## Scenario 1: Policy Holder Inquiry
 **Pattern: Row-Level Security + Column Masking**
@@ -264,37 +315,173 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 ---
 
-## Summary: Security Patterns by Role
+## Part 1 summary: per-role differences (same tool shape, different data)
 
-| Role | Cognito Group | Row Access | Column Access | Tools Available | Data Source |
-|------|---------------|------------|---------------|-----------------|-------------|
-| **Patient** | policyholders | Own claims only | All except `adjuster_id` | `query_claims`, `get_claim_details`, `get_claims_summary` | Athena |
-| **Adjuster** | adjusters | Assigned claims only | All except `patient_dob` | `query_claims`, `get_claim_details`, `get_claims_summary` | Athena |
-| **Admin** | administrators | Session logs (all users) | All columns | `query_login_audit`, `text_to_sql` | DynamoDB |
+| Role | Group | Rows (tool layer) | Columns (Lake Formation) | Write | Tools Available | Data Source |
+|------|-------|-------------------|--------------------------|-------|-----------------|-------------|
+| **Policyholder** | `policyholders` | Own claims only (`user_id`) | 15/21 — excludes `adjuster_user_id`, `created_by`, `last_modified_by`, `last_modified_date`, `notes`, `denial_reason` | No (SELECT) | `query_claims`, `get_claim_details`, `get_claims_summary` | Athena |
+| **Adjuster** | `adjusters` | Assigned claims only (`adjuster_user_id`) | 20/21 — excludes `policyholder_dob` | No (SELECT) | `query_claims`, `get_claim_details`, `get_claims_summary` | Athena |
+| **Admin** | `administrators` | Session logs (all users); full claims book via `text_to_sql` | 21/21 (both PII columns) | Yes (INSERT/ALTER/DELETE) | `query_login_audit`, `text_to_sql` | DynamoDB + Athena |
+
+Column counts are the grants issued by
+`deployment/3-s3tables-setup/setup_lakeformation_permissions.py` against the
+21-column `claims` schema in `setup_s3tables.py`. The scenario walkthroughs above
+use the earlier display names `patient_dob` / `adjuster_id` for the fields the
+live schema calls `policyholder_dob` / `adjuster_user_id`.
+
+Note the division of labour once more: the **Columns** column is Lake Formation's
+contribution, the **Rows** column is the tool layer's. Neither is doing the
+other's job.
+
+---
+
+# Part 2 — Per-user access control (Notes Gateway GW2 → OpenSearch)
+
+Where Part 1 scopes by **role** against structured claims, Part 2 scopes by
+**individual user** against a qualitatively different data type: **free-text
+claim notes** (adjuster notes, policyholder statements, correspondence) held in
+an Amazon OpenSearch Serverless collection. There is no tabular column model
+here — the unit of access is the **document**.
+
+Notes live in the `claim-notes` index, carry an `owner_user_sub` field, and are
+isolated **per user**: each caller sees only their own notes (∩ across users = ∅).
+
+### The data
+
+Each note is a minimal document carrying an owner identifier:
+
+```json
+{
+  "claim_id": "CLM-...",
+  "owner_user_sub": "<sub-of-owner>",
+  "note_text": "Initial damage assessment ...",
+  "note_type": "adjuster-note" | "policyholder-statement" | "...",
+  "created_at": "2024-..."
+}
+```
+
+### How identity propagates — and where the filter lands
+
+The tool the agent calls is `search_claim_notes(query, limit=10)` — full-text
+search over claim notes, **scoped to the caller's `sub`**. The OpenSearch MCP
+server applies `term: { owner_user_sub: <sub> }` at query time. This is
+**per-user** isolation: two users in the *same* group (e.g. two policyholders)
+see disjoint note sets, because the filter keys on the individual identity rather
+than the group.
+
+The owner identity is resolved by IdP:
+
+- **`[OKTA]`** — derived from the OBO-exchanged bearer token's `sub` (the user's
+  email/login). AgentCore Identity performs the RFC 8693 `TOKEN_EXCHANGE`
+  natively, per request — there is **no** interceptor Lambda on this path.
+- **`[COGNITO]`** — injected by the thin notes REQUEST interceptor on the
+  body-context channel (`params.arguments.context.user_id`), per DR-9.
+
+The group→tool RBAC from Part 1 is unchanged for notes tools; only the per-user
+owner scoping is notes-specific. See `deployment/README.md` **Step 7 (Notes
+Gateway GW2 + OpenSearch)** and notebook `05b-deploy-notes-gateway` for the
+deployment path.
+
+### Security controls
+
+- **Per-document filter** — `term: { owner_user_sub: <sub> }`, applied at query
+  time inside the OpenSearch MCP server.
+- **No header → no query** — with no `Authorization` header the tool returns an
+  error rather than running an unscoped query. It fails closed.
+- **`[OKTA]` no caller IAM required** — the gateway's own role performs the token
+  exchange; identity propagation is native AgentCore Identity OBO.
+
+> **Seed form must match extracted form.** On the Okta tenant the `sub` claim
+> resolves to the user's email, not the `00u…` Okta user id. If documents are
+> seeded with one form while the runtime extracts the other, the `term` filter
+> matches nothing, every query returns empty, and an isolation test passes
+> **vacuously**. See the `owner_user_sub` seeding warning in `README.md` for the
+> SSM keys involved. The own-data baselines in Part 3 (scenarios 1–2 returning
+> non-empty) are what give the isolation assertion teeth.
+
+---
+
+# Part 3 — Two-user isolation test (notebook `07-optional-multi-user-isolation-test`)
+
+Parts 1 and 2 describe what a single caller sees. Part 3 is the proof that **no
+per-user data leaks across users**, on **either** gateway, **even within a single
+shared agent session**.
+
+### The invariant
+
+> For any two distinct authenticated users A and B with distinct subject
+> identifiers, a `tools/call` result returned to user B SHALL contain ONLY data
+> scoped to user B's identity, with NO data scoped to user A's identity,
+> regardless of which gateway processed the call.
+
+The invariant is IdP-neutral: it holds on the Cognito path and the Okta path
+alike, because both re-derive the caller per request.
+
+### Test data (disjoint by construction)
+
+Two distinct `policyholders`-group users with disjoint data on **both** stores, so
+any cross-user leak is detectable by simple set-difference:
+
+- **Athena claims** — `policyholder001@example.com` owns `CLM-2024-001..004`;
+  `policyholder002@example.com` owns `CLM-2024-005..009`.
+- **OpenSearch notes** — six documents split disjointly between the two users'
+  `owner_user_sub` values.
+
+### The six scenarios
+
+The first two establish per-user baselines (each user's own data is reachable
+through each gateway). Scenarios 3–6 are the load-bearing **same-session
+ordering** stressors — two users hitting the **same** gateway in close succession
+inside one agent session.
+
+| # | Scenario | Sequence | Gateway | Asserts |
+|---|----------|----------|---------|---------|
+| 1 | User A alone, both gateways | A → A | GW2, then GW1 | A's call returns ONLY A's data on each |
+| 2 | User B alone, both gateways | B → B | GW2, then GW1 | B's call returns ONLY B's data on each |
+| 3 | A → B same session, notes | A then B | GW2 | B's call returns ONLY B's data; no A-residue |
+| 4 | B → A same session, notes | B then A | GW2 | A's call returns ONLY A's data; no B-residue |
+| 5 | A → B same session, claims | A then B | GW1 | B's call returns ONLY B's data; no A-residue |
+| 6 | B → A same session, claims | B then A | GW1 | A's call returns ONLY A's data; no B-residue |
+
+Each scenario asserts via **set-difference** — `result ∩ other_user_record_set`
+must be empty, and the disjoint fixtures make any non-empty intersection a
+definitive violation — plus a **negative leakage scan** confirming no field
+contains the other user's `sub`. The notebook prints a single explicit signal:
+
+```
+ISOLATION TEST PASSED
+```
+
+### Why same-session ordering is the real test
+
+The AgentCore runtime **session-id is not principal-bound**. The isolation test
+empirically accepts a single `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` across
+two *different* user tokens — the platform does not reject the principal switch on
+a reused session. Isolation therefore does **not** rest on session binding. It
+rests entirely on **per-request identity re-derivation**:
+
+- every tool call re-extracts the caller's principal from the freshly validated
+  inbound JWT, and
+- **`[OKTA]`** the OBO leg re-exchanges the token per call,
+
+combined with the `owner_user_sub` filter (notes) and the bound identity
+predicate plus tenant-role grants (claims). Scenarios 3–6 run two users through
+the *same* agent session precisely to guard this: **any future change that caches
+a principal, token, or vault handle at session granularity — instead of
+re-deriving per request — would silently break cross-user isolation while a
+session-id check still appeared to work.**
+
+---
+
+## Screenshots
+
+The Part 1 per-role scenarios are illustrated with screenshots in the sample
+`README.md`, under **User-Specific Data Access Demo** — policyholder PII access,
+adjuster detail masked, cross-policyholder denial, adjuster DOB masked, and the
+two admin views. They are not duplicated here.
 
 ## Implementation Priority
 
 1. **Scenario 1** (Easiest): Add `adjuster_id` column + Lake Formation column mask
 2. **Scenario 2** (Medium): Add new tool + role-based tool filtering in interceptor
 3. **Scenario 3** (Complex): DynamoDB login-audit table + Cognito post-auth trigger + role-mapping table + `query_login_audit` MCP tool
-
----
-
-## Claim Notes (OpenSearch RLS) — both IdPs
-
-Beyond the claims (Athena) path above, the agent also exposes a **notes** path
-through a second gateway (GW2) backed by an OpenSearch Serverless collection
-(`claim-notes` index). Notes carry an `owner_user_sub` field and are isolated
-**per user**: each caller sees only their own notes (∩ across users = ∅).
-
-The owner identity is resolved by IdP:
-
-- **`[OKTA]`** — derived from the OBO-exchanged bearer token's `sub` (the user's
-  email/login).
-- **`[COGNITO]`** — injected by the thin notes REQUEST interceptor on the
-  body-context channel (`params.arguments.context.user_id`), per DR-9.
-
-The group→tool RBAC above is unchanged for notes tools; only the row-level
-owner scoping is notes-specific. See `deployment/README.md` **Step 7 (Notes
-Gateway GW2 + OpenSearch)** and notebook `05b-deploy-notes-gateway` for the
-deployment path.
