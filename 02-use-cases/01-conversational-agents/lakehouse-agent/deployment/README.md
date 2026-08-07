@@ -84,6 +84,12 @@ The agent (Step 8) is IdP-agnostic: it wires two prefixed MCP clients
 > `.env` holds Okta credentials **only** — the IdP flag itself is set in Step 0,
 > not in `.env` (see DR-12).
 
+> **`[OKTA]` first login: authenticator (MFA) enrollment.** On their **first**
+> sign-in through the Streamlit UI, a test user may be prompted by Okta to enroll
+> an authenticator (MFA factor). This is expected on the demo tenant — complete
+> the enrollment once, and subsequent logins proceed normally. If you provision
+> your own test users, expect the same first-login prompt.
+
 ### AWS Region Configuration
 
 All deployment scripts read the AWS region from your boto3 session. Configure it before running any scripts:
