@@ -126,6 +126,10 @@ def get_config() -> dict[str, str | None]:
     config["s3_bucket_name"] = get_param("s3-bucket-name", "S3_BUCKET_NAME")
     config["database_name"] = get_param("database-name", "ATHENA_DATABASE_NAME")
     config["catalog_name"] = get_param("catalog-name", "CATALOG_NAME")  # For S3 Tables
+    # Active IdP, used only to phrase tool errors correctly (the login-audit trail
+    # is a Cognito-path feature). Defaults to cognito so an unmodified checkout
+    # reproduces the upstream single-IdP behaviour.
+    config["idp_provider"] = get_param("idp-provider", "IDP_PROVIDER", "cognito")
     config["log_level"] = os.environ.get("LOG_LEVEL", "INFO")
 
     if config["s3_bucket_name"]:
@@ -600,7 +604,32 @@ def query_login_audit(
             return result
 
         except dynamodb.meta.client.exceptions.ResourceNotFoundException:
-            error_msg = f"DynamoDB table '{table_name}' not found. Run deploy_post_auth_lambda.sh to create it."
+            # The audit table is written by the Cognito post-authentication Lambda
+            # trigger, which has no Okta equivalent in this sample — Okta's
+            # sign-in events stay in the Okta System Log. So the remediation
+            # differs by IdP, and on Okta there is nothing to remediate.
+            #
+            # The tool deliberately REMAINS in the administrators' allowed-tools
+            # list on both paths: notebook 07's tool-gating assertion (policyholder
+            # sees 3 tools, admin sees 2) and its 403 call-gate both use
+            # query_login_audit as the admin-only discriminator. Removing it from
+            # the Okta row would make those assertions vacuous.
+            if get_config().get("idp_provider") == "okta":
+                error_msg = (
+                    f"Login-audit table '{table_name}' does not exist on the Okta path. "
+                    "The login audit is a COGNITO-ONLY feature of this sample: the table is "
+                    "populated by the Cognito post-authentication Lambda trigger "
+                    "(deployment/1-cognito-setup/deploy_post_auth_lambda.sh), which has no Okta "
+                    "counterpart here — Okta records sign-in events in its own System Log "
+                    "instead. This error is expected under IDP_PROVIDER=okta; the tool stays in "
+                    "the administrators' tool list as the admin-only capability marker."
+                )
+            else:
+                error_msg = (
+                    f"DynamoDB table '{table_name}' not found. Run "
+                    "`bash deploy_post_auth_lambda.sh` in deployment/1-cognito-setup to create it, "
+                    "then `python setup_cognito.py --add-post-auth-trigger` to start populating it."
+                )
             print(f"❌ ERROR: {error_msg}")
             print("=" * 60)
             return {"success": False, "error": error_msg}
