@@ -28,6 +28,11 @@ import sys
 import boto3
 from okta.client import Client as OktaClient
 
+# The sample root, so `utils` is importable when this script is run directly.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
+
+from utils.env_file import load_env_file
+
 # Constants matching setup_okta.py
 OKTA_APP_NAME = "lakehouse-agent-app"
 OKTA_EXCHANGE_APP_NAME = "lakehouse-obo-exchange-client"
@@ -201,6 +206,11 @@ def main():
     parser = argparse.ArgumentParser(description="Cleanup Okta resources")
     parser.add_argument("--keep-ssm", action="store_true", help="Keep SSM parameters")
     args = parser.parse_args()
+
+    # Same reason as setup_okta.py: this script reads OKTA_ORG_URL /
+    # OKTA_API_TOKEN from os.environ and exits 1 without them, but nothing on the
+    # CLI path ever loaded .env. Already-exported variables still win.
+    load_env_file()
 
     cleanup = OktaCleanup(keep_ssm=args.keep_ssm)
     asyncio.run(cleanup.run())

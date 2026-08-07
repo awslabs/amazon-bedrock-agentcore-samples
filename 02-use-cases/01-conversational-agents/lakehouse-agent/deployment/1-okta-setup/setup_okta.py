@@ -20,6 +20,7 @@ Prerequisites:
 import asyncio
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -28,6 +29,12 @@ import boto3
 # Okta management SDK (python-okta-sdk)
 from okta.client import Client as OktaClient
 from okta.errors.okta_api_error import OktaAPIError
+
+# The sample root, so `utils` is importable when this script is run directly
+# (the documented `python setup_okta.py` path has no notebook to set this up).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
+
+from utils.env_file import load_env_file
 
 # Single source of truth for the resource-server audience (used as JWT 'aud'
 # claim value). The original demo used 'lakehouse-api'; we keep the same
@@ -988,6 +995,12 @@ class OktaSetup:
 
 
 def main():
+    # Load .env before anything reads os.environ. The notebook path gets this for
+    # free via init_aws(); the documented `python setup_okta.py` path did not, so
+    # OKTA_ORG_URL / OKTA_API_TOKEN had to be exported by hand. Already-exported
+    # variables still win.
+    load_env_file()
+
     setup = OktaSetup()
     config = asyncio.run(setup.setup())
 

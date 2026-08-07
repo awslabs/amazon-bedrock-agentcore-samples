@@ -42,6 +42,11 @@ import sys
 import boto3
 from okta.client import Client as OktaClient
 
+# The sample root, so `utils` is importable when this script is run directly.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
+
+from utils.env_file import load_env_file
+
 # Mirror setup_okta.py's resource names (idempotency keys).
 OKTA_APP_NAME = "lakehouse-agent-app"
 OKTA_EXCHANGE_APP_NAME = "lakehouse-obo-exchange-client"
@@ -453,6 +458,11 @@ def main():
         help="Also cross-check the 5b OBO credential provider wiring (skips with a note if 5b is not deployed).",
     )
     args = parser.parse_args()
+
+    # This script's documented prerequisite is "OKTA_ORG_URL + OKTA_API_TOKEN in
+    # env (.env), as for setup_okta.py" — but nothing loaded .env, so the stated
+    # prerequisite was only satisfiable by exporting by hand.
+    load_env_file()
 
     exit_code = asyncio.run(run(args.check_provider))
     sys.exit(exit_code)
