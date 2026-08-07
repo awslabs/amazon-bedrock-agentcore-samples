@@ -55,7 +55,7 @@
     │               │               │               │   X-User-Scopes: policyholders                   │               │
     │               │               │               │                │──────────────>│                 │               │
     │               │               │               │                │               │ AssumeRole      │               │
-    │               │               │               │                │               │(tag:user_id)    │               │
+    │               │               │               │                │               │(per-group role) │               │
     │               │               │               │                │               │────────────────>│               │
     │               │               │               │                │               │                 │ Query w/      │
     │               │               │               │                │               │                 │ WHERE user_id │
@@ -123,7 +123,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
      │                │               │               │   X-User-Scopes: adjusters                       │               │
      │                │               │               │                │──────────────>│                 │               │
      │                │               │               │                │               │ AssumeRole      │               │
-     │                │               │               │                │               │(tag:adjuster_id)│               │
+     │                │               │               │                │               │(per-group role) │               │
      │                │               │               │                │               │────────────────>│               │
      │                │               │               │                │               │                 │ Query w/      │
      │                │               │               │                │               │                 │ WHERE         │
@@ -143,7 +143,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is group→role STS + tool-list filtering — see below.)_
 
 **Security Controls**:
-- **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the assumed IAM role, not by a distinct tool)
+- **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the bound identity predicate inside those tools, not by a distinct tool)
 - **Row-Level**: `WHERE adjuster_user_id = '{authenticated_adjuster}'` (application-level predicate, bound as an Athena execution parameter)
 - **Column-Level**: Lake Formation masks `patient_dob` for `adjuster` role
 

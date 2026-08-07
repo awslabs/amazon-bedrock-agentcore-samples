@@ -3,10 +3,15 @@
 Lake Formation Permissions Setup for S3 Tables
 
 This script grants Lake Formation permissions to tenant roles for accessing S3 Tables.
-It configures column-level and row-level security by granting appropriate permissions to:
+It configures column-level masking and tenant-role table grants for:
 - lakehouse-policyholders-role
 - lakehouse-adjusters-role
 - lakehouse-administrators-role
+
+Note: per-user ROW scope is NOT configured here. Rows are scoped downstream by a bound
+identity SQL predicate (``WHERE user_id = ?``) in the claims tools. The row-filter helper
+below (``_apply_row_filter``) exists but no caller passes ``row_filter``, so Lake Formation
+data-cell filters ship uninvoked — a documented tutorial limitation.
 
 Usage:
     python setup_lakeformation_permissions.py
@@ -175,8 +180,8 @@ class LakeFormationSetup:
         columns: List[str],
         row_filter: Dict[str, Any] = None,
     ):
-        """Grant column-level permissions with optional row filter."""
-        print(f"   Granting column permissions on {table_name} with row filter...")
+        """Grant column-level permissions, applying a row filter only if one is passed."""
+        print(f"   Granting column permissions on {table_name}...")
 
         resource = {
             "TableWithColumns": {

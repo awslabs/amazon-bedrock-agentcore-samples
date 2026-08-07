@@ -16,8 +16,12 @@ OAuth Flow:
   Streamlit → lakehouse-agent → Gateway (this interceptor) → MCP server
 
 The interceptor extracts the principal from the JWT token, validates tool access,
-and exchanges it for IAM credentials based on tenant role mappings for Lake Formation
-row-level security.
+and exchanges it for IAM credentials based on tenant role mappings. Those tenant
+roles are per-GROUP (no per-user session tags), so what they buy is Lake Formation
+column masking plus the tenant-role table grants. Per-user ROW scope is separate:
+the claims tools bind the forwarded principal (X-User-Identity) into a
+``WHERE user_id = ?`` predicate. Lake Formation row-level data-cell filters are not
+configured in this tutorial.
 """
 
 import json
@@ -505,14 +509,16 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 # Fail CLOSED: a tenant role was required (the claim matched) but
                 # the STS exchange failed. DENY rather than forwarding identity
                 # with no tenant creds (which would let the downstream tool run
-                # under the runtime's default role and bypass Lake Formation RLS).
+                # under the runtime's default role and bypass the tenant role's
+                # Lake Formation column masking and table grants).
                 logger.error("🚫 Failed to exchange JWT to IAM credentials — denying request")
                 return build_error_response("tenant role exchange failed", body, 403)
         else:
             logger.warning("⚠️  No suitable claim found for token exchange")
 
         # Add user identity to headers for downstream MCP server
-        # The MCP server will use X-User-Identity for Lake Formation RLS
+        # The MCP server binds X-User-Identity into the claims tools' row predicate
+        # (WHERE user_id = ?); Lake Formation does column masking, not row filtering
         transformed_headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",

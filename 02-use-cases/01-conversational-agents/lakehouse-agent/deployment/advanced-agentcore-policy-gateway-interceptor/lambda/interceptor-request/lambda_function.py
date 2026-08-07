@@ -16,8 +16,11 @@ OAuth Flow:
   Streamlit → lakehouse-agent → Gateway (this interceptor) → MCP server
 
 The interceptor extracts the principal from the JWT token, validates tool access,
-and exchanges it for IAM credentials based on tenant role mappings for Lake Formation
-row-level security.
+and exchanges it for IAM credentials based on tenant role mappings. Those tenant roles
+are per-GROUP (no per-user session tags), so what they buy is Lake Formation column
+masking plus the tenant-role table grants. Per-user ROW scope is separate: the claims
+tools bind the forwarded principal (X-User-Identity) into a ``WHERE user_id = ?``
+predicate. Lake Formation row-level data-cell filters are not configured in this sample.
 """
 
 import json
@@ -285,7 +288,9 @@ def extract_user_principal(claims: Dict[str, Any]) -> Optional[str]:
     """
     Extract user principal (identity) from JWT claims.
 
-    The principal is used for Lake Formation row-level security.
+    The principal scopes the per-user row filter — the bound identity SQL predicate
+    (WHERE user_id = ?) applied by the claims tools; it is not enforced by Lake
+    Formation (LF governs column masking + table grants).
     Priority order:
     1. email (preferred for user identification)
     2. username
@@ -475,7 +480,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             logger.warning("⚠️  No suitable claim found for token exchange")
 
         # Add user identity to headers for downstream MCP server
-        # The MCP server will use X-User-Identity for Lake Formation RLS
+        # The MCP server binds X-User-Identity into the claims tools' row predicate
+        # (WHERE user_id = ?); Lake Formation does column masking, not row filtering
         transformed_headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
