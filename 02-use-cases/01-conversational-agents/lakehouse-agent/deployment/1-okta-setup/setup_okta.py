@@ -60,6 +60,22 @@ class OktaSetup:
                 "running this script. Example: dev-12345678.okta.com (no scheme)."
             )
 
+        # Reject the admin-console hostname. It is the URL you were just looking at
+        # to mint the API token, so it is an easy mistake, but the Okta management
+        # API is not served there — every call fails in a way that reads like a
+        # permissions problem rather than a wrong-host problem.
+        bare_host = self.org_url.split("://", 1)[-1].strip("/")
+        if "-admin." in bare_host:
+            raise RuntimeError(
+                f"OKTA_ORG_URL points at the Okta admin console ({bare_host}), which "
+                "does not serve the management API. Drop the '-admin' segment: "
+                f"OKTA_ORG_URL={bare_host.replace('-admin.', '.', 1)}"
+            )
+        if "/" in bare_host:
+            raise RuntimeError(
+                f"OKTA_ORG_URL must be a host with no path ({bare_host}). Use OKTA_ORG_URL={bare_host.split('/', 1)[0]}"
+            )
+
         self.api_token = os.environ.get("OKTA_API_TOKEN")
         if not self.api_token:
             raise RuntimeError(
