@@ -33,6 +33,43 @@ from typing import Any
 import boto3
 
 
+def _as_sql_literal(value: Any) -> str:
+    """
+    Render a caller value as an Athena execution parameter (a single-quoted SQL
+    string literal with internal quotes doubled).
+
+    Athena's ExecutionParameters are NOT opaque bind variables: each parameter is
+    parsed as a SQL *literal*. Verified empirically against Athena
+    (2026-08-07, us-east-1):
+
+        param "'abc'"     -> abc          (surrounding quotes consumed)
+        param "O''Brien"  -> O'Brien      (doubled quote collapsed to one)
+
+    Two consequences follow, and they are the whole reason this helper exists.
+
+    1. A value carrying an unescaped single quote breaks the literal it is placed
+       in. `' OR '1'='1` was previously wrapped as `'' OR '1'='1'`, which Athena
+       parsed as an empty string followed by trailing tokens and rejected with
+       `TYPE_MISMATCH: Logical expression term must evaluate to a boolean
+       (actual: varchar(0))`. Doubling the internal quotes keeps it a single
+       well-formed literal, so the comparison simply does not match and the
+       caller gets a clean empty result instead of an Athena error.
+
+    2. Passing the raw value with no quoting does NOT fix that -- verified: the
+       raw payload fails with the identical TYPE_MISMATCH. Bare values happen to
+       work for simple tokens (`alice` binds fine), which is why the AWS CLI
+       examples read as though parameters were opaque, but that is not a safe
+       general rule for caller-supplied input.
+
+    Injection was never possible in any of these forms: the `?` placeholder keeps
+    the query structure fixed, and every probed payload either matched nothing or
+    failed closed. Escaping upgrades "fails with a confusing Athena error" to
+    "returns no rows", which is what a caller can actually act on. It never
+    widens a result set.
+    """
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 class SecureAthenaClaimsTools:
     """
     Secure tools for querying health lakehouse data: per-role Lake Formation
@@ -292,7 +329,7 @@ class SecureAthenaClaimsTools:
 
             if is_policyholder:
                 params: list[str] = [
-                    f"'{user_id}'",  # c.user_id = ?
+                    _as_sql_literal(user_id),  # c.user_id = ?
                 ]
                 query = f"""
                     SELECT
@@ -304,9 +341,9 @@ class SecureAthenaClaimsTools:
                 """
             else:
                 params = [
-                    f"'{user_id}'",  # role_exp CTE: WHERE user_id = ?
-                    f"'{user_id}'",  # c.user_id = ?
-                    f"'{user_id}'",  # c.adjuster_user_id = ?
+                    _as_sql_literal(user_id),  # role_exp CTE: WHERE user_id = ?
+                    _as_sql_literal(user_id),  # c.user_id = ?
+                    _as_sql_literal(user_id),  # c.adjuster_user_id = ?
                 ]
                 query = f"""
                     WITH role_exp AS (
@@ -328,11 +365,11 @@ class SecureAthenaClaimsTools:
             if filters:
                 if filters.get("claim_status"):
                     query += " AND claim_status = ?"
-                    params.append(f"'{filters['claim_status']}'")
+                    params.append(_as_sql_literal(filters["claim_status"]))
 
                 if filters.get("claim_type"):
                     query += " AND claim_type = ?"
-                    params.append(f"'{filters['claim_type']}'")
+                    params.append(_as_sql_literal(filters["claim_type"]))
 
             query += " ORDER BY submitted_date DESC LIMIT 50"
 
@@ -387,7 +424,7 @@ class SecureAthenaClaimsTools:
                     WHERE claim_id = ?
                         AND user_id = ?
                 """
-                params: list[str] = [f"'{claim_id}'", f"'{user_id}'"]
+                params: list[str] = [_as_sql_literal(claim_id), _as_sql_literal(user_id)]
             else:
                 query = f"""
                     SELECT *
@@ -395,7 +432,7 @@ class SecureAthenaClaimsTools:
                     WHERE claim_id = ?
                         AND (user_id = ? OR adjuster_user_id = ?)
                 """
-                params = [f"'{claim_id}'", f"'{user_id}'", f"'{user_id}'"]
+                params = [_as_sql_literal(claim_id), _as_sql_literal(user_id), _as_sql_literal(user_id)]
 
             results = self._execute_query(
                 user_id, query, tenant_credentials=tenant_credentials, execution_parameters=params
@@ -442,10 +479,10 @@ class SecureAthenaClaimsTools:
             # they stay inline. Push params in positional "?" order.
             if is_policyholder:
                 where_clause = "user_id = ?"
-                params: list[str] = [f"'{user_id}'"]
+                params: list[str] = [_as_sql_literal(user_id)]
             else:
                 where_clause = "(user_id = ? OR adjuster_user_id = ?)"
-                params = [f"'{user_id}'", f"'{user_id}'"]
+                params = [_as_sql_literal(user_id), _as_sql_literal(user_id)]
 
             query = f"""
                 SELECT
