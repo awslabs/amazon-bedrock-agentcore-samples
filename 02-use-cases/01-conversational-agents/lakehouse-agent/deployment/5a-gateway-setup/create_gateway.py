@@ -21,7 +21,7 @@ Usage:
 import json
 import os
 import sys
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 
@@ -449,8 +449,8 @@ class GatewaySetup:
         provider_name: str,
         client_id: str,
         client_secret: str,
-        cognito_token_endpoint: str = None,
-        cognito_issuer: str = None,
+        cognito_token_endpoint: str | None = None,
+        cognito_issuer: str | None = None,
     ) -> str:
         """
         Create an OAuth2 credential provider in AgentCore Identity for Cognito.
@@ -576,7 +576,7 @@ class GatewaySetup:
         target_name: str,
         mcp_server_url: str,
         oauth_provider_arn: str,
-        scopes: list = None,
+        scopes: list | None = None,
     ) -> dict[str, Any]:
         """
         Create a gateway target pointing to the MCP server runtime with OAuth authentication.

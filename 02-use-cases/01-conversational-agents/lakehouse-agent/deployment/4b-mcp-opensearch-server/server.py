@@ -27,7 +27,7 @@ Configuration:
 import logging
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import boto3
 import jwt
@@ -118,7 +118,7 @@ def get_config() -> dict[str, str | None]:
 
     ssm = boto3.client("ssm", region_name=config["region"])
 
-    def get_param(name: str, env_var: str = None, default: str = None) -> str | None:
+    def get_param(name: str, env_var: str | None = None, default: str | None = None) -> str | None:
         if env_var and env_var in os.environ:
             value = os.environ[env_var]
             print(f"✅ {name} from environment: {value}")

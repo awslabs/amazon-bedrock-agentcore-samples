@@ -75,7 +75,7 @@ def expect_error(name, fn, exc):
         check(name, False, f"expected {exc.__name__}, none raised")
     except exc as e:
         check(name, True, f"raised {exc.__name__}: {e}")
-    except Exception as e:  # noqa: BLE001 - test wants the specific type
+    except Exception as e:
         check(name, False, f"raised {type(e).__name__}, expected {exc.__name__}: {e}")
 
 
@@ -107,7 +107,7 @@ def main():
         assert_gateway_idp_matches(COGNITO_GW, "cognito", "lakehouse-gateway")
         assert_gateway_idp_matches(OKTA_GW, "okta", "lakehouse-notes-gateway")
         check("assert(match) does not raise", True)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         check("assert(match) does not raise", False, f"unexpected: {e}")
 
     # --- assert_gateway_idp_matches: mismatch fails fast ---

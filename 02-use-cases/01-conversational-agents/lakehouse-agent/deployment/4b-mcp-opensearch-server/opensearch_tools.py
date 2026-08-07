@@ -23,7 +23,7 @@ Security Flow:
    term: { owner_user_sub: <sub> }.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import boto3
 from aws_requests_auth.aws_auth import AWSRequestsAuth

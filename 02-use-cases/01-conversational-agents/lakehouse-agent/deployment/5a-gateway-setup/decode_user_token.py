@@ -129,7 +129,7 @@ def main():
     args = parser.parse_args()
 
     # Get user tokens
-    access_token, id_token, region, client_id, user_pool_id = get_user_tokens(args.username, args.password)
+    access_token, id_token, region, _client_id, user_pool_id = get_user_tokens(args.username, args.password)
 
     if not access_token:
         sys.exit(1)
@@ -141,12 +141,12 @@ def main():
 
     print("\n📄 ID TOKEN:")
     print("=" * 70)
-    id_header, id_payload = decode_jwt(id_token)
+    _id_header, id_payload = decode_jwt(id_token)
     print(json.dumps(id_payload, indent=2))
 
     print("\n📄 ACCESS TOKEN:")
     print("=" * 70)
-    access_header, access_payload = decode_jwt(access_token)
+    _access_header, access_payload = decode_jwt(access_token)
     print(json.dumps(access_payload, indent=2))
 
     # Check Gateway configuration

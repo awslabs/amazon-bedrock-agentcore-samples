@@ -28,7 +28,7 @@ Configuration:
 import logging
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from mcp.server.fastmcp import FastMCP
@@ -102,7 +102,7 @@ def get_config() -> dict[str, str | None]:
 
     ssm = boto3.client("ssm", region_name=config["region"])
 
-    def get_param(name: str, env_var: str = None, default: str = None) -> str | None:
+    def get_param(name: str, env_var: str | None = None, default: str | None = None) -> str | None:
         if env_var and env_var in os.environ:
             value = os.environ[env_var]
             print(f"✅ {name} from environment: {value}")
@@ -199,7 +199,7 @@ def get_athena_tools():
 
 
 def get_user_id_with_fallback(
-    context_arg: dict[str, Any] = None,
+    context_arg: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, str] | None]:
     """
     Get user ID and tenant credentials from context argument or fallback to test user.

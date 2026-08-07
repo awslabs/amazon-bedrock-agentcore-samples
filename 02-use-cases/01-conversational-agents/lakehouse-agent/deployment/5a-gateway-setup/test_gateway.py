@@ -329,38 +329,35 @@ def test_gateway(access_token: str, region: str):
         print(f"   Status: {response.status_code}")
 
         if response.status_code == 200:
-            if response.text:
-                # Parse SSE format
-                if response.headers.get("Content-Type") == "text/event-stream":
-                    lines = response.text.split("\n")
-                    for line in lines:
-                        if line.startswith("data: "):
-                            json_str = line[6:]
-                            try:
-                                data = json.loads(json_str)
-                                if "result" in data:
-                                    print("   ✅ Query successful!")
-                                    # Try to parse the content
-                                    if "content" in data["result"]:
-                                        for content in data["result"]["content"]:
-                                            if content.get("type") == "text":
-                                                try:
-                                                    result_data = json.loads(content["text"])
-                                                    if result_data.get("success"):
-                                                        summary = result_data.get("summary", {})
-                                                        print(f"   Total Claims: {summary.get('total_claims', 0)}")
-                                                        print(
-                                                            f"   Total Amount: ${summary.get('total_amount', 0):,.2f}"
-                                                        )
-                                                except (
-                                                    json.JSONDecodeError,
-                                                    ValueError,
-                                                    KeyError,
-                                                ):
-                                                    print(f"   Response: {content['text'][:200]}")
-                                break
-                            except json.JSONDecodeError:
-                                continue
+            # Parse SSE format
+            if response.text and response.headers.get("Content-Type") == "text/event-stream":
+                lines = response.text.split("\n")
+                for line in lines:
+                    if line.startswith("data: "):
+                        json_str = line[6:]
+                        try:
+                            data = json.loads(json_str)
+                            if "result" in data:
+                                print("   ✅ Query successful!")
+                                # Try to parse the content
+                                if "content" in data["result"]:
+                                    for content in data["result"]["content"]:
+                                        if content.get("type") == "text":
+                                            try:
+                                                result_data = json.loads(content["text"])
+                                                if result_data.get("success"):
+                                                    summary = result_data.get("summary", {})
+                                                    print(f"   Total Claims: {summary.get('total_claims', 0)}")
+                                                    print(f"   Total Amount: ${summary.get('total_amount', 0):,.2f}")
+                                            except (
+                                                json.JSONDecodeError,
+                                                ValueError,
+                                                KeyError,
+                                            ):
+                                                print(f"   Response: {content['text'][:200]}")
+                            break
+                        except json.JSONDecodeError:
+                            continue
         else:
             print("   ⚠️  Query failed or tool not available")
 
@@ -379,7 +376,7 @@ def main():
     print("=" * 70 + "\n")
 
     # Step 1: Authenticate user and get token
-    access_token, id_token, region = get_user_token(args.username, args.password)
+    access_token, _id_token, region = get_user_token(args.username, args.password)
 
     if not access_token:
         print("\n❌ Failed to authenticate user. Exiting.")

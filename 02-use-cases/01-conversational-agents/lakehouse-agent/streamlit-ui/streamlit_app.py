@@ -94,16 +94,18 @@ def fetch_interceptor_tools(gateway_url: str, token: str):
     headers = {"Authorization": f"Bearer {token}"}
 
     async def _run():
-        async with streamablehttp_client(gateway_url, headers=headers) as (read, write, _):
-            async with ClientSession(read, write) as sess:
-                await sess.initialize()
-                resp = await sess.list_tools()
-                names = []
-                for t in resp.tools:
-                    n = t.name
-                    # Gateway prefixes tool names as "target___tool"; show the bare tool.
-                    names.append(n.split("___", 1)[1] if "___" in n else n)
-                return sorted(names)
+        async with (
+            streamablehttp_client(gateway_url, headers=headers) as (read, write, _),
+            ClientSession(read, write) as sess,
+        ):
+            await sess.initialize()
+            resp = await sess.list_tools()
+            names = []
+            for t in resp.tools:
+                n = t.name
+                # Gateway prefixes tool names as "target___tool"; show the bare tool.
+                names.append(n.split("___", 1)[1] if "___" in n else n)
+            return sorted(names)
 
     return _run_async(_run())
 
@@ -304,12 +306,11 @@ def authenticate_user(username: str, password: str, user_pool_id: str, client_id
             },
         )
 
-        if "ChallengeName" in response:
-            if response["ChallengeName"] == "NEW_PASSWORD_REQUIRED":
-                return {
-                    "challenge": "NEW_PASSWORD_REQUIRED",
-                    "session": response["Session"],
-                }
+        if "ChallengeName" in response and response["ChallengeName"] == "NEW_PASSWORD_REQUIRED":
+            return {
+                "challenge": "NEW_PASSWORD_REQUIRED",
+                "session": response["Session"],
+            }
 
         if "AuthenticationResult" in response:
             return {

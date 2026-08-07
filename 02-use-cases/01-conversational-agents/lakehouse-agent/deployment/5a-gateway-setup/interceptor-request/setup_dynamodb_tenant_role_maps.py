@@ -19,7 +19,6 @@ import argparse
 import json
 import os
 import sys
-from typing import Dict, List
 
 import boto3
 from botocore.exceptions import ClientError

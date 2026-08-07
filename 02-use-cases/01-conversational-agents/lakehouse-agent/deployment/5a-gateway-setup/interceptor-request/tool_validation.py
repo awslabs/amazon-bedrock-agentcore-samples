@@ -14,7 +14,7 @@ The validation process:
 
 import logging
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import boto3
 

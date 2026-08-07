@@ -28,7 +28,7 @@ interpolated); the only tool that runs model-authored SQL is the admin-only ``te
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 

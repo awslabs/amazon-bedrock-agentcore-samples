@@ -25,7 +25,7 @@ import json
 import logging
 import os
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import boto3
 from jose import JWTError, jwt

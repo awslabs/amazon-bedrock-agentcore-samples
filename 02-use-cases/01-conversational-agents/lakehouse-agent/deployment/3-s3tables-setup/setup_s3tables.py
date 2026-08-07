@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
 
     # Get AWS session
-    session, region, account_id = get_aws_session()
+    _session, region, account_id = get_aws_session()
 
     # Use default table bucket name with random suffix if not provided
     if args.table_bucket_name:

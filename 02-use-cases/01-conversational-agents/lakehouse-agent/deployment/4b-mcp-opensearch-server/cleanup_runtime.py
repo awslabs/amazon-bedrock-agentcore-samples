@@ -28,7 +28,7 @@ from utils.aws_session_utils import get_aws_session
 
 class OpenSearchMCPRuntimeCleanup:
     def __init__(self, keep_ssm=False):
-        session, self.region, self.account_id = get_aws_session()
+        _session, self.region, self.account_id = get_aws_session()
         self.bedrock = boto3.client("bedrock-agentcore-control", region_name=self.region)
         self.iam = boto3.client("iam")
         self.ecr = boto3.client("ecr", region_name=self.region)

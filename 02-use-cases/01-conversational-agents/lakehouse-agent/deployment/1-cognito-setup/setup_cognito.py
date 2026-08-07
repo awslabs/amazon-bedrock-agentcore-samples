@@ -10,8 +10,9 @@ Usage:
 
 import json
 import re
+import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import boto3
 
@@ -534,7 +535,7 @@ class CognitoSetup:
 
         return {"client_id": client_id, "client_secret": client_secret}
 
-    def add_post_auth_trigger(self, user_pool_id: str = None, lambda_name: str = "lakehouse-cognito-post-auth"):
+    def add_post_auth_trigger(self, user_pool_id: str | None = None, lambda_name: str = "lakehouse-cognito-post-auth"):
         """
         Add Post-Authentication Lambda trigger to Cognito User Pool.
 
@@ -618,7 +619,7 @@ if __name__ == "__main__":
         else:
             print("\n❌ Failed to configure Post-Authentication trigger")
             print("   Run: bash deploy_post_auth_lambda.sh first")
-        exit(0 if success else 1)
+        sys.exit(0 if success else 1)
 
     # Normal setup flow (includes automatic post-auth trigger configuration)
     result = setup.setup()

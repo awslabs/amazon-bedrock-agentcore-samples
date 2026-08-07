@@ -33,7 +33,6 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Dict, List
 
 import boto3
 from aws_requests_auth.aws_auth import AWSRequestsAuth

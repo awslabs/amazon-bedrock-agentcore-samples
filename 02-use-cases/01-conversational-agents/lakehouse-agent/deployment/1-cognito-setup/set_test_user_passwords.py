@@ -54,7 +54,7 @@ def _generate_password() -> str:
     return "Aa1!" + body
 
 
-def set_test_user_passwords(ssm_client, cognito_client, password: str = None) -> str:
+def set_test_user_passwords(ssm_client, cognito_client, password: str | None = None) -> str:
     """
     Set a PERMANENT password (Permanent=True) for each test persona so they are
     CONFIRMED and usable with ADMIN_USER_PASSWORD_AUTH / SRP.

@@ -6,7 +6,7 @@ Connects to Gateway tools for querying and managing lakehouse data with OAuth-ba
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import boto3
 from bedrock_agentcore import BedrockAgentCoreApp
