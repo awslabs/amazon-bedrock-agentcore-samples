@@ -35,12 +35,47 @@ class AgentCleanup:
         self.codebuild = boto3.client("codebuild", region_name=self.region)
         self.ssm = boto3.client("ssm", region_name=self.region)
         self.keep_ssm = keep_ssm
+        self.warnings = []
 
     def _get_ssm_param(self, name, default=None):
         try:
             return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")["Parameter"]["Value"]
         except Exception:
             return default
+
+    def _warn_unresolved_service_role(self, project_label, reason=None):
+        """Loudly decline to delete an SDK CodeBuild role we cannot prove we own.
+
+        Orphaning a role is strictly safer than deleting one belonging to another
+        AgentCore project, but a silent skip hides the leak. Name every candidate
+        declined and why, and repeat it in the final summary.
+        """
+        candidates = []
+        try:
+            paginator = self.iam.get_paginator("list_roles")
+            for page in paginator.paginate(PathPrefix="/"):
+                candidates += [
+                    r["RoleName"]
+                    for r in page["Roles"]
+                    if r["RoleName"].startswith("AmazonBedrockAgentCoreSDKCodeBuild-")
+                ]
+        except Exception as e:
+            print(f"   ⚠️  Could not list candidate CodeBuild roles: {e}")
+
+        why = f"serviceRole lookup failed ({reason})" if reason else "the project reported no serviceRole"
+        print(f"   ⚠️  WARNING: cannot verify CodeBuild role ownership for {project_label} — {why}.")
+        print("      No CodeBuild role was deleted: deleting an unowned role would break another project.")
+        if candidates:
+            print(f"      Declined to delete {len(candidates)} prefix-matching role(s):")
+            for name in candidates:
+                print(f"        • {name}")
+            print("      Delete manually only after confirming ownership in the CodeBuild console.")
+        else:
+            print("      No AmazonBedrockAgentCoreSDKCodeBuild- roles exist, so nothing was orphaned.")
+        self.warnings.append(
+            f"CodeBuild SDK role NOT deleted for {project_label} — {why}; "
+            f"{len(candidates)} candidate role(s) left in place"
+        )
 
     def delete_runtime(self):
         print("\n🗑️  Deleting Agent Runtime...")
@@ -96,11 +131,15 @@ class AgentCleanup:
         # project in the account, so a prefix match alone can hit a role owned by an
         # unrelated project.
         service_role_name = None
+        project_found = False
+        resolve_error = None
         try:
             projects = self.codebuild.batch_get_projects(names=[project_name])["projects"]
             if projects:
+                project_found = True
                 service_role_name = projects[0].get("serviceRole", "").split("/")[-1] or None
         except Exception as e:
+            resolve_error = e
             print(f"   ⚠️  Could not resolve CodeBuild service role: {e}")
 
         # Delete project
@@ -115,7 +154,10 @@ class AgentCleanup:
         # runtimes' roles are not silently skipped), but a role is deleted only when
         # it is the one this project owned.
         if not service_role_name:
-            print("   ⏭️  CodeBuild role owner could not be verified — skipping role deletion")
+            if project_found or resolve_error:
+                self._warn_unresolved_service_role(project_name, resolve_error)
+            else:
+                print("   ⏭️  No CodeBuild project found — no SDK role to resolve")
             return
         try:
             deleted = 0
@@ -178,7 +220,12 @@ class AgentCleanup:
         self.delete_codebuild_resources()
         self.delete_local_config()
         self.delete_ssm_parameters()
-        print("\n✨ Agent cleanup complete!")
+        if self.warnings:
+            print("\n⚠️  Agent cleanup complete WITH WARNINGS — manual follow-up needed:")
+            for w in self.warnings:
+                print(f"   • {w}")
+        else:
+            print("\n✨ Agent cleanup complete!")
 
 
 def main():
