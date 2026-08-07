@@ -28,7 +28,10 @@ export interface EngineConfig {
   readonly parameterPrefix: string;
   readonly stagingRetentionDays: number;
   readonly reportRetentionDays: number;
-  readonly glueMaxCapacity: number;
+  /** AWS Glue worker size for both jobs. `G.1X` is the smallest a Glue 5.0 batch job accepts. */
+  readonly glueWorkerType: string;
+  /** Workers per job. Two is the API minimum; the jobs are single-threaded and use one. */
+  readonly glueNumberOfWorkers: number;
   readonly glueTimeoutMinutes: number;
   readonly terminationProtection: boolean;
   readonly glueRoleName?: string;
@@ -249,8 +252,23 @@ const DEFAULT_GA_WRITE_ACTIONS = [
   'agent-registry:UpdateRegistryRecordStatus',
 ];
 
-/** Widest load pool a 0.0625 DPU (1 vCPU / 1 GB) Python shell worker can be trusted with. */
-const MAX_CONCURRENCY_ON_FRACTIONAL_DPU = 4;
+// Worker types a Glue 5.0 *batch* job accepts. G.025X is missing on purpose: it is streaming-only,
+// and G.1X (4 vCPU / 16 GB) is therefore the smallest worker these jobs can run on. The old
+// 0.0625 DPU Python shell worker was smaller still, which is why a companion check used to cap
+// runtime.load.loadConcurrency at 4 on it -- 1 vCPU / 1 GB could not hold 32 record payloads and
+// their in-flight requests at once. G.1X can, so that coupling is gone rather than relaxed.
+const GLUE_WORKER_TYPES = ['G.1X', 'G.2X', 'G.4X', 'G.8X'];
+
+/** Only used in messages; the version itself is fixed in migration-engine-stack.ts. */
+const GLUE_VERSION_LABEL = '5.0';
+
+/** Removed engine keys, and what to do instead. Present in a config file, each is an error. */
+const REMOVED_ENGINE_KEYS: Record<string, string> = {
+  glueMaxCapacity:
+    'the jobs are Glue 5.0 Spark jobs now, which size by worker rather than by DPU: use ' +
+    'engine.glueWorkerType (default G.1X) and engine.glueNumberOfWorkers (default 2). Glue rejects ' +
+    'MaxCapacity together with a worker type, so this key cannot be honoured',
+};
 
 export function loadMigrationConfig(configPath: string): MigrationConfig {
   const absolutePath = path.resolve(configPath);
@@ -265,6 +283,15 @@ export function loadMigrationConfig(configPath: string): MigrationConfig {
     );
   }
   const engineInput = parsed.engine ?? {};
+  // A key this solution no longer reads is worse than an invalid one: the file still parses, the
+  // deploy still succeeds, and the operator believes they sized the job. Fail with the replacement.
+  if (isRecord(parsed.engine)) {
+    for (const [key, guidance] of Object.entries(REMOVED_ENGINE_KEYS)) {
+      if (Object.prototype.hasOwnProperty.call(parsed.engine, key)) {
+        throw new Error(`engine.${key} is no longer supported: ${guidance}`);
+      }
+    }
+  }
   const deploymentId = engineInput.deploymentId ?? 'default';
   const engine: EngineConfig = {
     account: engineInput.account ?? process.env.CDK_DEFAULT_ACCOUNT,
@@ -278,7 +305,8 @@ export function loadMigrationConfig(configPath: string): MigrationConfig {
     ),
     stagingRetentionDays: engineInput.stagingRetentionDays ?? 90,
     reportRetentionDays: engineInput.reportRetentionDays ?? 365,
-    glueMaxCapacity: engineInput.glueMaxCapacity ?? 1,
+    glueWorkerType: engineInput.glueWorkerType ?? 'G.1X',
+    glueNumberOfWorkers: engineInput.glueNumberOfWorkers ?? 2,
     glueTimeoutMinutes: engineInput.glueTimeoutMinutes ?? 180,
     terminationProtection: engineInput.terminationProtection ?? true,
     glueRoleName: engineInput.glueRoleName,
@@ -511,18 +539,17 @@ function validateConfig(config: MigrationConfig): void {
   // Capped at 32: beyond that the GA control plane, not the job, becomes the limit and throttling
   // costs more than the added parallelism gains.
   assertIntegerInRange(config.runtime.load.loadConcurrency, 'runtime.load.loadConcurrency', 1, 32);
-  if (![0.0625, 1].includes(config.engine.glueMaxCapacity)) {
-    throw new Error('Python Shell Glue jobs support glueMaxCapacity values of 0.0625 or 1');
-  }
-  // 0.0625 DPU is a 1 vCPU / 1 GB worker. It is fine for a serial load, but each concurrent worker
-  // holds a record payload plus an in-flight HTTP request, so pairing the small worker with a wide
-  // pool is how a run runs out of memory mid-migration. Catch it at synth instead.
-  if (config.engine.glueMaxCapacity < 1 && config.runtime.load.loadConcurrency > MAX_CONCURRENCY_ON_FRACTIONAL_DPU) {
+  if (!GLUE_WORKER_TYPES.includes(config.engine.glueWorkerType)) {
     throw new Error(
-      `runtime.load.loadConcurrency ${config.runtime.load.loadConcurrency} needs engine.glueMaxCapacity 1; ` +
-        `a 0.0625 DPU worker supports at most ${MAX_CONCURRENCY_ON_FRACTIONAL_DPU} concurrent records`,
+      `engine.glueWorkerType ${JSON.stringify(config.engine.glueWorkerType)} is not a Glue ` +
+        `${GLUE_VERSION_LABEL} batch worker type; use one of ${GLUE_WORKER_TYPES.join(', ')}`,
     );
   }
+  // Glue's own floor for a Spark job. Asserted here so a 1 becomes a sentence at synth rather than a
+  // CloudFormation ValidationException minutes into a deploy. There is no ceiling worth adding: the
+  // jobs are single-threaded and use exactly one worker, so anything above the minimum only costs
+  // money -- which is why the default is the minimum.
+  assertIntegerInRange(config.engine.glueNumberOfWorkers, 'engine.glueNumberOfWorkers', 2, 299);
   // S3 lifecycle expiration is expressed in whole days, so these have to be integers -- and they
   // were previously only compared against 1, which a string or a fraction slips past.
   assertIntegerInRange(config.engine.stagingRetentionDays, 'engine.stagingRetentionDays', 1, 36_500);

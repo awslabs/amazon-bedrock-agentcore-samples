@@ -205,7 +205,7 @@ and `destroy` commands use the AWS CDK, which provisions resources through AWS C
 | AWS CloudFormation | The engine stack and its termination protection |
 | Amazon S3 | The staging bucket and the CDK asset bucket used during deployment |
 | AWS Identity and Access Management | The engine's execution role and attached policy (not required when `createIamRoles: false`) |
-| AWS Glue | Two Python shell jobs, a workflow, and a trigger |
+| AWS Glue | Two Glue 5.0 jobs, a workflow, and a trigger |
 | AWS Systems Manager Parameter Store | Three configuration parameters read by the Glue jobs |
 | AWS Lambda | CDK bucket-deployment custom resource that uploads the engine package |
 | AWS Security Token Service | CDK bootstrap role assumption |

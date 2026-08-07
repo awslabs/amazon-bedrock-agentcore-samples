@@ -383,6 +383,63 @@ def check_registry_access(
     return results
 
 
+#: Service models the run cannot proceed without, and which side of the migration each one serves.
+REQUIRED_SERVICE_MODELS = {
+    "bedrock-agentcore-control": "read Preview records",
+    "agent-registry-control": "write GA records",
+}
+
+#: First botocore release carrying ``agent-registry-control``. Named in the remedy, not compared
+#: against: see :func:`check_sdk_models`.
+MINIMUM_BOTOCORE_VERSION = "1.43.66"
+
+
+def check_sdk_models(available_services: Iterable[str] | None = None) -> list[CheckResult]:
+    """Check the SDK on this worker models both control planes.
+
+    This is the failure that used to arrive latest and cost most. The extract stage reads Preview
+    with ``bedrock-agentcore-control`` and only the load stage writes GA with
+    ``agent-registry-control``, so an SDK carrying one model and not the other stages a full run
+    successfully and then dies on the first create with ``UnknownServiceError``. Asserting both
+    up front turns that into a sentence before anything is read.
+
+    Deliberately a capability check and not a version comparison: an operator who registered the
+    model through ``AWS_DATA_PATH`` or ``~/.aws/models`` on an older botocore is equally able to run
+    the migration, and a version floor would reject that working setup. The version only appears in
+    the remedy, as the way to get the model if you do not have it.
+    """
+    if available_services is None:  # pragma: no cover - exercised by passing the list in
+        import botocore.session
+
+        available_services = botocore.session.get_session().get_available_services()
+    present = set(available_services)
+    missing = {name: purpose for name, purpose in REQUIRED_SERVICE_MODELS.items() if name not in present}
+    if not missing:
+        return [
+            CheckResult(
+                name="sdk.serviceModels",
+                status=PASS,
+                detail=f"the SDK models {_describe_key(sorted(REQUIRED_SERVICE_MODELS))}",
+            )
+        ]
+    return [
+        CheckResult(
+            name="sdk.serviceModels",
+            status=FAIL,
+            detail=(
+                "this SDK has no service model for "
+                + ", ".join(f"{name} (needed to {purpose})" for name, purpose in sorted(missing.items()))
+            ),
+            remedy=(
+                f"install boto3 and botocore {MINIMUM_BOTOCORE_VERSION} or newer, which requires "
+                "Python 3.10 or newer. On AWS Glue this comes from --additional-python-modules, "
+                "which the deployed jobs set; a job missing it is running an older deployment of "
+                "this solution, so redeploy with `agent-registry-migration deploy`"
+            ),
+        )
+    ]
+
+
 def run_checks(
     settings: dict[str, Any],
     mappings: list[dict[str, Any]],
@@ -398,6 +455,10 @@ def run_checks(
     access (``validate --offline``), while a full run also proves connectivity.
     """
     results: list[CheckResult] = []
+    # First, and with no arguments: every later check that touches a registry needs a client, and a
+    # client needs the model. Reported before the configuration checks so the remedy an operator
+    # reads first is the one that unblocks everything else.
+    results.extend(check_sdk_models())
     results.extend(check_load_settings(settings))
     results.extend(check_mapping_shapes(mappings))
     if store is not None:

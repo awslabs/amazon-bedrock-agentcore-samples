@@ -37,6 +37,40 @@ def statuses(results, name_contains):
     return [r.status for r in results if name_contains in r.name]
 
 
+class SdkModelChecks(unittest.TestCase):
+    """The check that stops a run whose SDK cannot build one of the two clients."""
+
+    def test_both_models_present_passes(self):
+        results = preflight.check_sdk_models(["s3", "bedrock-agentcore-control", "agent-registry-control"])
+        self.assertEqual(statuses(results, "sdk.serviceModels"), [preflight.PASS])
+
+    def test_missing_ga_model_fails_and_names_the_version_that_has_it(self):
+        # The expensive case: extract succeeds against Preview, then the load dies on the first
+        # create. Half a working SDK has to fail as loudly as none of one.
+        results = preflight.check_sdk_models(["s3", "bedrock-agentcore-control"])
+        self.assertEqual(statuses(results, "sdk.serviceModels"), [preflight.FAIL])
+        self.assertIn("agent-registry-control", results[0].detail)
+        self.assertIn("write GA records", results[0].detail)
+        self.assertIn(preflight.MINIMUM_BOTOCORE_VERSION, results[0].remedy)
+
+    def test_missing_preview_model_fails(self):
+        results = preflight.check_sdk_models(["s3", "agent-registry-control"])
+        self.assertEqual(statuses(results, "sdk.serviceModels"), [preflight.FAIL])
+        self.assertIn("bedrock-agentcore-control", results[0].detail)
+
+    def test_neither_model_reports_both(self):
+        results = preflight.check_sdk_models(["s3"])
+        self.assertEqual(statuses(results, "sdk.serviceModels"), [preflight.FAIL])
+        for service in preflight.REQUIRED_SERVICE_MODELS:
+            self.assertIn(service, results[0].detail)
+
+    def test_remedy_points_at_redeploying_the_jobs(self):
+        # On Glue the SDK arrives via --additional-python-modules, so the fix is a redeploy rather
+        # than a pip install the operator cannot perform on a worker.
+        results = preflight.check_sdk_models([])
+        self.assertIn("redeploy", results[0].remedy)
+
+
 class MappingShapeChecks(unittest.TestCase):
     def test_valid_mapping_passes(self):
         results = preflight.check_mapping_shapes([mapping()])

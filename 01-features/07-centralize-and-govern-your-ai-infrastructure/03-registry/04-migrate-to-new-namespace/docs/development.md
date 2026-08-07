@@ -57,7 +57,7 @@ npm run verify:fingerprint # Verifies that the replay fingerprint matches across
 npm run synth              # Build and CDK synth
 ```
 
-Run the same checks in CI on every push: the Python test suite on Python 3.9 (the AWS Glue
+Run the same checks in CI on every push: the Python test suite on Python 3.11 (the AWS Glue 5.0
 interpreter), followed by a build and CDK synth of both example configurations. The synth asserts
 that the customer-managed-role configuration produces no IAM resources. No AWS credentials are
 required for any of it.
@@ -169,9 +169,11 @@ does not. Two consequences worth knowing about:
 
 * Tests that read a model (`test_registry_clients.py`, `test_target_registry.py`) skip rather than
   fail when the SDK has no such model — the same condition the tool itself reports at run time.
-* The Glue worker's own botocore is what the deployed jobs get. `--additional-python-modules` cannot
-  patch that: the botocore versions carrying the GA model require Python >= 3.10, and Glue Python
-  shell runs 3.9. See the comment in `lib/migration-engine-stack.ts`.
+* The deployed jobs get their SDK from `--additional-python-modules`, pinned in
+  `GLUE_SDK_MODULES` (`lib/migration-engine-stack.ts`), because no AWS Glue image ships the GA
+  model: the Python shell runtime is boto3 1.21 and the Glue 5.0 Spark runtime is boto3 1.34. That
+  pin is also why the jobs are `glueetl` jobs on Glue 5.0 — botocore 1.43.66 requires Python 3.10,
+  and an AWS Glue Python shell job is Python 3.9 at every Glue version. Neither job uses Spark.
 
 What *is* bundled into the wheel is the API contract:
 

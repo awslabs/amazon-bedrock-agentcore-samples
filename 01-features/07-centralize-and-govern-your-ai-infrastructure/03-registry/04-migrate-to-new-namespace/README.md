@@ -13,7 +13,7 @@ As part of launching as Generally Available (GA) on August 6, 2026, AWS Agent Re
 This tool handles extraction of existing data, transformation from the old schema to the new schema, and loading into registries in the new namespace. It also has steps to create new registries in the agent-registry namespace within the same or different account and region. It migrates all existing records from your old registries to the new ones, accounting for namespace and API schema changes.
 
 ## Pre-requisites
-- **Node.js 20+** and **Python 3.9+ with boto3** (`python3 -m pip install boto3`).
+- **Node.js 20+** and **Python 3.10+ with boto3 1.43.66 or newer** (`python3 -m pip install 'boto3>=1.43.66'`). Earlier releases carry no service model for the GA control plane.
 - **AWS credentials** with required permissions. [Permissions](docs/iam.md) has the minimum policy, copy-pasteable.
 - **Registry IDs for the preview version of AWS Agent Registry**
 - **[Optional] Registry IDs for the GA version of AWS Agent Registry**
@@ -32,7 +32,7 @@ This tool supports multiple migration patterns. Below is a quick guide on what p
 | --- | --- | --- |
 | **One-time migration** — no infrastructure needed. Run locally or in CloudShell. Supports one-time full load only, no incremental loads. Scale is not a hard limit, but long-running sessions depend on your terminal staying open. | Run locally or in CloudShell. No infrastructure to deploy. | [One-time migration](#one-time-migration) |
 | **Managed migration with AWS Glue** — deploys infrastructure in your AWS account. Supports both full and incremental load. Best for unattended runs, no dependency on terminal, or when you need incremental load at cutover. | Deploy Glue jobs to your account. Runs unattended. | Start with full migration and run incremental load at cutover using [Managed migration with AWS Glue](#managed-migration-with-aws-glue) |
-| **Dual-writes for active production workloads** - you have built a platform or automation pipeline on top of the public preview APIs and are actively writing new data in production | Migrate the history with this tool, verify, dual-write to both namespaces, verify and then cutover | Start with full migration using [Managed migration with AWS Glue](#managed-migration-with-aws-glue) followed by dual-writes |
+| **Active-active migration** - you have built a platform or automation pipeline on top of the public preview APIs and are actively writing new data in production | Migrate the history with this tool, verify, dual-write to both namespaces, verify and then cutover | Start with full migration using [Managed migration with AWS Glue](#managed-migration-with-aws-glue) followed by dual-writes |
 
 > Want to know how the tool works before you start? See the [Architecture](#architecture) section.
 

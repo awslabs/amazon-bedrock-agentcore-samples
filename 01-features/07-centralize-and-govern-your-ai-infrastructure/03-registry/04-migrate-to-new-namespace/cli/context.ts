@@ -161,14 +161,27 @@ function pythonCandidates(): string[] {
 
 let cachedPython: string | undefined;
 
-/** Locate a Python 3.9+ interpreter with boto3, or explain exactly what to install. */
+// What the local interpreter has to be able to do, rather than what version it has to be. The
+// requirement is really "an SDK carrying both service models": `bedrock-agentcore-control` for the
+// Preview source and `agent-registry-control` for the GA target. The latter first shipped in
+// botocore 1.43.66, which needs Python >= 3.10 -- but an operator who has registered the model
+// another way (AWS_DATA_PATH, ~/.aws/models) is equally able to run this, and a version comparison
+// would turn that working setup away. So probe the capability and let the message name the versions.
+const PYTHON_PROBE = [
+  'import boto3, botocore.session',
+  'a = botocore.session.get_session().get_available_services()',
+  "missing = [s for s in ('bedrock-agentcore-control', 'agent-registry-control') if s not in a]",
+  'assert not missing, "botocore %s has no service model for: %s" % (botocore.__version__, ", ".join(missing))',
+].join('\n');
+
+/** Locate a Python interpreter whose boto3 models both registry APIs, or explain what to install. */
 export function pythonBin(): string {
   if (cachedPython) {
     return cachedPython;
   }
   const problems: string[] = [];
   for (const candidate of pythonCandidates()) {
-    const probe = spawnSync(candidate, ['-c', 'import sys, boto3; print(sys.version_info[:2])'], {
+    const probe = spawnSync(candidate, ['-c', PYTHON_PROBE], {
       encoding: 'utf8',
     });
     if (probe.status === 0) {
@@ -182,9 +195,11 @@ export function pythonBin(): string {
     }
   }
   throw new CliError(
-    'This tool needs Python 3.9+ with boto3, which is how it talks to both registry APIs.\n' +
+    'This tool needs Python 3.10+ with boto3 1.43.66 or newer, which is how it talks to both\n' +
+      '  registry APIs. Older SDKs have no model for the GA control plane, so a load would fail\n' +
+      "  part-way through with UnknownServiceError: 'agent-registry-control'.\n" +
       `  Tried: ${problems.join('; ')}\n` +
-      '  Install with: python3 -m pip install boto3\n' +
+      "  Install with: python3 -m pip install 'boto3>=1.43.66'\n" +
       '  Or point at a specific interpreter: PYTHON=/path/to/python3',
   );
 }

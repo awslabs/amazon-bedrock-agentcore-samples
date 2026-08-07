@@ -417,7 +417,8 @@ Every failure message includes guidance on the recommended corrective action. Th
 
 | Message or symptom | Cause | Resolution |
 | --- | --- | --- |
-| `This tool needs Python 3.9+ with boto3` | The CLI could not locate a supported Python interpreter. | Run `python3 -m pip install boto3`, or set the `PYTHON` environment variable to the path of a supported interpreter. |
+| `This tool needs Python 3.10+ with boto3 1.43.66 or newer` | The CLI could not locate a Python interpreter whose boto3 models both registry APIs. The GA control plane's model first shipped in botocore 1.43.66, which requires Python 3.10. | Run `python3 -m pip install 'boto3>=1.43.66'`, or set the `PYTHON` environment variable to the path of a supported interpreter. |
+| `this SDK has no service model for agent-registry-control` | A pre-flight check found an SDK too old to write GA records. On AWS Glue the SDK is installed by the job's `--additional-python-modules`, so this means the deployment predates that setting. | Locally, upgrade boto3 as above. On AWS Glue, redeploy with `agent-registry-migration deploy`. |
 | `No configuration at …` | No configuration file was found at the expected path. | Run `agent-registry-migration init`, or pass `--config <path>` to specify the file location. |
 | `still has a placeholder GA registry id` | The `init` command could not complete because the GA registry did not exist at the time. | Create the GA registry and update `target.registryId` in the configuration file. |
 | `Pre-flight validation failed` | A configuration or access check failed. No records were read. | Resolve each `[FAIL]` item and re-run. |
@@ -443,16 +444,20 @@ Every failure message includes guidance on the recommended corrective action. Th
 
 ## Infrastructure cost for managed migration with AWS Glue
 
-The deployed stack creates an S3 bucket, two Python Shell Glue jobs, and an SSM Parameter Store standard parameter. You are only charged for what runs.
+The deployed stack creates an S3 bucket, two Glue jobs, and an SSM Parameter Store standard parameter. You are only charged for what runs.
 
 | Resource | Pricing basis | Estimated cost (30 min per job, both jobs) |
 | --- | --- | --- |
-| AWS Glue Python Shell job (extract) | $0.44 per DPU-hour | 0.0625 DPU × 0.5 hr × $0.44 = **$0.01** (default) / 1 DPU × 0.5 hr × $0.44 = **$0.22** (max) |
-| AWS Glue Python Shell job (load) | $0.44 per DPU-hour | same as extract |
+| AWS Glue job (extract) | $0.44 per DPU-hour | 2 DPU × 0.5 hr × $0.44 = **$0.44** |
+| AWS Glue job (load) | $0.44 per DPU-hour | same as extract |
 | S3 staging bucket | $0.023 per GB-month | a few MB of JSONL — **< $0.01** |
 | SSM Parameter Store (standard) | Free | $0.00 |
-| **Total** | | **< $0.03** at default DPU / **< $0.50** at 1 DPU |
+| **Total** | | **< $0.90** |
 
-30 minutes per job is a conservative upper bound — most migrations complete well under that. The default `glueMaxCapacity` is `0.0625` DPU (a Python Shell job with 1 vCPU and 1 GB RAM), which is sufficient for most migrations. Set `engine.glueMaxCapacity` to `1` in your configuration if you have a very large registry and need more memory.
+30 minutes per job is a conservative upper bound — most migrations complete well under that, and billing is per second with a one-minute minimum.
+
+Both jobs run on AWS Glue 5.0 with the default `engine.glueWorkerType` of `G.1X` and `engine.glueNumberOfWorkers` of `2`, which is the smallest configuration AWS Glue accepts for a batch job — 2 DPU. Raising either only costs more: each job is a single-threaded loop that uses one worker and never distributes work, so a wider or larger cluster does nothing for a migration.
+
+The jobs run as Spark jobs for one reason, and it is not parallelism. The GA control plane's service model first shipped in botocore 1.43.66, which requires Python 3.10 or newer, and an AWS Glue Python shell job is Python 3.9 at every Glue version. Glue 5.0's Spark runtime is Python 3.11, so it is the only AWS Glue runtime that this SDK installs on. Neither job creates a `SparkContext`.
 
 Pricing shown is for `us-east-1`. Rates may vary by region. See [AWS Glue pricing](https://aws.amazon.com/glue/pricing/) for current rates.

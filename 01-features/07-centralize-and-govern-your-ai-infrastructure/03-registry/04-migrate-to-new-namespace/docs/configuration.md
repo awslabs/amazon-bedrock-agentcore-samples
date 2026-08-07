@@ -62,7 +62,8 @@ The configuration file is resolved in the following order:
 | `engine.glueRoleArn` | — | The AWS Glue execution role to use when `createIamRoles` is `false` |
 | `engine.accessRoleName` | `AgentRegistryMigrationAccess` | Name of the generated cross-account access role |
 | `engine.externalId` | — | External ID required when assuming a cross-account role |
-| `engine.glueMaxCapacity` | `1` | AWS Glue Python shell capacity: `1` DPU, or `0.0625` for a micro worker |
+| `engine.glueWorkerType` | `G.1X` | AWS Glue worker size for both jobs: `G.1X`, `G.2X`, `G.4X` or `G.8X`. `G.1X` is the smallest a Glue 5.0 batch job accepts |
+| `engine.glueNumberOfWorkers` | `2` | Workers per job. `2` is the AWS Glue minimum, and the jobs are single-threaded, so raising it only adds cost |
 | `engine.glueTimeoutMinutes` | `180` | AWS Glue job timeout in minutes |
 | `engine.stagingRetentionDays` | `90` | Amazon S3 lifecycle expiration for staged records |
 | `engine.reportRetentionDays` | `365` | Amazon S3 lifecycle expiration for reports |
@@ -77,7 +78,7 @@ The configuration file is resolved in the following order:
 | --- | --- | --- |
 | `runtime.load.matchSourceStatus` | `true` | Moves each migrated record to the status it holds in the preview registry. When `false`, all records are left in `DRAFT` status and are not returned by data-plane search or browsing APIs |
 | `runtime.load.failOnRecordError` | `false` | Record-level failures are skipped and listed in the report instead of stopping the run. Set to `true` for an all-or-nothing load, which fails the run (nonzero exit, report status `FAILED`) as soon as any record fails |
-| `runtime.load.loadConcurrency` | `32` | Number of records loaded in parallel (1–32). Because each record is primarily waiting on network I/O, increasing concurrency reduces total run time without requiring additional compute capacity. Lower it if the GA control plane throttles the run. With `engine.glueMaxCapacity` set to `0.0625`, the maximum is `4` |
+| `runtime.load.loadConcurrency` | `32` | Number of records loaded in parallel (1–32). Because each record is primarily waiting on network I/O, increasing concurrency reduces total run time without requiring additional compute capacity. Lower it if the GA control plane throttles the run |
 | `runtime.load.recordsPerObject` | `500` | Number of records per staged S3 object |
 | `runtime.load.dumpExtractedRecords` | `true` | When `false`, the human-readable copy of extracted records is not written |
 | `runtime.load.mode` | `FULL` | Default scope for a job started outside the CLI. The `run --incremental` flag overrides this per run |
