@@ -17,11 +17,12 @@ Usage:
     python setup_lakeformation_permissions.py
 """
 
-import boto3
-import sys
-import os
 import argparse
-from typing import List, Dict, Any
+import os
+import sys
+from typing import Any
+
+import boto3
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -31,7 +32,7 @@ from utils.aws_session_utils import get_aws_session
 class LakeFormationSetup:
     def __init__(self):
         """Initialize Lake Formation setup."""
-        session, self.region, self.account_id = get_aws_session()
+        _session, self.region, self.account_id = get_aws_session()
 
         self.lakeformation = boto3.client("lakeformation", region_name=self.region)
         self.glue = boto3.client("glue", region_name=self.region)
@@ -99,7 +100,7 @@ class LakeFormationSetup:
         except Exception as e:
             print(f"⚠️  Error creating Glue database: {e}")
 
-    def create_glue_table(self, table_name: str, columns: List[Dict[str, str]]):
+    def create_glue_table(self, table_name: str, columns: list[dict[str, str]]):
         """Create Glue table pointing to S3 Tables."""
         print(f"   Creating Glue table: {table_name}...")
 
@@ -148,7 +149,7 @@ class LakeFormationSetup:
         except Exception as e:
             print(f"   ⚠️  Error granting database permissions: {e}")
 
-    def grant_table_permissions(self, role_arn: str, role_name: str, table_name: str, permissions: List[str]):
+    def grant_table_permissions(self, role_arn: str, role_name: str, table_name: str, permissions: list[str]):
         """Grant table-level permissions to a role."""
         print(f"   Granting {', '.join(permissions)} on table {table_name}...")
 
@@ -177,8 +178,8 @@ class LakeFormationSetup:
         role_arn: str,
         role_name: str,
         table_name: str,
-        columns: List[str],
-        row_filter: Dict[str, Any] = None,
+        columns: list[str],
+        row_filter: dict[str, Any] | None = None,
     ):
         """Grant column-level permissions, applying a row filter only if one is passed."""
         print(f"   Granting column permissions on {table_name}...")
@@ -218,8 +219,8 @@ class LakeFormationSetup:
         role_arn: str,
         role_name: str,
         table_name: str,
-        excluded_columns: List[str],
-        row_filter: Dict[str, Any] = None,
+        excluded_columns: list[str],
+        row_filter: dict[str, Any] | None = None,
     ):
         """Grant SELECT on all columns except the excluded ones using ColumnWildcard.
 
@@ -258,7 +259,7 @@ class LakeFormationSetup:
         except Exception as e:
             print(f"   ⚠️  Error granting wildcard column permissions: {e}")
 
-    def _apply_row_filter(self, role_arn: str, table_name: str, row_filter: Dict[str, Any]):
+    def _apply_row_filter(self, role_arn: str, table_name: str, row_filter: dict[str, Any]):
         """Apply row-level filter to a table."""
         try:
             self.lakeformation.create_data_cells_filter(

@@ -26,11 +26,12 @@ predicate. Lake Formation row-level data-cell filters are not configured in this
 import json
 import logging
 import os
-import boto3
-from typing import Dict, Any, Optional
 import urllib.parse
 import urllib.request
-from jose import jwt, JWTError
+from typing import Any
+
+import boto3
+from jose import JWTError, jwt
 
 # Import token exchange module
 from token_exchange import exchange_jwt_to_iam, get_claim_for_exchange
@@ -45,7 +46,7 @@ logger.setLevel(logging.INFO)
 # ---- Design 3: Geography-based access control ----
 # User geography mapping (simplified for demo purposes).
 # In production, this would be fetched from DynamoDB or an external API.
-USER_GEOGRAPHY: Dict[str, str] = {
+USER_GEOGRAPHY: dict[str, str] = {
     "policyholder001@example.com": "US",
     "policyholder002@example.com": "EU",
     "adjuster001@example.com": "US",
@@ -57,7 +58,7 @@ _config = None
 _jwks = None
 
 
-def get_config() -> Dict[str, str]:
+def get_config() -> dict[str, str]:
     """
     Get Cognito configuration from environment variables or SSM.
 
@@ -114,7 +115,7 @@ def get_config() -> Dict[str, str]:
     return _config
 
 
-def _fetch_https_json(url: str) -> Dict[str, Any]:
+def _fetch_https_json(url: str) -> dict[str, Any]:
     """
     Fetch a JSON document from an https URL.
 
@@ -139,7 +140,7 @@ def _fetch_https_json(url: str) -> Dict[str, Any]:
         return json.loads(response.read())
 
 
-def get_cognito_public_keys() -> Dict[str, Any]:
+def get_cognito_public_keys() -> dict[str, Any]:
     """
     Fetch Cognito public keys for JWT validation.
 
@@ -160,11 +161,11 @@ def get_cognito_public_keys() -> Dict[str, Any]:
         logger.info("Successfully fetched Cognito public keys")
         return _jwks
     except Exception as e:
-        logger.error(f"Error fetching Cognito public keys: {str(e)}")
+        logger.error(f"Error fetching Cognito public keys: {e!s}")
         raise
 
 
-def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
+def validate_and_decode_jwt(token: str) -> dict[str, Any] | None:
     """
     Validate JWT token and decode claims.
 
@@ -228,14 +229,14 @@ def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
         return claims
 
     except JWTError as e:
-        logger.error(f"JWT validation error: {str(e)}")
+        logger.error(f"JWT validation error: {e!s}")
         return None
     except Exception as e:
-        logger.error(f"Error validating JWT: {str(e)}")
+        logger.error(f"Error validating JWT: {e!s}")
         return None
 
 
-def extract_bearer_token_from_mcp(event: Dict[str, Any]) -> Optional[str]:
+def extract_bearer_token_from_mcp(event: dict[str, Any]) -> str | None:
     """
     Extract bearer token from MCP gateway request structure.
 
@@ -280,11 +281,11 @@ def extract_bearer_token_from_mcp(event: Dict[str, Any]) -> Optional[str]:
         return None
 
     except Exception as e:
-        logger.error(f"❌ Error extracting bearer token from MCP structure: {str(e)}")
+        logger.error(f"❌ Error extracting bearer token from MCP structure: {e!s}")
         return None
 
 
-def extract_user_principal(claims: Dict[str, Any]) -> Optional[str]:
+def extract_user_principal(claims: dict[str, Any]) -> str | None:
     """
     Extract user principal (identity) from JWT claims.
 
@@ -314,7 +315,7 @@ def extract_user_principal(claims: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def get_user_scopes(claims: Dict[str, Any]) -> list:
+def get_user_scopes(claims: dict[str, Any]) -> list:
     """
     Extract OAuth scopes from JWT claims for logging and context.
 
@@ -353,7 +354,7 @@ def build_error_response(message, body, status_code=403):
     }
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Main Lambda handler for AgentCore Gateway interceptor.
 
@@ -539,7 +540,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return response
 
     except Exception as e:
-        logger.error(f"❌ Error in gateway interceptor: {str(e)}")
+        logger.error(f"❌ Error in gateway interceptor: {e!s}")
         import traceback
 
         logger.error(f"Stack trace: {traceback.format_exc()}")
@@ -549,7 +550,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "body": json.dumps(
                 {
                     "error": "Internal Server Error",
-                    "message": f"Error processing request: {str(e)}",
+                    "message": f"Error processing request: {e!s}",
                 }
             ),
         }

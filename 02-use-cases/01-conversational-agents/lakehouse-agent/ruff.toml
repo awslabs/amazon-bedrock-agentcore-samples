@@ -34,23 +34,3 @@ extend-ignore = [
 # these sites are deferred to a coordinated runtime + gateway-target redeploy.
 "deployment/4a-mcp-lakehouse-server/server.py" = ["RUF013"]
 "deployment/4b-mcp-opensearch-server/server.py" = ["RUF013"]
-
-# Legacy typing style in two files this PR touches for COMMENT/DOCSTRING text only
-# (correcting a row-level-security misattribution). CI lints the changed-file set, so
-# a comment edit pulls each file's pre-existing violations into the gate. Modernizing
-# their annotations is real code churn unrelated to the correction and is deliberately
-# left to a follow-up; no line flagged below was written or altered by this PR.
-"deployment/3-s3tables-setup/setup_lakeformation_permissions.py" = [
-    "I001",   # import block ordering, pre-existing
-    "UP035",  # typing.List / typing.Dict imports, pre-existing
-    "UP006",  # List[...] / Dict[...] annotations, pre-existing
-    "RUF013", # implicit Optional on `row_filter=None`, pre-existing
-    "RUF059", # unused unpacked `session`, pre-existing
-]
-"deployment/advanced-agentcore-policy-gateway-interceptor/lambda/interceptor-request/lambda_function.py" = [
-    "I001",   # import block ordering, pre-existing
-    "UP035",  # typing.Dict import, pre-existing
-    "UP006",  # Dict[...] annotations, pre-existing
-    "UP045",  # Optional[X] rather than X | None, pre-existing
-    "RUF010", # implicit str() in f-strings, pre-existing
-]
