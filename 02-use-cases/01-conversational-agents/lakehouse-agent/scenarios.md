@@ -126,7 +126,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 **Security Controls**:
 - **Row-Level**: `WHERE user_id = '{authenticated_user}'` (application-level predicate, bound as an Athena execution parameter)
-- **Column-Level**: Lake Formation masks `adjuster_user_id` for `patient` role
+- **Column-Level**: Lake Formation masks `adjuster_user_id` for `lakehouse-policyholders-role` (the `policyholders` group)
 - **Tool Parameters**: Interceptor ensures `user_id` parameter matches authenticated user
 
 ---
@@ -197,7 +197,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 **Security Controls**:
 - **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the bound identity predicate inside those tools, not by a distinct tool)
 - **Row-Level**: `WHERE adjuster_user_id = '{authenticated_adjuster}'` (application-level predicate, bound as an Athena execution parameter)
-- **Column-Level**: Lake Formation masks `policyholder_dob` for `adjuster` role
+- **Column-Level**: Lake Formation masks `policyholder_dob` for `lakehouse-adjusters-role` (the `adjusters` group)
 
 ---
 
@@ -270,7 +270,7 @@ Session data captured by Cognito post-authentication Lambda trigger:
     │              │               │               │                │║ • Decode & validate       ║    │               │
     │              │               │               │                │║ • Extract email & grp     ║    │               │
     │              │               │               │                │║ email=admin@              ║    │               │
-    │              │               │               │                │║ groups=[admins]           ║    │               │
+    │              │               │               │                │║ groups=[administrators]   ║    │               │
     │              │               │               │                │╚═══════════════════════════╝    │               │
     │              │               │               │                │                                 │               │
     │              │               │               │   X-User-Identity: admin@                        │               │
