@@ -77,6 +77,10 @@ def run_optimization(harness_name: str, evaluator: str = "Builtin.GoalSuccessRat
 
     # Poll for completion (timeout 5 minutes)
     status = "PENDING"
+    # Initialised up front: both the failure branch and the success branch below
+    # read `rec`, so if every get_recommendation call raises, an unbound name
+    # would replace a reportable status with a NameError traceback.
+    rec = {}
     for _ in range(30):
         time.sleep(10)
         try:
@@ -94,6 +98,16 @@ def run_optimization(harness_name: str, evaluator: str = "Builtin.GoalSuccessRat
                 "systemPromptRecommendationResult", {}
             )
             error_msg = rec_result.get("errorMessage", "Unknown error")
+        # "N/N sessions could not be evaluated" does not say why. A recommendation
+        # reads the same agent spans a batch evaluation does and fails the same
+        # way, so point at the underlying cause rather than leaving the panel
+        # showing a bare count.
+        if "could not be evaluated" in error_msg or "sessions" in error_msg:
+            error_msg += (
+                " This usually means the harness spans carry no prompt/response "
+                "content for the evaluator to read — see the Evaluations panel "
+                "for the per-session reason."
+            )
         return {
             "status": status,
             "error": error_msg or f"Recommendation did not complete (status: {status})",

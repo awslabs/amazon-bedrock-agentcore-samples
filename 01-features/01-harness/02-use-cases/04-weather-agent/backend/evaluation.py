@@ -1,5 +1,6 @@
 """Evaluations — run batch evaluation against harness session traces."""
 
+import json
 import time
 import uuid
 
@@ -30,6 +31,49 @@ def _discover_log_group(harness_name: str) -> str | None:
         groups.sort(key=lambda g: g.get("creationTime", 0), reverse=True)
         return groups[0]["logGroupName"]
     return None
+
+
+def _session_failure_reasons(result: dict, limit: int = 3) -> list[str]:
+    """Read the per-session error messages the evaluation job wrote to CloudWatch.
+
+    get_batch_evaluation only reports counts ("4 sessions failed"), which is not
+    enough to act on. The real reason is written per evaluator to the output log
+    group named in the job's own outputConfig, so read it from there and surface
+    it to the caller.
+    """
+    out = result.get("outputConfig", {}).get("cloudWatchConfig", {})
+    log_group, log_stream = out.get("logGroupName"), out.get("logStreamName")
+    if not (log_group and log_stream):
+        return []
+
+    logs = boto3.client("logs", region_name=REGION)
+    reasons: list[str] = []
+    try:
+        events = logs.get_log_events(
+            logGroupName=log_group,
+            logStreamName=log_stream,
+            limit=50,
+            startFromHead=True,
+        ).get("events", [])
+    except Exception:  # noqa: BLE001 - diagnostics must never mask the real status
+        return []
+
+    for event in events:
+        try:
+            attrs = json.loads(event["message"]).get("attributes", {})
+        except (ValueError, KeyError):
+            continue
+        msg = attrs.get("error.message")
+        if not msg:
+            continue
+        # Same message repeats once per evaluator per session; only the
+        # distinct reasons are informative.
+        reason = f"{attrs.get('error.type', 'Error')}: {msg}"
+        if reason not in reasons:
+            reasons.append(reason)
+        if len(reasons) >= limit:
+            break
+    return reasons
 
 
 def run_batch_evaluation(harness_id: str, harness_name: str = None) -> dict:
@@ -83,6 +127,10 @@ def run_batch_evaluation(harness_id: str, harness_name: str = None) -> dict:
     # Poll until complete (timeout after 5 minutes)
     deadline = time.monotonic() + 300
     status = "PENDING"
+    # Initialised up front: if every get_batch_evaluation call raises, the
+    # failure branch below still reads `result`, and an unbound name there
+    # turns a reportable evaluation failure into a NameError traceback.
+    result = {}
     while time.monotonic() < deadline:
         time.sleep(10)
         try:
@@ -110,6 +158,12 @@ def run_batch_evaluation(harness_id: str, harness_name: str = None) -> dict:
         error_msg = f"Evaluation did not complete (status: {status})"
         if failure_reason:
             error_msg += f". {failure_reason}"
+        # The counts above say how many sessions failed but never why. Append the
+        # actual per-session reason so the panel shows something actionable
+        # instead of just "4 session(s) failed".
+        reasons = _session_failure_reasons(result)
+        if reasons:
+            error_msg += " — " + "; ".join(reasons)
         print(f"[eval] Failed: {error_msg}")
         print(f"[eval] Full response: {result}")
         return {

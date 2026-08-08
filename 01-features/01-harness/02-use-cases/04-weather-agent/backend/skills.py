@@ -119,10 +119,22 @@ def _install_skill_path(client, control, harness_id: str, harness_arn: str, sess
                 "optionalValue": {"containerConfiguration": {"containerUri": NODE_CONTAINER}}
             },
         )
-        for _ in range(24):
+        # 600s, matching utils/harness.py: a container UPDATE routinely runs
+        # past the old 24 x 5s = 120s ceiling, and this loop has no else-branch,
+        # so expiring simply fell through and ran the install commands against a
+        # harness that was still UPDATING. UPDATE_FAILED is checked too, so a
+        # real failure stops here instead of surfacing as a confusing shell error.
+        deadline = time.monotonic() + 600
+        while True:
             status = control.get_harness(harnessId=harness_id)["harness"]["status"]
             if status == "READY":
                 break
+            if status == "UPDATE_FAILED":
+                print(f"[skills] Container attach failed: {status}")
+                return False
+            if time.monotonic() > deadline:
+                print(f"[skills] Container attach did not finish in 600s (status: {status})")
+                return False
             time.sleep(5)
 
     # Install skill
@@ -161,8 +173,8 @@ def _generate_report_inner(harness_arn: str, harness_id: str, session_id: str, c
     agent_text = _try_git_skill(client, harness_arn, session_id, city)
 
     if agent_text is not None:
-        # Git skill ran — check if file was generated
-        print(f"[skills] Git skill completed. Agent text length: {len(agent_text)}")
+        # Git skill ran — check if file was generated. _try_git_skill already
+        # logged the completion and length, so don't log it a second time.
         b64_clean = _download_file(client, harness_arn, session_id)
         if b64_clean:
             return {

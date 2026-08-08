@@ -26,6 +26,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 import time
 import uuid
@@ -34,8 +35,13 @@ from pathlib import Path
 
 import boto3
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from utils.client import get_agentcore_client
+sys.path.insert(0, str(Path(__file__).parent / "backend"))
+
+# The single definition lives in backend/agent.py; import it rather than keeping
+# a fourth copy. This script reports it as the "current" prompt the optimizer is
+# asked to improve, so it must be exactly what the harness actually runs — a
+# private copy here had the same drift risk that already bit the other modules.
+from agent import SYSTEM_PROMPT as CURRENT_SYSTEM_PROMPT
 
 # -- CLI -----------------------------------------------------------------------
 parser = argparse.ArgumentParser(
@@ -60,20 +66,17 @@ parser.add_argument(
 args = parser.parse_args()
 
 # -- Configuration -------------------------------------------------------------
-REGION = boto3.session.Session().region_name or "us-east-1"
-STATE_FILE = Path(__file__).parent / "resource_info.json"
-
-CURRENT_SYSTEM_PROMPT = (
-    "You are a weather assistant. You ONLY answer questions about weather, "
-    "climate, and atmospheric conditions (temperature, wind, humidity, UV index, "
-    "sunrise, sunset, moon phase, forecasts, air quality, precipitation). "
-    "If the user asks about anything unrelated to weather, politely redirect them. "
-    "For example: 'I'm a weather assistant — I can help with forecasts, current conditions, "
-    "UV index, wind, sunrise/sunset, and more. What location would you like weather for?' "
-    "When answering weather questions: always search for real-time data using your tools, "
-    "include specific numbers with units (temperature in F/C, wind in km/h or mph), "
-    "mention the city name in your response, and keep responses concise and well-structured."
+# Same resolution order as utils/client.py and backend/resources.py. A bare
+# Session().region_name ignores AWS_REGION, which sent this script's clients to
+# us-east-1 while the harness it is trying to read lived elsewhere — the traces
+# then simply came back empty, with nothing saying why.
+REGION = (
+    os.environ.get("AWS_DEFAULT_REGION")
+    or os.environ.get("AWS_REGION")
+    or boto3.session.Session().region_name
+    or "us-east-1"
 )
+STATE_FILE = Path(__file__).parent / "resource_info.json"
 
 # -- Clients -------------------------------------------------------------------
 dp_client = boto3.client("bedrock-agentcore", region_name=REGION)
