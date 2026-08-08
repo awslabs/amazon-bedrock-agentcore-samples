@@ -44,9 +44,7 @@ sys.path.insert(0, str(Path(__file__).parent / "backend"))
 from agent import SYSTEM_PROMPT as CURRENT_SYSTEM_PROMPT
 
 # -- CLI -----------------------------------------------------------------------
-parser = argparse.ArgumentParser(
-    description="Generate an optimized system prompt for the Weather Agent"
-)
+parser = argparse.ArgumentParser(description="Generate an optimized system prompt for the Weather Agent")
 parser.add_argument(
     "--evaluator",
     default="Builtin.GoalSuccessRate",
@@ -118,11 +116,11 @@ def cleanup_recommendations():
                     dp_client.delete_recommendation(recommendationId=rec_id)
                     print(f"  Deleted: {name}")
                     count += 1
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - keep deleting the remaining recommendations
                     print(f"  Warning: {e}")
         if count == 0:
             print("  No weather_rec_* recommendations found")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - listing is best-effort
         print(f"  Error: {e}")
 
 
@@ -194,15 +192,13 @@ def main():
                         }
                     },
                     "evaluationConfig": {
-                        "evaluators": [
-                            {"evaluatorArn": f"arn:aws:bedrock-agentcore:::evaluator/{args.evaluator}"}
-                        ]
+                        "evaluators": [{"evaluatorArn": f"arn:aws:bedrock-agentcore:::evaluator/{args.evaluator}"}]
                     },
                 }
             },
             clientToken=str(uuid.uuid4()),
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - report the reason instead of a traceback
         print(f"\n  Error starting recommendation: {e}")
         sys.exit(1)
 
@@ -222,22 +218,22 @@ def main():
                 print(f"    [{i * 10}s] {status}")
             if status in ("COMPLETED", "FAILED"):
                 break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - retry the poll on the next iteration
             print(f"    Error polling: {e}")
 
     if status != "COMPLETED":
         print(f"\n  Recommendation did not complete (status: {status})")
         if status == "FAILED":
-            error_msg = result.get("recommendationResult", {}).get(
-                "systemPromptRecommendationResult", {}
-            ).get("errorMessage", "Unknown error")
+            error_msg = (
+                result.get("recommendationResult", {})
+                .get("systemPromptRecommendationResult", {})
+                .get("errorMessage", "Unknown error")
+            )
             print(f"  Error: {error_msg}")
         sys.exit(1)
 
     # Extract result
-    rec_result = result.get("recommendationResult", {}).get(
-        "systemPromptRecommendationResult", {}
-    )
+    rec_result = result.get("recommendationResult", {}).get("systemPromptRecommendationResult", {})
     recommended_prompt = rec_result.get("recommendedSystemPrompt", "")
     explanation = rec_result.get("explanation", "")
 
@@ -279,7 +275,7 @@ def main():
     print("  2. Update backend/agent.py SYSTEM_PROMPT with the recommendation")
     print("  3. Restart the app and compare agent behavior")
     print("  4. Run a batch evaluation to measure improvement")
-    print(f"\n  View in console: Bedrock AgentCore > Optimizations > Recommendations")
+    print("\n  View in console: Bedrock AgentCore > Optimizations > Recommendations")
     print("=" * 65)
 
 

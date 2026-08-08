@@ -3,13 +3,12 @@
 import time
 
 import boto3
-
 from resources import REGION
 
 SPANS_LOG_GROUP = "aws/spans"
 
 
-def get_recent_traces(harness_name: str = None, minutes: int = 10) -> list[dict]:
+def get_recent_traces(harness_name: str | None = None, minutes: int = 10) -> list[dict]:
     """Query aws/spans log group for recent traces from this harness.
 
     `harness_name` scopes the query to this agent. It used to be accepted and
@@ -29,10 +28,7 @@ def get_recent_traces(harness_name: str = None, minutes: int = 10) -> list[dict]
     # last_seen for that purpose.
     scope = ""
     if harness_name:
-        scope = (
-            "| filter `resource.attributes.service.name` = "
-            f"'harness_{harness_name}.DEFAULT'\n"
-        )
+        scope = f"| filter `resource.attributes.service.name` = 'harness_{harness_name}.DEFAULT'\n"
 
     query = f"""fields traceId, `status.code` as code, `attributes.http.response.status_code` as http_status
 | filter ispresent(traceId) and traceId != ''
@@ -76,16 +72,18 @@ def get_recent_traces(harness_name: str = None, minutes: int = 10) -> list[dict]
                 # Derived from the spans rather than hardcoded False: the UI
                 # renders these as the health of each trace, so a trace that
                 # errored was always reported as healthy.
-                traces.append({
-                    "trace_id": trace_id,
-                    "spans": int(spans),
-                    "has_error": int(float(fields.get("errors", "0") or 0)) > 0,
-                    "has_fault": int(float(fields.get("faults", "0") or 0)) > 0,
-                })
+                traces.append(
+                    {
+                        "trace_id": trace_id,
+                        "spans": int(spans),
+                        "has_error": int(float(fields.get("errors", "0") or 0)) > 0,
+                        "has_fault": int(float(fields.get("faults", "0") or 0)) > 0,
+                    }
+                )
 
         return traces
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - surface the failure to the caller as data
         return [{"error": str(e)}]
 
 
@@ -96,5 +94,5 @@ def get_transaction_search_status() -> dict:
         rules = xray.get_indexing_rules()
         sampling = rules["IndexingRules"][0]["Rule"]["Probabilistic"]["DesiredSamplingPercentage"]
         return {"enabled": True, "sampling_percentage": sampling}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - surface the failure to the caller as data
         return {"enabled": False, "error": str(e)}

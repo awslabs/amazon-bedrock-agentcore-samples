@@ -2,8 +2,8 @@
 
 import os
 import sys
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import boto3
 

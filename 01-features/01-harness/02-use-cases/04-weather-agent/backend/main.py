@@ -5,17 +5,16 @@ import json
 import uuid
 from contextlib import asynccontextmanager
 
+from agent import invoke_agent
+from evaluation import run_batch_evaluation
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
-
-from resources import ensure_resources
-from agent import invoke_agent
 from observability import get_recent_traces, get_transaction_search_status
-from evaluation import run_batch_evaluation
-from skills import generate_weather_report
 from optimization import run_optimization
+from pydantic import BaseModel
+from resources import ensure_resources
+from skills import generate_weather_report
+from sse_starlette.sse import EventSourceResponse
 
 # Global state
 _state: dict = {}
@@ -122,9 +121,7 @@ async def chat(req: ChatRequest):
         if full_text:
             _sessions[session_id].append({"role": "assistant", "content": full_text})
         elif failed:
-            _sessions[session_id].append(
-                {"role": "assistant", "content": "(no response — the turn failed)"}
-            )
+            _sessions[session_id].append({"role": "assistant", "content": "(no response — the turn failed)"})
 
     return EventSourceResponse(generate(), media_type="text/event-stream")
 
@@ -169,9 +166,7 @@ async def optimize():
     if not _state.get("harness_name"):
         raise HTTPException(503, "Resources not ready")
 
-    result = await asyncio.to_thread(
-        run_optimization, _state["harness_name"]
-    )
+    result = await asyncio.to_thread(run_optimization, _state["harness_name"])
     return result
 
 
@@ -185,4 +180,5 @@ async def sessions():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -5,9 +5,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import boto3
-
-from resources import REGION
 from agent import SYSTEM_PROMPT
+from resources import REGION
 
 
 def _discover_log_group_arn(harness_name: str) -> tuple[str, str] | None:
@@ -62,15 +61,13 @@ def run_optimization(harness_name: str, evaluator: str = "Builtin.GoalSuccessRat
                         }
                     },
                     "evaluationConfig": {
-                        "evaluators": [
-                            {"evaluatorArn": f"arn:aws:bedrock-agentcore:::evaluator/{evaluator}"}
-                        ]
+                        "evaluators": [{"evaluatorArn": f"arn:aws:bedrock-agentcore:::evaluator/{evaluator}"}]
                     },
                 }
             },
             clientToken=str(uuid.uuid4()),
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - surface the failure to the caller as data
         return {"error": str(e), "status": "FAILED"}
 
     rec_id = resp["recommendationId"]
@@ -81,6 +78,10 @@ def run_optimization(harness_name: str, evaluator: str = "Builtin.GoalSuccessRat
     # read `rec`, so if every get_recommendation call raises, an unbound name
     # would replace a reportable status with a NameError traceback.
     rec = {}
+    # Retry transient polling errors, but do not swallow them: if every call
+    # failed, that is the real reason the recommendation never completed, and it
+    # used to be indistinguishable from a plain timeout.
+    poll_error = ""
     for _ in range(30):
         time.sleep(10)
         try:
@@ -88,15 +89,16 @@ def run_optimization(harness_name: str, evaluator: str = "Builtin.GoalSuccessRat
             status = rec.get("status", "UNKNOWN")
             if status in ("COMPLETED", "FAILED"):
                 break
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 - retry; reported below if it persists
+            poll_error = f"{type(e).__name__}: {e}"
+            print(f"[optimize] Poll error (will retry): {poll_error}")
 
     if status != "COMPLETED":
         error_msg = ""
+        if poll_error and status == "PENDING":
+            error_msg = f"polling never succeeded — last error: {poll_error}"
         if status == "FAILED":
-            rec_result = rec.get("recommendationResult", {}).get(
-                "systemPromptRecommendationResult", {}
-            )
+            rec_result = rec.get("recommendationResult", {}).get("systemPromptRecommendationResult", {})
             error_msg = rec_result.get("errorMessage", "Unknown error")
         # "N/N sessions could not be evaluated" does not say why. A recommendation
         # reads the same agent spans a batch evaluation does and fails the same
@@ -115,9 +117,7 @@ def run_optimization(harness_name: str, evaluator: str = "Builtin.GoalSuccessRat
         }
 
     # Extract result
-    rec_result = rec.get("recommendationResult", {}).get(
-        "systemPromptRecommendationResult", {}
-    )
+    rec_result = rec.get("recommendationResult", {}).get("systemPromptRecommendationResult", {})
 
     return {
         "status": "COMPLETED",

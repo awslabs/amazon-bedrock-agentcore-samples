@@ -10,10 +10,9 @@ from pathlib import Path
 import boto3
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from utils.iam import create_harness_role, delete_harness_role
-from utils.client import get_agentcore_control_client
-
 from agent import SYSTEM_PROMPT
+from utils.client import get_agentcore_control_client
+from utils.iam import create_harness_role, delete_harness_role
 
 STATE_FILE = Path(__file__).parent.parent / "resource_info.json"
 # Honour both region variables, in the same order utils/client.py uses. Reading
@@ -85,10 +84,8 @@ def _resources_alive(state: dict) -> bool:
             return False
         gw = boto3.client("bedrock-agentcore-control", region_name=REGION)
         g = gw.get_gateway(gatewayIdentifier=state["gateway_id"])
-        if g["status"] != "READY":
-            return False
-        return True
-    except Exception:
+        return g["status"] == "READY"
+    except Exception:  # noqa: BLE001 - any failure here means 'not reusable'
         return False
 
 
@@ -137,9 +134,7 @@ def ensure_resources() -> dict:
 
     # Gateway
     gateway_name = f"WeatherGW-{uuid.uuid4().hex[:8]}"
-    resp = gw_control.create_gateway(
-        name=gateway_name, roleArn=role_arn, protocolType="MCP", authorizerType="NONE"
-    )
+    resp = gw_control.create_gateway(name=gateway_name, roleArn=role_arn, protocolType="MCP", authorizerType="NONE")
     gateway_id = resp["gatewayId"]
     gateway_arn = resp["gatewayArn"]
     state.update(gateway_id=gateway_id, gateway_arn=gateway_arn, gateway_name=gateway_name)
@@ -214,9 +209,7 @@ def ensure_resources() -> dict:
         # screening failure as "pass the text through" — so the first few
         # responses would have gone out unscreened.
         _poll(
-            lambda: bedrock.get_guardrail(
-                guardrailIdentifier=guardrail_id, guardrailVersion=guardrail_version
-            ),
+            lambda: bedrock.get_guardrail(guardrailIdentifier=guardrail_id, guardrailVersion=guardrail_version),
             lambda r: r["status"],
         )
     except Exception as e:  # noqa: BLE001 - guardrail is optional; the run continues without it
@@ -253,9 +246,7 @@ def destroy_resources():
             elif kind == "gateway":
                 if orphan.get("target_id"):
                     try:
-                        gw_control.delete_gateway_target(
-                            gatewayIdentifier=oid, targetId=orphan["target_id"]
-                        )
+                        gw_control.delete_gateway_target(gatewayIdentifier=oid, targetId=orphan["target_id"])
                         time.sleep(10)
                     except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
                         print(f"  Warning (orphan target {orphan['target_id']}): {e}")
@@ -265,38 +256,36 @@ def destroy_resources():
             else:
                 continue
             print(f"  Deleted orphaned {kind}: {oid}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
             print(f"  Warning (orphan {kind} {oid}): {e}")
 
     if state.get("harness_id"):
         try:
             control.delete_harness(harnessId=state["harness_id"])
             print(f"  Deleted harness: {state['harness_id']}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
             print(f"  Warning: {e}")
 
     if state.get("gateway_id") and state.get("target_id"):
         try:
-            gw_control.delete_gateway_target(
-                gatewayIdentifier=state["gateway_id"], targetId=state["target_id"]
-            )
+            gw_control.delete_gateway_target(gatewayIdentifier=state["gateway_id"], targetId=state["target_id"])
             print(f"  Deleted target: {state['target_id']}")
             time.sleep(10)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
             print(f"  Warning: {e}")
 
     if state.get("gateway_id"):
         try:
             gw_control.delete_gateway(gatewayIdentifier=state["gateway_id"])
             print(f"  Deleted gateway: {state['gateway_id']}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
             print(f"  Warning: {e}")
 
     if state.get("guardrail_id"):
         try:
             bedrock.delete_guardrail(guardrailIdentifier=state["guardrail_id"])
             print(f"  Deleted guardrail: {state['guardrail_id']}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
             print(f"  Warning: {e}")
 
     # Delete batch evaluations created by this app. Both of these list calls
@@ -315,7 +304,7 @@ def destroy_resources():
                     print(f"  Deleted batch evaluation: {ev_name}")
                 except Exception as e:  # noqa: BLE001 - cleanup must continue
                     print(f"  Warning (batch eval {ev_name}): {e}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
         print(f"  Warning (batch evals): {e}")
 
     # Delete recommendations created by this app
@@ -329,7 +318,7 @@ def destroy_resources():
                     print(f"  Deleted recommendation: {rec_name}")
                 except Exception as e:  # noqa: BLE001 - cleanup must continue
                     print(f"  Warning (recommendation {rec_name}): {e}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
         print(f"  Warning (recommendations): {e}")
 
     delete_harness_role()

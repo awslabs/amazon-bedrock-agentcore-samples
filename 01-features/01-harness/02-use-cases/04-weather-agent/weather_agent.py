@@ -47,13 +47,11 @@ import boto3
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from utils.client import get_agentcore_client, get_agentcore_control_client
 from utils.iam import create_harness_role, delete_harness_role
-from utils.client import get_agentcore_control_client, get_agentcore_client
 
 # -- CLI -----------------------------------------------------------------------
-parser = argparse.ArgumentParser(
-    description="Weather Agent — Harness + Evals + Gateway + Observability"
-)
+parser = argparse.ArgumentParser(description="Weather Agent — Harness + Evals + Gateway + Observability")
 parser.add_argument("--skip-evals", action="store_true", help="Skip evaluation step")
 parser.add_argument("--skip-guardrail", action="store_true", help="Skip guardrail creation")
 parser.add_argument("--skip-cleanup", action="store_true", help="Keep resources after demo")
@@ -190,12 +188,12 @@ def stream_response(harness_arn, session_id, message, tools=None, guardrail=None
     When `guardrail` is (id, version), the accumulated response is passed through
     ApplyGuardrail and the redacted version is printed and returned.
     """
-    kwargs = dict(
-        harnessArn=harness_arn,
-        runtimeSessionId=session_id,
-        messages=[{"role": "user", "content": [{"text": message}]}],
-        model={"bedrockModelConfig": {"modelId": MODEL_ID}},
-    )
+    kwargs = {
+        "harnessArn": harness_arn,
+        "runtimeSessionId": session_id,
+        "messages": [{"role": "user", "content": [{"text": message}]}],
+        "model": {"bedrockModelConfig": {"modelId": MODEL_ID}},
+    }
     if tools:
         kwargs["tools"] = tools
 
@@ -275,15 +273,13 @@ def cleanup_only():
     for g in _all_pages(gw_control, "list_gateways", "items"):
         name = g.get("name", "")
         gid = g.get("gatewayId", "")
-        if not (name.startswith("WeatherGateway-") or name.startswith("WeatherGW-")):
+        if not name.startswith(("WeatherGateway-", "WeatherGW-")):
             continue
         try:
             targets = gw_control.list_gateway_targets(gatewayIdentifier=gid).get("items", [])
             for t in targets:
                 try:
-                    gw_control.delete_gateway_target(
-                        gatewayIdentifier=gid, targetId=t["targetId"]
-                    )
+                    gw_control.delete_gateway_target(gatewayIdentifier=gid, targetId=t["targetId"])
                     print(f"  Deleted target: {t['targetId']}")
                     time.sleep(10)
                 except Exception as e:  # noqa: BLE001 - keep deleting the rest
@@ -380,9 +376,7 @@ try:
     print(f"  Target ID: {target_id}")
 
     poll_status(
-        lambda: gw_control.get_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        ),
+        lambda: gw_control.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id),
         lambda r: r["status"],
     )
     print("  Gateway ready with Exa MCP target")
@@ -447,9 +441,7 @@ try:
         # warning — so the demo printed an unscreened response and called it
         # screened.
         poll_status(
-            lambda: bedrock.get_guardrail(
-                guardrailIdentifier=guardrail_id, guardrailVersion=guardrail_version
-            ),
+            lambda: bedrock.get_guardrail(guardrailIdentifier=guardrail_id, guardrailVersion=guardrail_version),
             lambda r: r["status"],
         )
         print(f"  Guardrail ID: {guardrail_id} (version {guardrail_version})")
@@ -491,8 +483,7 @@ try:
     turn2_response = stream_response(
         harness_arn,
         session_id,
-        "What about the wind conditions in Paris right now? "
-        "Give me wind speed, direction, and gust information.",
+        "What about the wind conditions in Paris right now? Give me wind speed, direction, and gust information.",
         tools=tools,
     )
 
@@ -539,10 +530,12 @@ try:
         rules = xray.get_indexing_rules()
         sampling = rules["IndexingRules"][0]["Rule"]["Probabilistic"]["DesiredSamplingPercentage"]
         print(f"  Transaction Search sampling: {sampling}%")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - observability is optional to the demo
         print(f"  Transaction Search check: {e}")
         print("  Enable Transaction Search for full trace visibility:")
-        print("  https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search-getting-started.html")
+        print(
+            "  https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search-getting-started.html"
+        )
 
     # Query recent traces for our harness
     print(f"\n  Querying traces for harness: {harness_id[:20]}...")
@@ -570,14 +563,12 @@ try:
         # Longest first: the agent turns are the interesting traces, and they are
         # far slower than the sub-100ms housekeeping traces that would otherwise
         # fill the list.
-        for i, trace in enumerate(
-            sorted(summaries, key=lambda t: t.get("Duration", 0), reverse=True)[:3], 1
-        ):
+        for i, trace in enumerate(sorted(summaries, key=lambda t: t.get("Duration", 0), reverse=True)[:3], 1):
             duration = trace.get("Duration", 0)
             has_error = trace.get("HasError", False)
             status_icon = "x" if has_error else "ok"
             print(f"    Trace {i}: duration={duration:.2f}s status={status_icon}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - observability is optional to the demo
         print(f"  Trace query: {e}")
         print("  (Traces may take 1-2 minutes to appear after invocation)")
 
@@ -611,7 +602,9 @@ try:
             log_group = groups[0]["logGroupName"]
             log_group_basename = log_group.split("/")[-1]
             parts = log_group_basename.rsplit("-", 2)
-            service_name = f"{parts[0]}.DEFAULT" if len(parts) >= 3 else log_group_basename.replace("-DEFAULT", ".DEFAULT")
+            service_name = (
+                f"{parts[0]}.DEFAULT" if len(parts) >= 3 else log_group_basename.replace("-DEFAULT", ".DEFAULT")
+            )
 
             print(f"  Log group: {log_group}")
             print(f"  Service:   {service_name}")
@@ -682,7 +675,7 @@ try:
                     for reason in eval_failure_reasons(result):
                         print(f"  Reason: {reason}")
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - the demo continues to cleanup
                 print(f"  Evaluation error: {e}")
 
     # ==========================================================================
@@ -717,31 +710,29 @@ finally:
             try:
                 control.delete_harness(harnessId=harness_id)
                 print(f"  Deleted harness: {harness_id}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
                 print(f"  Warning (harness): {e}")
 
         if gateway_id and target_id:
             try:
-                gw_control.delete_gateway_target(
-                    gatewayIdentifier=gateway_id, targetId=target_id
-                )
+                gw_control.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                 print(f"  Deleted target: {target_id}")
                 time.sleep(10)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
                 print(f"  Warning (target): {e}")
 
         if gateway_id:
             try:
                 gw_control.delete_gateway(gatewayIdentifier=gateway_id)
                 print(f"  Deleted gateway: {gateway_id}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
                 print(f"  Warning (gateway): {e}")
 
         if guardrail_id:
             try:
                 bedrock.delete_guardrail(guardrailIdentifier=guardrail_id)
                 print(f"  Deleted guardrail: {guardrail_id}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
                 print(f"  Warning (guardrail): {e}")
 
         # Delete batch evaluations created by this run. Paged, because
@@ -757,7 +748,7 @@ finally:
                         print(f"  Deleted batch evaluation: {ev_name}")
                     except Exception as e:  # noqa: BLE001 - cleanup must continue
                         print(f"  Warning (batch eval {ev_name}): {e}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
             print(f"  Warning (batch evals): {e}")
 
         delete_harness_role()
