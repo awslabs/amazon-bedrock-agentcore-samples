@@ -19,7 +19,7 @@
 #
 # You'll learn to:
 # - Create AgentCore Memory with UserPreference and Semantic strategies
-# - Implement **`@before_agent` and `@after_agent` middlewares** for automatic memory storage and retrieval (once per agent call, more efficient!)
+# - Implement `@before_agent` and `@after_agent` middlewares for automatic memory storage and retrieval
 # - Build a nutrition assistant that remembers user preferences across sessions
 # - Use semantic search to retrieve relevant user context
 #
@@ -141,13 +141,8 @@ print(f"✅ LLM initialized: {MODEL_ID}")
 #
 # We'll create middlewares to automatically handle memory storage and retrieval:
 #
-# - **`@before_agent`**: Retrieves relevant user preferences (based on semantic search) and adds context **once per agent call** (more efficient than per-model call)
-# - **`@after_agent`**: Saves the conversation messages for long-term memory extraction **once per agent call**
-#
-# > 💡 **Why `@before_agent`/`@after_agent` instead of `@before_model`/`@after_model`?**
-# > Agent-level middlewares run once per agent invocation, while model-level middlewares run every time the
-# > LLM is called (which can happen multiple times in a single agent call when using tools). For memory
-# > retrieval and saving, once per agent call is sufficient and more efficient.
+# - **`@before_agent`**: Retrieves relevant user preferences (based on semantic search) and adds context once per agent call
+# - **`@after_agent`**: Saves the conversation messages for long-term memory extraction once per agent call
 #
 # ### How Memory Processing Works
 #

@@ -60,8 +60,7 @@ Namespaces:
 
 ## Middleware pattern
 
-This example uses LangGraph's agent middlewares with `create_agent`, replacing the deprecated
-`create_react_agent` + `pre_model_hook`/`post_model_hook` arguments:
+This example uses LangGraph's agent middlewares with `create_agent`:
 
 ```python
 from langchain.agents import create_agent
@@ -86,9 +85,8 @@ graph = create_agent(
 )
 ```
 
-Agent-level middlewares run **once per agent invocation**, whereas model-level hooks run on every LLM
-call (which can happen several times in one agent turn when tools are involved). For memory retrieval
-and saving, once per agent call is both sufficient and more efficient.
+Agent-level middlewares run once per agent invocation, so memory is retrieved and saved a single time
+per turn regardless of how many times the model is called.
 
 ## Prerequisites
 
