@@ -3,6 +3,11 @@ langchain==1.0.8
 langchain-aws==1.0.0
 langchain-core==1.2.6
 langgraph==1.0.3
+# langgraph-prebuilt 1.0.9+ imports `ExecutionInfo` from `langgraph.runtime`,
+# which is only available in langgraph>=1.1. Without this pin, `pip install`
+# resolves prebuilt 1.0.10 against langgraph 1.0.3 and `from langchain.agents
+# import create_agent` fails with an ImportError.
+langgraph-prebuilt==1.0.8
 langgraph-checkpoint-aws==1.0.2
 bedrock-agentcore==1.1.2
 bedrock-agentcore-starter-toolkit==0.2.5

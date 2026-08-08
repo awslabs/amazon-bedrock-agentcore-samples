@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# # LangGraph with AgentCore Memory Hooks (Long-term Memory)
+# # LangGraph with AgentCore Memory Middlewares (Long-term Memory)
 #
 # ## Introduction
 #
@@ -12,14 +12,14 @@
 # |:--------------------|:---------------------------------------------------------------------------------|
 # | Tutorial type       | Long-term Conversational                                                        |
 # | Agent usecase       | Nutrition Assistant                                                              |
-# | Agentic Framework   | LangGraph                                                                        |
+# | Agentic Framework   | LangGraph (with Middlewares)                                                    |
 # | LLM model           | Anthropic Claude Haiku 4.5                                                     |
-# | Tutorial components | AgentCore Long-term Memory, Custom Memory Strategies, Pre/Post Model Hooks     |
+# | Tutorial components | AgentCore Long-term Memory, Custom Memory Strategies, `@before_agent`/`@after_agent` Middlewares |
 # | Example complexity  | Intermediate                                                                     |
 #
 # You'll learn to:
 # - Create AgentCore Memory with UserPreference custom-override strategy
-# - Implement pre/post model hooks for automatic memory storage and retrieval
+# - Implement `@before_agent` and `@after_agent` middlewares for automatic memory storage and retrieval
 # - Build a nutrition assistant that remembers user preferences across sessions
 # - Use semantic search to retrieve relevant user context
 # - Configure custom memory extraction and consolidation prompts
@@ -50,15 +50,18 @@
 import os
 import logging
 import json as json_module
+from typing import Any
+
 import boto3
 from botocore.exceptions import ClientError
 
 # Import LangGraph and LangChain components
 from langchain.chat_models import init_chat_model
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
+from langchain.agents.middleware import before_agent, after_agent, AgentState
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.store.base import BaseStore
+from langgraph.runtime import Runtime, get_config
 import uuid
 
 
@@ -198,12 +201,20 @@ store = AgentCoreMemoryStore(memory_id=memory_id, region_name=region)
 llm = init_chat_model(MODEL_ID, model_provider="bedrock_converse", region_name=region)
 
 
-# ## Step 4: Implement Memory Hooks
+# ## Step 4: Implement Memory Middlewares
 #
-# We'll create pre and post model hooks to automatically handle memory storage and retrieval:
+# We'll create middlewares to automatically handle memory storage and retrieval:
 #
-# - **Pre-model hook**: Retrieves relevant user preferences (based on semantic search) and adds context before LLM invocation
-# - **Post-model hook**: Saves the conversation messages for long-term memory extraction
+# - **`@before_agent`**: Retrieves relevant user preferences (based on semantic search) and adds context before the agent runs
+# - **`@after_agent`**: Saves the conversation messages for long-term memory extraction
+#
+# > **Why `@before_agent`/`@after_agent` instead of `@before_model`/`@after_model`?**
+# > Agent-level middlewares run once per agent invocation, while model-level middlewares run every time the
+# > LLM is called (which can happen multiple times in a single agent call when using tools). For memory
+# > retrieval and saving, once per agent call is sufficient and more efficient.
+#
+# The `Runtime` object gives middlewares access to the store passed to `create_agent`, and `get_config()`
+# exposes the `configurable` values (`actor_id`, `thread_id`) supplied at invocation time.
 #
 # ### How Memory Processing Works
 #
@@ -215,22 +226,32 @@ llm = init_chat_model(MODEL_ID, model_provider="bedrock_converse", region_name=r
 # **Note**: LangChain message types are converted under the hood by the store to AgentCore Memory message types so that they can be properly extracted to long term memories.
 
 
-def pre_model_hook(state, config: RunnableConfig, *, store: BaseStore):
-    """Hook that runs pre-LLM invocation to save the latest human message"""
+@before_agent
+def retrieve_from_memory(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    """Middleware that runs before the agent to save the latest human message and retrieve preferences."""
+    config = get_config()
     actor_id = config["configurable"]["actor_id"]
     thread_id = config["configurable"]["thread_id"]
+    store = runtime.store
+
     # Saving the message to the actor and session combination that we get at runtime
     namespace = (actor_id, thread_id)
 
     messages = state.get("messages", [])
-    # Save the last human message we see before LLM invocation
+    # Save the last human message we see before the agent runs
+    last_human_msg = None
     for msg in reversed(messages):
         if isinstance(msg, HumanMessage):
+            last_human_msg = msg
             store.put(namespace, str(uuid.uuid4()), {"message": msg})
             break
+
+    if last_human_msg is None:
+        return None
+
     # Retrieve user preferences based on the last message and append to state
     user_preferences_namespace = (actor_id, "preferences/")
-    preferences = store.search(user_preferences_namespace, query=msg.content, limit=5)
+    preferences = store.search(user_preferences_namespace, query=last_human_msg.content, limit=5)
 
     # Construct another AI message to add context before the current message
     if preferences:
@@ -239,13 +260,16 @@ def pre_model_hook(state, config: RunnableConfig, *, store: BaseStore):
         # Insert the context message before the last human message
         return {"messages": messages[:-1] + [context_message, messages[-1]]}
 
-    return {"llm_input_messages": messages}
+    return None
 
 
-def post_model_hook(state, config: RunnableConfig, *, store: BaseStore):
-    """Hook that runs post-LLM invocation to save the latest human message"""
+@after_agent
+def save_to_memory(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    """Middleware that runs after the agent to save the model's response."""
+    config = get_config()
     actor_id = config["configurable"]["actor_id"]
     thread_id = config["configurable"]["thread_id"]
+    store = runtime.store
 
     # Saving the message to the actor and session combination that we get at runtime
     namespace = (actor_id, thread_id)
@@ -257,23 +281,25 @@ def post_model_hook(state, config: RunnableConfig, *, store: BaseStore):
             store.put(namespace, str(uuid.uuid4()), {"message": msg})
             break
 
-    return {"messages": messages}
+    return None
 
 
 # ## Step 5: Create the LangGraph Agent
 #
-# Now we'll create our nutrition assistant agent using LangGraph's `create_react_agent` with our memory hooks integrated. The tool node will contain just our long term memory retrieval tool and the pre and post model hooks are specified as arguments.
+# Now we'll create our nutrition assistant agent using LangGraph's `create_agent` with our memory middlewares integrated. The tool node will contain just our long term memory retrieval tool and the middlewares are passed via the `middleware` argument.
 #
-# **Note**: for custom agent implementations the Store and tools can be configured to run as needed for any workflow following this pattern. Pre/post model hooks can be used, the whole conversation could be saved at the end, etc.
+# **Note**: for custom agent implementations the Store and tools can be configured to run as needed for any workflow following this pattern. Middlewares can be composed and extended, the whole conversation could be saved at the end, etc.
 
 
-graph = create_react_agent(
+graph = create_agent(
     llm,
     store=store,
     tools=[],  # No additional tools needed for this example
     checkpointer=InMemorySaver(),  # For conversation state management
-    pre_model_hook=pre_model_hook,  # Retrieves user preferences before LLM call
-    post_model_hook=post_model_hook,  # Saves conversation after LLM response
+    middleware=[
+        retrieve_from_memory,  # Retrieves user preferences before the agent runs
+        save_to_memory,  # Saves conversation after the agent responds
+    ],
 )
 
 
@@ -282,7 +308,7 @@ graph = create_react_agent(
 # We need to configure the agent with unique identifiers for the user and session. These IDs are crucial for memory organization and retrieval.
 #
 # ### Graph Invoke Input
-# We only need to pass the newest user message in as an argument `inputs`. This could include other state variables as well but for the simple `create_react_agent`, we only need messages.
+# We only need to pass the newest user message in as an argument `inputs`. This could include other state variables as well but for the simple `create_agent`, we only need messages.
 #
 # ### LangGraph RuntimeConfig
 # In LangGraph, config is a `RuntimeConfig` that contains attributes that are necessary at invocation time, for example user IDs or session IDs. For the `AgentCoreMemorySaver`, `thread_id` and `actor_id` must be set in the config. For instance, your AgentCore invocation endpoint could assign this based on the identity or user ID of the caller. You can read additional [documentation here](https://langchain-ai.github.io/langgraphjs/how-tos/configuration/)
@@ -333,7 +359,7 @@ run_agent(prompt, config)
 # ### What was stored?
 # As you can see, the model does not yet have any insight into our preferences or dietary restrictions.
 #
-# For this implementation with pre/post model hooks, two messages were stored here. The first message from the user and the response from the AI model were both stored as conversational events in AgentCore Memory. It may take a few moments for the long term memories to be extracted, so retry after a few seconds if nothing is found the first try.
+# For this implementation with `@before_agent`/`@after_agent` middlewares, two messages were stored here. The first message from the user and the response from the AI model were both stored as conversational events in AgentCore Memory. It may take a few moments for the long term memories to be extracted, so retry after a few seconds if nothing is found the first try.
 #
 # These messages were then extracted to AgentCore long term memory in our fact and user preferences namespaces. In fact, we can check the store ourselves to verify what has been stored there so far:
 
@@ -365,6 +391,6 @@ run_agent("Today's a new day, what should I make for dinner tonight?", config)
 
 # ### Wrapping up
 #
-# As you can see, the agent received both pre-model hook context from the user preferences namespace search and was able to search on its own for long term memories in the fact namespace to create a comprehensive answer for the user.
+# As you can see, the agent received both `@before_agent` middleware context from the user preferences namespace search and was able to search on its own for long term memories in the fact namespace to create a comprehensive answer for the user.
 #
-# The AgentCoreMemoryStore is very flexible and can be implemented in a variety of ways, including pre/post model hooks or just tools themselves with store operations. Used alongside the AgentCoreMemorySaver for checkpointing, both full conversational state and long term insights can be combined to form a complex and intelligent agent system.
+# The AgentCoreMemoryStore is very flexible and can be implemented in a variety of ways, including agent middlewares or just tools themselves with store operations. Used alongside the AgentCoreMemorySaver for checkpointing, both full conversational state and long term insights can be combined to form a complex and intelligent agent system.

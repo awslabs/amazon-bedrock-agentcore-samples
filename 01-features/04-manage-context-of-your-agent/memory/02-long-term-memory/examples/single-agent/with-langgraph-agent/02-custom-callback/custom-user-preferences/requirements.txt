@@ -1,6 +1,11 @@
 boto3
-langchain_aws
-bedrock_agentcore
-langgraph 
-langgraph-checkpoint-aws 
+langchain>=1.0.8
 langchain-aws
+langchain-core>=1.2.6
+langgraph>=1.0.3
+# langgraph-prebuilt 1.0.9+ imports `ExecutionInfo` from `langgraph.runtime`,
+# which is only available in langgraph>=1.1. Pinning it keeps this example
+# importable on the langgraph 1.0.x line.
+langgraph-prebuilt==1.0.8
+langgraph-checkpoint-aws
+bedrock-agentcore
