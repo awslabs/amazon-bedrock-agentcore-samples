@@ -1,27 +1,27 @@
-FROM public.ecr.aws/docker/library/python:3.12-slim AS builder
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.12-trixie AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install uv for fast dependency resolution
 RUN pip install --no-cache-dir uv
 
 # Copy dependency files first for layer caching
-COPY pyproject.toml requirements.txt ./
+COPY pyproject.toml uv.lock ./
 
-# Install dependencies
-RUN uv pip install --system --no-cache -r requirements.txt
+# Install dependencies only (frozen lockfile, no dev deps, skip installing the project itself)
+RUN uv sync --frozen --no-dev --no-install-project
 
 # --- Runtime stage ---
-FROM public.ecr.aws/docker/library/python:3.12-slim
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.12-slim-trixie
 
 WORKDIR /app
 
 # Create non-root user for runtime (CKV_DOCKER_3)
 RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy installed venv from builder
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code
 COPY . /app
@@ -40,5 +40,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/ping', timeout=3)" || exit 1
 
-# Run the agent
-CMD ["python", "main.py"]
+# Run the agent with OTEL auto-instrumentation
+CMD ["opentelemetry-instrument", "python", "main.py"]

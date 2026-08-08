@@ -25,11 +25,13 @@ Test your agents during development and deployment using the on-demand evaluatio
 Run synchronous, on-demand evaluations using built-in and custom metrics on individual traces.
 
 The system uses OpenTelemetry (OTEL) traces to perform scoring and returns a response that includes:
+
 - Score value
 - Explanation for the score
 - Token usage
 
 **When to use on-demand evaluations:**
+
 - Investigating specific customer interactions or reported issues
 - Validating fixes for identified problems
 - Analyzing historical data for quality improvements
@@ -43,11 +45,13 @@ The system uses OpenTelemetry (OTEL) traces to perform scoring and returns a res
 In production, you need continuous performance monitoring across all interactions without manually evaluating each trace. A statistical sample is often sufficient for generating meaningful performance metrics.
 
 AgentCore evaluations' online capabilities enable automatic sampling and evaluation:
+
 - Define your sample size and trace selection criteria
 - Choose your evaluation metrics (built-in or custom)
 - AgentCore evaluations handles the rest, generating the performance data you need to monitor your agent at scale
 
 **When to use online evaluations:**
+
 - Monitoring production agent performance continuously
 - Catching quality regressions before they impact users
 - Identifying patterns in user interactions at scale
@@ -67,6 +71,7 @@ Both evaluation types rely on **AgentCore observability** to capture agent behav
 AgentCore relies on **AWS Distro for OpenTelemetry (ADOT)** to instrument different types of OTEL traces across various agent frameworks:
 
 **For AgentCore runtime-hosted agents:**
+
 - Instrumentation is automatic with minimal configuration
 - Simply include `aws-opentelemetry-distro` in your `requirements.txt`
 - AgentCore runtime handles OTEL configuration automatically
@@ -74,21 +79,21 @@ AgentCore relies on **AWS Distro for OpenTelemetry (ADOT)** to instrument differ
 
 ## Built-in Evaluators
 
-| Evaluator | Level | Needs Ground Truth | Description |
-|:----------|:------|:-------------------|:------------|
-| `Builtin.Correctness` | TRACE | `expected_response` | Evaluates whether the information in the agent's response is factually accurate |
-| `Builtin.Faithfulness` | TRACE | None | Evaluates whether information in the response is supported by provided context/sources |
-| `Builtin.Helpfulness` | TRACE | None | Evaluates from user's perspective how useful and valuable the agent's response is |
-| `Builtin.ResponseRelevance` | TRACE | None | Evaluates whether the response appropriately addresses the user's query |
-| `Builtin.Conciseness` | TRACE | None | Evaluates whether the response is appropriately brief without missing key information |
-| `Builtin.Coherence` | TRACE | None | Evaluates whether the response is logically structured and coherent |
-| `Builtin.InstructionFollowing` | TRACE | None | Measures how well the agent follows the provided system instructions |
-| `Builtin.Refusal` | TRACE | None | Detects when agent evades questions or directly refuses to answer |
-| `Builtin.GoalSuccessRate` | SESSION | `assertions` | Evaluates whether the conversation successfully meets the user's goals |
-| `Builtin.ToolSelectionAccuracy` | SESSION | None | Evaluates whether the agent selected the appropriate tool for the task |
-| `Builtin.ToolParameterAccuracy` | SESSION | None | Evaluates how accurately the agent extracts parameters from user queries |
-| `Builtin.Harmfulness` | TRACE | None | Evaluates whether the response contains harmful content |
-| `Builtin.Stereotyping` | TRACE | None | Detects content that makes generalizations about individuals or groups |
+| Evaluator                       | Level   | Needs Ground Truth  | Description                                                                            |
+| :------------------------------ | :------ | :------------------ | :------------------------------------------------------------------------------------- |
+| `Builtin.Correctness`           | TRACE   | `expected_response` | Evaluates whether the information in the agent's response is factually accurate        |
+| `Builtin.Faithfulness`          | TRACE   | None                | Evaluates whether information in the response is supported by provided context/sources |
+| `Builtin.Helpfulness`           | TRACE   | None                | Evaluates from user's perspective how useful and valuable the agent's response is      |
+| `Builtin.ResponseRelevance`     | TRACE   | None                | Evaluates whether the response appropriately addresses the user's query                |
+| `Builtin.Conciseness`           | TRACE   | None                | Evaluates whether the response is appropriately brief without missing key information  |
+| `Builtin.Coherence`             | TRACE   | None                | Evaluates whether the response is logically structured and coherent                    |
+| `Builtin.InstructionFollowing`  | TRACE   | None                | Measures how well the agent follows the provided system instructions                   |
+| `Builtin.Refusal`               | TRACE   | None                | Detects when agent evades questions or directly refuses to answer                      |
+| `Builtin.GoalSuccessRate`       | SESSION | `assertions`        | Evaluates whether the conversation successfully meets the user's goals                 |
+| `Builtin.ToolSelectionAccuracy` | SESSION | None                | Evaluates whether the agent selected the appropriate tool for the task                 |
+| `Builtin.ToolParameterAccuracy` | SESSION | None                | Evaluates how accurately the agent extracts parameters from user queries               |
+| `Builtin.Harmfulness`           | TRACE   | None                | Evaluates whether the response contains harmful content                                |
+| `Builtin.Stereotyping`          | TRACE   | None                | Detects content that makes generalizations about individuals or groups                 |
 
 **TRACE** evaluators produce one score per conversational turn.
 **SESSION** evaluators produce one score per complete conversation.
@@ -99,21 +104,22 @@ AgentCore relies on **AWS Distro for OpenTelemetry (ADOT)** to instrument differ
 
 Three evaluation interfaces are available depending on your use case:
 
-| Interface | Best For | How it runs |
-|:----------|:---------|:------------|
-| `EvaluationClient` | Ad-hoc debugging, CI spot-checks on known sessions | Client-side, synchronous per session |
-| `OnDemandEvaluationDatasetRunner` | Regression testing, CI/CD pipelines with a dataset | Client-side, runs agent + evaluates per scenario |
-| `BatchEvaluationRunner` | Baseline snapshots, large-scale evaluation, pre/post comparison | Service-side, aggregate scores per evaluator |
+| Interface                         | Best For                                                        | How it runs                                      |
+| :-------------------------------- | :-------------------------------------------------------------- | :----------------------------------------------- |
+| `EvaluationClient`                | Ad-hoc debugging, CI spot-checks on known sessions              | Client-side, synchronous per session             |
+| `OnDemandEvaluationDatasetRunner` | Regression testing, CI/CD pipelines with a dataset              | Client-side, runs agent + evaluates per scenario |
+| `BatchEvaluationRunner`           | Baseline snapshots, large-scale evaluation, pre/post comparison | Service-side, aggregate scores per evaluator     |
 
 ## evaluation Samples
 
-| Sample | What it demonstrates |
-|:-------|:--------------------|
-| [`ground-truth-based-evaluation/`](ground-truth-based-evaluation/) | EvaluationClient + DatasetRunner + BatchRunner with expected responses, expected tool trajectories, and session assertions |
-| [`llm-as-a-judge-evaluation/`](llm-as-a-judge-evaluation/) | Custom LLM-as-a-judge evaluators (TRACE + SESSION) with ground-truth placeholders alongside built-in evaluators |
-| [`custom-code-based-evaluation/`](custom-code-based-evaluation/) | Lambda-backed deterministic evaluators (code-based) for exact data validation, mixed with built-in LLM evaluators; on-demand and online modes |
+| Sample                                                             | What it demonstrates                                                                                                                                                |
+| :----------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`ground-truth-based-evaluation/`](ground-truth-based-evaluation/) | EvaluationClient + DatasetRunner + BatchRunner with expected responses, expected tool trajectories, and session assertions                                          |
+| [`llm-as-a-judge-evaluation/`](llm-as-a-judge-evaluation/)         | Custom LLM-as-a-judge evaluators (TRACE + SESSION) with ground-truth placeholders alongside built-in evaluators                                                     |
+| [`custom-code-based-evaluation/`](custom-code-based-evaluation/)   | Lambda-backed deterministic evaluators (code-based) for exact data validation, mixed with built-in LLM evaluators; on-demand and online modes                       |
+| [`supported-frameworks/`](supported-frameworks/)                   | The same HR Assistant re-implemented in other supported frameworks (OpenAI Agents SDK, LlamaIndex), each deployed and evaluated with built-in and custom evaluators |
 
-All samples share the same HR Assistant agent deployed from `utils/`.
+The `ground-truth-based-evaluation/`, `llm-as-a-judge-evaluation/`, and `custom-code-based-evaluation/` samples share the same HR Assistant agent deployed from `utils/`. The `supported-frameworks/` samples re-implement that agent in each framework and deploy it from their own folders.
 
 ## Agent Architecture
 

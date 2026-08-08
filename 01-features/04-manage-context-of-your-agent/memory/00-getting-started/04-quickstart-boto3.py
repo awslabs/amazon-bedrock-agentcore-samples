@@ -58,6 +58,9 @@ except _iam.exceptions.NoSuchEntityException:
             }
         ),
     )
+    # IAM is eventually consistent: CreateMemory below fails with "Please provide a role
+    # with a valid trust policy" if it runs before the new role has propagated.
+    time.sleep(10)
 SESSION_ID = f"sess-{int(time.time())}"
 
 control = boto3.client("bedrock-agentcore-control", region_name=REGION)

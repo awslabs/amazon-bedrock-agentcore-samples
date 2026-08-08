@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 S3-Backed LLM Wiki (a persistent, compounding markdown wiki)
 
@@ -59,8 +58,8 @@ Usage:
 """
 
 import argparse
+import base64
 import json
-import os
 import re
 import sys
 import time
@@ -68,24 +67,19 @@ import uuid
 from pathlib import Path
 
 import boto3
-import botocore.exceptions
+from botocore.exceptions import BotoCoreError, ClientError
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from utils.iam import create_harness_role, ROLE_NAME
 from utils.client import get_agentcore_client, get_agentcore_control_client
-
-REGION = os.getenv("AWS_DEFAULT_REGION")
-
+from utils.harness import poll_harness_status
+from utils.iam import ROLE_NAME, create_harness_role, delete_harness_role
 
 # ── Constants ───────────────────────────────────────────────────────────────
 DEFAULT_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_MOUNT_PATH = "/mnt/wiki"
 S3_FILES_POLICY_NAME = "HarnessS3FilesAccess"
 MOUNT_PATH_PATTERN = re.compile(r"^/mnt/[a-zA-Z0-9._-]+/?$")
-
-HARNESS_POLL_INTERVAL = 5
-HARNESS_POLL_TIMEOUT = 180
 
 # Two tiny "raw sources" the agent ingests. In a real wiki these are papers,
 # tickets, docs — here they're short so the demo runs fast.
@@ -112,22 +106,50 @@ parser = argparse.ArgumentParser(
     description="Build a persistent, S3-backed LLM wiki with the harness.",
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
-parser.add_argument("--access-point-arn", required=True, metavar="ARN",
-                    help="S3 Files access point ARN to mount (arn:aws:s3files:...:access-point/fsap-...)")
-parser.add_argument("--subnet-ids", required=True, nargs="+", metavar="SUBNET",
-                    help="VPC subnet(s) that can reach the access point's mount target (NFS/2049)")
-parser.add_argument("--security-group-ids", required=True, nargs="+", metavar="SG",
-                    help="Security group(s) allowing NFS (2049) to the mount target")
-parser.add_argument("--mount-path", default=DEFAULT_MOUNT_PATH, metavar="PATH",
-                    help=f"Where to mount the wiki inside the VM (default: {DEFAULT_MOUNT_PATH})")
-parser.add_argument("--op", choices=["all", "ingest", "query", "lint"], default="all",
-                    help="Which operation to run (default: all — bootstrap, ingest, query, lint)")
-parser.add_argument("--message", "-m", default="How does the LLM wiki pattern differ from RAG?",
-                    help="Question for the query operation")
-parser.add_argument("--model", default=DEFAULT_MODEL, metavar="MODEL_ID",
-                    help=f"Bedrock model ID (default: {DEFAULT_MODEL})")
-parser.add_argument("--role-arn", default=None, metavar="ARN",
-                    help="Use an existing IAM execution role (must already allow the access point)")
+parser.add_argument(
+    "--access-point-arn",
+    required=True,
+    metavar="ARN",
+    help="S3 Files access point ARN to mount (arn:aws:s3files:...:access-point/fsap-...)",
+)
+parser.add_argument(
+    "--subnet-ids",
+    required=True,
+    nargs="+",
+    metavar="SUBNET",
+    help="VPC subnet(s) that can reach the access point's mount target (NFS/2049)",
+)
+parser.add_argument(
+    "--security-group-ids",
+    required=True,
+    nargs="+",
+    metavar="SG",
+    help="Security group(s) allowing NFS (2049) to the mount target",
+)
+parser.add_argument(
+    "--mount-path",
+    default=DEFAULT_MOUNT_PATH,
+    metavar="PATH",
+    help=f"Where to mount the wiki inside the VM (default: {DEFAULT_MOUNT_PATH})",
+)
+parser.add_argument(
+    "--op",
+    choices=["all", "ingest", "query", "lint"],
+    default="all",
+    help="Which operation to run (default: all — bootstrap, ingest, query, lint)",
+)
+parser.add_argument(
+    "--message", "-m", default="How does the LLM wiki pattern differ from RAG?", help="Question for the query operation"
+)
+parser.add_argument(
+    "--model", default=DEFAULT_MODEL, metavar="MODEL_ID", help=f"Bedrock model ID (default: {DEFAULT_MODEL})"
+)
+parser.add_argument(
+    "--role-arn",
+    default=None,
+    metavar="ARN",
+    help="Use an existing IAM execution role (must already allow the access point)",
+)
 parser.add_argument("--skip-cleanup", action="store_true", help="Keep the harness after the demo")
 parser.add_argument("--raw-events", action="store_true", help="Print raw JSON streaming events")
 
@@ -136,9 +158,12 @@ parser.add_argument("--raw-events", action="store_true", help="Print raw JSON st
 def attach_s3_files_policy(role_name, access_point_arn):
     """Allow the execution role to validate and mount the S3 Files access point.
 
-    * `s3files:GetAccessPoint` on `*` — the runtime validates this at harness
-      create time. Keep it unscoped; a scoped/conditioned form is rejected at
-      create with "Ensure the role has s3files:GetAccessPoint".
+    * `s3files:GetAccessPoint` **and `s3files:ListMountTargets`** on `*` — the
+      runtime validates both while creating the harness, so both must be
+      unscoped. `ListMountTargets` is easy to miss: it takes a file-system ID
+      rather than an access point, and without it CreateHarness accepts the
+      request and then lands in CREATE_FAILED with "Execution role is missing
+      required permissions. Ensure the role has s3files:ListMountTargets".
     * `s3files:ClientMount`/`ClientWrite` — used when the microVM mounts the
       access point; scoped to the file system with an AccessPointArn condition.
     """
@@ -150,7 +175,7 @@ def attach_s3_files_policy(role_name, access_point_arn):
             {
                 "Sid": "S3FilesValidate",
                 "Effect": "Allow",
-                "Action": ["s3files:GetAccessPoint"],
+                "Action": ["s3files:GetAccessPoint", "s3files:ListMountTargets"],
                 "Resource": "*",
             },
             {
@@ -162,26 +187,8 @@ def attach_s3_files_policy(role_name, access_point_arn):
             },
         ],
     }
-    iam.put_role_policy(RoleName=role_name, PolicyName=S3_FILES_POLICY_NAME,
-                        PolicyDocument=json.dumps(policy))
+    iam.put_role_policy(RoleName=role_name, PolicyName=S3_FILES_POLICY_NAME, PolicyDocument=json.dumps(policy))
     print(f"  Attached S3 Files access policy: {S3_FILES_POLICY_NAME}")
-
-
-def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
-    """Poll until a Harness reaches the target status or times out."""
-    deadline = time.monotonic() + timeout
-    while True:
-        resp = control.get_harness(harnessId=harness_id)
-        status = resp["harness"]["status"]
-        print(f"  Harness status: {status}")
-        if status == target_status:
-            return resp
-        if status in ("FAILED", "DELETE_FAILED"):
-            reason = resp["harness"].get("failureReason", "")
-            raise RuntimeError(f"Harness entered {status}. {reason}")
-        if time.monotonic() > deadline:
-            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
-        time.sleep(HARNESS_POLL_INTERVAL)
 
 
 def stream_turn(client, harness_arn, message, model_id, mount, raw=False):
@@ -207,6 +214,11 @@ def stream_turn(client, harness_arn, message, model_id, mount, raw=False):
         for event in response["stream"]:
             if raw:
                 print(json.dumps(event, default=str))
+                # Accumulate in raw mode too, so the guard below can tell a
+                # stream that produced content from one that produced none.
+                delta = event.get("contentBlockDelta", {}).get("delta", {})
+                if "text" in delta:
+                    full_text += delta["text"]
                 continue
             if "contentBlockStart" in event:
                 start = event["contentBlockStart"].get("start", {})
@@ -221,7 +233,15 @@ def stream_turn(client, harness_arn, message, model_id, mount, raw=False):
                 print()
             elif "internalServerException" in event:
                 print(f"\n  Error: {event['internalServerException']}")
-    except botocore.exceptions.EventStreamError:
+    # A mid-stream failure is raised out of the iterator, not delivered as an
+    # event: a modeled service error (EventStreamError/ClientError — throttling,
+    # access denied) or a transport error (read timeout, connection reset — a
+    # BotoCoreError). Wiki turns are long-running filesystem work, so the quiet
+    # stretches that trigger a read timeout are routine here. Catching only
+    # EventStreamError let those abort the run and lose the answer already in
+    # hand, with a traceback that named nothing useful.
+    except (BotoCoreError, ClientError) as e:
+        print(f"\n  Stream error: {e}")
         if not full_text:
             raise
     return full_text
@@ -232,23 +252,52 @@ def seed_sources(client, harness_arn, mount):
     session_id = str(uuid.uuid4()).upper()
 
     def run(cmd):
+        """Run one shell command on the VM, raising if it did not succeed.
+
+        The command stream reports the outcome two ways that both have to be
+        read: `contentStop.exitCode` for a command that ran and failed, and a
+        modeled error event (accessDenied/validation/...) for one that never
+        ran at all. Printing only `stderr` and returning caught neither, so a
+        mount that was not writable — the failure this sample is most likely to
+        hit — still ended with "Seeded 2 source(s)" and the wiki steps then
+        worked on an empty directory.
+        """
         resp = client.invoke_agent_runtime_command(
             agentRuntimeArn=harness_arn, runtimeSessionId=session_id, body={"command": cmd}
         )
+        exit_code = None
+        stderr = ""
         for event in resp["stream"]:
             if "chunk" in event and "contentDelta" in event["chunk"]:
                 d = event["chunk"]["contentDelta"]
                 if "stderr" in d:
+                    stderr += d["stderr"]
                     print(d["stderr"], end="")
+            elif "chunk" in event and "contentStop" in event["chunk"]:
+                exit_code = event["chunk"]["contentStop"].get("exitCode")
+            else:
+                # Any other member of this event stream is one of the modeled
+                # exceptions; none of them carry an exitCode.
+                for name, payload in event.items():
+                    if name != "chunk":
+                        raise RuntimeError(f"Command failed ({name}): {payload.get('message', payload)}")
+        if exit_code:
+            raise RuntimeError(f"Command exited {exit_code}: {cmd}\n{stderr.strip()}")
+        if exit_code is None:
+            # No contentStop at all: the stream ended without ever reporting an
+            # outcome, so there is nothing that says the write landed. Treating
+            # that as success is the same false pass as ignoring a nonzero exit.
+            raise RuntimeError(f"Command returned no exit status: {cmd}\n{stderr.strip()}")
 
     run(f"mkdir -p {mount}/sources {mount}/pages")
     for name, body in SOURCES.items():
         # base64 to avoid any shell-quoting issues with the markdown body
-        import base64
         b64 = base64.b64encode(body.encode()).decode()
         run(f"echo {b64} | base64 -d > {mount}/sources/{name}")
     # Bootstrap schema/index/log only if not present (idempotent for re-runs)
-    run(f"test -f {mount}/AGENTS.md || printf '# Wiki Schema\\n\\nsources/ raw inputs. pages/ LLM pages. index.md catalog. log.md history.\\n' > {mount}/AGENTS.md")
+    run(
+        f"test -f {mount}/AGENTS.md || printf '# Wiki Schema\\n\\nsources/ raw inputs. pages/ LLM pages. index.md catalog. log.md history.\\n' > {mount}/AGENTS.md"
+    )
     run(f"test -f {mount}/index.md || printf '# Index\\n' > {mount}/index.md")
     run(f"test -f {mount}/log.md || printf '# Log\\n' > {mount}/log.md")
     print(f"  Seeded {len(SOURCES)} source(s) and bootstrapped schema under {mount}")
@@ -266,6 +315,7 @@ def main(args=None):
     client = get_agentcore_client()
     mount = args.mount_path.rstrip("/")
     harness_id = None
+    created_role = False
 
     try:
         # ── Step 0: IAM role (with S3 access) ─────────────────────────
@@ -278,6 +328,7 @@ def main(args=None):
             print("  (ensure it can access the S3 Files access point)")
         else:
             role_arn = create_harness_role()
+            created_role = True
             attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
             print("  Waiting for IAM propagation...")
             time.sleep(10)
@@ -324,12 +375,15 @@ def main(args=None):
             print("Step 3: INGEST — integrate sources into the wiki")
             print("=" * 60 + "\n")
             stream_turn(
-                client, harness_arn,
+                client,
+                harness_arn,
                 f"Ingest every file in {mount}/sources that isn't represented yet. For each, create or "
                 f"update concise pages under {mount}/pages (concept/entity pages), cross-link with "
                 f"[[links]], update {mount}/index.md, and append a line to {mount}/log.md. "
                 "Summarize what you ingested and which pages you touched.",
-                args.model, mount, raw=args.raw_events,
+                args.model,
+                mount,
+                raw=args.raw_events,
             )
             time.sleep(5)
 
@@ -340,11 +394,14 @@ def main(args=None):
             print("=" * 60)
             print(f"  Question: {args.message}\n")
             stream_turn(
-                client, harness_arn,
-                f"Using only the wiki under {mount}/pages, answer: \"{args.message}\". Cite the wiki "
+                client,
+                harness_arn,
+                f'Using only the wiki under {mount}/pages, answer: "{args.message}". Cite the wiki '
                 f"pages you used. Then file your answer as a new page under {mount}/pages and link it "
                 f"from {mount}/index.md so the exploration compounds.",
-                args.model, mount, raw=args.raw_events,
+                args.model,
+                mount,
+                raw=args.raw_events,
             )
             time.sleep(5)
 
@@ -354,11 +411,14 @@ def main(args=None):
             print("Step 5: LINT — check the wiki for issues (fresh session)")
             print("=" * 60 + "\n")
             stream_turn(
-                client, harness_arn,
+                client,
+                harness_arn,
                 f"Lint the wiki under {mount}: list any contradictions, stale claims, "
                 f"orphan pages (not linked from {mount}/index.md), or broken [[links]]. Report findings; "
                 "fix trivial issues directly.",
-                args.model, mount, raw=args.raw_events,
+                args.model,
+                mount,
+                raw=args.raw_events,
             )
 
         print("\n" + "=" * 60)
@@ -366,13 +426,21 @@ def main(args=None):
         print("=" * 60)
 
     finally:
-        if not args.skip_cleanup and harness_id:
+        if not args.skip_cleanup:
             print("\nCleaning up...")
-            try:
-                control.delete_harness(harnessId=harness_id)
-                print(f"  Deleted harness: {harness_id}")
-            except Exception as e:
-                print(f"  Warning: failed to delete harness: {e}")
+            if harness_id:
+                try:
+                    control.delete_harness(harnessId=harness_id)
+                    print(f"  Deleted harness: {harness_id}")
+                except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
+                    print(f"  Warning: failed to delete harness: {e}")
+            # The role and its two inline policies were left behind on every run,
+            # including successful ones — and the role name is shared by every
+            # sample in this folder, so the leftovers broke the next sample too.
+            # Only delete the role when this run created it; a --role-arn passed
+            # in by the caller belongs to them.
+            if created_role:
+                delete_harness_role()
             print("  Note: the S3 bucket, access point, AND the wiki it holds are left intact.")
 
 

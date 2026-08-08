@@ -8,10 +8,16 @@ AgentCore resources are declared in `agentcore/agentcore.json`; supplementary AW
 |-----------|------------|---------|-------|
 | `SENDER_EMAIL` | `export SENDER_EMAIL=...` before deploy | `noreply@example.com` | SES verified sender for notifications. `infra-construct.ts` reads `process.env.SENDER_EMAIL` at synth. Must be SES-verified or emails are logged as drafts, not sent. |
 | Region | `./deploy.sh <region>` | `us-west-2` | Sets `AWS_REGION`/`CDK_DEFAULT_REGION`. |
-| Model | `AGENT_MODEL_ID` runtime env | `global.anthropic.claude-sonnet-4-6` | Read by `app/claimsagent/config.py`. |
+| Model | `AGENT_MODEL_ID` runtime env | `global.anthropic.claude-sonnet-4-6` | Primary model for Claims Processor (Phase 1) and Executor (Phase 3). |
+| Fast model | `FAST_MODEL_ID` runtime env | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Fast/cheap model for the Validation Agent (Phase 2). Classification task — no tool use needed. |
+| Auto-approve threshold | `AUTO_APPROVE_THRESHOLD` runtime env | `80` | Confidence score (0-100) at or above which claims are auto-approved. |
+| Memory top_k | `MEMORY_RETRIEVAL_TOP_K` runtime env | `5` | Number of prior facts/sessions retrieved per invocation. |
+| Memory relevance | `MEMORY_RETRIEVAL_RELEVANCE` runtime env | `0.5` | Minimum relevance score (0.0-1.0) for memory results. |
 
 ```bash
-export SENDER_EMAIL=claims@yourcompany.com
+# Example: customize for stricter review
+export AUTO_APPROVE_THRESHOLD=90
+export SENDER_EMAIL=claims@example.com
 agentcore deploy --target dev --yes
 ```
 
@@ -24,35 +30,42 @@ Injected into the Container runtime by CDK. All are set automatically on deploy.
 | Variable | Source | Example Value |
 |----------|--------|---------------|
 | `AGENTCORE_GATEWAY_URL` | CDK `gateway.gateway_url` | `https://xxx.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp` |
-| `AGENTCORE_GATEWAY_TOKEN_ENDPOINT` | CDK Cognito domain | `https://claims-agent-{account}.auth.us-west-2.amazoncognito.com/oauth2/token` |
-| `AGENTCORE_GATEWAY_OAUTH_SCOPES` | Hardcoded in CDK | `agentcore/invoke` |
-| `AGENTCORE_GATEWAY_CLIENT_ID` | CDK `app_client.user_pool_client_id` | (Cognito client ID) |
-| `AGENTCORE_GATEWAY_CLIENT_SECRET` | CDK `app_client.user_pool_client_secret.unsafe_unwrap()` | (Cognito client secret) |
+| `AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER` | CDK hardcoded | `cognito-gateway-m2m` |
+| `AGENTCORE_GATEWAY_OAUTH_SCOPES` | CDK hardcoded | `agentcore/invoke` |
+| `AGENT_MODEL_ID` | `agentcore.json` envVars | `global.anthropic.claude-sonnet-4-6` |
+| `FAST_MODEL_ID` | `agentcore.json` envVars | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `AUTO_APPROVE_THRESHOLD` | `agentcore.json` envVars | `80` |
+| `AGENT_OBSERVABILITY_ENABLED` | `agentcore.json` envVars | `true` |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `agentcore.json` envVars | `true` |
+
+**Note:** The Runtime does not receive `GATEWAY_CLIENT_ID`, `GATEWAY_CLIENT_SECRET`, or `GATEWAY_TOKEN_ENDPOINT` as env vars. Those secrets live in the AgentCore Identity token vault and are accessed via the `@requires_access_token` decorator using the `AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER` name.
 
 For local development, copy `.env.example` to `.env` and fill in values from your deployed stack:
 ```bash
 cp .env.example .env
-# Then fill in values from: aws cloudformation describe-stacks --stack-name AgentCore-ClaimsAgent-dev
+# Fill in AGENTCORE_GATEWAY_URL and COGNITO_* values from CloudFormation outputs
 ```
 
 ---
 
 ## Lambda Environment Variables
 
+> **Table naming convention:** DynamoDB tables follow the pattern `ClaimsAgent-{target}-{Purpose}` where `{target}` is the deployment target name (e.g., `dev`). If you deploy with `--target staging`, tables will be named `ClaimsAgent-staging-Policies`, etc.
+
 ### ClaimsAgent-PolicyLookup
 | Variable | Value |
 |----------|-------|
-| `POLICIES_TABLE` | `ClaimsAgent-Policies` |
+| `POLICIES_TABLE` | `ClaimsAgent-dev-Policies` |
 
 ### ClaimsAgent-CreateClaim
 | Variable | Value |
 |----------|-------|
-| `CLAIMS_TABLE` | `ClaimsAgent-Claims` |
+| `CLAIMS_TABLE` | `ClaimsAgent-dev-Claims` |
 
 ### ClaimsAgent-HumanReview
 | Variable | Value |
 |----------|-------|
-| `REVIEWS_TABLE` | `ClaimsAgent-Reviews` |
+| `REVIEWS_TABLE` | `ClaimsAgent-dev-Reviews` |
 | `REVIEW_SNS_TOPIC_ARN` | SNS topic ARN (from CDK) |
 
 ### ClaimsAgent-Notification
@@ -63,22 +76,18 @@ cp .env.example .env
 ### ClaimsAgent-ListPending
 | Variable | Value |
 |----------|-------|
-| `CLAIMS_TABLE` | `ClaimsAgent-Claims` |
+| `CLAIMS_TABLE` | `ClaimsAgent-dev-Claims` |
 
 ### ClaimsAgent-ResolveClaim
 | Variable | Value |
 |----------|-------|
-| `CLAIMS_TABLE` | `ClaimsAgent-Claims` |
-| `REVIEWS_TABLE` | `ClaimsAgent-Reviews` |
+| `CLAIMS_TABLE` | `ClaimsAgent-dev-Claims` |
+| `REVIEWS_TABLE` | `ClaimsAgent-dev-Reviews` |
 
 ### ClaimsAgent-Trigger
-| Variable | Value |
-|----------|-------|
-| `AGENTCORE_RUNTIME_ARN` | Runtime ARN (from CDK) |
-| `COGNITO_USER_POOL_ID` | User pool ID (from CDK) |
-| `COGNITO_CLIENT_ID` | App client ID (from CDK) |
-| `COGNITO_CLIENT_SECRET` | App client secret (from CDK) |
-| `COGNITO_TOKEN_ENDPOINT` | Cognito OAuth2 token URL |
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `AGENTCORE_RUNTIME_ARN` | Runtime ARN (from CDK) | Used to construct the SigV4-signed HTTPS invocation URL |
 
 ---
 
@@ -163,12 +172,21 @@ The gateway references the policy engine via `policyEngineConfiguration.mode` (s
 
 ## Cognito Configuration
 
-### User Pool: `ClaimsAgent-UserPool`
+Cognito is used **exclusively for Runtime → MCP Gateway authentication**. The Runtime uses the `@requires_access_token` decorator to obtain tokens from the AgentCore Identity vault (no secrets in env vars).
+
+Cognito is managed **outside CDK** — created by `scripts/setup_cognito.sh` (runs during `deploy.sh` if needed) and destroyed by `scripts/teardown_cognito.sh` (runs during `scripts/destroy.sh` if script-created).
+
+A `.cognito-state.json` file tracks whether the script created the User Pool, so teardown only deletes what the script created (preserves manually-created pools).
+
+Callers of the Runtime (Trigger Lambda, test scripts) use **AWS_IAM (SigV4)** authentication instead — they do NOT need Cognito tokens.
+
+### User Pool: Script-Managed
 
 | Setting | Value |
 |---------|-------|
-| Name | `ClaimsAgent-UserPool` |
-| Removal policy | `DESTROY` (deleted on `cdk destroy`) |
+| Name | `ClaimsAgent-UserPool` (or custom name from script) |
+| Created by | `scripts/setup_cognito.sh` (AWS CLI) |
+| Destroyed by | `scripts/teardown_cognito.sh` (if script-created) |
 | Domain prefix | `claims-agent-{account}` |
 
 ### Resource Server
@@ -178,13 +196,13 @@ The gateway references the policy engine via `policyEngineConfiguration.mode` (s
 | Identifier | `agentcore` |
 | Scopes | `agentcore/invoke` |
 
-### App Client: `ClaimsAgent-M2M`
+### App Client: M2M
 
 | Setting | Value |
 |---------|-------|
-| Name | `ClaimsAgent-M2M` |
+| Name | Auto-generated by script |
 | Flow | `client_credentials` (machine-to-machine) |
-| Secret | Auto-generated |
+| Secret | Auto-generated, registered with AgentCore Identity |
 | Allowed scopes | `agentcore/invoke` |
 
 ### Token Endpoint
@@ -193,30 +211,21 @@ The gateway references the policy engine via `policyEngineConfiguration.mode` (s
 https://claims-agent-{account}.auth.{region}.amazoncognito.com/oauth2/token
 ```
 
-### Obtaining a Token (for testing)
+### AgentCore Identity Registration
 
-```python
-import base64, json, urllib.parse, urllib.request
+During `deploy.sh`, the Cognito client secret is registered with AgentCore Identity:
 
-creds = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
-data = urllib.parse.urlencode({
-    "grant_type": "client_credentials",
-    "scope": "agentcore/invoke",
-}).encode()
-
-req = urllib.request.Request(
-    token_endpoint,
-    data=data,
-    headers={
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": f"Basic {creds}",
-    },
-)
-with urllib.request.urlopen(req) as resp:
-    token = json.loads(resp.read())["access_token"]
+```bash
+agentcore add credential \
+  --name cognito-gateway-m2m \
+  --type oauth \
+  --discovery-url "$COGNITO_DISCOVERY_URL" \
+  --client-id "$AGENTCORE_GATEWAY_CLIENT_ID" \
+  --client-secret "$AGENTCORE_GATEWAY_CLIENT_SECRET" \
+  --scopes "agentcore/invoke"
 ```
 
-See `scripts/get_token.py` for a ready-to-use script.
+The Runtime references this credential provider by name (`AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER=cognito-gateway-m2m`) — no secrets in CloudFormation or env vars.
 
 ---
 
@@ -256,6 +265,50 @@ arn:aws:ses:{region}:{account}:identity/*
 ```
 
 This scopes permissions to identities in the deploying account, not `*`.
+
+---
+
+## Observability Configuration
+
+### Automated Setup
+
+Full observability is enabled automatically by `deploy.sh` via `scripts/enable_observability.py`:
+
+1. **CloudWatch Transaction Search** — enabled for the account/region
+2. **TRACES delivery** — creates CloudWatch Log deliveries for Gateway and Memory traces
+3. **LOGS delivery** — creates CloudWatch Log deliveries for Gateway and Memory application logs
+
+These are automatically cleaned up by `scripts/destroy.sh` via `scripts/disable_observability.py`.
+
+### Runtime OTEL Configuration
+
+The Runtime's `agentcore.json` includes environment variables:
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `AGENT_OBSERVABILITY_ENABLED` | `true` | Enables AgentCore observability features |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `true` | Captures LLM request/response content in traces |
+| `AGENT_MODEL_ID` | `global.anthropic.claude-sonnet-4-6` | Model identifier |
+| `AUTO_APPROVE_THRESHOLD` | `80` | Confidence threshold for auto-approval |
+| `AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER` | `cognito-gateway-m2m` | Identity credential provider name |
+| `AGENTCORE_GATEWAY_OAUTH_SCOPES` | `agentcore/invoke` | OAuth scopes for Gateway auth |
+
+The following OTEL variables are **auto-configured** by the Runtime when `instrumentation.enableOtel: true` is set — you do not need to set them manually:
+- `_AWS_XRAY_DAEMON_ADDRESS`
+- `_AWS_XRAY_TRACING_ENABLED`
+- `OTEL_METRICS_EXPORTER`
+- `OTEL_TRACES_EXPORTER`
+- `OTEL_EXPORTER_OTLP_PROTOCOL`
+- `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`
+- `OTEL_AWS_APPLICATION_SIGNALS_ENABLED`
+- `OTEL_PROPAGATORS`
+
+### Viewing Observability Data
+
+- **CloudWatch Logs:** `/aws/bedrock-agentcore/claims-agent` (1-week retention)
+- **X-Ray Traces:** CloudWatch ServiceLens → Service Map
+- **Transaction Search:** CloudWatch console → Transaction Search
+- **Gateway/Memory Deliveries:** CloudWatch console → Logs → Deliveries
 
 ---
 
@@ -301,7 +354,7 @@ Preferred: set the `AGENT_MODEL_ID` environment variable on the Runtime (in `age
 agentcore deploy --target dev --yes
 ```
 
-`app/claimsagent/model/load.py` reads `AGENT_MODEL_ID` (via `config.py`), so no code change is needed.
+`app/claimsagent/main.py` reads `AGENT_MODEL_ID` (via `config.py`), so no code change is needed.
 
 ---
 
@@ -325,6 +378,8 @@ Memory is declared in `agentcore/agentcore.json` under `memories`:
 | Expiration | 90 days | Adjust `eventExpiryDuration` |
 | SEMANTIC | enabled | Fact/concept retrieval across sessions |
 | SUMMARIZATION | enabled | Session compression for repeat claimants |
+| Retrieval top_k | 5 (facts), 3 (sessions) | Configurable via `MEMORY_RETRIEVAL_TOP_K` env var |
+| Relevance threshold | 0.5 | Configurable via `MEMORY_RETRIEVAL_RELEVANCE` env var |
 
 ### Disabling Memory
 
