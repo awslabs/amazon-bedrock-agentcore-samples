@@ -607,8 +607,8 @@ Deployment, verification, and cleanup steps are in
 
 - **Cognito User Pool**: OAuth authentication with test users and groups
 - **IAM Tenant Roles**: Per-group roles with Athena/S3/Lake Formation permissions
-- **S3 Tables**: `claims` and `users` tables in Apache Iceberg format; Lake Formation governs column-level masking + tenant-role table grants (per-user row scope is the bound identity SQL predicate, `WHERE user_id = ?`; LF row-cell filters are not configured)
-- **Lake Formation Integration**: Federated catalog (`s3tablescatalog`) with column-level masking and tenant-role table grants (LF row-level data-cell filters not configured — documented tutorial limitation)
+- **S3 Tables**: `claims` and `users` tables in Apache Iceberg format; Lake Formation governs column-level filtering + tenant-role table grants (per-user row scope is the bound identity SQL predicate, `WHERE user_id = ?`; LF row-cell filters are not configured)
+- **Lake Formation Integration**: Federated catalog (`s3tablescatalog`) with column-level filtering and tenant-role table grants (LF row-level data-cell filters not configured — documented tutorial limitation)
 - **S3 Bucket**: Athena query results storage
 - **MCP Server**: Athena tool execution layer on AgentCore Runtime (5 tools: `query_claims`, `get_claim_details`, `get_claims_summary`, `query_login_audit`, `text_to_sql`)
 - **Gateway**: Request routing with JWT validation and request/response interceptors
@@ -727,7 +727,7 @@ Test queries:
 
 ### User-Specific Data Access Demo
 
-The lakehouse agent enforces per-user row scope via a bound identity SQL predicate (`WHERE user_id = ?`, supplied by the AgentCore Lambda interceptor after a group→role STS exchange), while Lake Formation governs column-level masking + tenant-role table grants — together ensuring users only see data they're authorized to access. (LF row-level data-cell filters are not configured; row scope is the bound predicate.)
+The lakehouse agent enforces per-user row scope via a bound identity SQL predicate (`WHERE user_id = ?`, supplied by the AgentCore Lambda interceptor after a group→role STS exchange), while Lake Formation governs column-level filtering + tenant-role table grants — together ensuring users only see data they're authorized to access. (LF row-level data-cell filters are not configured; row scope is the bound predicate.)
 
 #### Scenario 1: Policyholder Sees Own PII (Date of Birth)
 ![Policyholder PII Access](screenshots/policyholder-access-to-PII.png)
@@ -735,7 +735,7 @@ The lakehouse agent enforces per-user row scope via a bound identity SQL predica
 A policyholder can see their own date of birth and personal information when querying their claims.
 
 #### Scenario 2: Policyholder Cannot See Adjuster Details
-![Policyholder Adjuster Masked](screenshots/policyholder-adjusterdetail-masked.png)
+![Policyholder Adjuster-Detail Filtered Out](screenshots/policyholder-adjusterdetail-masked.png)
 
 The same policyholder cannot see the `adjuster_user_id` column — Lake Formation column-level security excludes it from the result set.
 
@@ -745,7 +745,7 @@ The same policyholder cannot see the `adjuster_user_id` column — Lake Formatio
 When policyholder002 tries to access policyholder001's claim, the query returns no results — row-level filtering ensures users only see their own data.
 
 #### Scenario 4: Adjuster Cannot See Policyholder Date of Birth
-![Adjuster DOB Masked](screenshots/adjuster-dob-masked.png)
+![Adjuster DOB Filtered Out](screenshots/adjuster-dob-masked.png)
 
 Adjusters can see all operational columns including `adjuster_user_id`, but `policyholder_dob` is excluded by Lake Formation column-level security to protect PII.
 
@@ -968,7 +968,7 @@ lakehouse-agent/
 │   ├── 3-s3tables-setup/
 │   │   ├── integrate_s3tables_lakeformation.py  # Lake Formation integration
 │   │   ├── setup_s3tables.py               #   S3 Tables bucket + tables
-│   │   ├── setup_lakeformation_permissions.py   # LF column masking + table grants (not per-user row filtering)
+│   │   ├── setup_lakeformation_permissions.py   # LF column filtering + table grants (not per-user row filtering)
 │   │   ├── load_sample_data.py             #   Sample claims/users data
 │   │   ├── verify_setup.py                 #   Verify deployment
 │   │   └── cleanup_s3tables.py

@@ -64,7 +64,7 @@ in the `lakehouse_tenant_role_map` DynamoDB table, assumes the mapped tenant IAM
 role, and passes those credentials to the Claims MCP server.
 
 ## Scenario 1: Policy Holder Inquiry
-**Pattern: Row-Level Security + Column Masking**
+**Pattern: Row-Level Security + Column Filtering**
 
 **User Story**: Sarah, a policy holder (`policyholder001@example.com`), logs into the claims portal to check the status of her recent hospital claim.
 
@@ -76,9 +76,9 @@ role, and passes those credentials to the Claims MCP server.
 
 **What Sarah Cannot See**:
 - Claims belonging to other policy holders
-- The `adjuster_user_id` column (masked by Lake Formation column-level security)
+- The `adjuster_user_id` column (absent from her view of the table — Lake Formation column-level filtering)
 
-**How**: Control access to the data through query conditions controlled by tools and parameters curated by Interceptor. The `adjuster_user_id` column is protected by Lake Formation column masking (to be added to Claims table).
+**How**: Control access to the data through query conditions controlled by tools and parameters curated by Interceptor. The `adjuster_user_id` column is protected by Lake Formation column filtering (to be added to Claims table).
 
 ```
 ┌────────┐      ┌──────┐        ┌───────┐       ┌────────┐      ┌─────────┐      ┌────────┐      ┌──────────┐      ┌────────┐
@@ -113,7 +113,7 @@ role, and passes those credentials to the Claims MCP server.
     │               │               │               │                │               │                 │──────────────>│
     │               │               │               │                │               │                 │               │
     │               │               │               │                │               │                 │ note: Row filter applied
-    │               │               │               │                │               │                 │ note: adjuster_user_id masked
+    │               │               │               │                │               │                 │ note: adjuster_user_id filtered out
     │               │               │               │                │               │                 │               │
     │               │               │               │                │               │                 │<──────────────│
     │               │               │               │                │               │<────────────────│               │
@@ -126,13 +126,13 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 **Security Controls**:
 - **Row-Level**: `WHERE user_id = '{authenticated_user}'` (application-level predicate, bound as an Athena execution parameter)
-- **Column-Level**: Lake Formation masks `adjuster_user_id` for `lakehouse-policyholders-role` (the `policyholders` group)
+- **Column-Level**: Lake Formation filters `adjuster_user_id` out of the table definition for `lakehouse-policyholders-role` (the `policyholders` group)
 - **Tool Parameters**: Interceptor ensures `user_id` parameter matches authenticated user
 
 ---
 
 ## Scenario 2: Adjuster Dashboard
-**Pattern: Tool-Based Access Control + Column Masking**
+**Pattern: Tool-Based Access Control + Column Filtering**
 
 **User Story**: Michael, a claims adjuster (`adjuster001@example.com`), logs in to review claims assigned to him.
 
@@ -145,7 +145,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 **What Michael Cannot See**:
 - Claims assigned to other adjusters
-- `policyholder_dob` column (masked for HIPAA compliance — adjusters don't need DOB)
+- `policyholder_dob` column (filtered out for HIPAA compliance — adjusters don't need DOB)
 - Claims not assigned to any adjuster
 
 ```
@@ -183,12 +183,12 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
      │                │               │               │                │               │                 │──────────────>│
      │                │               │               │                │               │                 │               │
      │                │               │               │                │               │                 │ note: Row filter applied
-     │                │               │               │                │               │                 │ note: policyholder_dob masked
+     │                │               │               │                │               │                 │ note: policyholder_dob filtered out
      │                │               │               │                │               │                 │               │
      │                │               │               │                │               │                 │<──────────────│
      │                │               │               │                │               │<────────────────│               │
      │                │               │               │                │<──────────────│                 │               │
-     │<────────────────────────────────────────────────────────────────────────────────│  Assigned claims (DOB masked)   │
+     │<────────────────────────────────────────────────────────────────────────────────│  Assigned claims (DOB filtered) │
      │                │               │               │                │               │                 │               │
 ```
 
@@ -197,7 +197,7 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 **Security Controls**:
 - **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the bound identity predicate inside those tools, not by a distinct tool)
 - **Row-Level**: `WHERE adjuster_user_id = '{authenticated_adjuster}'` (application-level predicate, bound as an Athena execution parameter)
-- **Column-Level**: Lake Formation masks `policyholder_dob` for `lakehouse-adjusters-role` (the `adjusters` group)
+- **Column-Level**: Lake Formation filters `policyholder_dob` out of the table definition for `lakehouse-adjusters-role` (the `adjusters` group)
 
 ---
 
@@ -476,11 +476,11 @@ session-id check still appeared to work.**
 
 The Part 1 per-role scenarios are illustrated with screenshots in the sample
 `README.md`, under **User-Specific Data Access Demo** — policyholder PII access,
-adjuster detail masked, cross-policyholder denial, adjuster DOB masked, and the
+adjuster detail filtered out, cross-policyholder denial, adjuster DOB filtered out, and the
 two admin views. They are not duplicated here.
 
 ## Implementation Priority
 
-1. **Scenario 1** (Easiest): Add `adjuster_user_id` column + Lake Formation column mask
+1. **Scenario 1** (Easiest): Add `adjuster_user_id` column + Lake Formation column filter
 2. **Scenario 2** (Medium): Add new tool + role-based tool filtering in interceptor
 3. **Scenario 3** (Complex): DynamoDB login-audit table + Cognito post-auth trigger + role-mapping table + `query_login_audit` MCP tool

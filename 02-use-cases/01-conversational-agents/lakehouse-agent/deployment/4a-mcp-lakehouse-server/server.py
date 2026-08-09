@@ -3,20 +3,20 @@ MCP Server for Health Lakehouse Data - Production Security
 
 This MCP server provides tools for querying and managing health lakehouse data
 with per-user row scoping via a bound identity SQL predicate and Lake Formation
-column masking.
+column filtering.
 
 Security Architecture:
 - OAuth authentication (Cognito JWT tokens)
 - User identity extraction from Gateway interceptor
 - Row scope = bound identity SQL predicate (interceptor-supplied caller); LF row-level
   data-cell filters are not configured (a documented future enhancement)
-- Lake Formation = per-role column masking + tenant-role table grants
+- Lake Formation = per-role column filtering + tenant-role table grants
 - Query values are bound as Athena execution parameters (AWS-documented SQL-injection
   mitigation) rather than string-interpolated; the admin-only text_to_sql runs
   LLM-generated SQL and is not parameterized
 
 IMPORTANT: per-user row scope is the application-level bound SQL predicate; Lake
-Formation adds per-role column masking (not row filtering). The admin-only text_to_sql
+Formation adds per-role column filtering (not row filtering). The admin-only text_to_sql
 runs model-authored SQL and is intentionally unscoped (admin full-table grant).
 
 Configuration:
@@ -55,11 +55,11 @@ sys.stderr.reconfigure(line_buffering=True)
 # Initialize MCP server
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
-# PRODUCTION ONLY: row scope via bound identity SQL predicate (interceptor-supplied caller) + Lake Formation column masking
+# PRODUCTION ONLY: row scope via bound identity SQL predicate (interceptor-supplied caller) + Lake Formation column filtering
 from athena_tools_secure import SecureAthenaClaimsTools as AthenaTools
 
-logger.info("🔒 Using bound identity SQL predicate row scope + Lake Formation column masking (production mode)")
-print("🔒 Using bound identity SQL predicate row scope + Lake Formation column masking (production mode)")
+logger.info("🔒 Using bound identity SQL predicate row scope + Lake Formation column filtering (production mode)")
+print("🔒 Using bound identity SQL predicate row scope + Lake Formation column filtering (production mode)")
 
 # Global Athena tools instance
 athena_tools = None
@@ -180,11 +180,11 @@ def get_athena_tools():
     if athena_tools is None:
         config = get_config()
 
-        logger.info("Initializing Athena tools (bound identity predicate + Lake Formation column masking)...")
+        logger.info("Initializing Athena tools (bound identity predicate + Lake Formation column filtering)...")
         logger.info(f"  Region: {config['region']}")
         logger.info(f"  Database: {config['database_name']}")
         logger.info(f"  S3 Output: {config['s3_output_location']}")
-        print("Initializing Athena tools (bound identity predicate + Lake Formation column masking)...")
+        print("Initializing Athena tools (bound identity predicate + Lake Formation column filtering)...")
         print(f"  Region: {config['region']}")
         print(f"  Database: {config['database_name']}")
         print(f"  Catalog: {config.get('catalog_name', 'default')}")
@@ -197,7 +197,7 @@ def get_athena_tools():
             catalog_name=config.get("catalog_name"),
         )
 
-        print("✅ Athena tools initialized (bound identity predicate + Lake Formation column masking)")
+        print("✅ Athena tools initialized (bound identity predicate + Lake Formation column filtering)")
 
     return athena_tools
 
@@ -726,9 +726,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     logger.info("✅ Configuration validated")
-    logger.info("🔒 Row scope via bound identity SQL predicate; Lake Formation column masking enabled")
+    logger.info("🔒 Row scope via bound identity SQL predicate; Lake Formation column filtering enabled")
     print("✅ Configuration validated")
-    print("🔒 Row scope via bound identity SQL predicate; Lake Formation column masking enabled")
+    print("🔒 Row scope via bound identity SQL predicate; Lake Formation column filtering enabled")
 
     startup_msg = f"""
 Starting MCP Server for data lakehouse access:

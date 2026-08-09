@@ -18,7 +18,7 @@ OAuth Flow:
 The interceptor extracts the principal from the JWT token, validates tool access,
 and exchanges it for IAM credentials based on tenant role mappings. Those tenant
 roles are per-GROUP (no per-user session tags), so what they buy is Lake Formation
-column masking plus the tenant-role table grants. Per-user ROW scope is separate:
+column filtering plus the tenant-role table grants. Per-user ROW scope is separate:
 the claims tools bind the forwarded principal (X-User-Identity) into a
 ``WHERE user_id = ?`` predicate. Lake Formation row-level data-cell filters are not
 configured in this tutorial.
@@ -312,7 +312,7 @@ def extract_user_principal(claims: dict[str, Any]) -> str | None:
 
     The principal scopes the per-user row filter — the bound identity SQL
     predicate (WHERE user_id = ?) applied by the claims tools; it is not
-    enforced by Lake Formation (LF governs column masking + table grants).
+    enforced by Lake Formation (LF governs column filtering + table grants).
     Priority order:
     1. email (preferred for user identification)
     2. username
@@ -510,7 +510,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 # the STS exchange failed. DENY rather than forwarding identity
                 # with no tenant creds (which would let the downstream tool run
                 # under the runtime's default role and bypass the tenant role's
-                # Lake Formation column masking and table grants).
+                # Lake Formation column filtering and table grants).
                 logger.error("🚫 Failed to exchange JWT to IAM credentials — denying request")
                 return build_error_response("tenant role exchange failed", body, 403)
         else:
@@ -518,7 +518,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Add user identity to headers for downstream MCP server
         # The MCP server binds X-User-Identity into the claims tools' row predicate
-        # (WHERE user_id = ?); Lake Formation does column masking, not row filtering
+        # (WHERE user_id = ?); Lake Formation does column filtering, not row filtering
         transformed_headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",

@@ -3,7 +3,7 @@
 Lake Formation Permissions Setup for S3 Tables
 
 This script grants Lake Formation permissions to tenant roles for accessing S3 Tables.
-It configures column-level masking and tenant-role table grants for:
+It configures column-level filtering and tenant-role table grants for:
 - lakehouse-policyholders-role
 - lakehouse-adjusters-role
 - lakehouse-administrators-role

@@ -4,9 +4,31 @@ Secure Athena Tools
 Per-user ROW scoping is enforced by a SQL predicate binding the interceptor-propagated
 caller identity (``WHERE user_id = ?``, passed as a bound Athena execution parameter in
 the scoped claims tools) — NOT by Lake Formation row filters. Lake Formation governs
-COLUMN-level masking (per-role) and the tenant-role TABLE grants; LF row-level data-cell
+COLUMN-level filtering (per-role) and the tenant-role TABLE grants; LF row-level data-cell
 filters are not configured in this tutorial (a documented future enhancement — the setup
 script's machinery exists but is uninvoked).
+
+Why these tools select ``*`` rather than naming columns
+-------------------------------------------------------
+The column projection is left IMPLICIT on purpose. Lake Formation filters the table
+DEFINITION per role — a ``glue:GetTable`` under a tenant role returns only that role's
+granted columns — so ``SELECT *`` already expands to exactly the caller's permitted set:
+15 columns for policyholders, 20 for adjusters (all but ``policyholder_dob``), 21 for
+administrators. The tool inherits the grant instead of restating it.
+
+Naming the columns per role was considered and rejected. It would copy the grant list
+out of ``deployment/3-s3tables-setup/setup_lakeformation_permissions.py`` into a second
+file with nothing keeping the two in step, and the failure mode when they drift is total
+rather than partial: a projected column the role is no longer granted makes EVERY query
+for that persona fail with ``COLUMN_NOT_FOUND``. It would also need a parity test purely
+to guard a duplication the tool introduced. Lake Formation already manages this.
+
+Boundary of the protection, stated plainly: column filtering is not enforced inside the
+storage layer. Per AWS's Lake Formation permissions reference, "it is the responsibility
+of the integrated analytics service to apply the column filtering when processing a
+query" — so the guarantee here is delegated to Athena as the integrated service. That is
+the honest limit of what these grants buy: they are authoritative for queries that go
+through Athena, not a property of the underlying S3 Tables data itself.
 
 Tenant roles are per-GROUP (policyholders / adjusters / administrators), not per-user, and
 share a single Athena/S3 access policy; there are no per-user IAM session tags. Per-user
@@ -73,7 +95,7 @@ def _as_sql_literal(value: Any) -> str:
 class SecureAthenaClaimsTools:
     """
     Secure tools for querying health lakehouse data: per-role Lake Formation
-    column masking + a bound identity SQL predicate for per-user row scoping.
+    column filtering + a bound identity SQL predicate for per-user row scoping.
     """
 
     def __init__(
@@ -179,7 +201,7 @@ class SecureAthenaClaimsTools:
         embed a bound ``WHERE`` predicate on the interceptor-propagated caller identity
         (passed here as execution_parameters). This method just runs the given SQL;
         Lake Formation then applies the tenant role's column/table grants (per-role
-        masking + admin full-table). LF row-level data-cell filters are NOT configured,
+        filtering + admin full-table). LF row-level data-cell filters are NOT configured,
         so this method adds no row filter itself.
 
         Args:
@@ -309,7 +331,7 @@ class SecureAthenaClaimsTools:
 
         Returns:
             User's claims — row-scoped by the bound SQL predicate; Lake Formation provides
-            column masking (per-role), not row filtering
+            column filtering (per-role), not row filtering
         """
         try:
             # Bind all caller-derived values as Athena "?" execution parameters
@@ -384,7 +406,7 @@ class SecureAthenaClaimsTools:
                 "claims": results or [],
                 "count": len(results) if results else 0,
                 "message": f"Found {len(results) if results else 0} claims",
-                "security": "Row scope via bound identity SQL predicate (WHERE user_id=<caller>); Lake Formation does column masking, not row filtering",
+                "security": "Row scope via bound identity SQL predicate (WHERE user_id=<caller>); Lake Formation does column filtering, not row filtering",
             }
 
         except Exception as e:
@@ -402,7 +424,7 @@ class SecureAthenaClaimsTools:
     ) -> dict[str, Any]:
         """
         Get claim details - row-scoped by the bound identity SQL predicate so a caller
-        only sees their own claims (Lake Formation does column masking, not row filtering).
+        only sees their own claims (Lake Formation does column filtering, not row filtering).
 
         Args:
             user_id: Caller email (bound into the WHERE predicate as a parameter)
@@ -462,7 +484,7 @@ class SecureAthenaClaimsTools:
     def get_claims_summary(self, user_id: str, tenant_credentials: dict[str, str] | None = None) -> dict[str, Any]:
         """
         Get claims summary - row-scoped to the caller by the bound identity SQL predicate
-        (Lake Formation does column masking, not row filtering).
+        (Lake Formation does column filtering, not row filtering).
 
         Args:
             user_id: Caller email (bound into the WHERE predicate as a parameter)
@@ -529,7 +551,7 @@ class SecureAthenaClaimsTools:
                     "denied_claims": 0,
                 },
                 "message": "No claims found",
-                "security": "Row scope via bound identity SQL predicate; column masking via Lake Formation grants",
+                "security": "Row scope via bound identity SQL predicate; column filtering via Lake Formation grants",
             }
 
         except Exception as e:

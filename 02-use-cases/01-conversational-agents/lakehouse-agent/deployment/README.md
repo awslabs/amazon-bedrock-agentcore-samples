@@ -361,7 +361,7 @@ python setup_lakeformation_permissions.py
 Lake Formation permissions configured:
 
 - Grants database and table permissions to tenant roles (from Step 2)
-- Configures per-role column-level masking (e.g. hiding `adjuster_user_id` /
+- Configures per-role column-level filtering (e.g. hiding `adjuster_user_id` /
   `policyholder_dob` from roles that shouldn't see them)
 - Does **not** configure Lake Formation row filters. Per-user row scope is the bound
   identity SQL predicate (`WHERE user_id = ?`) applied by the claims tools; LF
