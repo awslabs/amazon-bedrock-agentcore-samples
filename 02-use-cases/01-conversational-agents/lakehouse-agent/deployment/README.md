@@ -71,18 +71,42 @@ The agent (Step 8) is IdP-agnostic: it wires two prefixed MCP clients
 4. `bedrock-agentcore-starter-toolkit` installed
 
 > **`[OKTA]` additional prerequisites.** If you deploy the Okta path
-> (`IDP_PROVIDER=okta`), you also need an Okta org (a free
-> [developer.okta.com](https://developer.okta.com/signup) tenant is sufficient)
-> and an Okta API token (Okta admin console → Security → API → Tokens). Set both
-> in `.env` before running Step 1:
+> (`IDP_PROVIDER=okta`), you also need an Okta org (a free **Okta Integrator Free
+> Plan** tenant — [developer.okta.com/signup](https://developer.okta.com/signup),
+> formerly "Developer Edition" — is sufficient) and an Okta API token (Okta admin
+> console → Security → API → Tokens). Set both in `.env` before running Step 1:
 >
 > ```bash
 > OKTA_ORG_URL=dev-12345678.okta.com   # your tenant org URL, no scheme
 > OKTA_API_TOKEN=00abC...              # Okta management API token
 > ```
 >
+> Copy `../.env.example` to `../.env` (the sample root). `deployment/.env` also
+> works — the loader searches both and prints which file it used.
+>
 > `.env` holds Okta credentials **only** — the IdP flag itself is set in Step 0,
 > not in `.env` (see DR-12).
+>
+> **🔑 The token needs a broad admin role.** An Okta API token inherits the
+> permissions of the admin who created it, and `setup_okta.py` writes to four
+> admin surfaces — **authorization servers, applications, groups and users**.
+> Create it as a **Super Admin** (or a custom admin role covering all four). There
+> is **no pre-flight permission check**: a narrower token provisions part of the
+> tenant and then fails with `403`, leaving a half-built setup to clean up.
+>
+> **⚠️ Idempotency is adopt-by-name, and Step 1 of the teardown deletes what it
+> adopted.** `setup_okta.py` reuses any object whose name already matches
+> (`lakehouse-agent-app`, `lakehouse-obo-exchange-client`, auth server
+> `lakehouse-agent`, groups `policyholders`/`adjusters`/`administrators`, the five
+> `@example.com` users) and prints `ℹ️  … already exists`. `cleanup_okta.py` then
+> deletes by those same names, with no record of which it created. The three group
+> names are generic — if your org already uses them, rename yours or the sample's
+> (`GROUP_NAMES`, in **both** scripts) first. A dedicated free tenant avoids this.
+>
+> **And note what teardown cannot remove: your API token.** You minted it by hand,
+> so the sample cannot revoke it — `cleanup_okta.py` deletes the `okta-api-token`
+> SSM copy and the credential stays live in your tenant. **Revoke it yourself**
+> (Security → API → Tokens) once you are done.
 
 > **`[OKTA]` first login: authenticator (MFA) enrollment.** On their **first**
 > sign-in through the Streamlit UI, a test user may be prompted by Okta to enroll
@@ -800,12 +824,27 @@ python cleanup_iam_roles.py
 cd ../1-cognito-setup
 python cleanup_cognito.py
 
-# Step 1 [OKTA]: Delete the Okta app, OBO exchange app, and auth server.
+# Step 1 [OKTA]: Delete the Okta app, OBO exchange app, auth server, the three
+# groups, the five test users, and the okta-* SSM keys. This reaches INTO your
+# Okta tenant — skip this one step if you want the AWS side gone but your Okta
+# objects left alone.
 # (Requires OKTA_ORG_URL + OKTA_API_TOKEN in .env — the script exits early
 #  without them, so run this only on the Okta path.)
 cd ../1-okta-setup
 python cleanup_okta.py
 ```
+
+> 🔑 **[OKTA] Your API token survives cleanup — revoke it yourself.** You created
+> it by hand in the Okta console, so the sample never owned it and cannot revoke
+> it. `cleanup_okta.py` deletes the `okta-api-token` SSM **copy**; the credential
+> itself stays live with full admin reach over your tenant. Revoke it at
+> Security → API → Tokens and drop it from your local `.env`.
+>
+> ⚠️ **[OKTA] Deletion is by name, not by ownership.** `cleanup_okta.py` matches
+> the same labels `setup_okta.py` adopts, and nothing records which objects the
+> sample actually created — so an object that merely shared a name (most plausibly
+> a group called `administrators`) is deleted too. Check the deploy log for
+> `ℹ️  … already exists` lines before running teardown.
 
 > ⚠️ **Lake Formation admins are preserved (B17).** `cleanup_s3tables.py`
 > deregisters only the resources this guide registered; it does **not** rewrite

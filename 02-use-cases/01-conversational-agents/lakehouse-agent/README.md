@@ -307,12 +307,37 @@ Key Points:
 
 This is **not** an Okta tutorial — it's the minimum you must have in place plus the few assumptions the code hard-codes. For the full walkthrough / by-hand reproduction / OBO troubleshooting, see the deep-dive: **[deployment/1-okta-setup/README.md](deployment/1-okta-setup/README.md)** (ships a read-only `verify_okta_setup.py`).
 
-**To run notebook `01-deploy-idp.ipynb` on the Okta path:** a free Okta developer org ([developer.okta.com/signup](https://developer.okta.com/signup)) and an admin **API token**, supplied in `.env` as:
+**To run notebook `01-deploy-idp.ipynb` on the Okta path:** a free Okta tenant — the **Okta Integrator Free Plan** ([developer.okta.com/signup](https://developer.okta.com/signup), formerly "Developer Edition") is sufficient — and an admin **API token**, supplied in `.env` as:
 
 - `OKTA_ORG_URL` — e.g. `dev-12345678.okta.com` (tenant URL only; no scheme, no `-admin` suffix)
 - `OKTA_API_TOKEN` — Okta admin console → Security → API → Tokens
 
+Copy [`.env.example`](.env.example) to **`.env` in this directory** (the sample root) and fill those two in. The loader also accepts `deployment/.env`; it prints the path it used and warns about any other `.env` it found but did not read.
+
+> #### 🔑 The API token needs a **broad admin role** — a narrow one fails mid-deploy
+>
+> An Okta API token inherits the permissions of the admin who creates it, and `setup_okta.py` writes to **four** different admin surfaces:
+>
+> | It creates | Okta admin capability required |
+> |---|---|
+> | 1 custom authorization server (+ scopes, a claim, an access policy and rule) | manage authorization servers |
+> | 2 OIDC applications (user-login + OBO exchange) | manage applications |
+> | 3 groups | manage groups |
+> | 5 test users (+ group assignments) | manage users |
+>
+> **Create the token as a Super Admin** (or a custom admin role granted all four). This is a free demo tenant, so Super Admin is the simple choice; on a shared or corporate tenant, use a purpose-made custom admin role and delete it afterwards.
+>
+> **Why this matters:** the deploy has **no pre-flight permission check**. A token with, say, application rights but not user rights gets several objects in before Okta returns `403`, leaving a half-provisioned tenant you then have to clean up. Read-only `verify_okta_setup.py` will tell you what landed.
+
 `deployment/1-okta-setup/setup_okta.py` (run by `01-deploy-idp.ipynb`) provisions the rest via the Okta SDK, idempotently: **1** custom authorization server (audience `api://lakehouse-api`), **2** OIDC apps (user-login + OBO exchange), **5** scopes, a `groups` claim, **3** groups, and **5** test users.
+
+> #### ⚠️ Idempotent means **adopt-by-name** — and the teardown deletes what it adopted
+>
+> `setup_okta.py` reuses any existing object whose name matches, printing e.g. `ℹ️  Group already exists: administrators`. That message means the object is now treated as the sample's, and **`09-optional-cleanup.ipynb` will delete it** along with everything else. The names it matches are `lakehouse-agent-app`, `lakehouse-obo-exchange-client`, authorization server `lakehouse-agent`, groups `policyholders` / `adjusters` / `administrators`, and users `policyholder001/002@example.com` / `adjuster001/002@example.com` / `admin@example.com`.
+>
+> The app and server names are distinctive, but **`administrators`, `adjusters` and `policyholders` are ordinary group names** — if your org already has one, rename it or rename the sample's (`GROUP_NAMES` in `setup_okta.py` **and** `cleanup_okta.py`) before deploying. **Use a dedicated free tenant if you can**; that removes the question entirely.
+
+**What teardown removes, and the one thing it cannot.** See [What survives cleanup](#-okta-what-survives-cleanup) below — short version: the sample deletes every Okta object it created, and your **API token stays live** because you created it, so revoking it is your step.
 
 > #### 🔴 Redirect URIs — register your callback or login fails
 >
@@ -656,6 +681,22 @@ The system includes an optional login audit feature that records every Cognito a
 ## Cleanup
 
 **Notebooks**: Run `09-optional-cleanup.ipynb` — calls each cleanup script in reverse order.
+
+### 🔑 [OKTA] What survives cleanup
+
+> **`IDP_PROVIDER=okta` only.**
+
+**Cleanup is a full reset on both paths — it does not stop at the AWS boundary.** On the Okta path, `09-optional-cleanup.ipynb` Step 8 runs `deployment/1-okta-setup/cleanup_okta.py`, which deletes the user-login app `lakehouse-agent-app`, the OBO exchange app `lakehouse-obo-exchange-client`, the custom authorization server `lakehouse-agent`, the three groups, the five test users, and the twelve `/app/lakehouse-agent/okta-*` SSM parameters. If you want the AWS side gone but your Okta tenant left alone, **skip Step 8** — every other step is Okta-independent.
+
+**Exactly one thing survives, and it is a live credential:**
+
+| Survives | Why | Your action |
+|---|---|---|
+| **Your `OKTA_API_TOKEN`** | You created it by hand in the Okta console. The sample never created it, so it has no way to revoke it — deleting the `okta-api-token` SSM *copy* does not touch the token itself. | **Revoke it**: Okta admin console → Security → API → Tokens → revoke. Then remove it from your local `.env`. |
+
+A token left in place keeps full administrative reach over your tenant for as long as it lives. Revoking it is one click and it is the last step of the walkthrough.
+
+**Two things that are *not* Okta objects but are worth knowing at the same time:** CloudWatch log groups are retained by design (see the `Manual cleanup` list nb09 prints), and the `/app/lakehouse-agent-obo/` SSM prefix is never swept because it belongs to a different sample.
 
 **CLI**: Each deployment step has a dedicated cleanup script. Run in reverse order:
 
