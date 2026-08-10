@@ -8,8 +8,9 @@ column filtering.
 Security Architecture:
 - OAuth authentication (Cognito JWT tokens)
 - User identity extraction from Gateway interceptor
-- Row scope = bound identity SQL predicate (interceptor-supplied caller); LF row-level
-  data-cell filters are not configured (a documented future enhancement)
+- Row scope = bound identity SQL predicate (interceptor-supplied caller); LF data-cell
+  filters are not used — a filter's row expression takes constants only, so it cannot
+  express per-caller scope (see 3-s3tables-setup/setup_lakeformation_permissions.py)
 - Lake Formation = per-role column filtering + tenant-role table grants
 - Query values are bound as Athena execution parameters (AWS-documented SQL-injection
   mitigation) rather than string-interpolated; the admin-only text_to_sql runs

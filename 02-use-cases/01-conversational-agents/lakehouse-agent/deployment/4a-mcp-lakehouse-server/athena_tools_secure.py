@@ -4,9 +4,10 @@ Secure Athena Tools
 Per-user ROW scoping is enforced by a SQL predicate binding the interceptor-propagated
 caller identity (``WHERE user_id = ?``, passed as a bound Athena execution parameter in
 the scoped claims tools) — NOT by Lake Formation row filters. Lake Formation governs
-COLUMN-level filtering (per-role) and the tenant-role TABLE grants; LF row-level data-cell
-filters are not configured in this tutorial (a documented future enhancement — the setup
-script's machinery exists but is uninvoked).
+COLUMN-level filtering (per-role) and the tenant-role TABLE grants. LF data-cell filters
+are not used here because a filter's row expression takes constants only and so cannot
+express per-caller scope — full reasoning and AWS references in
+``deployment/3-s3tables-setup/setup_lakeformation_permissions.py``.
 
 Why these tools select ``*`` rather than naming columns
 -------------------------------------------------------
@@ -201,7 +202,8 @@ class SecureAthenaClaimsTools:
         embed a bound ``WHERE`` predicate on the interceptor-propagated caller identity
         (passed here as execution_parameters). This method just runs the given SQL;
         Lake Formation then applies the tenant role's column/table grants (per-role
-        filtering + admin full-table). LF row-level data-cell filters are NOT configured,
+        filtering + admin full-table). LF data-cell filters are not used (see the module
+        docstring),
         so this method adds no row filter itself.
 
         Args:
@@ -243,7 +245,7 @@ class SecureAthenaClaimsTools:
 
             # Run under tenant-role creds: Lake Formation applies the role's column/
             # table grants; row scoping is the caller's bound WHERE predicate (not an LF
-            # row filter — LF data-cell filters are not configured).
+            # row filter — LF data-cell filters are not used; see the module docstring).
             query_context = {"Database": self.database_name}
             if self.catalog_name:
                 query_context["Catalog"] = self.catalog_name

@@ -20,8 +20,10 @@ and exchanges it for IAM credentials based on tenant role mappings. Those tenant
 roles are per-GROUP (no per-user session tags), so what they buy is Lake Formation
 column filtering plus the tenant-role table grants. Per-user ROW scope is separate:
 the claims tools bind the forwarded principal (X-User-Identity) into a
-``WHERE user_id = ?`` predicate. Lake Formation row-level data-cell filters are not
-configured in this tutorial.
+``WHERE user_id = ?`` predicate. Lake Formation data-cell filters are not used -- a
+filter's row expression takes constants only, so it cannot express per-caller scope
+(full reasoning and AWS references in
+``deployment/3-s3tables-setup/setup_lakeformation_permissions.py``).
 """
 
 import json

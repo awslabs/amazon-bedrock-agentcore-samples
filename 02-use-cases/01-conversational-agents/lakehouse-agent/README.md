@@ -608,7 +608,7 @@ Deployment, verification, and cleanup steps are in
 - **Cognito User Pool**: OAuth authentication with test users and groups
 - **IAM Tenant Roles**: Per-group roles with Athena/S3/Lake Formation permissions
 - **S3 Tables**: `claims` and `users` tables in Apache Iceberg format; Lake Formation governs column-level filtering + tenant-role table grants (per-user row scope is the bound identity SQL predicate, `WHERE user_id = ?`; LF row-cell filters are not configured)
-- **Lake Formation Integration**: Federated catalog (`s3tablescatalog`) with column-level filtering and tenant-role table grants (LF row-level data-cell filters not configured — documented tutorial limitation)
+- **Lake Formation Integration**: Federated catalog (`s3tablescatalog`) with column-level filtering and tenant-role table grants ([why row scope is not done with LF data-cell filters](#why-row-scope-uses-a-bound-predicate-not-lake-formation-data-cell-filters))
 - **S3 Bucket**: Athena query results storage
 - **MCP Server**: Athena tool execution layer on AgentCore Runtime (5 tools: `query_claims`, `get_claim_details`, `get_claims_summary`, `query_login_audit`, `text_to_sql`)
 - **Gateway**: Request routing with JWT validation and request/response interceptors
@@ -727,7 +727,21 @@ Test queries:
 
 ### User-Specific Data Access Demo
 
-The lakehouse agent enforces per-user row scope via a bound identity SQL predicate (`WHERE user_id = ?`, supplied by the AgentCore Lambda interceptor after a group→role STS exchange), while Lake Formation governs column-level filtering + tenant-role table grants — together ensuring users only see data they're authorized to access. (LF row-level data-cell filters are not configured; row scope is the bound predicate.)
+The lakehouse agent enforces per-user row scope via a bound identity SQL predicate (`WHERE user_id = ?`, supplied by the AgentCore Lambda interceptor after a group→role STS exchange), while Lake Formation governs column-level filtering + tenant-role table grants — together ensuring users only see data they're authorized to access.
+
+#### Why row scope uses a bound predicate, not Lake Formation data-cell filters
+
+**This is a choice of mechanism, not a gap in row isolation.** Row isolation is enforced and verified — the [multi-user isolation test](07-optional-multi-user-isolation-test.ipynb) checks it explicitly, including cross-persona probes through a shared agent session.
+
+Lake Formation data-cell filters cannot express per-caller scope. A filter's row expression is a subset of the PartiQL `WHERE` grammar: it compares columns with **constants** and permits **no PartiQL functions at all**, so there is nowhere a caller-derived value could go, and the expression is fixed when the filter is created. Scoping rows per user would mean provisioning one filter *per user*, plus one grant per user.
+
+AWS's own [row-level access control tutorial](https://docs.aws.amazon.com/lake-formation/latest/dg/cbac-tutorial.html) shows the shape this takes: it scopes a reviews table by `marketplace` with one data filter per value, each granted to a separate IAM principal. Two audiences is tidy; five personas is ten objects; per-user is unbounded.
+
+So this sample binds the caller's verified identity into the query predicate instead, and uses Lake Formation for what it does express well — per-role **column** filtering and table grants.
+
+> **Both approaches are commonly described as "user-level permissions."** If you arrived expecting Lake Formation row filters, the difference is which layer enforces row scope — not whether it is enforced.
+
+See [PartiQL support in row filter expressions](https://docs.aws.amazon.com/lake-formation/latest/dg/partiql-support.html) for the grammar, and `deployment/3-s3tables-setup/setup_lakeformation_permissions.py` for the same explanation next to the code.
 
 #### Scenario 1: Policyholder Sees Own PII (Date of Birth)
 ![Policyholder PII Access](screenshots/policyholder-access-to-PII.png)

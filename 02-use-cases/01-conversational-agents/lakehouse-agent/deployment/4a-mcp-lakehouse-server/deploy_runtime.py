@@ -6,8 +6,9 @@ This script deploys the MCP server to Amazon Bedrock AgentCore Runtime using
 the Bedrock AgentCore Starter Toolkit. The server provides secure Athena query
 tools. Access control: Lake Formation governs column-level filtering + tenant-role
 table grants; per-user row scope is the bound identity SQL predicate
-(WHERE user_id = ?). LF row-level data-cell filters are not configured
-(documented tutorial limitation).
+(WHERE user_id = ?). LF data-cell filters are not used -- a filter's row
+expression takes constants only, so it cannot express per-caller scope
+(see 3-s3tables-setup/setup_lakeformation_permissions.py).
 
 Prerequisites:
 - AWS credentials configured

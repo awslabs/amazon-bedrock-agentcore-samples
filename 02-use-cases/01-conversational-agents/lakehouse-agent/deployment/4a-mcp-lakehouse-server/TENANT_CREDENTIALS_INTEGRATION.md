@@ -104,7 +104,7 @@ In a deployed environment, missing tenant credentials are **denied** (`Permissio
 
 Authorization failures **deny by default** — there is no fail-open fallback:
 - If `tenant_credentials` are absent from the context, the Athena tool raises `PermissionError` and the request is refused (the REQUEST interceptor also returns 403 when the tenant-role STS exchange fails).
-- The tenant roles carry **no per-user session tags** (`sts:TagSession` is not used). Per-user **row** scope is the bound identity SQL predicate (`WHERE user_id = ?`); Lake Formation governs **column**-level filtering + tenant-role table grants (LF row-level data-cell filters are not configured — documented tutorial limitation).
+- The tenant roles carry **no per-user session tags** (`sts:TagSession` is not used). Per-user **row** scope is the bound identity SQL predicate (`WHERE user_id = ?`); Lake Formation governs **column**-level filtering + tenant-role table grants (LF data-cell filters are not used — a filter's row expression takes constants only, so it cannot express per-caller scope; see `../3-s3tables-setup/setup_lakeformation_permissions.py`).
 - `LOCAL_DEVELOPMENT=true` is the **sole** dev-only escape hatch (uses default credentials; never enable in a deployed environment).
 
 ## Deployment

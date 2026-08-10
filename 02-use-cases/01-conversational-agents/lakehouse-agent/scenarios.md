@@ -37,10 +37,13 @@ They diverge in *what* the result is scoped to, and *where* enforcement lands:
 
 > Each store keeps its **native** scoping mechanism. This sample deliberately
 > does not unify them — the contrast *is* the teaching point. Note in particular
-> that Lake Formation is doing **column** work here, not row work: LF row-level
-> data-cell filters are not configured (the setup script's machinery exists but
-> is uninvoked), and the tenant roles are per-**group** with no per-user session
-> tags. Per-user row scope comes from the bound predicate alone.
+> that Lake Formation is doing **column** work here, not row work: LF data-cell
+> filters are not used, because a filter's row expression takes constants only and
+> so cannot express per-caller scope (full reasoning and AWS references in
+> `deployment/3-s3tables-setup/setup_lakeformation_permissions.py`). The tenant
+> roles are per-**group** with no per-user session tags, and per-user row scope
+> comes from the bound predicate alone — which is enforced and tested, not merely
+> asserted.
 
 The document has three parts:
 

@@ -8,27 +8,36 @@ It configures column-level filtering and tenant-role table grants for:
 - lakehouse-adjusters-role
 - lakehouse-administrators-role
 
-Note: per-user ROW scope is intentionally not implemented with Lake Formation data-cell
-filters. A filter's row expression is a subset of the PartiQL ``WHERE`` grammar that
-compares columns with *constants* -- no caller-derived value can appear in it, and no
-PartiQL functions are permitted -- so the expression is fixed when the filter is created.
-Per-user scope would therefore require provisioning one filter per user. See
-https://docs.aws.amazon.com/lake-formation/latest/dg/partiql-support.html and, for a
-worked example of the consequence, the row-level access control tutorial at
-https://docs.aws.amazon.com/lake-formation/latest/dg/cbac-tutorial.html -- which scopes a
-reviews table by ``marketplace`` using one filter per value, each granted to a separate
-IAM principal.
+WHY PER-USER ROW SCOPE IS NOT DONE WITH LAKE FORMATION DATA-CELL FILTERS
+------------------------------------------------------------------------
+This is the canonical explanation for the whole sample. Other files state the
+conclusion in one line and point here; keep the reasoning in one place.
+
+A data filter's row expression is a subset of the PartiQL ``WHERE`` grammar. It
+compares columns with **constants** and permits **no PartiQL functions at all** --
+so there is nowhere a caller-derived value could go, and the expression is fixed
+when the filter is created. Per-user scope would therefore mean provisioning one
+filter per user, plus one grant per user.
+
+The AWS row-level access control tutorial shows the shape this takes in practice:
+it scopes a reviews table by ``marketplace`` with one data filter per value, each
+granted to a separate IAM principal. Two audiences is tidy; five personas is ten
+objects; per-user is unbounded.
 
 Rows are instead scoped at query time by a predicate bound to the caller's verified
 identity (``WHERE user_id = <caller sub>``) in the claims tools. ``_apply_row_filter``
-below remains as a hook for static, group-level row policies; no caller passes
+below remains as a hook for static, GROUP-level row policies; no caller passes
 ``row_filter``, so no data-cell filter is invoked in this sample.
 
-This is a design choice about which mechanism enforces row scope -- NOT a gap in row
-isolation, which is verified live (see the isolation matrix in
-``07-optional-multi-user-isolation-test.ipynb``). Both approaches are commonly called
-"user-level permissions", so the mechanism is named explicitly here to avoid implying that
-a workable feature was skipped.
+Read this as a choice of mechanism, NOT as a gap in row isolation. Row isolation is
+enforced by the bound predicate and verified live -- see the isolation matrix in
+``07-optional-multi-user-isolation-test.ipynb``. Both approaches are commonly called
+"user-level permissions", which is why the mechanism is named explicitly here: the
+feature was not skipped, it does not express per-caller scope.
+
+Reference:
+- https://docs.aws.amazon.com/lake-formation/latest/dg/partiql-support.html
+- https://docs.aws.amazon.com/lake-formation/latest/dg/cbac-tutorial.html
 
 Usage:
     python setup_lakeformation_permissions.py

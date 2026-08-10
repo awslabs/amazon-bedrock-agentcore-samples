@@ -363,9 +363,11 @@ Lake Formation permissions configured:
 - Grants database and table permissions to tenant roles (from Step 2)
 - Configures per-role column-level filtering (e.g. hiding `adjuster_user_id` /
   `policyholder_dob` from roles that shouldn't see them)
-- Does **not** configure Lake Formation row filters. Per-user row scope is the bound
-  identity SQL predicate (`WHERE user_id = ?`) applied by the claims tools; LF
-  data-cell filters ship uninvoked (documented tutorial limitation)
+- Does **not** configure Lake Formation data-cell filters. Per-user row scope is the
+  bound identity SQL predicate (`WHERE user_id = ?`) applied by the claims tools; a
+  data-cell filter's row expression takes constants only and cannot express
+  per-caller scope (full reasoning and AWS references in
+  `3-s3tables-setup/setup_lakeformation_permissions.py`)
 
 #### 3e. Load Sample Data
 
