@@ -72,16 +72,18 @@ role, and passes those credentials to the Claims MCP server.
 **User Story**: Sarah, a policy holder (`policyholder001@example.com`), logs into the claims portal to check the status of her recent hospital claim.
 
 **What Sarah Can See**:
-| claim_id | policyholder_name | policyholder_dob | claim_amount | claim_status | provider_name | adjuster_user_id |
-|----------|--------------|-------------|--------------|--------------|---------------|-------------|
-| CLM-2024-001 | Sarah Chen | 1985-03-15 | $1,250.00 | approved | City Medical | ████████ |
-| CLM-2024-003 | Sarah Chen | 1985-03-15 | $3,500.00 | in_review | General Hospital | ████████ |
+| claim_id | policyholder_name | policyholder_dob | claim_amount | claim_status | provider_name |
+|----------|--------------|-------------|--------------|--------------|---------------|
+| CLM-2024-001 | Sarah Chen | 1985-03-15 | $1,250.00 | approved | City Medical |
+| CLM-2024-003 | Sarah Chen | 1985-03-15 | $3,500.00 | in_review | General Hospital |
+
+> **Note what the header row does *not* contain.** There is no `adjuster_user_id` column — not a blanked one. The policyholder grant names **15 columns** and that is not among them, so Lake Formation filters it out of the **table definition** and `SELECT *` expands to exactly those 15. Nothing is redacted or starred out; the column does not exist in Sarah's view. She *does* see `policyholder_dob` — it is her own, and policyholders are granted it (adjusters are not; see Scenario 2).
 
 **What Sarah Cannot See**:
 - Claims belonging to other policy holders
-- The `adjuster_user_id` column (absent from her view of the table — Lake Formation column-level filtering)
+- The `adjuster_user_id` column — **absent** from her view of the table (Lake Formation column filtering)
 
-**How**: Control access to the data through query conditions controlled by tools and parameters curated by Interceptor. The `adjuster_user_id` column is protected by Lake Formation column filtering (to be added to Claims table).
+**How**: rows are scoped by a query predicate bound to the caller's interceptor-propagated identity (`WHERE user_id = ?`); columns are scoped by the Lake Formation grant on the assumed tenant role — `lakehouse-policyholders-role` is granted 15 named columns of `claims`, which is what makes `adjuster_user_id` absent. Both controls are live in the shipped sample (`deployment/3-s3tables-setup/setup_lakeformation_permissions.py`).
 
 ```
 ┌────────┐      ┌──────┐        ┌───────┐       ┌────────┐      ┌─────────┐      ┌────────┐      ┌──────────┐      ┌────────┐
@@ -140,16 +142,17 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 **User Story**: Michael, a claims adjuster (`adjuster001@example.com`), logs in to review claims assigned to him.
 
 **What Michael Can See**:
-| claim_id | policyholder_name | policyholder_dob | claim_amount | claim_status | adjuster_user_id |
-|----------|--------------|-------------|--------------|--------------|-------------|
-| CLM-2024-001 | Sarah Chen | ██████████ | $1,250.00 | approved | adjuster001 |
-| CLM-2024-005 | Jane Smith | ██████████ | $850.00 | approved | adjuster001 |
-| CLM-2024-006 | Jane Smith | ██████████ | $125.00 | approved | adjuster001 |
+| claim_id | policyholder_name | claim_amount | claim_status | adjuster_user_id |
+|----------|--------------|--------------|--------------|-------------|
+| CLM-2024-001 | Sarah Chen | $1,250.00 | approved | adjuster001 |
+| CLM-2024-005 | Jane Smith | $850.00 | approved | adjuster001 |
+| CLM-2024-006 | Jane Smith | $125.00 | approved | adjuster001 |
+
+> **Note what the header row does *not* contain.** There is no `policyholder_dob` column — not a blanked one. Lake Formation filters the column out of the **table definition** for `lakehouse-adjusters-role`, so `SELECT *` expands to 20 columns instead of 21 and `glue:GetTable` never reports it. Nothing is redacted, masked or starred out; the column simply does not exist in Michael's view. Compare Scenario 1, where `policyholder_dob` **is** present because policyholders are granted their own.
 
 **What Michael Cannot See**:
-- Claims assigned to other adjusters
-- `policyholder_dob` column (filtered out for HIPAA compliance — adjusters don't need DOB)
-- Claims not assigned to any adjuster
+- Claims assigned to other adjusters, and claims not assigned to any adjuster — **unless he is the policyholder on them** (see the row-scope note below)
+- The `policyholder_dob` column — **absent from his view of the table**, not blanked (Lake Formation column filtering)
 
 ```
 ┌─────────┐       ┌──────┐        ┌───────┐       ┌────────┐      ┌─────────┐      ┌────────┐      ┌──────────┐      ┌────────┐
@@ -199,8 +202,14 @@ _(Diagram simplifies the interceptor as forwarded headers; the real mechanism is
 
 **Security Controls**:
 - **Tool-Based**: adjusters are mapped to `get_claims_summary`, `get_claim_details`, `query_claims` (the same tool set as policyholders — row-scoping is enforced by the bound identity predicate inside those tools, not by a distinct tool)
-- **Row-Level**: `WHERE adjuster_user_id = '{authenticated_adjuster}'` (application-level predicate, bound as an Athena execution parameter)
-- **Column-Level**: Lake Formation filters `policyholder_dob` out of the table definition for `lakehouse-adjusters-role` (the `adjusters` group)
+- **Row-Level**: a **disjunction**, not assignment alone — `WHERE (c.user_id = ? OR ('adjuster' IN (SELECT user_role FROM role_exp) AND c.adjuster_user_id = ?))`, with every caller-derived value bound as an Athena execution parameter (`query_claims` in `deployment/4a-mcp-lakehouse-server/athena_tools_secure.py`).
+
+  **Why both halves.** The first disjunct, `c.user_id = ?`, is the *same* row-scope predicate every caller gets, including policyholders. It is kept for adjusters deliberately: an adjuster who is also a customer of the insurer must still see their own claims, and dropping it would make that impossible. The second disjunct adds the claims **assigned** to them, and is guarded by a `role_exp` CTE so it only activates when the `users` table records the caller as an adjuster.
+
+  **Why the branch exists at all** is a *column*-grant matter rather than a row-scope one: policyholders are not Lake Formation-granted `adjuster_user_id`, so a query referencing that column fails for them with `COLUMN_NOT_FOUND`. Policyholders therefore run a query that names only caller-visible columns. `get_claim_details` mirrors the same branch.
+
+  With the shipped sample data all nine claims are owned by the two policyholders, so the first disjunct never adds a row for `adjuster001` — the effective result is the assigned set shown above. The predicate is still what governs, and a tenant whose adjusters are also policyholders will see both.
+- **Column-Level**: Lake Formation filters `policyholder_dob` out of the table definition for `lakehouse-adjusters-role` (the `adjusters` group) — the column is **absent** from that role's view, not masked
 
 ---
 
