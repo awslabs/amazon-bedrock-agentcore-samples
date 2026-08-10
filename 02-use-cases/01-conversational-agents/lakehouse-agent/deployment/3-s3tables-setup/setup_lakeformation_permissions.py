@@ -9,15 +9,26 @@ It configures column-level filtering and tenant-role table grants for:
 - lakehouse-administrators-role
 
 Note: per-user ROW scope is intentionally not implemented with Lake Formation data-cell
-filters. A filter's row expression is statically defined, so per-user scope would require
-provisioning one filter per user. Rows are instead scoped at query time by a predicate
-bound to the caller's verified identity (``WHERE user_id = <caller sub>``) in the claims
-tools. ``_apply_row_filter`` below remains as a hook for static, group-level row policies;
-no caller passes ``row_filter``, so no data-cell filter is invoked in this sample.
+filters. A filter's row expression is a subset of the PartiQL ``WHERE`` grammar that
+compares columns with *constants* -- no caller-derived value can appear in it, and no
+PartiQL functions are permitted -- so the expression is fixed when the filter is created.
+Per-user scope would therefore require provisioning one filter per user. See
+https://docs.aws.amazon.com/lake-formation/latest/dg/partiql-support.html and, for a
+worked example of the consequence, the row-level access control tutorial at
+https://docs.aws.amazon.com/lake-formation/latest/dg/cbac-tutorial.html -- which scopes a
+reviews table by ``marketplace`` using one filter per value, each granted to a separate
+IAM principal.
 
-This is a design choice about which mechanism enforces row scope — NOT a gap in row
+Rows are instead scoped at query time by a predicate bound to the caller's verified
+identity (``WHERE user_id = <caller sub>``) in the claims tools. ``_apply_row_filter``
+below remains as a hook for static, group-level row policies; no caller passes
+``row_filter``, so no data-cell filter is invoked in this sample.
+
+This is a design choice about which mechanism enforces row scope -- NOT a gap in row
 isolation, which is verified live (see the isolation matrix in
-``07-optional-multi-user-isolation-test.ipynb``).
+``07-optional-multi-user-isolation-test.ipynb``). Both approaches are commonly called
+"user-level permissions", so the mechanism is named explicitly here to avoid implying that
+a workable feature was skipped.
 
 Usage:
     python setup_lakeformation_permissions.py
