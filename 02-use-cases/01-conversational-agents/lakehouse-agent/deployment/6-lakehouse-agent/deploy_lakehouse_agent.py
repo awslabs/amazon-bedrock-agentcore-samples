@@ -14,8 +14,16 @@ Prerequisites:
 
 Usage:
     python deploy_lakehouse_agent.py
+    python deploy_lakehouse_agent.py --yes    # don't prompt; proceed without a Gateway ARN
+
+The only prompt this script has is the one guarding a missing Gateway ARN in SSM.
+Deploying without it produces an agent that cannot reach any Gateway tool, so the
+confirmation is a real safety check rather than ceremony -- and ``--yes`` is the
+supported way for an automated caller (notebook 06, a run harness) to accept that
+outcome deliberately.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -378,8 +386,74 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         raise
 
 
-def main():
+GATEWAY_ARN_SSM_KEY = "/app/lakehouse-agent/gateway-arn"
+
+
+def confirm_missing_gateway_arn(assume_yes: bool) -> None:
+    """Handle the missing-Gateway-ARN confirmation.
+
+    Three paths, deliberately distinct:
+
+    * ``--yes``          -> proceed, and say so. The caller has accepted the
+                            consequence in advance.
+    * interactive TTY    -> prompt, exactly as before.
+    * no TTY, no ``--yes`` -> FAIL FAST with the missing key named.
+
+    That third path is the important one. ``input()`` on a stdin that nobody can
+    answer does not error -- it blocks. Backgrounded (``nohup ... &``) the read
+    takes SIGTTIN and the process STOPS, which from the outside is
+    indistinguishable from a slow deploy: no output, no exit, nothing to
+    diagnose. A clean failure naming the missing SSM key is strictly better than
+    a hang that looks like slowness, for the same reason a deterministic error
+    beats an intermittent one -- it tells the operator what to fix instead of
+    inviting them to wait and guess.
+    """
+    print("\n⚠️  Warning: GATEWAY_ARN not set in SSM Parameter Store")
+    print(f"   Expected SSM parameter: {GATEWAY_ARN_SSM_KEY}")
+    print("   The agent will not be able to access Gateway tools")
+
+    if assume_yes:
+        print("   ➡️  --yes supplied: proceeding without a Gateway ARN.")
+        return
+
+    if not sys.stdin.isatty():
+        print("\n❌ Cannot prompt for confirmation: stdin is not a terminal.")
+        print(f"   Set {GATEWAY_ARN_SSM_KEY} in SSM (run create_gateway.py), or")
+        print("   re-run with --yes to deploy an agent with no Gateway access on purpose.")
+        print("   Refusing to wait on a prompt nobody can answer — a blocked read here")
+        print("   would look like a hung deployment rather than a configuration error.")
+        sys.exit(1)
+
+    response = input("\nProceed anyway? (yes/no): ")
+    if response.lower() not in ["yes", "y"]:
+        print("Deployment cancelled")
+        sys.exit(0)
+
+
+def parse_args(argv=None):
+    """Parse command-line arguments.
+
+    Exists because ``--yes`` was previously accepted-and-ignored: notebook 06 has
+    always passed it, and without argparse the flag did nothing while the prompt
+    below stayed reachable. The flag is honoured here rather than removed from the
+    caller -- the prompt is a legitimate safety check, and the caller's intent to
+    bypass it is legitimate too.
+    """
+    parser = argparse.ArgumentParser(description="Deploy the Lakehouse Data Agent to AgentCore Runtime")
+    parser.add_argument(
+        "--yes",
+        "-y",
+        action="store_true",
+        dest="assume_yes",
+        help="Skip the missing-Gateway-ARN confirmation and proceed anyway (for unattended runs)",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
     """Main deployment function."""
+    args = parse_args(argv)
+
     print("=" * 70)
     print("Lakehouse Data Agent Deployment to AgentCore Runtime")
     print("=" * 70)
@@ -391,12 +465,7 @@ def main():
     print("\n🔍 Validating configuration...")
 
     if not config.gateway_arn:
-        print("\n⚠️  Warning: GATEWAY_ARN not set in SSM Parameter Store")
-        print("   The agent will not be able to access Gateway tools")
-        response = input("\nProceed anyway? (yes/no): ")
-        if response.lower() not in ["yes", "y"]:
-            print("Deployment cancelled")
-            sys.exit(0)
+        confirm_missing_gateway_arn(args.assume_yes)
 
     print("✅ Configuration validated")
 

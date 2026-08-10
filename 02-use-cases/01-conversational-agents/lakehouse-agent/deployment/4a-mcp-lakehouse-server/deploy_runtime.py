@@ -19,6 +19,19 @@ Prerequisites:
 
 Usage:
     python deploy_runtime.py
+
+NOTE ON ``--yes``: notebook 04 passes ``--yes`` to this script and this script does
+not parse arguments. That is deliberate and harmless here -- unlike
+``6-lakehouse-agent/deploy_lakehouse_agent.py``, this script contains NO ``input()``
+call, so there is no prompt for the flag to skip and nothing is silently
+disabled by ignoring it. The flag is inert, not misleading.
+
+It is left unparsed rather than wired up because adding an option that suppresses
+a prompt that does not exist would be the misleading direction: a reader would
+reasonably infer this script can block on input, and it cannot. If an interactive
+confirmation is ever added here, add ``argparse`` in the same change and honour
+``--yes`` then -- see ``deploy_lakehouse_agent.py`` for the pattern, including the
+non-TTY fail-fast guard.
 """
 
 import json
