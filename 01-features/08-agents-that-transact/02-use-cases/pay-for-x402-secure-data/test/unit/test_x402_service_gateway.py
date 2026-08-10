@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 AGENT_ROOT = Path(__file__).resolve().parents[2] / "agent" / "container"

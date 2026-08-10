@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from opentelemetry import baggage, context as otel_context, trace
+from opentelemetry import baggage, trace
+from opentelemetry import context as otel_context
 from payments import PaymentContext, use_invocation_payment_context
 from runtime_context import (
     configure_logging,
@@ -117,7 +119,7 @@ def create_app(agent_factory: Callable[[], Any], model_resolver: Callable[[], st
         async def receive():
             return {"type": "http.request", "body": body, "more_body": False}
 
-        setattr(request, "_receive", receive)
+        request._receive = receive
         request.state.parsed_payload = parsed_payload
         request.state.session_id = session_id
         request.state.payment_context_error = None

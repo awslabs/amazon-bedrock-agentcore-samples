@@ -21,7 +21,7 @@ class PaymentContext:
     payment_instrument_id: str
 
     @classmethod
-    def from_env(cls) -> "PaymentContext":
+    def from_env(cls) -> PaymentContext:
         return cls(
             user_id=os.environ.get("USER_ID", "x402-secure-data-user"),
             payment_session_id=os.environ["PAYMENT_SESSION_ID"],

@@ -41,11 +41,21 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     Stack,
+    aws_lambda,
+)
+from aws_cdk import (
     aws_bedrockagentcore as bedrockagentcore,
+)
+from aws_cdk import (
     aws_codebuild as codebuild,
+)
+from aws_cdk import (
     aws_ecr as ecr,
+)
+from aws_cdk import (
     aws_iam as iam,
-    aws_lambda as aws_lambda,
+)
+from aws_cdk import (
     aws_s3_assets as s3_assets,
 )
 from constructs import Construct
@@ -131,9 +141,14 @@ class AgentCorePaymentsX402SecureDataAgentStack(Stack):
                         "pre_build": {
                             "commands": [
                                 "echo Logging in to ECR...",
-                                "aws ecr get-login-password --region $AWS_DEFAULT_REGION | "
-                                "docker login --username AWS --password-stdin "
-                                "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com",
+                                # Parenthesized so the implicit concatenation is
+                                # unambiguous: this is ONE shell command, not
+                                # three list entries with a missing comma.
+                                (
+                                    "aws ecr get-login-password --region $AWS_DEFAULT_REGION | "
+                                    "docker login --username AWS --password-stdin "
+                                    "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+                                ),
                             ],
                         },
                         "build": {

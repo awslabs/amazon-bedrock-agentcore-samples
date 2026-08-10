@@ -4,7 +4,6 @@
 import os
 
 import aws_cdk as cdk
-
 from agent_stack import AgentCorePaymentsX402SecureDataAgentStack
 
 app = cdk.App()

@@ -73,11 +73,11 @@ def _respond(event, context, status, data):
     response_url = event["ResponseURL"]
     if not response_url.lower().startswith("https://"):
         raise ValueError("CloudFormation ResponseURL must be an HTTPS URL")
-    req = urllib.request.Request(  # noqa: S310
+    req = urllib.request.Request(
         response_url,
         data=body.encode(),
         method="PUT",
         headers={"Content-Type": ""},
     )
     # nosec B310 / noqa: S310 — URL scheme validated as HTTPS just above.
-    urllib.request.urlopen(req)  # noqa: S310  # nosec B310
+    urllib.request.urlopen(req)  # nosec B310

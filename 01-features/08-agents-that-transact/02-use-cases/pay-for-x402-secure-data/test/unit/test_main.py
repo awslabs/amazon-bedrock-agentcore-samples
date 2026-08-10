@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 AGENT_ROOT = Path(__file__).resolve().parents[2] / "agent" / "container"
 sys.path.insert(0, str(AGENT_ROOT))
 
-from fastapi.testclient import TestClient
-
 import main
+from fastapi.testclient import TestClient
 
 
 class FakeResult:

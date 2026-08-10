@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from agent import create_agent, resolve_model_id
-from http_app import create_app, invoke_payload as _invoke_payload
+from http_app import create_app
+from http_app import invoke_payload as _invoke_payload
 from payments import PaymentContext
 from runtime_context import (
     configure_logging,

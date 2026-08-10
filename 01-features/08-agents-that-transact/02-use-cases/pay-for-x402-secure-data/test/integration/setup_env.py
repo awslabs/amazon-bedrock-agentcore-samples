@@ -44,9 +44,7 @@ def _is_empty(value: str) -> bool:
         return True
     if any(value.startswith(p) for p in PLACEHOLDER_PREFIXES):
         return True
-    if any(s in value for s in PLACEHOLDER_SUBSTRINGS):
-        return True
-    return False
+    return any(s in value for s in PLACEHOLDER_SUBSTRINGS)
 
 
 def _read_env_lines() -> list[str]:

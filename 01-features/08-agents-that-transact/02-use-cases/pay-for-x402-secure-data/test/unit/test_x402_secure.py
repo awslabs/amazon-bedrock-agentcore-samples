@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 AGENT_ROOT = Path(__file__).resolve().parents[2] / "agent" / "container"
@@ -83,7 +83,7 @@ class X402SecureTests(unittest.TestCase):
             from bedrock_agentcore.payments.integrations.handlers import (
                 GenericPaymentHandler,
             )
-        except Exception:  # pragma: no cover - SDK layout may differ across versions
+        except ImportError:  # pragma: no cover - SDK layout may differ across versions
             self.skipTest("bedrock_agentcore GenericPaymentHandler unavailable")
 
         session = FakeSession(

@@ -45,6 +45,7 @@ your own legal and compliance advisors before processing payments in production.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import pathlib
@@ -63,7 +64,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 # The agent modules (agent.py, x402_*.py, payments.py) live in agent/container.
 sys.path.insert(0, str(HERE / "agent" / "container"))
 
-from utils import assume_role, idempotent_create, wait_for_status, write_env_updates  # noqa: E402
+from utils import assume_role, idempotent_create, wait_for_status, write_env_updates
 
 # ── §2. Configure environment ────────────────────────────────────────────────
 load_dotenv(override=True)
@@ -237,7 +238,7 @@ def guardrail_demo() -> None:
 
 
 # ── §4. Set up AgentCore payments (credential provider, manager, connector) ──
-def build_control_client() -> "boto3.client":
+def build_control_client() -> boto3.client:
     for name, val in (
         ("CONTROL_PLANE_ROLE_ARN", CONTROL_PLANE_ROLE_ARN),
         ("RESOURCE_RETRIEVAL_ROLE_ARN", RESOURCE_RETRIEVAL_ROLE_ARN),
@@ -421,7 +422,9 @@ def run_agent_live() -> None:
 def deploy_and_invoke_runtime() -> None:
     # Fixed command list (no shell, no untrusted input); runs the sample's own
     # vendored deploy script from a known relative path.
-    proc = subprocess.run(["bash", "test/integration/deploy-agent.sh"], cwd=HERE)  # noqa: S603  # nosec B603
+    # check=False: the return code is inspected explicitly below so the failure
+    # message can name the script rather than raising CalledProcessError.
+    proc = subprocess.run(["bash", "test/integration/deploy-agent.sh"], cwd=HERE, check=False)  # nosec B603
     if proc.returncode != 0:
         sys.exit(f"deploy-agent.sh exited {proc.returncode}")
     outputs = json.loads((HERE / "agent" / "cdk" / "outputs.json").read_text())[
@@ -570,13 +573,13 @@ def _safe_delete(fn, label, **kwargs):
 
 
 def cleanup(cp_client, mgmt_client) -> None:
+    # Best-effort: cleanup must proceed even if the instrument is already gone,
+    # so fall back to USER_ID rather than aborting the teardown.
     payment_user_id = USER_ID
-    try:
+    with contextlib.suppress(Exception):
         payment_user_id = mgmt_client.get_payment_instrument(
             paymentManagerArn=MANAGER_ARN, paymentInstrumentId=PAYMENT_INSTRUMENT_ID, userId=USER_ID
         )["paymentInstrument"]["userId"]
-    except Exception:  # noqa: BLE001
-        pass
 
     if PAYMENT_SESSION_ID:
         _safe_delete(
@@ -630,7 +633,7 @@ def cleanup(cp_client, mgmt_client) -> None:
         }
     )
     # Fixed command list (no shell, no untrusted input).
-    subprocess.run(["bash", "test/integration/destroy-agent.sh"], cwd=HERE, check=False)  # noqa: S603  # nosec B603
+    subprocess.run(["bash", "test/integration/destroy-agent.sh"], cwd=HERE, check=False)  # nosec B603
 
     _remove_local_artifacts()
     print("\n✅ Cleanup complete.")

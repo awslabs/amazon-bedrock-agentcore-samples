@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 AGENT_ROOT = Path(__file__).resolve().parents[2] / "agent" / "container"
@@ -13,24 +13,28 @@ import payments
 
 class PaymentTests(unittest.TestCase):
     def test_missing_required_invocation_context_raises(self):
-        with payments.use_invocation_payment_context(None, require_payment_context=True):
-            with self.assertRaisesRegex(ValueError, "payment_context"):
-                payments.resolve_payment_plugin_config_values()
+        with (
+            payments.use_invocation_payment_context(None, require_payment_context=True),
+            self.assertRaisesRegex(ValueError, "payment_context"),
+        ):
+            payments.resolve_payment_plugin_config_values()
 
     def test_resolve_payment_plugin_config_from_request_context(self):
         context = payments.PaymentContext("user", "session", "instrument")
-        with patch.dict(
-            payments.os.environ,
-            {
-                "MANAGER_ARN": "manager",
-                "AWS_REGION": "us-east-2",
-                "AGENT_NAME": "agent-name",
-                "PAYMENT_CONNECTOR_ID": "connector",
-            },
-            clear=False,
+        with (
+            patch.dict(
+                payments.os.environ,
+                {
+                    "MANAGER_ARN": "manager",
+                    "AWS_REGION": "us-east-2",
+                    "AGENT_NAME": "agent-name",
+                    "PAYMENT_CONNECTOR_ID": "connector",
+                },
+                clear=False,
+            ),
+            payments.use_invocation_payment_context(context, require_payment_context=True),
         ):
-            with payments.use_invocation_payment_context(context, require_payment_context=True):
-                config = payments.resolve_payment_plugin_config_values()
+            config = payments.resolve_payment_plugin_config_values()
 
         self.assertIsNotNone(config)
         self.assertEqual(config.payment_manager_arn, "manager")

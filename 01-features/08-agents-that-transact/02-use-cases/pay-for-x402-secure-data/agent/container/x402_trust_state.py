@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, Iterator
+from typing import Any
 
 TrustState = dict[str, tuple[float, dict[str, Any]]]
 _CURRENT_TRUST_STATE: ContextVar[TrustState | None] = ContextVar(

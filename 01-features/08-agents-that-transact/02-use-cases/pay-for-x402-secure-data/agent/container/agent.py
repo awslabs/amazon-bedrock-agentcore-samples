@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from strands import Agent
 
 from payments import resolve_payment_plugin_config_values, resolve_region
+from strands import tool
 from x402_services import (
     DEFAULT_SERVICE_ID,
     TrustedX402ServiceGateway,
@@ -30,9 +31,6 @@ from x402_services import (
     supported_service_operations,
     use_request_trust_state,
 )
-
-from strands import tool
-
 
 load_dotenv()
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
 import types
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 AGENT_ROOT = Path(__file__).resolve().parents[2] / "agent" / "container"
@@ -73,9 +73,11 @@ class AgentTests(unittest.TestCase):
                 captured.update(kwargs)
 
         fake_strands = types.SimpleNamespace(Agent=FakeAgent)
-        with patch.dict(sys.modules, {"strands": fake_strands}):
-            with patch("agent.create_agentcore_payments_plugin", return_value="payment-plugin"):
-                result = agent.create_agent()
+        with (
+            patch.dict(sys.modules, {"strands": fake_strands}),
+            patch("agent.create_agentcore_payments_plugin", return_value="payment-plugin"),
+        ):
+            result = agent.create_agent()
 
         self.assertIsInstance(result, FakeAgent)
         self.assertEqual(captured["plugins"], ["payment-plugin"])

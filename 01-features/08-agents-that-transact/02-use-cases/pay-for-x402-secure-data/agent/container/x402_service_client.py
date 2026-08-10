@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import requests
-
 from x402_secure import payment_required_result
 from x402_service_registry import validate_service_operation
 
