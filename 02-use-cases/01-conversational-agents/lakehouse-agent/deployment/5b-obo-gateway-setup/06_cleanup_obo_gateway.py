@@ -57,6 +57,10 @@ from utils.aws_session_utils import get_aws_session
 
 # Names match the create-side scripts (9.1, 9.3, 9.4, 9.5)
 COLLECTION_NAME = "lakehouse-claim-notes"
+# Default GW2 name. Used at create time and as the last resort in the by-name
+# fallback below — the persisted SSM `notes-gateway-name` is preferred so a
+# non-default name still resolves. Mirrors GATEWAY_NAME in
+# 5a-gateway-setup/cleanup_gateway.py.
 GATEWAY_NAME = "lakehouse-notes-gateway"
 GATEWAY_ROLE_NAME = f"agentcore-{GATEWAY_NAME}-role"
 PROVIDER_NAME = "lakehouse-obo-okta-provider"
@@ -87,24 +91,62 @@ class OBOCleanup:
         except Exception:
             return default
 
+    def _find_gateway_id_by_name(self):
+        """Resolve GW2's id by name when SSM `notes-gateway-id` is missing or stale.
+
+        Covers the missing-or-stale case: a partially failed create, a manually
+        deleted parameter, or a teardown re-run after the SSM sweep already went
+        through. Without it, teardown reports "no OBO gateway found" and leaves a
+        live gateway (plus its targets and role) behind, which reads as a clean
+        teardown and is not one.
+
+        Mirrors the equivalent fallback in
+        5a-gateway-setup/cleanup_gateway.py::_find_gateway_id_by_name.
+
+        Prefers the persisted `notes-gateway-name` (04_create_obo_gateway.py stores
+        it, so a non-default name still resolves) and falls back to the default
+        literal. Paginated: an unpaginated list_gateways can miss the target in an
+        account with many gateways, which would be the same false "not found" this
+        fallback exists to prevent.
+        """
+        gateway_name = self._get_ssm_param("notes-gateway-name", GATEWAY_NAME)
+        print(f"   🔍 SSM notes-gateway-id missing; searching by name: {gateway_name}")
+        try:
+            scanned = 0
+            next_token = None
+            while True:
+                kwargs = {"nextToken": next_token} if next_token else {}
+                response = self.bedrock.list_gateways(**kwargs)
+                items = response.get("items", [])
+                scanned += len(items)
+                for gw in items:
+                    if gw.get("name") == gateway_name:
+                        found = gw["gatewayId"]
+                        print(f"   ✅ Matched by name after scanning {scanned}: {found}")
+                        return found
+                next_token = response.get("nextToken")
+                if not next_token:
+                    break
+            print(f"   ⏭️  No gateway named {gateway_name} among {scanned} scanned")
+        except Exception as e:
+            # Report rather than swallow: a failed lookup is not the same as
+            # "absent", and treating it as absent is how a live gateway survives
+            # a teardown that claims success.
+            print(f"   ⚠️  list_gateways failed: {e}")
+        return None
+
     # ─── 1+2: OBO gateway target + gateway ────────────────────────────
     def delete_gateway(self):
         print(f"\n🗑️  Deleting OBO_Gateway: {GATEWAY_NAME}")
 
-        # Find by name (SSM key may be missing if 9.4 partially failed)
+        # SSM key may be missing if 9.4 partially failed; fall back to a by-name
+        # lookup rather than reporting a clean teardown over a live gateway.
         gateway_id = self._get_ssm_param("notes-gateway-id")
         if not gateway_id:
-            try:
-                response = self.bedrock.list_gateways()
-                for gw in response.get("items", []):
-                    if gw.get("name") == GATEWAY_NAME:
-                        gateway_id = gw["gatewayId"]
-                        break
-            except Exception as e:
-                print(f"   ⚠️  list_gateways failed: {e}")
+            gateway_id = self._find_gateway_id_by_name()
 
         if not gateway_id:
-            print("   ⏭️  No OBO gateway found")
+            print("   ⏭️  No OBO gateway found (SSM notes-gateway-id absent and no name match)")
             return
 
         # Targets first
