@@ -100,8 +100,10 @@ class OpenSearchClaimNotesTools:
         it is always taken from the authenticated `sub`.
 
         Args:
-            user_sub: Okta `sub` of the authenticated caller (extracted from
-                      the validated Authorization header by server.py)
+            user_sub: `sub` of the authenticated caller, resolved by server.py
+                      for the active IdP — `[OKTA]` from the OBO-exchanged
+                      bearer in the Authorization header, `[COGNITO]` from the
+                      interceptor-injected body context. Never caller-supplied.
             query: Natural-language / free-text search query
             limit: Maximum number of hits to return (1-100)
 
