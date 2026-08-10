@@ -78,10 +78,12 @@ Audited by grepping the runtime code and, this time, by watching it run:
 | Gateway | yes | yes | `MCPClient` over `streamablehttp_client`, tools attached to the extractor | yes — real Lambda MCP target, confirmed with a direct pre-wiring `aws lambda invoke` |
 | Identity | yes | yes | `@requires_access_token(auth_flow="M2M")` on `_build_mcp_client` | yes — real Cognito M2M token minted |
 | Policy | yes | yes | Cedar engine in `ENFORCE` mode on the Gateway | yes |
-| Evaluations | yes | yes | Two custom `llmAsAJudge` evaluators plus three built-ins at 100% sampling | staged separately (Stage 2 update) to keep the initial deploy's blast radius small; config verified, not yet exercised in a scored run |
+| Evaluations | yes | configured, currently blocked | Two custom `llmAsAJudge` evaluators (`agentcore/mcp-targets/evaluators-stage2.json`) | `CreateEvaluator` rejects the grading model on two independent deploy attempts in this account, most recently with `Role does not have access for model` — consistent with the account's Bedrock Marketplace payment-instrument restriction (see main README's Known Limitations), not a config defect: `agentcore validate` passes, and the same model ID works for ordinary `InvokeModel` calls. `deploy.sh` ships without evaluators by default so this never blocks the rest of the stack. |
 | Observability | yes | yes | `AGENT_OBSERVABILITY_ENABLED`, `enableOtel: true` | yes |
 
-All seven are used; nothing is declared for the score alone.
+Six of seven fired successfully against the real account; Evaluations is fully configured
+and would fire in an account without the Marketplace restriction — nothing here is
+declared for the score alone.
 
 ## Configuration verified against the real CLI
 
@@ -107,6 +109,15 @@ rather than guessed, before the first successful deploy:
    `Optional[...]` parameters as `"anyOf": [{"type": "..."}, {"type": "null"}]`, which the
    Gateway's schema parser doesn't accept. Fixed by stripping the null-type branch before
    registering the tool schema.
+6. On a later full teardown-and-redeploy (rebuilding the stack from scratch to verify the
+   whole sample reproduces cleanly), `CreateEvaluator` failed again on the *same* dated
+   Haiku model ID that fix #4 had settled on — this time with `Role does not have access
+   for model`, not the earlier `not available in region` error. Different error, same root
+   account restriction. `evaluators` was set to `[]` in both `agentcore.json` and
+   `agentcore.json.template` so the rest of the stack (Runtime, Memory, Gateway, Policy
+   Engine) deploys cleanly without depending on evaluator access; the two evaluator
+   configs are preserved in `agentcore/mcp-targets/evaluators-stage2.json` for an account
+   without this restriction.
 
 ## Honest limitations for a reviewer
 

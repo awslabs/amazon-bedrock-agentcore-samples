@@ -27,7 +27,7 @@ proof-of-concept before it reaches a customer.
 |---|---|
 | Use case type | Event-driven / document review (single-shot, not conversational) |
 | Agent type | Single agent, five deterministic-and-model phases |
-| Use case components | Tools (Gateway/Lambda MCP target), Memory, Identity (M2M OAuth), Policy Engine (Cedar), Evaluations, Observability, IaC (CDK), optional public web front end with view-limited share links |
+| Use case components | Tools (Gateway/Lambda MCP target), Memory, Identity (M2M OAuth), Policy Engine (Cedar), Evaluations (configured, account-dependent — see Known Limitations), Observability, IaC (CDK), optional public web front end with view-limited share links |
 | Use case vertical | Cross-industry — partner/pre-sales architecture review (segment + industry rule packs cover Enterprise/SMB/Digital Native × FSI/Retail/Generic out of the box) |
 | Example complexity | Intermediate |
 | SDK used | Amazon Bedrock AgentCore SDK (Strands), AgentCore CLI (`agentcore.json`), AWS CDK (web layer + supplementary infra), boto3 |
@@ -147,7 +147,7 @@ cp agentcore/aws-targets.json.template agentcore/aws-targets.json
 ./scripts/setup_cognito.sh us-east-1   # User Pool + M2M client for the Gateway
 agentcore validate                     # verified Valid against @aws/agentcore 0.26.0
 agentcore dev                          # local development server, hot reload
-./deploy.sh dev                        # Runtime, Memory, Gateway, Policy, Evaluators
+./deploy.sh dev                        # Runtime, Memory, Gateway, Policy Engine
 agentcore logs
 agentcore traces list
 ```
@@ -253,7 +253,7 @@ principal read access.
 ```
 app/pocvalidator/
   main.py               AgentCore Runtime entrypoint — five phases
-  config.py              ALL env var reads (ADR 0011)
+  config.py              ALL env var reads (mirrors ADR 0011 in event-driven-claims-agent)
   memory/session.py      AgentCore Memory, graceful degradation
   tools/                 submit_extraction, submit_sow_assessment
   core/                   deterministic engine — imports no AWS, no Streamlit
@@ -302,11 +302,18 @@ config, env reads confined to `config.py`).
 | **Gateway** | MCP protocol, semantic search, 1 Lambda-backed target (real AWS Documentation MCP server) |
 | **Identity** | `@requires_access_token(auth_flow="M2M")` — Gateway OAuth via the Identity vault, no secret in env vars |
 | **Policy Engine** | Cedar policy in `ENFORCE` mode — read-only tool access is a platform constraint |
-| **Evaluations** | Custom `llmAsAJudge` evaluators plus built-ins at 100% sampling |
+| **Evaluations** | Two custom `llmAsAJudge` evaluators configured in `agentcore.json` — `CreateEvaluator` currently fails in the deployment account used for this sample (see Known Limitations), so `./deploy.sh` ships without them by default. Re-add by restoring the `evaluators` array once your account has model access for the evaluator's grading model. |
 | **Observability** | `AGENT_OBSERVABILITY_ENABLED`, OTEL instrumentation enabled |
 
 ## Known limitations
 
+- **The two custom Evaluators are configured but not deployed by default.** `CreateEvaluator`
+  rejects the grading model in the account this sample was built and verified against —
+  confirmed on two independent deploy attempts, both root-caused to the account, not the
+  config (`agentcore validate` passes; the same model ID works for ordinary `InvokeModel`
+  calls). `./deploy.sh` ships the Runtime, Memory, Gateway, and Policy Engine, which is
+  everything a review actually needs; add the `evaluators` array back in `agentcore.json`
+  once your account has evaluator model access.
 - **Pricing is a static snapshot** for `ap-south-1`, with the as-of date shown in the UI.
   Directional only. Moving to the AWS Pricing MCP server as a second Gateway target is the
   natural upgrade.
