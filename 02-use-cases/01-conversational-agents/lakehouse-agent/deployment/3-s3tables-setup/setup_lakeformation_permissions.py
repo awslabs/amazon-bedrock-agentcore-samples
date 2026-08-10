@@ -8,10 +8,16 @@ It configures column-level filtering and tenant-role table grants for:
 - lakehouse-adjusters-role
 - lakehouse-administrators-role
 
-Note: per-user ROW scope is NOT configured here. Rows are scoped downstream by a bound
-identity SQL predicate (``WHERE user_id = ?``) in the claims tools. The row-filter helper
-below (``_apply_row_filter``) exists but no caller passes ``row_filter``, so Lake Formation
-data-cell filters ship uninvoked — a documented tutorial limitation.
+Note: per-user ROW scope is intentionally not implemented with Lake Formation data-cell
+filters. A filter's row expression is statically defined, so per-user scope would require
+provisioning one filter per user. Rows are instead scoped at query time by a predicate
+bound to the caller's verified identity (``WHERE user_id = <caller sub>``) in the claims
+tools. ``_apply_row_filter`` below remains as a hook for static, group-level row policies;
+no caller passes ``row_filter``, so no data-cell filter is invoked in this sample.
+
+This is a design choice about which mechanism enforces row scope — NOT a gap in row
+isolation, which is verified live (see the isolation matrix in
+``07-optional-multi-user-isolation-test.ipynb``).
 
 Usage:
     python setup_lakeformation_permissions.py
