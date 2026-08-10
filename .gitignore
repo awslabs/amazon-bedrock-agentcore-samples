@@ -54,6 +54,8 @@ lib/
 !05-blueprints/**/lib/
 !02-use-cases/visa-b2b-account-payable-agent/infrastructure/lib/
 !04-infrastructure-as-code/cdk/typescript/knowledge-base-rag-agent/infrastructure/lib/
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/agentcore/cdk/lib/
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/web/cdk/lib/
 !01-features/07-centralize-and-govern-your-ai-infrastructure/01-gateway/05-community/gateway-mcp-inspector/client/src/lib/
 !06-workshops/01-AgentCore-runtime/01-hosting-agent/05-java-agents/01-springai-with-bedrock-model/infra/lib/
 !06-workshops/01-AgentCore-runtime/01-hosting-agent/05-java-agents/02-embabel-with-bedrock-model/infra/lib/
@@ -166,6 +168,7 @@ celerybeat.pid
 # Environments
 .env
 .env.*
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/.env.example
 .venv
 env/
 venv/
@@ -259,6 +262,7 @@ Test-Downloads/
 
 ### Docker ###
 .dockerignore
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/.dockerignore
 06-workshops/03-AgentCore-identity/07-Outbound_Auth_3LO_ECS_Fargate/backend/runtime/requirements.txt
 06-workshops/03-AgentCore-identity/07-Outbound_Auth_3LO_ECS_Fargate/backend/session_binding/requirements.txt
 06-workshops/03-AgentCore-identity/07-Outbound_Auth_3LO_ECS_Fargate/cdk.context.json
@@ -271,6 +275,7 @@ plan/
 
 ### draw.io source files (keep rendered PNG only) ###
 *.drawio
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/data/samples/diagrams/simple-webapp.drawio
 
 # Generated configuration and result files
 **/agents_config.json
@@ -283,6 +288,8 @@ plan/
 # Docker files (generated)
 **/Dockerfile
 !02-use-cases/02-workflow-automation-agents/event-driven-claims-agent/app/claimsagent/Dockerfile
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/app/pocvalidator/Dockerfile
+!02-use-cases/02-workflow-automation-agents/poc-validator-agent/agentcore/mcp-targets/aws-documentation/Dockerfile
 !01-features/02-host-your-agent/01-runtime/04-coding-agents/06-codex-with-efs/Dockerfile
 
 # Agent state and runtime files

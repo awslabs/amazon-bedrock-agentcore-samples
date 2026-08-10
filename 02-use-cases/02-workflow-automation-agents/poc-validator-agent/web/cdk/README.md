@@ -9,46 +9,45 @@ The AgentCore Runtime/Memory/Gateway/Policy stack itself is separate — that's
 managed by `agentcore/cdk/` via the `agentcore` CLI. This stack only covers
 what sits in front of it.
 
-## What's here vs. what's already live
+## What's here
 
 Every resource in `lib/web-stack.ts` was first built by hand, one verified
 step at a time, directly against the account (Lambda → IAM role → CloudFront
 origin/behavior → CloudFront Function → DynamoDB table → S3 lifecycle rule),
-each step curl-tested before moving to the next. This stack is the IaC
-write-up of that same design — `cdk synth` produces the CloudFormation a
-fresh deployment would create.
+each step curl-tested before moving to the next. This stack started as the
+IaC write-up of that same design, and has since fully replaced the hand-built
+version: the original resources were torn down and this stack deployed fresh
+in their place, then re-verified end to end (a real upload → run → share-link
+round trip against the CDK-deployed stack, not just `cdk synth`).
 
-**It does not currently manage the live resources.** Deploying this stack as-is
-into the same account would try to create a second Lambda, a second
-CloudFront distribution, etc. (CDK will fail loudly on the ones with fixed,
-already-taken names — the Lambda `functionName` and DynamoDB `tableName` are
-both pinned to match the real ones, so a plain `cdk deploy` here will error
-with "already exists" rather than silently duplicating them).
+That teardown-and-rebuild is also how the one real bug in this stack got
+found: CDK's `FunctionUrlOrigin.withOriginAccessControl()` grants CloudFront
+only `lambda:InvokeFunctionUrl` on the Lambda's resource policy. Lambda's
+newer "Dual Auth" requirement for Function URLs also needs plain
+`lambda:InvokeFunction` on the same principal/condition — without it, every
+request through the OAC-signed origin 403s with Lambda's generic
+"Forbidden... Function URL authorization" error, which gives no hint that
+the missing piece is a second IAM statement rather than anything about the
+signature itself. Fixed with an explicit `webInvokeFn.addPermission(...)`
+call right after the distribution is created (see the comment in
+`lib/web-stack.ts` and [aws-cdk#35872](https://github.com/aws/aws-cdk/issues/35872),
+open at the time of writing).
 
-### Adopting the existing resources (optional follow-up, not done automatically)
+### A note on the pinned resource names
 
-CloudFormation supports importing existing resources into a stack via
-`cdk import`. This is the correct path to bring the hand-built resources
-under this stack's management, but it's a deliberate, separate action —
-not run as part of building this CDK app, because the distribution is
-already serving a URL that's been shared and is actively being used, and an
-import gone wrong (a field CDK insists on changing vs. the live resource) is
-the kind of thing you want to do with nothing time-sensitive riding on it.
-
-To do it when ready:
-
-```bash
-npm run build
-npx cdk import --context agentRuntimeArn=... --context demoKey=... \
-  --context basicAuthCredentialBase64=... --context publicBaseUrl=...
-```
-
-`cdk import` will prompt for the physical ID of each resource it can adopt
-(Lambda function name, DynamoDB table name, S3 bucket name, IAM role name).
-CloudFront distributions and CloudFront Functions have more limited import
-support in CDK as of this writing — check `cdk import`'s own resource-type
-support list before relying on it for those two; worst case, those two stay
-hand-managed and everything else moves under CDK.
+The Lambda `functionName`, DynamoDB `tableName`, and S3 `bucketName` are
+pinned rather than auto-generated (matching what this sample's other docs
+reference by name). That means `cdk deploy` will fail with "already exists"
+rather than silently creating a duplicate if resources with these exact
+names already exist in the target account and aren't already owned by this
+stack — most likely to come up if you're adapting this stack for your own
+use rather than deploying it as-is. Either rename them in `lib/web-stack.ts`
+first, or, if the existing resources really are meant to be this stack's
+(e.g. you're recovering a stack after deleting it from CloudFormation state
+without deleting the underlying resources), adopt them with `cdk import`
+instead of `cdk deploy` — CloudFront distributions and CloudFront Functions
+have more limited `cdk import` support than Lambda/DynamoDB/S3/IAM as of
+this writing, so check its resource-type support list first.
 
 ## Deploying fresh (e.g. into a new account/region)
 

@@ -1,0 +1,18 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1">
+    <mxGraphModel dx="800" dy="600" grid="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Application Load Balancer" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.application_load_balancer;" vertex="1" parent="1"/>
+        <mxCell id="3" value="EC2" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;" vertex="1" parent="1"/>
+        <mxCell id="4" value="RDS PostgreSQL" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" vertex="1" parent="1"/>
+        <mxCell id="5" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;" vertex="1" parent="1"/>
+        <mxCell id="6" value="Legacy Mainframe" style="rounded=1;" vertex="1" parent="1"/>
+        <mxCell id="10" style="edgeStyle=none;" edge="1" parent="1" source="2" target="3"/>
+        <mxCell id="11" style="edgeStyle=none;" edge="1" parent="1" source="3" target="4"/>
+        <mxCell id="12" style="edgeStyle=none;" edge="1" parent="1" source="3" target="5"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
