@@ -2,8 +2,11 @@
 
 Add AgentCore x402 payment capability to any AI agent using the
 [`aws-agents`](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents)
-plugin. Point your coding assistant at this folder, give it a prompt, and the
-plugin's payments skill handles provisioning, wiring, and verification end-to-end.
+plugin. For the two coding-assistant paths below, point your coding assistant
+at this folder, give it a prompt, and the plugin's payments skill handles
+provisioning, wiring, and verification end-to-end. The third path skips the
+coding assistant entirely -- OpenClaw installs the plugin and reads its config
+directly.
 
 **Preview** -- AgentCore payments is currently in preview. Features and APIs may change.
 
@@ -87,9 +90,11 @@ ask you to enter them via the CLI wizard.
 |----------------|--------|----------------|
 | Existing agent | [`add-to-existing-agent/`](add-to-existing-agent/) | *"Use this folder to add AgentCore payments to my existing agent."* |
 | New agent | [`build-new-agent-that-can-transact/`](build-new-agent-that-can-transact/) | *"Use this folder to create a new AgentCore payments agent."* |
+| Conversational agent, no coding assistant | [`converse-with-openclaw-agent/`](converse-with-openclaw-agent/) | Install the plugin and configure `openclaw.json` directly. |
 
-Point your coding assistant at the chosen folder. It reads [`AGENTS.md`](AGENTS.md)
-and drives the plugin's skill from there.
+For the first two paths, point your coding assistant at the chosen folder. It
+reads [`AGENTS.md`](AGENTS.md) and drives the plugin's skill from there. The
+third path has no coding-assistant handoff -- see that folder's own README.
 
 ## What you will do manually
 
