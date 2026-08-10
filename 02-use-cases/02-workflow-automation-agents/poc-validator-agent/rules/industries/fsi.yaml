@@ -1,0 +1,87 @@
+id: fsi
+name: Financial Services
+description: >
+  Banking, insurance, capital markets and payments. Advisory only — this pack encodes
+  commonly applicable control expectations, not a compliance attestation.
+requirements:
+  - id: FSI-001
+    applies_to: {categories: [database, storage, analytics]}
+    attribute: customer_managed_key
+    operator: equals
+    value: true
+    severity: critical
+    pillar: Security
+    rationale: Regulated financial data is normally required to be encrypted under a key the institution controls and can revoke, not an AWS-managed key.
+    remediation: Create a customer-managed KMS key with an explicit key policy and rotation enabled, and re-encrypt under it.
+    doc_url: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html
+
+  - id: FSI-002
+    applies_to: {categories: [observability]}
+    attribute: log_retention_days
+    operator: min
+    value: 2555
+    severity: high
+    pillar: Security
+    rationale: Financial-sector record-keeping obligations commonly run to seven years. Confirm the exact period with your compliance function.
+    remediation: Set log retention to 2555 days, or export to S3 with an Object Lock retention policy.
+    doc_url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
+
+  - id: FSI-003
+    applies_to: {categories: [database, storage, analytics]}
+    attribute: public_access
+    operator: equals
+    value: false
+    severity: critical
+    pillar: Security
+    rationale: No regulated data store should be reachable from the public internet under any configuration.
+    remediation: Disable public access and restrict to VPC endpoints.
+    doc_url: https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html
+
+  - id: FSI-004
+    applies_to: {categories: [database]}
+    attribute: multi_az
+    operator: equals
+    value: true
+    severity: high
+    pillar: Reliability
+    rationale: Availability expectations for customer-facing financial systems do not tolerate a single-AZ database.
+    remediation: Enable Multi-AZ.
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
+
+  - id: FSI-005
+    applies_to: {categories: [networking]}
+    attribute: waf_enabled
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Public financial endpoints are actively targeted; a managed WAF rule set is the expected baseline.
+    remediation: Attach AWS WAF with the managed core and known-bad-inputs rule groups.
+    doc_url: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
+
+  - id: FSI-006
+    applies_to: {categories: [security]}
+    attribute: rotation_enabled
+    operator: equals
+    value: true
+    severity: medium
+    pillar: Security
+    rationale: Static long-lived credentials are a standard audit finding in financial services.
+    remediation: Enable automatic rotation on stored secrets.
+    doc_url: https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html
+
+  - id: FSI-007
+    applies_to: {categories: [ai]}
+    attribute: guardrails_enabled
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Generative features touching customer data need enforced content and PII controls that sit outside the prompt.
+    remediation: Apply Amazon Bedrock Guardrails with PII filters and denied-topic policies.
+    doc_url: https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html
+data_residency:
+  note: >
+    Indian financial-sector guidance commonly requires data to remain in-country.
+    Confirm region selection against your obligations before deployment.
+    Advisory only.

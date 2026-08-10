@@ -1,0 +1,168 @@
+[
+  {
+    "name": "read_documentation",
+    "description": "Fetch and convert an AWS documentation page to markdown format.\n\n## Usage\n\nThis tool retrieves the content of an AWS documentation page and converts it to markdown format.\nFor long documents, you can make multiple calls with different start_index values to retrieve\nthe entire content in chunks.\n\n## URL Requirements\n\n- Must be from the docs.aws.amazon.com domain\n- Must end with .html\n\n## Example URLs\n\n- https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html\n- https://docs.aws.amazon.com/lambda/latest/dg/lambda-invocation.html\n\n## Output Format\n\nThe output is formatted as markdown text with:\n- Preserved headings and structure\n- Code blocks for examples\n- Lists and tables converted to markdown format\n\n## Large Tables\n\nTables with more than 20 rows are automatically truncated to show only the header and 5 sample rows,\nalong with a hint to use the `search_table` tool. Use `search_table` to filter and retrieve specific\nrows from large tables (e.g., service quotas, IAM actions).\n\n## Handling Long Documents\n\nIf the response indicates the document was truncated, you have several options:\n\n1. **Continue Reading**: Make another call with start_index set to the end of the previous response\n2. **Stop Early**: For very long documents (>30,000 characters), if you've already found the specific information needed, you can stop reading\n\nArgs:\n    ctx: MCP context for logging and error handling\n    url: URL of the AWS documentation page to read\n    max_length: Maximum number of characters to return\n    start_index: On return output starting at this character index\n\nReturns:\n    Markdown content of the AWS documentation\n",
+    "inputSchema": {
+      "properties": {
+        "url": {
+          "description": "URL of the AWS documentation page to read",
+          "title": "Url",
+          "type": "string"
+        },
+        "max_length": {
+          "default": 5000,
+          "description": "Maximum number of characters to return.",
+          "exclusiveMaximum": 1000000,
+          "exclusiveMinimum": 0,
+          "title": "Max Length",
+          "type": "integer"
+        },
+        "start_index": {
+          "default": 0,
+          "description": "On return output starting at this character index, useful if a previous fetch was truncated and more content is required.",
+          "minimum": 0,
+          "title": "Start Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "read_documentationArguments",
+      "type": "object"
+    }
+  },
+  {
+    "name": "read_sections",
+    "description": "Extract specific sections from AWS documentation pages by title.\n\nRetrieves a page, converts to markdown, and returns only matching sections.\nSection matching is case-insensitive and handles whitespace differences.\n\n## URL Requirements\n- Must end with .html\n\n## Large Tables\n\nTables with more than 20 rows are automatically truncated to show only the header and 5 sample rows,\nalong with a hint to use the `search_table` tool. Use `search_table` to filter and retrieve specific\nrows from large tables (e.g., service quotas, IAM actions).\n\n## Read Sections Tips\n\n- Use exact section titles from search results 'sections' field when available\n- Section matching is case-insensitive and handles whitespace differences\n- Include multiple related sections in one call for comprehensive coverage\n\n## Example Usage\n\n```\n# If query is about S3 bucket naming rules:\n# Available sections: ['General purpose buckets naming rules', 'Example general purpose bucket names', 'Best practices', 'Creating a bucket that uses a GUID in the bucket name']\n# Read these specific sections:\nread_sections(\n    url='https://docs.aws.amazon.com/s3/latest/userguide/bucketnamingrules.html',\n    section_titles=['General purpose buckets naming rules', 'Best practices'],\n)\n\n# If query is about Python Lambda function examples:\n# Available sections: ['Example Python Lambda function code', 'Handler naming conventions', 'Using the Lambda event object', 'Accessing and using the Lambda context object'. 'Valid handler signatures for Python handlers', 'Returning a value', 'Using the AWS SDK for Python (Boto3) in your handler', 'Accessing environment variables, 'Code best practices for Python Lambda functions']\n# Read these specific sections:\nread_sections(\n    url='https://docs.aws.amazon.com/lambda/latest/dg/python-handler.html',\n    section_titles=[\n        'Example Python Lambda function code',\n        'Code best practices for Python Lambda functions',\n    ],\n)\n```\n\nArgs:\n    ctx: MCP context for logging and error handling\n    url: URL of the AWS documentation page to read\n    section_titles: List of section titles to extract\n\nReturns:\n    Filtered markdown content containing only the requested sections\n",
+    "inputSchema": {
+      "properties": {
+        "url": {
+          "description": "URL of the AWS documentation page to read",
+          "title": "Url",
+          "type": "string"
+        },
+        "section_titles": {
+          "description": "List of section titles to extract from the documentation",
+          "items": {
+            "type": "string"
+          },
+          "title": "Section Titles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "url",
+        "section_titles"
+      ],
+      "title": "read_sectionsArguments",
+      "type": "object"
+    }
+  },
+  {
+    "name": "search_table",
+    "description": "Search for specific rows in a large documentation table.\n\nUse this tool when you need specific rows from a large documentation table\n(e.g., service quotas, pricing tables, supported models lists). Returns\nmatching rows as JSON instead of dumping the entire table.\n\nThis is more efficient than read_sections for pages with hundreds of table rows.\nIf read_sections or read_documentation indicates a table was truncated, use this\ntool to find the specific rows you need.\n\n## Section Title\n\n- If you know the exact section title, provide it for precision\n- If unsure, omit section_title \u2014 the tool will search all tables on the page\n- Use section titles from search_documentation results (TOC) or read_documentation output\n- If the section title is wrong, the hint field will list available sections\n\n## URL Requirements\n\n- Must be from the docs.aws.amazon.com domain\n- Must end with .html\n\n## Example Usage\n\n```\n# With section title (searches all tables in that section):\nsearch_table(\n    url='https://docs.aws.amazon.com/general/latest/gr/bedrock.html',\n    section_title='Amazon Bedrock service quotas',\n    query='Titan Text Embeddings V2',\n)\n\n# Without section title (searches all tables on the page):\nsearch_table(\n    url='https://docs.aws.amazon.com/general/latest/gr/bedrock.html',\n    query='Claude 3 Sonnet requests',\n)\n```\n\n## Response Format\n\nReturns a SearchTableResponse with:\n- tables_searched: Number of tables searched\n- tables_with_matches: Number of tables containing matching rows\n- hint: Guidance message when no matches found, section not found, or no tables on page\n- error: Error message on HTTP/transport failures only\n- results: Array of table result objects, each with:\n    - table_heading: The sub-heading above the table (if any)\n    - columns: Column headers for that table\n    - parent_columns: (optional) For rowspan/nested tables, which columns are group headers\n    - child_columns: (optional) For rowspan/nested tables, which columns are nested under groups\n    - total_rows: Total rows (or groups, for nested tables) in that table\n    - matched_rows: Number of rows/groups matching the query per table\n    - showing: Number of rows/groups returned per table (capped by max_rows per table)\n    - rows: Array of matching row objects. For flat tables: {column \u2192 value}.\n      For nested tables: {parent_col \u2192 value, ..., \"rows\": [{child_col \u2192 value}, ...]}\n\nArgs:\n    ctx: MCP context for logging and error handling\n    url: AWS documentation page URL (must end with .html)\n    section_title: The section heading containing the table (optional \u2014 omit to search all tables on the page)\n    query: Search term to filter rows (all words must match, case-insensitive)\n    max_rows: Maximum matching rows to return per table (default 20)\n\nReturns:\n    SearchTableResponse with matching rows grouped by table\n",
+    "inputSchema": {
+      "properties": {
+        "url": {
+          "description": "URL of the AWS documentation page containing the table",
+          "title": "Url",
+          "type": "string"
+        },
+        "section_title": {
+          "type": "string",
+          "default": null,
+          "description": "The section heading that contains the table. If omitted, searches all tables on the page. Use exact titles from search_documentation results or read_documentation output.",
+          "title": "Section Title"
+        },
+        "query": {
+          "description": "Search term to filter rows (case-insensitive, all words must match across any column)",
+          "title": "Query",
+          "type": "string"
+        },
+        "max_rows": {
+          "default": 20,
+          "description": "Maximum number of matching rows to return per table",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Max Rows",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "url",
+        "query"
+      ],
+      "title": "search_tableArguments",
+      "type": "object"
+    }
+  },
+  {
+    "name": "search_documentation",
+    "description": "Search AWS documentation using the official AWS Documentation Search API.\n\n## Usage\n\nThis tool searches across all AWS documentation for pages matching your search phrase.\nUse it to find relevant documentation when you don't have a specific URL.\n\n## Search Tips\n\n- Use specific technical terms rather than general phrases\n- Include service names to narrow results (e.g., \"S3 bucket versioning\" instead of just \"versioning\")\n- Use quotes for exact phrase matching (e.g., \"AWS Lambda function URLs\")\n- Include abbreviations and alternative terms to improve results\n- Use guide_type and product_type filters found from a SearchResponse's \"facets\" property:\n    - Filter only for broad search queries with patterns:\n        - \"What is [service]?\" -> product_types: [\"Amazon Simple Storage Service\"]\n        - \"How to use <service 1> with <service 2>?\" -> product_types: [<service 1>, <service 2>]\n        - \"[service] getting started\" -> product_types: [<service>] + guide_types: [\"User Guide, \"Developer Guide\"]\n        - \"API reference for [service]\" -> product_types: [<service>] + guide_types: [\"API Reference\"]\n\n## Result Interpretation\n\nEach SearchResponse includes:\n- search_results: List of documentation pages, each with:\n    - rank_order: The relevance ranking (lower is more relevant)\n    - url: The documentation page URL\n    - title: The page title\n    - context: A brief excerpt or summary (if available)\n    - recommended_sections: A subset of section titles ranked as most relevant to the query, in rank order (when available) - Pass these directly to read_sections for targeted content extraction\n    - sections: All available section titles for this page (when available) - individual titles can be used with the read_sections tool for targeted content extraction\n    - metadata: Optional per-result context (when available). May include:\n        - additional_urls: Other doc URLs related to the same result `{url, section_title, section_anchor}` - pass `section_title` to read_sections to fetch content; use `url#section_anchor` when citing\n- facets: Available filters (product_types, guide_types) for refining searches\n- query_id: Unique identifier for this search session\n- metadata: Optional response-level context (when available). May include:\n    - discovered_services: AWS services inferred from the query that may be relevant beyond the top results\n    - related_tasks: Related operations or workflows the user may want to follow up on, each with its own doc URLs\n    - relationships: Named connections between information in the search results, useful for understanding how the returned topics relate to each other\n\n\nArgs:\n    ctx: MCP context for logging and error handling\n    search_phrase: Search phrase to use\n    search_intent: The intent behind the search requested by the user\n    limit: Maximum number of results to return\n    product_types: Filter by AWS product/service\n    guide_types: Filter by guide type\n\nReturns:\n    List of search results with URLs, titles, query ID, context snippets, and facets for filtering\n",
+    "inputSchema": {
+      "properties": {
+        "search_phrase": {
+          "description": "Search phrase to use",
+          "title": "Search Phrase",
+          "type": "string"
+        },
+        "search_intent": {
+          "default": "",
+          "description": "For the search_phrase parameter, describe the search intent of the user. CRITICAL: Do not include any PII or customer data, describe only the AWS-related intent for search.",
+          "title": "Search Intent",
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "description": "Maximum number of results to return",
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "product_types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "default": null,
+          "description": "Filter results by AWS product/service (e.g., [\"Amazon Simple Storage Service\"])",
+          "title": "Product Types"
+        },
+        "guide_types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "default": null,
+          "description": "Filter results by guide type (e.g., [\"User Guide\", \"API Reference\", \"Developer Guide\"])",
+          "title": "Guide Types"
+        }
+      },
+      "required": [
+        "search_phrase"
+      ],
+      "title": "search_documentationArguments",
+      "type": "object"
+    }
+  },
+  {
+    "name": "recommend",
+    "description": "Get content recommendations for an AWS documentation page.\n\n## Usage\n\nThis tool provides recommendations for related AWS documentation pages based on a given URL.\nUse it to discover additional relevant content that might not appear in search results.\n\n## Recommendation Types\n\nThe recommendations include four categories:\n\n1. **Highly Rated**: Popular pages within the same AWS service\n2. **New**: Recently added pages within the same AWS service - useful for finding newly released features\n3. **Similar**: Pages covering similar topics to the current page\n4. **Journey**: Pages commonly viewed next by other users\n\n## When to Use\n\n- After reading a documentation page to find related content\n- When exploring a new AWS service to discover important pages\n- To find alternative explanations of complex concepts\n- To discover the most popular pages for a service\n- To find newly released information by using a service's welcome page URL and checking the **New** recommendations\n\n## Finding New Features\n\nTo find newly released information about a service:\n1. Find any page belong to that service, typically you can try the welcome page\n2. Call this tool with that URL\n3. Look specifically at the **New** recommendation type in the results\n\n## Result Interpretation\n\nEach recommendation includes:\n- url: The documentation page URL\n- title: The page title\n- context: A brief description (if available)\n\nArgs:\n    ctx: MCP context for logging and error handling\n    url: URL of the AWS documentation page to get recommendations for\n\nReturns:\n    List of recommended pages with URLs, titles, and context\n",
+    "inputSchema": {
+      "properties": {
+        "url": {
+          "description": "URL of the AWS documentation page to get recommendations for",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "recommendArguments",
+      "type": "object"
+    }
+  }
+]

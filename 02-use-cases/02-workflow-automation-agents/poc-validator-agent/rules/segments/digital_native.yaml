@@ -1,0 +1,50 @@
+id: digital_native
+name: Digital Native
+description: >
+  Product-led company shipping continuously, comfortable with managed and serverless
+  services. Speed and unit economics outrank governance depth.
+cost_sensitivity: high
+requirements:
+  - id: DN-001
+    applies_to: {categories: [database, storage]}
+    attribute: encryption_at_rest
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Enterprise customers will ask about this in the first security questionnaire. Enabling it later is far more disruptive.
+    remediation: Enable encryption at rest now, before there is production data to migrate.
+    doc_url: https://docs.aws.amazon.com/kms/latest/developerguide/services.html
+
+  - id: DN-002
+    applies_to: {categories: [database, storage]}
+    attribute: public_access
+    operator: equals
+    value: false
+    severity: critical
+    pillar: Security
+    rationale: Public data-tier exposure is unrecoverable once it is discovered externally.
+    remediation: Disable public access.
+    doc_url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+
+  - id: DN-003
+    applies_to: {categories: [integration]}
+    attribute: dlq_configured
+    operator: equals
+    value: true
+    severity: medium
+    pillar: Reliability
+    rationale: High deploy frequency means poison messages are a matter of when, not if. Without a DLQ they block the queue or shard.
+    remediation: Configure a dead-letter queue or failure destination.
+    doc_url: https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html
+
+  - id: DN-004
+    applies_to: {categories: [database]}
+    attribute: backup_enabled
+    operator: equals
+    value: true
+    severity: high
+    pillar: Reliability
+    rationale: Point-in-time recovery is the cheapest insurance available against a bad migration.
+    remediation: Enable automated backups or point-in-time recovery.
+    doc_url: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery.html

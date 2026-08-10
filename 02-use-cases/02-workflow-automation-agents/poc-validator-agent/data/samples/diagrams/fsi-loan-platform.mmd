@@ -1,0 +1,14 @@
+%% FSI loan origination platform — matches the fsi_loan example.
+graph LR
+  cf[CloudFront]
+  alb[Application Load Balancer]
+  ecs[ECS Fargate]
+  rds[RDS PostgreSQL]
+  s3[S3]
+  sm[Secrets Manager]
+
+  cf --> alb
+  alb --> ecs
+  ecs --> rds
+  ecs --> s3
+  ecs --> sm

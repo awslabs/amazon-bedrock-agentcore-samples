@@ -1,0 +1,70 @@
+# Pricing snapshot. Indicative on-demand rates in USD, ap-south-1, for directional
+# sizing only. This is deliberately a static snapshot with a visible as-of date:
+# a POC validator must never present a number whose provenance is unclear.
+#
+# To move to live pricing, replace the loader in validator/pricing.py with a call
+# to the AWS Price List API or the AWS Pricing MCP server. The arithmetic below
+# stays in Python either way.
+
+version: 1
+as_of: "2026-08-01"
+region: ap-south-1
+currency: USD
+source: https://calculator.aws/
+
+rates:
+  alb:            {lb_hours: 0.0252, lcu_hours: 0.0084}
+  cloudfront:     {data_transfer_gb: 0.1090, requests_10k: 0.0120}
+  apigateway:     {requests_million: 3.50}
+  lambda:         {requests_million: 0.20, gb_seconds: 0.0000166667}
+  ecs_fargate:    {vcpu_hours: 0.04656, gb_hours: 0.00511}
+  ec2:            {instance_hours: 0.1071, ebs_gb: 0.114}
+  rds_postgres:   {instance_hours: 0.192, storage_gb: 0.137}
+  aurora:         {instance_hours: 0.318, storage_gb: 0.110}
+  dynamodb:       {wru_million: 1.4231, rru_million: 0.2846, storage_gb: 0.285}
+  s3:             {storage_gb: 0.025, requests_10k: 0.0055}
+  elasticache:    {node_hours: 0.226}
+  sqs:            {requests_million: 0.48}
+  eventbridge:    {events_million: 1.00}
+  stepfunctions:  {transitions_million: 25.00}
+  kinesis:        {shard_hours: 0.017, put_units_million: 0.0175}
+  opensearch:     {instance_hours: 0.156, storage_gb: 0.135}
+  cognito:        {mau_thousand: 5.50}
+  secretsmanager: {secrets: 0.40, api_calls_10k: 0.05}
+  cloudwatch:     {ingest_gb: 0.76, storage_gb: 0.0324}
+  bedrock:        {input_ktokens: 0.003, output_ktokens: 0.015}
+
+# Cost impact of hardening controls. These produce the "compliance premium" —
+# the delta between a minimum-viable configuration and the one the rules demand.
+control_costs:
+  customer_managed_key:
+    basis: flat_monthly
+    amount: 1.00
+    note: One KMS customer-managed key per protected resource, plus request charges.
+  multi_az:
+    basis: multiplier
+    note: Multi-AZ roughly doubles instance and, for RDS, storage charges.
+  backup_retention_days:
+    basis: per_unit
+    driver: storage_gb
+    amount_per_gb_month: 0.095
+    free_days: 7
+    note: Backup storage beyond the free allocation equal to provisioned storage.
+  log_retention_days:
+    basis: per_unit
+    driver: storage_gb
+    amount_per_gb_month: 0.0324
+    free_days: 30
+    note: Extended CloudWatch Logs storage.
+  waf_enabled:
+    basis: flat_monthly
+    amount: 13.00
+    note: Web ACL plus managed rule groups and request charges at moderate volume.
+  guardrails_enabled:
+    basis: flat_monthly
+    amount: 15.00
+    note: Bedrock Guardrails policy evaluation at moderate volume.
+  rotation_enabled:
+    basis: flat_monthly
+    amount: 2.00
+    note: Rotation Lambda invocations and additional Secrets Manager API calls.

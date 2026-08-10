@@ -1,0 +1,8 @@
+[
+  {
+    "name": "dev",
+    "description": "Development deployment target",
+    "account": "PLACEHOLDER_ACCOUNT_ID",
+    "region": "PLACEHOLDER_REGION"
+  }
+]

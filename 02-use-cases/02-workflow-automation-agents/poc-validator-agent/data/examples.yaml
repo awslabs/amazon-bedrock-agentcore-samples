@@ -1,0 +1,83 @@
+# Preset submissions. These exist so the validator can be demonstrated in under a
+# minute without anyone hand-building a graph. The first two are deliberately
+# imperfect — a validator that only ever shows a clean result teaches nothing.
+
+version: 1
+
+examples:
+
+  - id: fsi_loan
+    name: "FSI — loan origination platform (Enterprise)"
+    description: >
+      Customer-facing loan origination platform for an NBFC. Applicants submit
+      documents through a web front end; underwriting runs asynchronously.
+      Roughly 50,000 applications per month.
+    segment: enterprise
+    industry: fsi
+    region: ap-south-1
+    services: [cloudfront, alb, ecs_fargate, rds_postgres, s3, sqs, cloudwatch, secretsmanager]
+    edges:
+      - [cloudfront, alb]
+      - [alb, ecs_fargate]
+      - [ecs_fargate, rds_postgres]
+      - [ecs_fargate, s3]
+      - [ecs_fargate, secretsmanager]
+    config:
+      rds_postgres: {encryption_at_rest: true, private_subnet: true, backup_enabled: true}
+      s3: {encryption_at_rest: true, versioning: true}
+
+  - id: retail_storefront
+    name: "Retail — serverless storefront (Digital Native)"
+    description: >
+      Direct-to-consumer storefront with a serverless API, event-driven order
+      processing and a managed search tier. Traffic is spiky around campaigns.
+    segment: digital_native
+    industry: retail
+    region: ap-south-1
+    services: [cloudfront, apigateway, lambda, dynamodb, s3, eventbridge, opensearch, cognito]
+    edges:
+      - [cloudfront, apigateway]
+      - [apigateway, lambda]
+      - [apigateway, cognito]
+      - [lambda, dynamodb]
+      - [lambda, eventbridge]
+      - [lambda, s3]
+      - [s3, opensearch]
+    config:
+      dynamodb: {encryption_at_rest: true, backup_enabled: true}
+      s3: {encryption_at_rest: true}
+
+  - id: smb_webapp
+    name: "SMB — internal web application (Generic)"
+    description: >
+      Line-of-business web application for around 200 internal users. Small IT
+      team, no dedicated platform function, minimal appetite for operational
+      complexity.
+    segment: smb
+    industry: generic
+    region: ap-south-1
+    services: [alb, ec2, rds_postgres, s3, cloudwatch]
+    edges:
+      - [alb, ec2]
+      - [ec2, rds_postgres]
+      - [ec2, s3]
+    config:
+      rds_postgres: {encryption_at_rest: true, backup_enabled: true}
+      s3: {encryption_at_rest: true}
+
+  - id: broken_design
+    name: "Deliberately broken — shows anti-pattern and unverified detection"
+    description: >
+      A design containing integrations that do not exist. Included to show what
+      the validator does when a submission asserts something untrue.
+    segment: enterprise
+    industry: fsi
+    region: ap-south-1
+    services: [cloudfront, apigateway, rds_postgres, s3, kinesis, opensearch]
+    edges:
+      - [cloudfront, rds_postgres]
+      - [apigateway, rds_postgres]
+      - [s3, rds_postgres]
+      - [kinesis, opensearch]
+      - [opensearch, s3]
+    config: {}

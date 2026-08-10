@@ -1,0 +1,72 @@
+id: enterprise
+name: Enterprise
+description: >
+  Large organisation with formal governance, dedicated platform and security teams,
+  and change-control processes. Resilience and auditability outrank time-to-market.
+cost_sensitivity: low
+requirements:
+  - id: ENT-001
+    applies_to: {categories: [database]}
+    attribute: multi_az
+    operator: equals
+    value: true
+    severity: high
+    pillar: Reliability
+    rationale: Enterprise workloads are expected to survive the loss of a single availability zone without data loss.
+    remediation: Enable Multi-AZ on the database instance or cluster.
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
+
+  - id: ENT-002
+    applies_to: {categories: [database, storage, compute, analytics]}
+    attribute: encryption_at_rest
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Encryption at rest is a baseline control in every enterprise security standard and is effectively free on AWS.
+    remediation: Enable encryption at rest. Existing unencrypted resources generally require a snapshot-and-restore.
+    doc_url: https://docs.aws.amazon.com/whitepapers/latest/logical-separation/encrypting-data-at-rest-and--in-transit.html
+
+  - id: ENT-003
+    applies_to: {categories: [database, storage, networking, integration, compute, analytics, security, ai]}
+    attribute: logging_enabled
+    operator: equals
+    value: true
+    severity: medium
+    pillar: Operational Excellence
+    rationale: Without per-service logging there is no audit trail and no way to reconstruct an incident.
+    remediation: Enable access or audit logging and ship it to CloudWatch Logs.
+    doc_url: https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html
+
+  - id: ENT-004
+    applies_to: {categories: [database]}
+    attribute: backup_retention_days
+    operator: min
+    value: 30
+    severity: medium
+    pillar: Reliability
+    rationale: Enterprise recovery expectations typically exceed the 7-day default retention window.
+    remediation: Increase the automated backup retention period to at least 30 days.
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html
+
+  - id: ENT-005
+    applies_to: {categories: [database, compute, analytics]}
+    attribute: private_subnet
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Data and compute tiers should not sit in a subnet with a route to an internet gateway.
+    remediation: Move the resource into a private subnet and reach it through a load balancer or VPC endpoint.
+    doc_url: https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html
+
+  - id: ENT-006
+    applies_to: {categories: [observability]}
+    attribute: log_retention_days
+    operator: min
+    value: 365
+    severity: medium
+    pillar: Operational Excellence
+    rationale: The CloudWatch Logs default of never-expire is a cost problem, and a short retention is an audit problem. Enterprises usually land on a year.
+    remediation: Set an explicit log group retention policy of 365 days or longer.
+    doc_url: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html

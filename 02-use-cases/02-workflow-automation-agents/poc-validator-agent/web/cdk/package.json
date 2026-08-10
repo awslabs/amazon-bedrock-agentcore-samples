@@ -1,0 +1,22 @@
+{
+  "name": "poc-validator-web-cdk",
+  "version": "0.1.0",
+  "bin": {
+    "cdk": "dist/bin/web.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "clean": "rm -rf dist",
+    "cdk": "npm run build && cdk"
+  },
+  "devDependencies": {
+    "@types/node": "~24.13.3",
+    "aws-cdk": "~2.1126.0",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "~2.261.0",
+    "constructs": "~10.7.0"
+  }
+}

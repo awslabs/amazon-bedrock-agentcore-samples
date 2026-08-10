@@ -1,0 +1,45 @@
+{
+  "_note": "Stage 2 only — re-add these to agentcore.json's evaluators array (or via `agentcore add evaluator --config`) after Stage 1 (Runtime/Memory/Gateway/Policy, no evaluators) is confirmed CREATE_COMPLETE and invokable. Model fixed to us.anthropic.claude-haiku-4-5-20251001-v1:0 per the three matching working examples on the official create-evaluator.html devguide (TrajectoryCompliance/AssertionChecker/ResponseSimilarity) — Sonnet 4.5/4.6 was rejected three separate times by CreateEvaluator in us-east-1 for this account despite being ACTIVE for regular invocation.",
+  "evaluators": [
+    {
+      "name": "ExtractionFidelityEvaluator",
+      "level": "SESSION",
+      "description": "Evaluates whether the diagram extraction reported only what was visible, without inventing services or offering architectural opinions",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "instructions": "Given the following agent session context:\n\n{context}\n\nTool calls made:\n{actual_tool_trajectory}\n\nEvaluate ONLY the diagram extraction phase. Penalise heavily if the agent: named a service not visible in the diagram, silently omitted a visible box instead of reporting it as unrecognised, or offered architectural advice rather than reporting what it saw. Reward accurately flagging ambiguity in the notes field.",
+          "ratingScale": {
+            "numerical": [
+              {"value": 1, "label": "Poor", "definition": "Invented services or gave unrequested opinions"},
+              {"value": 2, "label": "Below Average", "definition": "Missed visible services or dropped unrecognised labels silently"},
+              {"value": 3, "label": "Average", "definition": "Mostly accurate, some ambiguity left unflagged"},
+              {"value": 4, "label": "Good", "definition": "Accurate extraction with ambiguity flagged"},
+              {"value": 5, "label": "Excellent", "definition": "Complete and faithful, every uncertainty surfaced for confirmation"}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "SowGradingEvaluator",
+      "level": "SESSION",
+      "description": "Evaluates whether SOW criterion bands were justified from the document rather than assumed",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "instructions": "Given the following agent session context:\n\n{context}\n\nTool calls made:\n{actual_tool_trajectory}\n\nEvaluate the Scope of Work grading. Each band must be justified by something actually present in the document. Penalise credit given for inferred intent, boilerplate scored as substance, or any attempt to compute an overall total — totals are computed deterministically outside the model.",
+          "ratingScale": {
+            "numerical": [
+              {"value": 1, "label": "Poor", "definition": "Bands unjustified or a total was fabricated"},
+              {"value": 2, "label": "Below Average", "definition": "Several bands credited inferred intent"},
+              {"value": 3, "label": "Average", "definition": "Mostly grounded, some weak justifications"},
+              {"value": 4, "label": "Good", "definition": "Bands consistently grounded in document text"},
+              {"value": 5, "label": "Excellent", "definition": "Every band quotes or closely paraphrases the document"}
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+id: smb
+name: SMB
+description: >
+  Small or mid-sized business with a lean IT function and no dedicated platform team.
+  Managed services and operational simplicity outrank fine-grained control.
+cost_sensitivity: high
+requirements:
+  - id: SMB-001
+    applies_to: {categories: [database, storage]}
+    attribute: encryption_at_rest
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Encryption at rest costs nothing to enable and removes an entire class of incident.
+    remediation: Enable encryption at rest using the AWS-managed key.
+    doc_url: https://docs.aws.amazon.com/kms/latest/developerguide/services.html
+
+  - id: SMB-002
+    applies_to: {categories: [database]}
+    attribute: backup_enabled
+    operator: equals
+    value: true
+    severity: critical
+    pillar: Reliability
+    rationale: A small team without backups has no recovery path at all. This matters more here than Multi-AZ does.
+    remediation: Enable automated backups with at least 7-day retention.
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html
+
+  - id: SMB-003
+    applies_to: {categories: [database, storage]}
+    attribute: public_access
+    operator: equals
+    value: false
+    severity: critical
+    pillar: Security
+    rationale: Publicly reachable data stores are the single most common cause of SMB data exposure.
+    remediation: Disable public access and reach the resource from within the VPC.
+    doc_url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+
+  - id: SMB-004
+    applies_to: {categories: [networking, integration]}
+    attribute: logging_enabled
+    operator: equals
+    value: true
+    severity: low
+    pillar: Operational Excellence
+    rationale: Entry-point logging is the minimum needed to debug a production issue without a platform team.
+    remediation: Enable access logging on the internet-facing entry point.
+    doc_url: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html

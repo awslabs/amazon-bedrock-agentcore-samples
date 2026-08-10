@@ -1,0 +1,215 @@
+# Service catalogue. Each entry declares which posture attributes apply to the
+# service, its baseline cost drivers, and the AWS documentation that defines it.
+# Adding a service = adding one entry here. No code change required.
+
+version: 1
+as_of: "2026-08-01"
+
+services:
+
+  alb:
+    name: Application Load Balancer
+    category: networking
+    doc_url: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html
+    attributes: [encryption_in_transit, logging_enabled, waf_enabled]
+    cost_drivers:
+      - {id: lb_hours, label: Load balancer hours/month, default: 730}
+      - {id: lcu_hours, label: LCU-hours/month, default: 730}
+
+  cloudfront:
+    name: Amazon CloudFront
+    category: networking
+    doc_url: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html
+    attributes: [encryption_in_transit, logging_enabled, waf_enabled]
+    cost_drivers:
+      - {id: data_transfer_gb, label: Data transfer out GB/month, default: 500}
+      - {id: requests_10k, label: Requests (10k units)/month, default: 1000}
+
+  apigateway:
+    name: Amazon API Gateway
+    category: integration
+    doc_url: https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html
+    attributes: [encryption_in_transit, logging_enabled, waf_enabled, throttling_enabled]
+    cost_drivers:
+      - {id: requests_million, label: Requests (millions)/month, default: 5}
+
+  lambda:
+    name: AWS Lambda
+    category: compute
+    doc_url: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+    attributes: [private_subnet, logging_enabled, dlq_configured, encryption_at_rest]
+    cost_drivers:
+      - {id: requests_million, label: Invocations (millions)/month, default: 10}
+      - {id: gb_seconds, label: GB-seconds/month, default: 400000}
+
+  ecs_fargate:
+    name: Amazon ECS on Fargate
+    category: compute
+    doc_url: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html
+    attributes: [multi_az, private_subnet, logging_enabled, encryption_at_rest]
+    cost_drivers:
+      - {id: vcpu_hours, label: vCPU-hours/month, default: 1460}
+      - {id: gb_hours, label: GB-hours/month, default: 2920}
+
+  ec2:
+    name: Amazon EC2
+    category: compute
+    doc_url: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html
+    attributes: [multi_az, private_subnet, logging_enabled, encryption_at_rest, backup_enabled]
+    cost_drivers:
+      - {id: instance_hours, label: Instance-hours/month (m6i.large equiv), default: 1460}
+      - {id: ebs_gb, label: EBS GB-month, default: 200}
+
+  rds_postgres:
+    name: Amazon RDS for PostgreSQL
+    category: database
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html
+    attributes:
+      [multi_az, encryption_at_rest, customer_managed_key, private_subnet,
+       backup_enabled, backup_retention_days, logging_enabled, public_access]
+    cost_drivers:
+      - {id: instance_hours, label: Instance-hours/month (db.m6g.large equiv), default: 730}
+      - {id: storage_gb, label: Allocated storage GB, default: 200}
+    multi_az_multiplies: [instance_hours, storage_gb]
+
+  aurora:
+    name: Amazon Aurora
+    category: database
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html
+    attributes:
+      [multi_az, encryption_at_rest, customer_managed_key, private_subnet,
+       backup_enabled, backup_retention_days, logging_enabled, public_access]
+    cost_drivers:
+      - {id: instance_hours, label: Instance-hours/month (db.r6g.large equiv), default: 730}
+      - {id: storage_gb, label: Storage GB-month, default: 200}
+    multi_az_multiplies: [instance_hours]
+
+  dynamodb:
+    name: Amazon DynamoDB
+    category: database
+    doc_url: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html
+    attributes: [encryption_at_rest, customer_managed_key, backup_enabled, logging_enabled]
+    cost_drivers:
+      - {id: wru_million, label: Write request units (millions)/month, default: 5}
+      - {id: rru_million, label: Read request units (millions)/month, default: 25}
+      - {id: storage_gb, label: Storage GB-month, default: 100}
+
+  s3:
+    name: Amazon S3
+    category: storage
+    doc_url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html
+    attributes:
+      [encryption_at_rest, customer_managed_key, public_access, versioning,
+       logging_enabled, backup_enabled]
+    cost_drivers:
+      - {id: storage_gb, label: Storage GB-month, default: 1000}
+      - {id: requests_10k, label: PUT/GET requests (10k units)/month, default: 500}
+
+  elasticache:
+    name: Amazon ElastiCache
+    category: database
+    doc_url: https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html
+    attributes: [multi_az, encryption_at_rest, encryption_in_transit, private_subnet]
+    cost_drivers:
+      - {id: node_hours, label: Node-hours/month (cache.r6g.large equiv), default: 730}
+    multi_az_multiplies: [node_hours]
+
+  sqs:
+    name: Amazon SQS
+    category: integration
+    doc_url: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html
+    attributes: [encryption_at_rest, customer_managed_key, dlq_configured]
+    cost_drivers:
+      - {id: requests_million, label: Requests (millions)/month, default: 20}
+
+  eventbridge:
+    name: Amazon EventBridge
+    category: integration
+    doc_url: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html
+    attributes: [encryption_at_rest, dlq_configured, logging_enabled]
+    cost_drivers:
+      - {id: events_million, label: Events (millions)/month, default: 10}
+
+  stepfunctions:
+    name: AWS Step Functions
+    category: integration
+    doc_url: https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html
+    attributes: [logging_enabled, encryption_at_rest]
+    cost_drivers:
+      - {id: transitions_million, label: State transitions (millions)/month, default: 2}
+
+  kinesis:
+    name: Amazon Kinesis Data Streams
+    category: integration
+    doc_url: https://docs.aws.amazon.com/streams/latest/dev/introduction.html
+    attributes: [encryption_at_rest, customer_managed_key, logging_enabled]
+    cost_drivers:
+      - {id: shard_hours, label: Shard-hours/month, default: 1460}
+      - {id: put_units_million, label: PUT payload units (millions)/month, default: 50}
+
+  opensearch:
+    name: Amazon OpenSearch Service
+    category: analytics
+    doc_url: https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html
+    attributes:
+      [multi_az, encryption_at_rest, encryption_in_transit, customer_managed_key,
+       private_subnet, public_access, logging_enabled]
+    cost_drivers:
+      - {id: instance_hours, label: Instance-hours/month (m6g.large.search equiv), default: 2190}
+      - {id: storage_gb, label: EBS GB-month, default: 300}
+    multi_az_multiplies: [instance_hours]
+
+  cognito:
+    name: Amazon Cognito
+    category: security
+    doc_url: https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html
+    attributes: [mfa_enabled, logging_enabled]
+    cost_drivers:
+      - {id: mau_thousand, label: Monthly active users (thousands), default: 25}
+
+  secretsmanager:
+    name: AWS Secrets Manager
+    category: security
+    doc_url: https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html
+    attributes: [customer_managed_key, rotation_enabled]
+    cost_drivers:
+      - {id: secrets, label: Secrets stored, default: 20}
+      - {id: api_calls_10k, label: API calls (10k units)/month, default: 100}
+
+  cloudwatch:
+    name: Amazon CloudWatch Logs
+    category: observability
+    doc_url: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html
+    attributes: [encryption_at_rest, customer_managed_key, log_retention_days]
+    cost_drivers:
+      - {id: ingest_gb, label: Log ingestion GB/month, default: 100}
+      - {id: storage_gb, label: Log storage GB-month, default: 300}
+
+  bedrock:
+    name: Amazon Bedrock
+    category: ai
+    doc_url: https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html
+    attributes: [logging_enabled, guardrails_enabled, private_subnet]
+    cost_drivers:
+      - {id: input_ktokens, label: Input tokens (thousands)/month, default: 20000}
+      - {id: output_ktokens, label: Output tokens (thousands)/month, default: 4000}
+
+# Human-readable metadata for every attribute the catalogue can reference.
+attributes:
+  multi_az:              {label: Multi-AZ / multiple availability zones, type: bool, default: false}
+  encryption_at_rest:    {label: Encryption at rest, type: bool, default: true}
+  encryption_in_transit: {label: Encryption in transit (TLS), type: bool, default: true}
+  customer_managed_key:  {label: Customer-managed KMS key, type: bool, default: false}
+  private_subnet:        {label: Deployed in private subnet, type: bool, default: false}
+  public_access:         {label: Publicly accessible, type: bool, default: false}
+  backup_enabled:        {label: Automated backups enabled, type: bool, default: false}
+  backup_retention_days: {label: Backup retention (days), type: int, default: 7}
+  logging_enabled:       {label: Access / audit logging enabled, type: bool, default: false}
+  log_retention_days:    {label: Log retention (days), type: int, default: 30}
+  waf_enabled:           {label: AWS WAF attached, type: bool, default: false}
+  versioning:            {label: Object versioning enabled, type: bool, default: false}
+  mfa_enabled:           {label: MFA enforced, type: bool, default: false}
+  dlq_configured:        {label: Dead-letter queue configured, type: bool, default: false}
+  throttling_enabled:    {label: Request throttling configured, type: bool, default: false}
+  rotation_enabled:      {label: Automatic rotation enabled, type: bool, default: false}
+  guardrails_enabled:    {label: Bedrock Guardrails applied, type: bool, default: false}

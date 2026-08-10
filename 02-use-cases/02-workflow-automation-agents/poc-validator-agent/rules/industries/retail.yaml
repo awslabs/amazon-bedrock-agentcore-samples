@@ -1,0 +1,60 @@
+id: retail
+name: Retail and eCommerce
+description: >
+  Storefronts, marketplaces and omnichannel commerce. Peak elasticity and payment-path
+  integrity dominate. Advisory only.
+requirements:
+  - id: RET-001
+    applies_to: {categories: [networking]}
+    attribute: waf_enabled
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Storefronts face automated carding, scraping and credential-stuffing traffic continuously.
+    remediation: Attach AWS WAF with bot control and rate-based rules.
+    doc_url: https://docs.aws.amazon.com/waf/latest/developerguide/waf-bot-control.html
+
+  - id: RET-002
+    applies_to: {categories: [database, storage]}
+    attribute: encryption_at_rest
+    operator: equals
+    value: true
+    severity: critical
+    pillar: Security
+    rationale: Cardholder-adjacent data brings PCI DSS obligations into scope even when the card data itself is tokenised.
+    remediation: Enable encryption at rest and confirm PCI scope boundaries with your assessor.
+    doc_url: https://docs.aws.amazon.com/whitepapers/latest/pci-dss-a-guide/welcome.html
+
+  - id: RET-003
+    applies_to: {categories: [integration]}
+    attribute: dlq_configured
+    operator: equals
+    value: true
+    severity: high
+    pillar: Reliability
+    rationale: A dropped order or payment event is a lost sale and a support case. Asynchronous commerce paths need a recovery route.
+    remediation: Configure dead-letter queues on every order and payment event target.
+    doc_url: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html
+
+  - id: RET-004
+    applies_to: {categories: [apigateway, integration]}
+    attribute: throttling_enabled
+    operator: equals
+    value: true
+    severity: medium
+    pillar: Performance Efficiency
+    rationale: Without throttling a traffic spike or scraper propagates straight through to the database tier.
+    remediation: Configure stage-level throttling and usage plans.
+    doc_url: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html
+
+  - id: RET-005
+    applies_to: {categories: [database]}
+    attribute: backup_enabled
+    operator: equals
+    value: true
+    severity: high
+    pillar: Reliability
+    rationale: Order and inventory state cannot be reconstructed from upstream systems after a corrupting write.
+    remediation: Enable automated backups with point-in-time recovery.
+    doc_url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html

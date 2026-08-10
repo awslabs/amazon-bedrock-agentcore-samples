@@ -1,0 +1,27 @@
+id: generic
+name: Generic / Other
+description: >
+  No sector-specific overlay. Segment rules and AWS Well-Architected baselines apply
+  on their own.
+requirements:
+  - id: GEN-001
+    applies_to: {categories: [networking]}
+    attribute: encryption_in_transit
+    operator: equals
+    value: true
+    severity: high
+    pillar: Security
+    rationale: Unencrypted transport between a client and an internet-facing endpoint is not defensible in any sector.
+    remediation: Terminate TLS at the edge and enforce HTTPS redirection.
+    doc_url: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html
+
+  - id: GEN-002
+    applies_to: {categories: [database, storage]}
+    attribute: public_access
+    operator: equals
+    value: false
+    severity: critical
+    pillar: Security
+    rationale: A publicly reachable data store is the most frequently exploited misconfiguration on any cloud platform.
+    remediation: Block public access at the resource and account level.
+    doc_url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html

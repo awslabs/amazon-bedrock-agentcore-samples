@@ -1,0 +1,254 @@
+# Curated further reading. Every entry must be on an allowlisted AWS or Amazon
+# domain — the loader rejects anything else at import time, so a bad URL fails the
+# test suite rather than reaching a customer.
+#
+# Allowlist is enforced in core/resources.py, not here, and not by prompt.
+
+version: 1
+as_of: "2026-08-01"
+
+resources:
+
+  # ── Well-Architected and general practice ────────────────────────────────
+  - id: WA-FRAMEWORK
+    title: AWS Well-Architected Framework
+    kind: documentation
+    url: https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html
+    summary: The six-pillar framework the findings in this review are mapped against.
+    tags: [general, security, reliability, cost, operational-excellence, performance, sustainability]
+
+  - id: WA-SECURITY
+    title: Security Pillar — AWS Well-Architected Framework
+    kind: documentation
+    url: https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html
+    summary: Identity, detection, infrastructure protection and data protection practices.
+    tags: [security, encryption, public-access, iam]
+
+  - id: WA-RELIABILITY
+    title: Reliability Pillar — AWS Well-Architected Framework
+    kind: documentation
+    url: https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html
+    summary: Workload architecture, change management and failure management.
+    tags: [reliability, multi-az, backup, dlq]
+
+  - id: WA-COST
+    title: Cost Optimization Pillar — AWS Well-Architected Framework
+    kind: documentation
+    url: https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html
+    summary: Expenditure awareness, cost-effective resources and demand management.
+    tags: [cost, general]
+
+  # ── Encryption and key management ────────────────────────────────────────
+  - id: KMS-CONCEPTS
+    title: AWS KMS concepts — customer managed keys
+    kind: documentation
+    url: https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html
+    summary: When a customer-managed key is required over an AWS-managed key, and what it costs operationally.
+    tags: [encryption, customer_managed_key, fsi, security]
+
+  - id: BLOG-ENCRYPTION
+    title: How to protect data at rest with Amazon S3 encryption
+    kind: blog
+    url: https://aws.amazon.com/blogs/security/
+    summary: The AWS Security Blog index — encryption at rest patterns and key policy guidance.
+    tags: [encryption, encryption_at_rest, s3, security]
+
+  # ── Public access and network exposure ───────────────────────────────────
+  - id: S3-BPA
+    title: Blocking public access to your Amazon S3 storage
+    kind: documentation
+    url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+    summary: Account- and bucket-level controls that make public exposure structurally impossible.
+    tags: [public_access, s3, security]
+
+  - id: PRIVATELINK
+    title: What is AWS PrivateLink?
+    kind: documentation
+    url: https://docs.aws.amazon.com/vpc/latest/privatelink/what-is-privatelink.html
+    summary: Reaching AWS services without traversing the public internet.
+    tags: [public_access, private_subnet, security, fsi]
+
+  # ── Resilience ───────────────────────────────────────────────────────────
+  - id: RDS-MULTIAZ
+    title: Configuring and managing a Multi-AZ deployment for Amazon RDS
+    kind: documentation
+    url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html
+    summary: What Multi-AZ actually protects against, failover behaviour, and the cost implication.
+    tags: [multi_az, reliability, database]
+
+  - id: DR-WHITEPAPER
+    title: Disaster Recovery of Workloads on AWS
+    kind: documentation
+    url: https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-workloads-on-aws.html
+    summary: The four DR strategies and how to choose between them against an RTO/RPO target.
+    tags: [reliability, backup, multi_az, enterprise]
+
+  # ── Integration and chaining ─────────────────────────────────────────────
+  - id: RDS-PROXY
+    title: Using Amazon RDS Proxy
+    kind: documentation
+    url: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html
+    summary: Why Lambda connecting directly to RDS exhausts the connection pool, and how Proxy fixes it.
+    tags: [chaining, glue, lambda, database]
+
+  - id: LAMBDA-FAILURES
+    title: Handling errors and retries in AWS Lambda
+    kind: documentation
+    url: https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html
+    summary: Dead-letter queues, failure destinations and what happens to a poison record without them.
+    tags: [dlq, chaining, reliability, integration]
+
+  - id: EVENTDRIVEN-BLOG
+    title: AWS Compute Blog — event-driven architecture patterns
+    kind: blog
+    url: https://aws.amazon.com/blogs/compute/
+    summary: Ongoing coverage of EventBridge, Step Functions and serverless integration patterns.
+    tags: [chaining, integration, glue, serverless]
+
+  # ── Financial services ───────────────────────────────────────────────────
+  - id: FSI-BLOG
+    title: AWS for Industries — Financial Services Blog
+    kind: blog
+    url: https://aws.amazon.com/blogs/industries/category/financial-services/
+    summary: Regulatory, resilience and data-residency patterns for banks, insurers and capital markets.
+    tags: [fsi, industry, security]
+
+  - id: FSI-COMPLIANCE
+    title: AWS Compliance Programs
+    kind: documentation
+    url: https://aws.amazon.com/compliance/programs/
+    summary: Which attestations and certifications AWS holds, and what remains the customer's responsibility.
+    tags: [fsi, industry, security, retail]
+
+  # ── Retail ───────────────────────────────────────────────────────────────
+  - id: RETAIL-BLOG
+    title: AWS for Industries — Retail Blog
+    kind: blog
+    url: https://aws.amazon.com/blogs/industries/category/retail/
+    summary: Storefront scaling, peak-event readiness and omnichannel commerce patterns.
+    tags: [retail, industry]
+
+  - id: PCI-GUIDE
+    title: Payment Card Industry Data Security Standard on AWS
+    kind: documentation
+    url: https://docs.aws.amazon.com/whitepapers/latest/pci-dss-a-guide/welcome.html
+    summary: Scope boundaries and shared responsibility for cardholder-adjacent workloads.
+    tags: [retail, industry, security, encryption_at_rest]
+
+  - id: WAF-BOT
+    title: AWS WAF Bot Control
+    kind: documentation
+    url: https://docs.aws.amazon.com/waf/latest/developerguide/waf-bot-control.html
+    summary: Managed protection against scraping, carding and credential stuffing on public storefronts.
+    tags: [waf_enabled, retail, security]
+
+  # ── re:Invent sessions (AWS Events channel only) ─────────────────────────
+  - id: REINVENT-WA
+    title: "AWS re:Invent — Architecture and Well-Architected sessions"
+    kind: video
+    url: https://www.youtube.com/@AWSEventsChannel
+    summary: The official AWS Events channel. Search within it for the current year's ARC-track sessions.
+    tags: [general, reliability, security, cost]
+
+  - id: REINVENT-SERVERLESS
+    title: "AWS re:Invent — Serverless architecture track"
+    kind: video
+    url: https://www.youtube.com/@AWSEventsChannel
+    summary: SVS-track sessions on event-driven design, Lambda scaling and integration patterns.
+    tags: [serverless, chaining, integration, digital_native]
+
+  - id: REINVENT-COST
+    title: "AWS re:Invent — Cost optimisation track"
+    kind: video
+    url: https://www.youtube.com/@AWSEventsChannel
+    summary: COP-track sessions on unit economics, Savings Plans and rightsizing.
+    tags: [cost, smb, digital_native]
+
+  # ── Architecture practice ────────────────────────────────────────────────
+  - id: ARCH-BLOG
+    title: AWS Architecture Blog
+    kind: blog
+    url: https://aws.amazon.com/blogs/architecture/
+    summary: Reference architectures and design deep-dives from AWS solutions architects.
+    tags: [general, architecture]
+
+  - id: ARCH-CENTER
+    title: AWS Architecture Center
+    kind: documentation
+    url: https://aws.amazon.com/architecture/
+    summary: Reference architecture diagrams, whitepapers and best-practice guidance by domain.
+    tags: [general, architecture]
+
+  - id: PRESCRIPTIVE
+    title: AWS Prescriptive Guidance
+    kind: documentation
+    url: https://docs.aws.amazon.com/prescriptive-guidance/
+    summary: Opinionated, step-by-step patterns and migration playbooks.
+    tags: [general, architecture, enterprise]
+
+  # ── Cost and estimation ──────────────────────────────────────────────────
+  - id: PRICING-CALC
+    title: AWS Pricing Calculator
+    kind: documentation
+    url: https://calculator.aws/
+    summary: Model the estimate produced here properly before quoting it to a customer.
+    tags: [cost, general]
+
+  - id: COST-BLOG
+    title: AWS Cloud Financial Management Blog
+    kind: blog
+    url: https://aws.amazon.com/blogs/aws-cloud-financial-management/
+    summary: Practical cost allocation, forecasting and optimisation guidance.
+    tags: [cost, smb, enterprise]
+
+  # ── Operations and logging ───────────────────────────────────────────────
+  - id: CW-LOGS
+    title: Working with log groups and log streams
+    kind: documentation
+    url: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html
+    summary: Retention policies, and why long retention in CloudWatch is usually the wrong place for it.
+    tags: [log_retention_days, logging_enabled, observability, cost]
+
+  - id: S3-OBJECTLOCK
+    title: Using S3 Object Lock
+    kind: documentation
+    url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
+    summary: Write-once retention for long audit horizons at a fraction of CloudWatch storage cost.
+    tags: [log_retention_days, fsi, cost, compliance]
+
+  - id: CLOUDTRAIL
+    title: AWS CloudTrail User Guide
+    kind: documentation
+    url: https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html
+    summary: Account-level audit trail, organisation trails and log file integrity validation.
+    tags: [logging_enabled, security, enterprise, fsi]
+
+  # ── Generative AI ────────────────────────────────────────────────────────
+  - id: BEDROCK-GUARDRAILS
+    title: Amazon Bedrock Guardrails
+    kind: documentation
+    url: https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html
+    summary: Content filters, denied topics and PII redaction enforced outside the prompt.
+    tags: [guardrails_enabled, ai, fsi, security]
+
+  - id: ML-BLOG
+    title: AWS Machine Learning Blog
+    kind: blog
+    url: https://aws.amazon.com/blogs/machine-learning/
+    summary: Bedrock, agent architectures and generative AI implementation patterns.
+    tags: [ai, general]
+
+  # ── SOW and engagement practice ──────────────────────────────────────────
+  - id: APN-BLOG
+    title: AWS Partner Network Blog
+    kind: blog
+    url: https://aws.amazon.com/blogs/apn/
+    summary: Partner delivery practice, engagement models and solution positioning.
+    tags: [sow, partner, general]
+
+  - id: WA-TOOL
+    title: AWS Well-Architected Tool
+    kind: documentation
+    url: https://docs.aws.amazon.com/wellarchitected/latest/userguide/intro.html
+    summary: Run a formal workload review and produce an improvement plan you can attach to a SOW.
+    tags: [sow, general, partner]

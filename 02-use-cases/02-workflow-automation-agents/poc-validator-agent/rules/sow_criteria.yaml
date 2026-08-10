@@ -1,0 +1,123 @@
+# Scope of Work scoring criteria.
+#
+# Each criterion is weighted and scored 0-4. The classifier decides which band a
+# SOW falls into for each criterion; the weighted roll-up is arithmetic done in
+# Python. Keeping the weights here — rather than in a prompt — means the score is
+# reproducible and a reviewer can argue with the rubric rather than the model.
+
+version: 1
+
+bands:
+  0: {label: Absent,      description: "Not present in the document at all."}
+  1: {label: Mentioned,   description: "Referenced but with no substance."}
+  2: {label: Partial,     description: "Present but incomplete or ambiguous."}
+  3: {label: Adequate,    description: "Present, clear, and usable as written."}
+  4: {label: Strong,      description: "Explicit, specific, and measurable."}
+
+thresholds:
+  strong: 80
+  acceptable: 60
+  weak: 40
+
+criteria:
+
+  - id: SOW-01
+    name: Objectives and business outcome
+    weight: 10
+    prompt: >
+      Does the document state what the engagement is meant to achieve in business
+      terms, not just technical activity?
+    gap_fix: >
+      Add a short objectives section naming the business outcome and how success
+      will be recognised.
+
+  - id: SOW-02
+    name: In-scope deliverables
+    weight: 15
+    prompt: >
+      Is there an itemised list of deliverables, each concrete enough that both
+      parties would agree whether it had been delivered?
+    gap_fix: >
+      List deliverables individually. Replace activity verbs ("support",
+      "assist") with artefacts ("migration runbook", "Terraform modules").
+
+  - id: SOW-03
+    name: Explicit out-of-scope
+    weight: 15
+    prompt: >
+      Does the document say what is NOT included? An absent out-of-scope section
+      is the single most common cause of delivery disputes.
+    gap_fix: >
+      Add an out-of-scope section. Name the adjacent work a customer would
+      reasonably assume is included — data migration, training, production
+      support, licence costs — and exclude it explicitly.
+
+  - id: SOW-04
+    name: Acceptance criteria
+    weight: 15
+    prompt: >
+      Are there testable acceptance criteria per deliverable, rather than a
+      general statement that work will be performed professionally?
+    gap_fix: >
+      Attach acceptance criteria to each deliverable, phrased so that a third
+      party could evaluate them without asking either side for interpretation.
+
+  - id: SOW-05
+    name: Assumptions and dependencies
+    weight: 10
+    prompt: >
+      Are assumptions stated, including what the customer must provide, and by
+      when?
+    gap_fix: >
+      List assumptions and customer dependencies with dates, and state what
+      happens to timeline and cost if a dependency slips.
+
+  - id: SOW-06
+    name: Timeline, phases and milestones
+    weight: 10
+    prompt: >
+      Is the work broken into phases with dated or sequenced milestones?
+    gap_fix: >
+      Break the work into phases with entry and exit criteria per phase.
+
+  - id: SOW-07
+    name: Commercials and change control
+    weight: 10
+    prompt: >
+      Is pricing stated with its basis (fixed, time and materials, capped), and
+      is there a defined process for handling change requests?
+    gap_fix: >
+      State the pricing model and add a change-control clause covering how scope
+      changes are estimated, approved and billed.
+
+  - id: SOW-08
+    name: Roles and responsibilities
+    weight: 5
+    prompt: >
+      Is it clear who does what across both parties — a RACI or equivalent?
+    gap_fix: >
+      Add a responsibility table naming roles on both sides for each workstream.
+
+  - id: SOW-09
+    name: Architecture alignment
+    weight: 10
+    prompt: >
+      Does the SOW reference the actual services and architecture being
+      proposed, or is it generic boilerplate that could describe any project?
+    gap_fix: >
+      Reference the specific AWS services and design decisions from the reviewed
+      architecture so the SOW and the design cannot drift apart.
+
+# Heuristic signals used by the deterministic pre-pass. These run without a model
+# and give a floor score, so SOW scoring degrades rather than fails when no model
+# endpoint is available.
+heuristics:
+  SOW-01: ["objective", "goal", "outcome", "purpose", "business case"]
+  SOW-02: ["deliverable", "in scope", "in-scope", "scope of work", "will provide"]
+  SOW-03: ["out of scope", "out-of-scope", "excluded", "exclusion", "not included"]
+  SOW-04: ["acceptance criteria", "acceptance", "sign-off", "signoff", "definition of done"]
+  SOW-05: ["assumption", "dependency", "dependencies", "customer will provide", "prerequisite"]
+  SOW-06: ["milestone", "phase", "timeline", "schedule", "week", "sprint"]
+  SOW-07: ["change control", "change request", "fixed price", "time and materials", "pricing", "invoice"]
+  SOW-08: ["raci", "responsibilit", "roles", "accountable", "project manager"]
+  SOW-09: ["aws", "amazon", "architecture", "region", "vpc"]

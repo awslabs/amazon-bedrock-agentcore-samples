@@ -1,0 +1,7 @@
+# The UI is installed SEPARATELY from the agent. bedrock-agentcore pins
+# starlette>=1.6 and websockets>=17; streamlit requires starlette<1.4 and
+# websockets<17. They cannot share a virtualenv. See docs/decisions/0005.
+streamlit>=1.50,<2
+PyYAML>=6.0,<7
+boto3>=1.35,<2
+requests>=2.32,<3

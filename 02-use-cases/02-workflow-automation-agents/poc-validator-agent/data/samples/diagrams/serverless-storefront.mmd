@@ -1,0 +1,8 @@
+%% Retail serverless storefront with an unsupported edge left in deliberately.
+flowchart LR
+  cfd[CloudFront] --> apigw[API Gateway]
+  apigw --> lam[Lambda]
+  apigw --> cog[Cognito]
+  lam --> ddb[DynamoDB]
+  lam --> rds[RDS PostgreSQL]
+  lam --> eb[EventBridge]

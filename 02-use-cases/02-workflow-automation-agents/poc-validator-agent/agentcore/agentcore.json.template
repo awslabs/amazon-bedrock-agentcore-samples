@@ -1,0 +1,243 @@
+{
+  "name": "PocValidator",
+  "version": 1,
+  "managedBy": "CDK",
+  "runtimes": [
+    {
+      "name": "pocvalidator",
+      "description": "POC Validator \u2014 reviews an AWS architecture against segment and industry rules, prices it, and scores the Scope of Work",
+      "build": "Container",
+      "entrypoint": "main.py",
+      "codeLocation": "app/pocvalidator",
+      "envVars": [
+        {
+          "name": "AGENT_OBSERVABILITY_ENABLED",
+          "value": "true"
+        },
+        {
+          "name": "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
+          "value": "true"
+        },
+        {
+          "name": "AGENT_MODEL_ID",
+          "value": "global.anthropic.claude-sonnet-4-6"
+        },
+        {
+          "name": "FAST_MODEL_ID",
+          "value": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+        },
+        {
+          "name": "REQUIRE_EXTRACTION_CONFIRMATION",
+          "value": "true"
+        },
+        {
+          "name": "POC_VALIDATOR_ROOT",
+          "value": "/app"
+        },
+        {
+          "name": "AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER",
+          "value": "cognito-gateway-m2m"
+        },
+        {
+          "name": "AGENTCORE_GATEWAY_OAUTH_SCOPES",
+          "value": "agentcore/invoke"
+        }
+      ],
+      "networkMode": "PUBLIC",
+      "instrumentation": {
+        "enableOtel": true
+      },
+      "protocol": "HTTP",
+      "dockerfile": "app/pocvalidator/Dockerfile",
+      "buildContextPath": "."
+    }
+  ],
+  "memories": [
+    {
+      "name": "PocValidatorMemory",
+      "eventExpiryDuration": 90,
+      "strategies": [
+        {
+          "type": "SEMANTIC",
+          "name": "semantic_strategy",
+          "namespaces": [
+            "pocvalidator/{actorId}/facts"
+          ]
+        },
+        {
+          "type": "SUMMARIZATION",
+          "name": "summary_strategy",
+          "namespaces": [
+            "pocvalidator/{actorId}/{sessionId}"
+          ]
+        }
+      ]
+    }
+  ],
+  "knowledgeBases": [],
+  "credentials": [
+    {
+      "authorizerType": "OAuthCredentialProvider",
+      "name": "cognito-gateway-m2m",
+      "discoveryUrl": "https://cognito-idp.PLACEHOLDER_REGION.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
+      "scopes": [
+        "agentcore/invoke"
+      ],
+      "vendor": "CustomOauth2"
+    }
+  ],
+  "evaluators": [
+    {
+      "name": "ExtractionFidelityEvaluator",
+      "level": "SESSION",
+      "description": "Evaluates whether the diagram extraction reported only what was visible, without inventing services or offering architectural opinions",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "instructions": "Given the following agent session context:\n\n{context}\n\nTool calls made:\n{actual_tool_trajectory}\n\nEvaluate ONLY the diagram extraction phase. Penalise heavily if the agent: named a service not visible in the diagram, silently omitted a visible box instead of reporting it as unrecognised, or offered architectural advice rather than reporting what it saw. Reward accurately flagging ambiguity in the notes field.",
+          "ratingScale": {
+            "numerical": [
+              {
+                "value": 1,
+                "label": "Poor",
+                "definition": "Invented services or gave unrequested opinions"
+              },
+              {
+                "value": 2,
+                "label": "Below Average",
+                "definition": "Missed visible services or dropped unrecognised labels silently"
+              },
+              {
+                "value": 3,
+                "label": "Average",
+                "definition": "Mostly accurate, some ambiguity left unflagged"
+              },
+              {
+                "value": 4,
+                "label": "Good",
+                "definition": "Accurate extraction with ambiguity flagged"
+              },
+              {
+                "value": 5,
+                "label": "Excellent",
+                "definition": "Complete and faithful, every uncertainty surfaced for confirmation"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "SowGradingEvaluator",
+      "level": "SESSION",
+      "description": "Evaluates whether SOW criterion bands were justified from the document rather than assumed",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "instructions": "Given the following agent session context:\n\n{context}\n\nTool calls made:\n{actual_tool_trajectory}\n\nEvaluate the Scope of Work grading. Each band must be justified by something actually present in the document. Penalise credit given for inferred intent, boilerplate scored as substance, or any attempt to compute an overall total \u2014 totals are computed deterministically outside the model.",
+          "ratingScale": {
+            "numerical": [
+              {
+                "value": 1,
+                "label": "Poor",
+                "definition": "Bands unjustified or a total was fabricated"
+              },
+              {
+                "value": 2,
+                "label": "Below Average",
+                "definition": "Several bands credited inferred intent"
+              },
+              {
+                "value": 3,
+                "label": "Average",
+                "definition": "Mostly grounded, some weak justifications"
+              },
+              {
+                "value": 4,
+                "label": "Good",
+                "definition": "Bands consistently grounded in document text"
+              },
+              {
+                "value": 5,
+                "label": "Excellent",
+                "definition": "Every band quotes or closely paraphrases the document"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "onlineEvalConfigs": [
+    {
+      "name": "PocValidatorEvaluation",
+      "agent": "pocvalidator",
+      "evaluators": [
+        "Builtin.Helpfulness",
+        "Builtin.Correctness",
+        "Builtin.ToolSelectionAccuracy"
+      ],
+      "samplingRate": 100,
+      "description": "Online evaluation for the POC validator (3 built-in metrics)"
+    }
+  ],
+  "agentCoreGateways": [
+    {
+      "name": "PocValidatorGateway",
+      "description": "MCP Gateway exposing the AWS Documentation MCP server, so best-practice and quota claims are grounded in live documentation rather than model memory",
+      "targets": [
+        {
+          "name": "aws-documentation",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:PLACEHOLDER_REGION:PLACEHOLDER_ACCOUNT_ID:function:poc-validator-aws-docs-mcp",
+            "toolSchemaFile": "agentcore/mcp-targets/aws-documentation/gateway-tools-list.json"
+          }
+        }
+      ],
+      "authorizerType": "CUSTOM_JWT",
+      "authorizerConfiguration": {
+        "customJwtAuthorizer": {
+          "discoveryUrl": "https://cognito-idp.PLACEHOLDER_REGION.amazonaws.com/PLACEHOLDER_USER_POOL_ID/.well-known/openid-configuration",
+          "allowedClients": [
+            "PLACEHOLDER_CLIENT_ID"
+          ]
+        }
+      },
+      "enableSemanticSearch": true,
+      "exceptionLevel": "NONE",
+      "policyEngineConfiguration": {
+        "policyEngineName": "PocValidatorPolicyEngine",
+        "mode": "ENFORCE"
+      }
+    }
+  ],
+  "policyEngines": [
+    {
+      "name": "PocValidatorPolicyEngine",
+      "description": "Cedar policies enforcing read-only behaviour. A validator that could mutate an AWS account is a different and far more dangerous product, so the constraint is enforced at the Gateway rather than trusted to the prompt.",
+      "policies": [
+        {
+          "name": "PocValidatorAllowDocumentationReads",
+          "description": "Permit documentation search and read tools on the validator gateway",
+          "statement": "permit(principal, action, resource is AgentCore::Gateway);",
+          "validationMode": "IGNORE_ALL_FINDINGS",
+          "enforcementMode": "ACTIVE",
+          "authorizationPhase": "INITIATE"
+        },
+        {
+          "name": "PocValidatorForbidMutatingTools",
+          "description": "Forbid any tool whose name implies a write, so a future Gateway target cannot quietly grant mutation",
+          "statement": "forbid(principal, action, resource is AgentCore::Gateway) when { context has \"toolName\" && (context.toolName like \"*create*\" || context.toolName like \"*delete*\" || context.toolName like \"*update*\" || context.toolName like \"*put*\" || context.toolName like \"*write*\") };",
+          "validationMode": "IGNORE_ALL_FINDINGS",
+          "enforcementMode": "ACTIVE",
+          "authorizationPhase": "INITIATE"
+        }
+      ]
+    }
+  ],
+  "configBundles": [],
+  "abTests": [],
+  "harnesses": [],
+  "httpGateways": []
+}

@@ -1,0 +1,65 @@
+# Edge catalogue. Classifies each ordered service pair as a native integration,
+# one that requires glue, or an anti-pattern. Pairs absent from this file are
+# reported as "unverified" — never as working. That distinction is the point.
+
+version: 1
+
+integrations:
+
+  - {from: cloudfront, to: alb, type: native, note: "Origin configuration; use a custom header plus WAF to stop origin bypass.", doc_url: "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistS3AndCustomOrigins.html"}
+  - {from: cloudfront, to: s3, type: native, note: "Use Origin Access Control, not a public bucket.", doc_url: "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html"}
+  - {from: cloudfront, to: apigateway, type: native, note: "Regional endpoint as custom origin.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-cloudfront-distribution.html"}
+
+  - {from: alb, to: ecs_fargate, type: native, note: "Target group with dynamic port mapping.", doc_url: "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-load-balancing.html"}
+  - {from: alb, to: ec2, type: native, note: "Instance or IP target group.", doc_url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html"}
+  - {from: alb, to: lambda, type: native, note: "Lambda target type; 1 MB response limit and 30s timeout apply.", doc_url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html"}
+
+  - {from: apigateway, to: lambda, type: native, note: "Proxy integration; 29s hard timeout on the API Gateway side.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html"}
+  - {from: apigateway, to: stepfunctions, type: native, note: "Use StartSyncExecution for Express workflows only.", doc_url: "https://docs.aws.amazon.com/step-functions/latest/dg/tutorial-api-gateway.html"}
+  - {from: apigateway, to: dynamodb, type: native, note: "Direct AWS service integration; skips Lambda but loses transformation flexibility.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-aws-services.html"}
+  - {from: apigateway, to: sqs, type: native, note: "Direct service integration for buffered ingestion.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-aws-services.html"}
+  - {from: apigateway, to: ecs_fargate, type: native, note: "Private integration via VPC Link.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-private.html"}
+  - {from: apigateway, to: cognito, type: native, note: "JWT or Cognito user pool authoriser.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html"}
+
+  - {from: lambda, to: rds_postgres, type: glue, pattern: "RDS Proxy", note: "Direct connections exhaust the database connection pool under Lambda concurrency. Put RDS Proxy in between.", doc_url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html"}
+  - {from: lambda, to: aurora, type: glue, pattern: "RDS Proxy or Data API", note: "Same connection-pool exhaustion risk as RDS. Aurora Serverless v2 also offers the Data API.", doc_url: "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/rds-proxy.html"}
+  - {from: lambda, to: dynamodb, type: native, note: "SDK call; grant least-privilege table access.", doc_url: "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GettingStarted.html"}
+  - {from: lambda, to: s3, type: native, note: "SDK call.", doc_url: "https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-with-s3-actions.html"}
+  - {from: lambda, to: sqs, type: native, note: "SDK send; DLQ strongly recommended.", doc_url: "https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html"}
+  - {from: lambda, to: eventbridge, type: native, note: "PutEvents; DLQ recommended on the target rule.", doc_url: "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-putevents.html"}
+  - {from: lambda, to: bedrock, type: native, note: "InvokeModel; watch the 15-minute Lambda ceiling against long generations.", doc_url: "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html"}
+  - {from: lambda, to: elasticache, type: native, note: "Requires the function to be VPC-attached.", doc_url: "https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html"}
+  - {from: lambda, to: opensearch, type: native, note: "Signed HTTP request; VPC access requires a VPC-attached function.", doc_url: "https://docs.aws.amazon.com/opensearch-service/latest/developerguide/vpc.html"}
+  - {from: lambda, to: secretsmanager, type: native, note: "Use the Parameters and Secrets extension to avoid per-invocation API calls.", doc_url: "https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieving-secrets_lambda.html"}
+
+  - {from: sqs, to: lambda, type: native, note: "Event source mapping; set a redrive policy and tune batch size.", doc_url: "https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html"}
+  - {from: eventbridge, to: lambda, type: native, note: "Rule target; configure a DLQ on the target.", doc_url: "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html"}
+  - {from: eventbridge, to: stepfunctions, type: native, note: "Rule target starts an execution.", doc_url: "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html"}
+  - {from: eventbridge, to: sqs, type: native, note: "Rule target.", doc_url: "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html"}
+  - {from: stepfunctions, to: lambda, type: native, note: "Optimised service integration with built-in retry.", doc_url: "https://docs.aws.amazon.com/step-functions/latest/dg/connect-lambda.html"}
+  - {from: stepfunctions, to: dynamodb, type: native, note: "Optimised service integration.", doc_url: "https://docs.aws.amazon.com/step-functions/latest/dg/connect-ddb.html"}
+  - {from: stepfunctions, to: bedrock, type: native, note: "Optimised Bedrock integration.", doc_url: "https://docs.aws.amazon.com/step-functions/latest/dg/connect-bedrock.html"}
+
+  - {from: kinesis, to: lambda, type: native, note: "Event source mapping; a poison-pill record blocks the shard without a failure destination.", doc_url: "https://docs.aws.amazon.com/lambda/latest/dg/with-kinesis.html"}
+  - {from: kinesis, to: opensearch, type: glue, pattern: "Kinesis Data Firehose or Lambda consumer", note: "Data Streams does not deliver to OpenSearch directly.", doc_url: "https://docs.aws.amazon.com/firehose/latest/dev/create-destination.html"}
+
+  - {from: s3, to: lambda, type: native, note: "Event notification; consider EventBridge for richer filtering.", doc_url: "https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html"}
+  - {from: s3, to: eventbridge, type: native, note: "Enable EventBridge notifications on the bucket.", doc_url: "https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventBridge.html"}
+  - {from: s3, to: opensearch, type: glue, pattern: "Lambda or Firehose ingestion", note: "No direct S3-to-OpenSearch push.", doc_url: "https://docs.aws.amazon.com/opensearch-service/latest/developerguide/integrations.html"}
+
+  - {from: dynamodb, to: lambda, type: native, note: "DynamoDB Streams event source mapping.", doc_url: "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.Lambda.html"}
+  - {from: rds_postgres, to: lambda, type: glue, pattern: "DMS, RDS event notification, or outbox + polling", note: "No native change-data-capture push from RDS to Lambda.", doc_url: "https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.PostgreSQL.html"}
+
+  - {from: ecs_fargate, to: rds_postgres, type: native, note: "Connection pooling in the task; security group scoped to the task ENI.", doc_url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ConnectToPostgreSQLInstance.html"}
+  - {from: ecs_fargate, to: elasticache, type: native, note: "Same-VPC access.", doc_url: "https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/GettingStarted.ConnectToCacheNode.html"}
+  - {from: ecs_fargate, to: s3, type: native, note: "Task role with least-privilege bucket access.", doc_url: "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html"}
+  - {from: ecs_fargate, to: secretsmanager, type: native, note: "Inject secrets as container environment variables at task start.", doc_url: "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data-secrets.html"}
+  - {from: ec2, to: rds_postgres, type: native, note: "Same-VPC access via security group reference.", doc_url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.Scenarios.html"}
+
+  - {from: bedrock, to: opensearch, type: native, note: "OpenSearch Serverless as a Bedrock Knowledge Base vector store.", doc_url: "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base-setup.html"}
+
+  # Anti-patterns — flagged Critical regardless of segment or industry.
+  - {from: cloudfront, to: rds_postgres, type: anti_pattern, note: "A CDN in front of a relational database is not a caching tier. Put an application layer in between.", doc_url: "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistS3AndCustomOrigins.html"}
+  - {from: apigateway, to: rds_postgres, type: anti_pattern, note: "No direct API Gateway integration to RDS. Route through Lambda with RDS Proxy, or use the Aurora Data API.", doc_url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-aws-services.html"}
+  - {from: alb, to: rds_postgres, type: anti_pattern, note: "A load balancer cannot front a database engine. This edge does not exist.", doc_url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html"}
+  - {from: s3, to: rds_postgres, type: anti_pattern, note: "No direct push. Use DMS, Glue, or aws_s3 extension import for PostgreSQL.", doc_url: "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL.Procedural.Importing.html"}
