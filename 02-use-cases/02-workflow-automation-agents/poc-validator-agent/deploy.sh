@@ -37,8 +37,22 @@ agentcore deploy --target "${1:-dev}"
 echo "→ Granting the runtime execution role Code Interpreter access (see docs/decisions/0010)"
 ./scripts/grant_code_interpreter_access.sh || echo "  (non-fatal — see script output; you can re-run it any time)"
 
-echo "→ Starting an initial ingestion job for the FAQ knowledge base (see docs/decisions/0011)"
-./scripts/sync_faq_knowledge_base.sh || echo "  (non-fatal — ingestion needs an embedding model call; see script output)"
+echo "→ Granting the runtime execution role FAQ knowledge base access (see docs/decisions/0011)"
+KB_GRANT_OUTPUT=$(./scripts/grant_faq_knowledge_base_access.sh 2>&1) && echo "$KB_GRANT_OUTPUT" || {
+  echo "$KB_GRANT_OUTPUT"
+  echo "  (non-fatal — see script output; you can re-run it any time)"
+}
+
+# agentcore deploy auto-ingests a knowledgeBases[] data source on first
+# creation (visible in its own "Auto-ingest knowledge bases" progress step),
+# so this is only needed for re-ingesting after editing agentcore/faq/*.md.
+echo "→ Re-syncing the FAQ knowledge base ingestion (safe to run even if nothing changed)"
+./scripts/sync_faq_knowledge_base.sh || echo "  (non-fatal — see script output)"
+
+if echo "$KB_GRANT_OUTPUT" | grep -q "^PATCHED=true"; then
+  echo "→ FAQ_KNOWLEDGE_BASE_ID changed — redeploying so the running container picks it up"
+  agentcore deploy --target "${1:-dev}"
+fi
 
 echo
 echo "Deployed. Next:"

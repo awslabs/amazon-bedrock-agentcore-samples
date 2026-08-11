@@ -185,6 +185,21 @@ To exercise the deployed agent directly:
 agentcore invoke '{"sow_text": "...", "diagram_text": "...", "segment": "enterprise", "industry": "fsi"}'
 ```
 
+Add `what_if_question` and/or `faq_query` to the same payload to also run Phase 6a/6b
+(both optional — see [ADR 0010](docs/decisions/0010-code-interpreter-for-what-if-pricing.md)
+and [ADR 0011](docs/decisions/0011-shared-faq-knowledge-base-not-per-actor-memory.md)):
+
+```bash
+agentcore invoke '{
+  "sow_text": "...", "diagram_text": "...", "segment": "enterprise", "industry": "fsi",
+  "what_if_question": "What if we removed Multi-AZ from the database?",
+  "faq_query": "Why does production RDS need Multi-AZ?"
+}'
+```
+
+Each shows up as its own block in the result (`result.what_if`, `result.faq`), with a
+`status` of `ok` or `unavailable` — never a hard failure of the rest of the review.
+
 Or, with the web layer deployed, open the CloudFront URL, upload a Scope of Work
 (`.txt`/`.md`) and optionally a diagram (`.mmd`/`.drawio`), and press **Run validation**.
 

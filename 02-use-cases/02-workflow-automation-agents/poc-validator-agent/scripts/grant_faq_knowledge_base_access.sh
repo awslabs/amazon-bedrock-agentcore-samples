@@ -70,9 +70,25 @@ aws iam put-role-policy \
   --policy-document "$POLICY_DOC"
 
 echo "Granted bedrock:Retrieve on ${KB_ARN} to ${ROLE_NAME}."
-echo
-echo "Knowledge base ID for FAQ_KNOWLEDGE_BASE_ID: $KB_ID"
-echo "Set it in agentcore/agentcore.json's runtime envVars, then re-run"
-echo "'agentcore deploy --target dev' so the running container picks it up —"
-echo "the CDK L3 construct does not auto-inject a knowledgeBases env var the"
-echo "way it does for Memory/Gateway."
+
+CONFIG_FILE="$PROJECT_DIR/agentcore/agentcore.json"
+CURRENT_VALUE=$(jq -r '.runtimes[0].envVars[] | select(.name == "FAQ_KNOWLEDGE_BASE_ID") | .value' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+if [[ "$CURRENT_VALUE" == "$KB_ID" ]]; then
+  echo "agentcore.json already has the correct FAQ_KNOWLEDGE_BASE_ID ($KB_ID) — nothing to patch."
+  echo "PATCHED=false"
+else
+  TMP_FILE=$(mktemp)
+  jq --arg kbid "$KB_ID" '
+    (.runtimes[0].envVars |= (
+      if any(.[]; .name == "FAQ_KNOWLEDGE_BASE_ID")
+      then map(if .name == "FAQ_KNOWLEDGE_BASE_ID" then .value = $kbid else . end)
+      else . + [{"name": "FAQ_KNOWLEDGE_BASE_ID", "value": $kbid}]
+      end
+    ))
+  ' "$CONFIG_FILE" > "$TMP_FILE"
+  mv "$TMP_FILE" "$CONFIG_FILE"
+  echo "Patched agentcore.json: FAQ_KNOWLEDGE_BASE_ID = $KB_ID"
+  echo "A redeploy is needed for the running container to pick this up."
+  echo "PATCHED=true"
+fi

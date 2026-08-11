@@ -160,6 +160,8 @@ continuously.
 |---|---|---|
 | AgentCore Runtime + Bedrock (Sonnet vision + Haiku grading) | Per invocation | $0.02–0.08/review |
 | AgentCore Memory, Gateway | Per invocation / near-zero idle | Cents/month |
+| AgentCore Code Interpreter (Phase 6a, optional) | Per-second active-resource consumption — $0.0895/vCPU-hour, $0.00945/GB-hour, 1-second minimum, billed only while a sandbox session is open | Fractions of a cent per what-if question (a few seconds of compute); zero when the feature isn't used |
+| AgentCore Knowledge Base (Phase 6b, optional) | Consumption-based — size of indexed data stored plus number of retrievals, no minimum commitment | Cents/month at this sample's scale (9 short FAQ docs); see the [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) for current per-GB/per-retrieval rates, not repeated here to avoid going stale |
 | Lambda (web layer) | Per request + duration | Within the 1M-request free tier at demo volumes |
 | DynamoDB (view-counter table) | On-demand (pay-per-request) | Pennies/month at hundreds of shares |
 | S3 (static page + share results) | Per GB stored + per request | Fractions of a cent |
