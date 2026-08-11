@@ -179,8 +179,85 @@ def _extract_tool_events(agent_obj) -> list:
     return events
 
 
+def _looks_like_jwt(value: str) -> bool:
+    """Return True if `value` has the three dot-separated segments of a JWS.
+
+    Deliberately a SHAPE check, not a validation: the AgentCore Runtime authorizer
+    has already validated signature, issuer, audience and expiry before any request
+    reaches this code. What this guards against is a value that is not a bearer
+    token at all.
+
+    Why it is needed: the runtime forwards `Authorization` to the container whenever
+    `requestHeaderAllowlist` includes it, and that allowlist is set unconditionally —
+    including on the fallback path where no JWT authorizer is configured and the
+    runtime uses IAM auth instead. On that path `Authorization` carries a SigV4
+    signature, and nothing upstream distinguishes the two: the SDK does not treat
+    `Authorization` as restricted, and normalises it into the request context before
+    any allowlist rule is consulted. Without this check a SigV4 credential string
+    would be forwarded to the gateways as if it were a user bearer.
+    """
+    if not value:
+        return False
+    parts = value.split(".")
+    return len(parts) == 3 and all(parts)
+
+
+def _extract_bearer_token(payload: dict[str, Any], context: Any) -> str:
+    """Resolve the caller's bearer token, preferring the inbound Authorization header.
+
+    Header-first, because the runtime is configured for JWT auth on both identity
+    providers, so a validated `Authorization` header is present on every request that
+    reaches this code. The payload field is a transitional fallback: it logs loudly
+    when it fires, which is what makes an unknown caller observable instead of
+    arguable.
+    """
+    header_value = ""
+    request_headers = getattr(context, "request_headers", None) if context is not None else None
+    if request_headers:
+        raw = request_headers.get("Authorization") or request_headers.get("authorization") or ""
+        if raw.lower().startswith("bearer "):
+            header_value = raw[7:].strip()
+        else:
+            header_value = raw.strip()
+
+    if header_value:
+        if _looks_like_jwt(header_value):
+            logger.info("🔑 Bearer token source: Authorization header")
+            return header_value
+        # Not a JWT: almost certainly a SigV4 signature from an IAM-authorized
+        # runtime. Fall through to the payload so this path keeps failing the way it
+        # failed before the header was read, rather than in a new way.
+        logger.warning(
+            "⚠️  Authorization header is present but is not JWT-shaped "
+            "(expected three dot-separated segments); ignoring it. This is expected "
+            "when the runtime has no JWT authorizer configured and is using IAM auth."
+        )
+
+    payload_token = payload.get("bearer_token", "") or ""
+    if payload_token:
+        logger.warning(
+            "⚠️  Falling back to the payload bearer token — no usable Authorization "
+            "header was forwarded. This fallback is transitional: if this line "
+            "appears, a caller is still sending the token in the request body."
+        )
+        return payload_token
+
+    if context is None:
+        # The SDK passes a context object only when the entrypoint's second
+        # parameter is named exactly `context`; otherwise it invokes the handler
+        # with the payload alone and this argument defaults to None. That failure is
+        # silent, so name it explicitly rather than letting it look like a caller
+        # problem.
+        logger.error(
+            "❌ No request context was supplied. If the entrypoint signature was "
+            "changed, the second parameter must be named exactly 'context' or the "
+            "runtime will not pass request headers at all."
+        )
+    return ""
+
+
 @app.entrypoint
-def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
+def handle_request(payload: dict[str, Any], context: Any = None) -> dict[str, Any]:
     """
     Handle requests to the lakehouse agent.
 
@@ -190,14 +267,25 @@ def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
     IdP-agnostic (GW2's auth flip — Cognito interceptor vs Okta OBO — is entirely
     gateway-side). The union of both tool catalogs is exposed to the model.
 
+    The caller's bearer token is read from the inbound `Authorization` header, which
+    the runtime validates and forwards. The `bearer_token` payload field is still
+    honoured as a transitional fallback and logs a warning when used.
+
+    NOTE ON THE SIGNATURE: the second parameter MUST be named `context`. The runtime
+    SDK inspects the handler's parameter names and passes the request context only
+    when the second one is called `context`; with any other name it invokes the
+    handler with the payload alone, and no request headers are available. Renaming it
+    breaks header propagation silently.
+
     Args:
-        payload: Request with prompt and bearer token
+        payload: Request with the prompt (and, transitionally, a bearer token)
+        context: Runtime request context carrying the forwarded request headers
 
     Returns:
         Agent response
     """
     user_prompt = payload.get("prompt", "Hello")
-    bearer_token = payload.get("bearer_token", "")
+    bearer_token = _extract_bearer_token(payload, context)
 
     logger.info(f"📥 Received request: {user_prompt[:100]}...")
     logger.info(f"🔑 Bearer token present: {bool(bearer_token)}")

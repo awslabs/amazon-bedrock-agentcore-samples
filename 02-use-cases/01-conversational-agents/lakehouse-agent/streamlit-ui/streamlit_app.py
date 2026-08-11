@@ -408,8 +408,12 @@ def invoke_agent(runtime_arn: str, prompt: str, access_token: str, id_token: str
             "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": st.session_state.session_id,
         }
 
-        # Prepare payload
-        payload = {"prompt": prompt, "bearer_token": access_token, "id_token": id_token}
+        # Prepare payload. The access token is NOT sent in the body: the agent reads
+        # it from the Authorization header above, which the runtime validates and
+        # forwards. The agent still accepts a body token as a transitional fallback
+        # and logs a warning when it uses one, so leaving it out here is what makes
+        # that warning meaningful.
+        payload = {"prompt": prompt, "id_token": id_token}
 
         st.info("🔗 Invoking AgentCore Runtime with OAuth")
 
