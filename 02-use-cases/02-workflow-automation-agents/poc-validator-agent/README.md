@@ -88,14 +88,15 @@ Regenerate the diagram with `python3 diagrams.py` (`brew install graphviz && pip
 - **Optional public front end with expiring, view-limited share links** — upload a SOW,
   get a result, hand someone a link that works 3 times over 30 days without giving them
   your login.
-- **Optional what-if pricing (Code Interpreter)** — ask a plain-language cost question
-  ("what if we used Reserved Instances") and get back a real recomputation that ran in
-  AgentCore's managed sandbox against the actual cost line items, plus the code that ran —
-  never a number the model just stated. See [ADR 0010](docs/decisions/0010-code-interpreter-for-what-if-pricing.md).
-- **Optional shared FAQ search (Knowledge Base)** — recurring findings (HIPAA/VPC, RDS
-  storage class, Multi-AZ, WAF, and more) are grounded in a curated Knowledge Base, not
-  model memory, and searched with plain vector retrieval rather than a full generation
-  call. See [ADR 0011](docs/decisions/0011-shared-faq-knowledge-base-not-per-actor-memory.md).
+- **Optional what-if pricing, evaluated in Code Interpreter** — a plain-language cost
+  question (for example, "what if we used Reserved Instances") is answered by executing
+  model-authored code in AgentCore's managed sandbox against the actual cost line items.
+  The response includes the executed code, so the result is auditable rather than a figure
+  the model stated directly. See [ADR 0010](docs/decisions/0010-code-interpreter-for-what-if-pricing.md).
+- **Optional shared FAQ search, backed by a Knowledge Base** — recurring findings (HIPAA
+  and VPC placement, RDS storage class, Multi-AZ, WAF, and others) are grounded in a
+  curated Knowledge Base rather than model memory, and retrieved with vector search only —
+  no generation call. See [ADR 0011](docs/decisions/0011-shared-faq-knowledge-base-not-per-actor-memory.md).
 
 ## Prerequisites
 
@@ -367,6 +368,18 @@ config, env reads confined to `config.py`).
 - **The Basic Auth on the web layer is a shared-credential gate**, appropriate for keeping
   a small internal/demo tool from being found and poked at random — not a real multi-user
   auth system.
+- **One open dependency advisory: `brace-expansion` (HIGH) in both CDK apps.** `aws-cdk-lib`
+  bundles a vulnerable `brace-expansion` version through its own internal `minimatch`
+  dependency. Bundled dependencies are packaged directly inside the published `aws-cdk-lib`
+  release and are not reachable by `npm overrides` or `npm audit fix` — confirmed by
+  checking `aws-cdk-lib`'s `bundleDependencies` field directly, and by testing the latest
+  published version (2.264.0 at the time of writing), which still resolves to an affected
+  `brace-expansion` release. `package.json` in `agentcore/cdk/` and `web/cdk/` pins an
+  `overrides` entry that patches every reachable copy of `brace-expansion` (confirmed via
+  `npm ls brace-expansion`); the one remaining copy is exercised only during `cdk synth`
+  asset-globbing at build time, never by attacker-supplied input in the deployed
+  application. Re-run `npm audit` after bumping `aws-cdk-lib` in a future update — this
+  should clear automatically once AWS publishes a release bundling the fix.
 
 ## Submission readiness
 

@@ -18,3 +18,5 @@ web/cdk/dist/
 .cognito-state.json
 .DS_Store
 .understand-anything/
+.coverage
+htmlcov/

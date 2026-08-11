@@ -11,6 +11,7 @@ page itself:
                            trusted to the client.
 """
 
+import hmac
 import json
 import os
 import re
@@ -91,7 +92,7 @@ def _extract_trailing_json(raw_text):
 
 def _handle_invoke(event):
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-    if headers.get("x-demo-key") != EXPECTED_KEY:
+    if not hmac.compare_digest(headers.get("x-demo-key", ""), EXPECTED_KEY):
         return _response(401, {"status": "error", "message": "Missing or invalid demo key."})
 
     try:

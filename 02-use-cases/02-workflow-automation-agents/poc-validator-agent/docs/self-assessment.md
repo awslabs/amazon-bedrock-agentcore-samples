@@ -78,7 +78,7 @@ Audited by grepping the runtime code and, this time, by watching it run:
 | Feature | Declared | Exercised at runtime | Where | Observed live |
 |---|---|---|---|---|
 | Runtime | yes | yes | `BedrockAgentCoreApp()`, `@app.entrypoint` in `main.py` | yes |
-| Memory | yes | yes | `AgentCoreMemorySessionManager` in `memory/session.py`; 3 strategies (SEMANTIC, SUMMARIZATION, USER_PREFERENCE) | yes (session created; graceful-degradation path also observed when unavailable). See [ADR 0009](decisions/0009-user-preference-memory-needs-a-real-actor-id.md) for why USER_PREFERENCE needed a real per-browser actor_id in the web layer, not just the config entry. |
+| Memory | yes | partial | `AgentCoreMemorySessionManager` in `memory/session.py`; 3 strategies — SUMMARIZATION (short-term, `{actorId}/{sessionId}`) + SEMANTIC and USER_PREFERENCE (long-term, `{actorId}/facts` and `{actorId}/preferences`) | Raw session/event storage confirmed real via a direct `ListSessions` call (two real sessions found for the `anonymous` actor from this session's own test invocations). Strategy-derived long-term extraction is not: a direct `ListMemoryRecords` call against both long-term namespaces returned **0 records** for an actor with real session history. Session/event storage needs no model call; SEMANTIC/USER_PREFERENCE extraction is an async LLM pass over those events and is blocked by this account's Bedrock Marketplace restriction — the same root cause as Evaluations, SOW grading, diagram vision, and the what-if pricing tool's authoring step, not a config defect (`agentcore validate` passes; the namespace/actor_id plumbing itself is correct). See [ADR 0009](decisions/0009-user-preference-memory-needs-a-real-actor-id.md). |
 | Gateway | yes | yes | `MCPClient` over `streamablehttp_client`, tools attached to the extractor | yes — real Lambda MCP target, confirmed with a direct pre-wiring `aws lambda invoke` |
 | Identity | yes | yes | `@requires_access_token(auth_flow="M2M")` on `_build_mcp_client` | yes — real Cognito M2M token minted |
 | Policy | yes | yes | Cedar engine in `ENFORCE` mode on the Gateway | yes |
@@ -87,10 +87,40 @@ Audited by grepping the runtime code and, this time, by watching it run:
 | Code Interpreter | yes | partial | Optional Phase 6a, `tools/what_if_pricing.py`, AWS-managed sandbox (`aws.codeinterpreter.v1`) | Sandbox path (`StartCodeInterpreterSession`/`InvokeCodeInterpreter`/`StopCodeInterpreterSession`) verified directly against the real IAM grant, independent of the model-gated authoring step — see ADR 0010's "Verified independent of the Marketplace gate" for the exact result. The authoring step itself is expected to degrade under the same Marketplace restriction as SOW grading. |
 | Knowledge Base (not in the 13, not scored) | yes | partial | Optional Phase 6b, `tools/faq_search.py`, `bedrock-agent-runtime:Retrieve` against `PocValidatorFaqKB` | See ADR 0011's "Verified independent of the Marketplace gate" for the exact result. |
 
-Six of seven core-13 features fired successfully against the real account; Evaluations is
-fully configured and would fire in an account without the Marketplace restriction. Code
-Interpreter's sandbox call was verified directly; nothing here is declared for the score
-alone.
+Five of the eight core-13 features fired fully against the real account (Runtime, Gateway,
+Identity, Policy, Observability); Code Interpreter's sandbox path was verified directly
+even though its authoring step is model-blocked; Memory's raw storage is real but its two
+long-term extraction strategies are not populated; Evaluations is fully configured and
+would fire in an account without the Marketplace restriction. Nothing here is declared for
+the score alone — every "partial" is backed by a direct API call showing exactly what did
+and didn't happen, not an assumption.
+
+## Full AgentCore capability coverage
+
+The AgentCore CLI (0.26.0) exposes a broader set of capabilities than the rubric's 13
+named features, discovered through `agentcore --help`, `agentcore add --help`, and
+`agentcore run --help` against the installed CLI directly, not a marketing page. The
+table below audits every capability surfaced there.
+
+| Capability | Status | Basis |
+|---|---|---|
+| Runtime | Implemented | 5+2-phase entrypoint, deployed, invoked live |
+| Memory | Partial | See feature audit above — storage real, long-term extraction model-blocked |
+| Gateway | Implemented | Real Lambda MCP target, semantic search on |
+| Identity | Implemented | Cognito M2M, real token minted |
+| Policy Engine | Implemented | Cedar, `ENFORCE` mode |
+| Evaluations | Configured, blocked | `CreateEvaluator` blocked by account Marketplace restriction |
+| Observability | Implemented | OTEL, Transaction Search enabled |
+| Code Interpreter | Implemented | Sandbox call verified directly; authoring step model-blocked |
+| Knowledge Base (FMKB) | Implemented | `Retrieve` verified end-to-end, real match at score 1.0 |
+| Optimization (`agentcore run recommendation`) | Attempted; real API; not completed | A `TOOL_DESCRIPTION_RECOMMENDATION` job was created and reached a `FAILED` terminal state with `ValidationException: No sessions found in the specified time window`. The API is real and reachable — a distinct failure mode from the Marketplace restriction — but this session's invocation volume and timing did not satisfy CloudWatch's session-search filters. A retry with a longer lookback window or higher invocation volume would likely succeed; not pursued further, as this is a secondary capability rather than a core requirement of the sample. |
+| A/B testing (`agentcore run ab-test`) | Feasible; not built | A real CLI command comparing config-bundle or gateway-target variants. This sample has one configuration variant, so there is nothing to compare against yet. |
+| Browser Tool | Feasible; not built | `agentcore add tool --type agentcore_browser` is real but, like Code Interpreter, requires a Harness. The strongest candidate use case: fetching a live AWS Pricing Calculator page for a real-time sanity check against the static pricing snapshot this sample already discloses as directional only. |
+| Harness | Feasible, deliberately not built | Real, large surface (`agentcore add harness` — its own model config, memory config, tool config, network mode). Considered specifically as the path to Code Interpreter/Browser access and rejected — see [ADR 0010](decisions/0010-code-interpreter-for-what-if-pricing.md) — because it would stand up a second agent-hosting abstraction alongside the existing Strands runtime for no capability this sample needs beyond what direct SDK calls already provide |
+| Registry (AWS Agent Registry) | Real, in preview, not built | Confirmed via AWS's own devguide: a control-plane discovery/governance layer, distinct from Gateway (data plane). Public preview, and its API namespace was mid-migration (`bedrock-agentcore` → `agent-registry`) as of this project's build window — building against it now risks the sample going stale within weeks, not years |
+| Payments | Not applicable | `agentcore add payment-manager`/`payment-connector` are real but `[preview]`-flagged and built for metering paid agent usage. This is a free internal review tool; no wallet/billing concept fits the domain |
+| Config Bundles | Feasible, low value here | Real (`configBundles[]`, versioned prompt/tool config for A/B testing). This sample has one prompt per phase and no variant to bundle yet — would be premature structure for a single-configuration agent |
+| A2A / AG-UI protocols | Feasible, not needed | `bedrock_agentcore.runtime.a2a` and `.ag_ui` are real SDK modules for agent-to-agent and AG-UI-protocol interop. This sample is invoked directly (CLI, web Lambda) — no other agent or AG-UI-speaking client currently needs to reach it, so the standard HTTP/Strands protocol already in use is the right amount of interface |
 
 ## Configuration verified against the real CLI
 
@@ -125,6 +155,37 @@ rather than guessed, before the first successful deploy:
    Engine) deploys cleanly without depending on evaluator access; the two evaluator
    configs are preserved in `agentcore/mcp-targets/evaluators-stage2.json` for an account
    without this restriction.
+
+## Security review
+
+A dedicated security pass — static analysis (`bandit`), dependency scanning
+(`pip-audit`, `npm audit`), a repository-wide secrets scan, and a manual IAM
+review of every grant script and CDK construct — was run against the full
+diff before submission. Two findings were fixed:
+
+1. **XXE / entity-expansion exposure in draw.io diagram parsing**
+   (`core/diagrams.py`). `parse_drawio()` calls `ElementTree.fromstring()` on
+   XML from an uploaded `.drawio` file — user-controlled input, not internal
+   data. Standard `xml.etree` is exposed to entity-expansion denial-of-service.
+   Replaced with `defusedxml.ElementTree`, a drop-in-compatible parser with
+   the same public API.
+2. **Non-constant-time comparison of the web layer's demo-key header**
+   (`web/lambda/handler.py`). `EXPECTED_KEY` was compared with `!=`; replaced
+   with `hmac.compare_digest`.
+
+One dependency advisory remains open and is documented, not silently carried:
+a `brace-expansion` HIGH-severity advisory bundled inside `aws-cdk-lib`
+itself, unreachable by `npm overrides` because it ships as a bundled
+dependency rather than a normally-resolved one — confirmed by checking
+`aws-cdk-lib`'s `bundleDependencies` field directly and by testing the latest
+published `aws-cdk-lib` release, which still bundles an affected version. See
+the main README's Known Limitations for the full explanation and the
+mitigation applied to every reachable copy of the dependency.
+
+No high- or medium-severity findings were left unresolved: every IAM grant in
+`scripts/` and both CDK apps is scoped to a specific resource ARN, no
+hardcoded credentials or account identifiers were found in tracked files, and
+Python/Node dependency scans returned no other advisories.
 
 ## Honest limitations for a reviewer
 

@@ -6,3 +6,4 @@ botocore[crt]>=1.43.36,<2.0
 mcp>=1.28.0,<2.0
 strands-agents>=1.44.0,<2.0
 PyYAML>=6.0,<7.0
+defusedxml>=0.7.1,<1.0

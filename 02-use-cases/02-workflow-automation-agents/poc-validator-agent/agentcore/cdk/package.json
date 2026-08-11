@@ -26,5 +26,8 @@
     "@aws/agentcore-cdk": "0.1.0-alpha.45",
     "aws-cdk-lib": "~2.261.0",
     "constructs": "~10.7.0"
+  },
+  "overrides": {
+    "brace-expansion": ">=5.0.9"
   }
 }

@@ -19,9 +19,9 @@ import base64
 import re
 import urllib.parse
 import zlib
-from xml.etree import ElementTree
 
-from . import catalog
+from defusedxml import ElementTree
+
 from .engine import ExtractedDiagram, extraction_from_raw
 
 # draw.io AWS shapes carry the service in the style string rather than the label

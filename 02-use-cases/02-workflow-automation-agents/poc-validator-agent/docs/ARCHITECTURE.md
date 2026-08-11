@@ -169,4 +169,8 @@ continuously.
 
 Build a detailed estimate for your own expected volume at the
 [AWS Pricing Calculator](https://calculator.aws/#/estimate) — add Bedrock (Claude Sonnet +
-Haiku, on-demand), Lambda, DynamoDB (on-demand), S3, and CloudFront.
+Haiku, on-demand), AgentCore Runtime/Memory/Gateway, Lambda, DynamoDB (on-demand), S3, and
+CloudFront. If you enable the optional phases, also add AgentCore Code Interpreter (search
+"Bedrock AgentCore" in the calculator, per-second consumption) and a Bedrock Knowledge Base
+(storage + retrieval) — both are $0 unless a reviewer actually asks a what-if question or
+runs an FAQ search, so most estimates can leave them at a low or zero assumed volume.
