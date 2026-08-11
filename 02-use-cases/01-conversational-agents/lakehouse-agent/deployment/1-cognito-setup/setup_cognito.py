@@ -340,22 +340,61 @@ class CognitoSetup:
         domain_url = self.get_user_pool_domain(user_pool_id)
 
         if not domain_url:
-            # Create domain
-            # Domain names can only contain lowercase letters, numbers, and hyphens
-            # Extract only alphanumeric characters from pool ID and convert to lowercase
-            pool_id_clean = re.sub(r"[^a-zA-Z0-9]", "", user_pool_id).lower()[:8]
+            # Create domain.
+            #
+            # Domain names may contain lowercase letters, numbers and hyphens only, and the
+            # hosted-domain namespace is shared by every AWS account in the region, so the
+            # name has to be genuinely unlikely to collide.
+            #
+            # Derive it from the pool id's UNIQUE segment -- the part after the underscore.
+            # A user pool id looks like "us-east-1_UkB4mHbEr", so a fixed-length slice of the
+            # whole id is mostly region: the first eight alphanumeric characters are
+            # "useast1u", which is seven characters of region and one of identity. That
+            # leaves a 36-wide space of possible names, narrow enough that two unrelated
+            # deployments collide readily -- and a collision here is not cosmetic, because
+            # the pool then has no hosted domain at all.
+            pool_suffix = user_pool_id.split("_", 1)[-1]
+            pool_id_clean = re.sub(r"[^a-zA-Z0-9]", "", pool_suffix).lower()
             domain_name = f"lakehouse-{pool_id_clean}"
 
             try:
                 self.cognito.create_user_pool_domain(Domain=domain_name, UserPoolId=user_pool_id)
-                domain_url = f"https://{domain_name}.auth.{self.region}.amazoncognito.com"
-                print(f"✅ Domain created: {domain_url}")
-            except Exception as e:
-                if "already exists" in str(e).lower() or "domain" in str(e).lower():
-                    domain_url = f"https://{domain_name}.auth.{self.region}.amazoncognito.com"
-                    print(f"ℹ️  Domain already exists: {domain_url}")
+                print(f"✅ Domain created: {domain_name}")
+            except self.cognito.exceptions.InvalidParameterException as e:
+                # Exactly one condition here is benign: the domain already belongs to THIS
+                # pool, which makes the create idempotent. (Rare in practice, because the
+                # describe above returns early when the pool already has a domain.)
+                #
+                # Everything else must fail the step. The important case is "Domain already
+                # associated with another user pool", meaning the globally unique name is
+                # taken: the pool is left with NO hosted domain, so there is no
+                # /oauth2/token endpoint, so the machine-to-machine client-credentials grant
+                # cannot complete, so gateway targets fail to authenticate and the deployment
+                # serves nothing. Treating that as success yields a deploy that exits 0 and
+                # cannot answer a single request -- with no error anywhere for the reader to
+                # find.
+                if "already exists" in str(e).lower():
+                    print(f"ℹ️  Domain already exists for this pool: {domain_name}")
                 else:
+                    print(f"\n❌ Could not create the Cognito hosted domain '{domain_name}'")
+                    print(f"   {e}")
+                    print("   Without a hosted domain the pool has no OAuth token endpoint, so")
+                    print("   gateway targets cannot authenticate and the stack will not work.")
+                    print("   Re-run after resolving the domain name conflict.")
                     raise
+
+            # Read the hostname back instead of composing it. Composing it only asserts that
+            # the create succeeded; reading it proves the domain exists and records what the
+            # service actually holds. cleanup_cognito.py already reads the domain from the
+            # API before deleting it -- this is the same pattern applied on the way in.
+            domain_url = self.get_user_pool_domain(user_pool_id)
+            if not domain_url:
+                raise RuntimeError(
+                    f"Domain '{domain_name}' was created for user pool {user_pool_id}, but "
+                    "reading it back returned nothing. Refusing to continue with an "
+                    "unconfirmed hostname: every downstream component reads this value from "
+                    "SSM, and a hostname that does not resolve fails much later and far away."
+                )
         else:
             print(f"✅ Using existing domain: {domain_url}")
 
