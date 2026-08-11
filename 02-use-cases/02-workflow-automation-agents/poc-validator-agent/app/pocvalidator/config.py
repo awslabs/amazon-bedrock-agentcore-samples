@@ -39,6 +39,14 @@ MEMORY_ID = os.getenv(
 MEMORY_RETRIEVAL_TOP_K = int(os.getenv("MEMORY_RETRIEVAL_TOP_K", "5"))
 MEMORY_RETRIEVAL_RELEVANCE = float(os.getenv("MEMORY_RETRIEVAL_RELEVANCE", "0.5"))
 
+# ─── Knowledge Base (shared FAQ — see docs/decisions/0011) ─────────────────
+# Unlike Memory and Gateway, the CDK L3 construct does not auto-inject an
+# env var for a knowledgeBases[] resource — confirmed by inspecting the
+# deployed runtime's actual environment, not assumed from the other two
+# resources' pattern. Set explicitly in agentcore.json's runtime envVars by
+# scripts/grant_faq_knowledge_base_access.sh after the knowledge base exists.
+FAQ_KNOWLEDGE_BASE_ID = os.getenv("FAQ_KNOWLEDGE_BASE_ID", "")
+
 # ─── Behaviour ──────────────────────────────────────────────────────────────
 # When true, the agent will not run validation on a diagram-derived design graph
 # until the caller has echoed the extraction back with confirmed=true. This is a

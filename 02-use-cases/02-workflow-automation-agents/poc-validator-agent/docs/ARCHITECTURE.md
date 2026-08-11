@@ -54,17 +54,35 @@ AgentCore Runtime — app/pocvalidator/main.py, 5-phase entrypoint
   │             any reason (quota, access, transient error) the heuristic floor is
   │             kept and the response says so explicitly — never a hard failure.
   │
-  └─ Phases 2, 3, 5  Validation, pricing, recommendations — core/engine.py,
-                      core/pricing.py, core/resources.py. No model. Findings,
-                      cost totals and recommendation URLs are exactly what a
-                      reviewer would want to double-check by hand, so nothing
-                      here is generated — it's computed and looked up.
+  ├─ Phases 2, 3, 5  Validation, pricing, recommendations — core/engine.py,
+  │                   core/pricing.py, core/resources.py. No model. Findings,
+  │                   cost totals and recommendation URLs are exactly what a
+  │                   reviewer would want to double-check by hand, so nothing
+  │                   here is generated — it's computed and looked up.
+  │
+  ├─ Phase 6a (optional) What-if pricing — only if the caller sends
+  │  `what_if_question`. tools/what_if_pricing.py: Haiku authors a
+  │  compute(lines) function against the real cost line items, submitted via
+  │  a typed tool call (never free text); that exact code runs in AgentCore
+  │  Code Interpreter's AWS-managed sandbox (aws.codeinterpreter.v1) — never
+  │  eval()'d in-process, never a number the model just states. See ADR 0010
+  │  for why this needs no custom Code Interpreter resource, and why the
+  │  authoring step (not the sandbox call) is the one blocked by this
+  │  account's Marketplace restriction.
+  │
+  └─ Phase 6b (optional) FAQ knowledge search — only if the caller sends
+     `faq_query`. tools/faq_search.py calls bedrock-agent-runtime:Retrieve
+     directly against a curated AgentCore Knowledge Base (FMKB,
+     `PocValidatorFaqKB`) — plain vector search, not RetrieveAndGenerate, so
+     it carries no generation-model dependency. See ADR 0011 for why a
+     shared Knowledge Base fits recurring findings better than a per-actor
+     Memory namespace.
 ```
 
 `core/` imports nothing AWS-specific and nothing Strands-specific — it's plain Python over
 YAML data files (`data/`, `rules/`), which is why `scripts/local_review.py` and the
 Streamlit UI (`ui/app.py`) can exercise the whole deterministic pipeline with zero AWS
-account, and why the test suite (67 tests) runs in about a second with no network access.
+account, and why the test suite (69 tests) runs in about a second with no network access.
 
 ## Web layer
 

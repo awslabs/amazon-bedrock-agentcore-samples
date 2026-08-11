@@ -1,10 +1,11 @@
 """POC Validator — AgentCore Runtime entrypoint.
 
-Five phases. Only phases 1 and 4 involve a model; 2, 3 and 5 are deterministic
-Python over the shared design graph. That split is deliberate and carried over
-from ADR 0014 in the event-driven-claims-agent sample: the model is used where
-judgement is needed (reading a diagram, banding prose) and kept away from
-anything a reviewer would take at face value (findings, arithmetic, source URLs).
+Five phases, plus two optional ones. Only phases 1 and 4 involve a model as
+part of the standard review; 2, 3 and 5 are deterministic Python over the
+shared design graph. That split is deliberate and carried over from ADR 0014
+in the event-driven-claims-agent sample: the model is used where judgement is
+needed (reading a diagram, banding prose) and kept away from anything a
+reviewer would take at face value (findings, arithmetic, source URLs).
 
     Phase 1  Intake / diagram extraction   Sonnet, vision   → design graph
              ⤷ confirmation gate — nothing proceeds until the caller confirms
@@ -12,9 +13,12 @@ anything a reviewer would take at face value (findings, arithmetic, source URLs)
     Phase 3  Pricing                        deterministic    → baseline + premium
     Phase 4  SOW scoring                    Haiku + weights  → score + gaps
     Phase 5  Recommendations                allowlist filter → AWS-only reading
+    Phase 6a What-if pricing (optional)    Haiku + sandbox  → docs/decisions/0010
+    Phase 6b FAQ knowledge search (optional) vector search  → docs/decisions/0011
 """
 
 import base64
+import dataclasses
 import json
 import sys
 import uuid
@@ -35,6 +39,7 @@ from memory.session import get_memory_session_manager
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 from strands.tools.mcp import MCPClient
+from tools.faq_search import search_faq
 from tools.structured_output import (
     get_last_extraction,
     get_last_sow_bands,
@@ -42,6 +47,7 @@ from tools.structured_output import (
     submit_extraction,
     submit_sow_assessment,
 )
+from tools.what_if_pricing import run_what_if
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core import catalog, diagrams, engine, resources, sow
@@ -386,6 +392,7 @@ async def invoke(payload, context):
             "currency": report.cost.currency,
             "region": report.cost.region,
             "as_of": report.cost.as_of,
+            "lines": [dataclasses.asdict(line) for line in report.cost.lines],
         },
         "recommendations": [
             {
@@ -420,6 +427,33 @@ async def invoke(payload, context):
                 for criterion in sow_score.scores
             ],
         }
+
+    # ── Phase 6a: what-if pricing (optional, Code Interpreter) ──────────────
+    # Only runs if the caller asks a question. See docs/decisions/0010 for
+    # why this needs a model call this account's Marketplace restriction may
+    # block, and why that's stated in the response rather than hidden.
+    what_if_question = payload.get("what_if_question", "").strip()
+    if what_if_question:
+        yield "\n\n---\n## Phase 6a · What-if pricing\n\n"
+        whatif = run_what_if(what_if_question, result["cost"]["lines"])
+        if whatif["status"] == "unavailable":
+            yield f"What-if pricing unavailable: {whatif['reason']}\n"
+        else:
+            yield "Ran a model-authored, sandbox-executed recomputation — see `what_if.code` in the result for exactly what ran.\n"
+        result["what_if"] = whatif
+
+    # ── Phase 6b: FAQ knowledge search (optional, Knowledge Base) ───────────
+    # Only runs if the caller asks. See docs/decisions/0011 for why this is a
+    # Knowledge Base rather than a Memory namespace.
+    faq_query = payload.get("faq_query", "").strip()
+    if faq_query:
+        yield "\n\n---\n## Phase 6b · FAQ knowledge search\n\n"
+        faq = search_faq(faq_query)
+        if faq["status"] == "unavailable":
+            yield f"FAQ search unavailable: {faq['reason']}\n"
+        else:
+            yield f"Found {len(faq['results'])} matching FAQ entries.\n"
+        result["faq"] = faq
 
     yield json.dumps(result, indent=2)
 

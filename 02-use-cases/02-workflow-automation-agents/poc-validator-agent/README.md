@@ -88,6 +88,14 @@ Regenerate the diagram with `python3 diagrams.py` (`brew install graphviz && pip
 - **Optional public front end with expiring, view-limited share links** — upload a SOW,
   get a result, hand someone a link that works 3 times over 30 days without giving them
   your login.
+- **Optional what-if pricing (Code Interpreter)** — ask a plain-language cost question
+  ("what if we used Reserved Instances") and get back a real recomputation that ran in
+  AgentCore's managed sandbox against the actual cost line items, plus the code that ran —
+  never a number the model just stated. See [ADR 0010](docs/decisions/0010-code-interpreter-for-what-if-pricing.md).
+- **Optional shared FAQ search (Knowledge Base)** — recurring findings (HIPAA/VPC, RDS
+  storage class, Multi-AZ, WAF, and more) are grounded in a curated Knowledge Base, not
+  model memory, and searched with plain vector retrieval rather than a full generation
+  call. See [ADR 0011](docs/decisions/0011-shared-faq-knowledge-base-not-per-actor-memory.md).
 
 ## Prerequisites
 
@@ -169,7 +177,7 @@ origin — genuinely circular, so it's resolved in two steps, not hidden).
 python -m pytest tests/ -q
 ```
 
-67 tests, under a second, no network — see [Tests](#tests) below for what they cover.
+69 tests, under a second, no network — see [Tests](#tests) below for what they cover.
 
 To exercise the deployed agent directly:
 
@@ -270,7 +278,7 @@ web/                      Optional public front end
   lambda/handler.py         POST /api/invoke, GET /share/*.json (view-limited)
   cdk/                       CDK for the web layer (Lambda, DynamoDB, CloudFront routing)
 scripts/local_review.py  CLI review, no AWS account
-tests/                    67 tests, offline
+tests/                    69 tests, offline
 docs/decisions/           ADRs
 diagrams.py               Regenerates architecture.png (Graphviz via `diagrams`)
 ```
@@ -286,7 +294,7 @@ pip install pytest PyYAML
 python -m pytest tests/ -q
 ```
 
-67 tests, under a second, no network. They cover catalogue integrity, the chaining
+69 tests, under a second, no network. They cover catalogue integrity, the chaining
 classifier including the unverified path, segment sensitivity in both directions, cost
 arithmetic against hand-computed values, diagram-label resolution and its failure modes,
 SOW banding and the rejection of malformed model output, the AWS-domain allowlist against
@@ -304,6 +312,8 @@ config, env reads confined to `config.py`).
 | **Policy Engine** | Cedar policy in `ENFORCE` mode — read-only tool access is a platform constraint |
 | **Evaluations** | Two custom `llmAsAJudge` evaluators configured in `agentcore.json` — `CreateEvaluator` currently fails in the deployment account used for this sample (see Known Limitations), so `./deploy.sh` ships without them by default. Re-add by restoring the `evaluators` array once your account has model access for the evaluator's grading model. |
 | **Observability** | `AGENT_OBSERVABILITY_ENABLED`, OTEL instrumentation enabled |
+| **Code Interpreter** | Optional Phase 6a — what-if pricing. A Haiku-authored `compute(lines)` function runs in the AWS-managed sandbox (`aws.codeinterpreter.v1`) against the real cost line items. See [ADR 0010](docs/decisions/0010-code-interpreter-for-what-if-pricing.md). |
+| **Knowledge Base (FMKB)** | Optional Phase 6b — shared FAQ search. A curated `AWS::Bedrock::KnowledgeBase` (`agentcore.json`'s `knowledgeBases[]`), queried with plain `Retrieve` (vector search only, no generation call). See [ADR 0011](docs/decisions/0011-shared-faq-knowledge-base-not-per-actor-memory.md). |
 
 ## Known limitations
 
@@ -317,6 +327,17 @@ config, env reads confined to `config.py`).
 - **Pricing is a static snapshot** for `ap-south-1`, with the as-of date shown in the UI.
   Directional only. Moving to the AWS Pricing MCP server as a second Gateway target is the
   natural upgrade.
+- **What-if pricing's code-authoring step is model-gated.** Deploys cleanly and the sandbox
+  execution path was verified directly (see ADR 0010), but the step that decides *what* code
+  to run needs the same model access blocked elsewhere in this account. It degrades to
+  `{"status": "unavailable", "reason": ...}` rather than failing the rest of the review — a
+  reader without the Marketplace restriction should see it run end to end.
+- **The FAQ Knowledge Base's two IAM grants and its env var are scripted, not auto-provisioned.**
+  Unlike Memory and Gateway, the CDK L3 construct neither grants `bedrock:Retrieve` to the
+  runtime execution role nor injects an env var pointing at the deployed knowledge base ID for
+  a `knowledgeBases[]` resource — confirmed by inspecting the deployed stack directly, not
+  assumed. `./deploy.sh` runs `scripts/grant_faq_knowledge_base_access.sh` and
+  `scripts/grant_code_interpreter_access.sh` to close both gaps; see ADR 0011.
 - **Industry packs are advisory.** They encode commonly applicable control expectations,
   not a compliance attestation.
 - **The integration catalogue is partial by design** — 46 pairs covering common web and

@@ -9,15 +9,20 @@ inflated, the conservative number is taken and the reasoning stated.
 |---|---|---|---|
 | Existing tier | S=4 … C=1 | **0** | New sample, no prior tier. Claiming one would be inventing a grade. |
 | Blog post | 0 or 2 | **0** | No blog post references this sample. |
-| AgentCore features | 1 pt each of 13 | **7** | Runtime, Memory, Gateway, Identity, Policy, Evaluations, Observability |
+| AgentCore features | 1 pt each of 13 | **8** | Runtime, Memory, Gateway, Identity, Policy, Evaluations, Observability, Code Interpreter |
 | Unique customer problem | 1–5 | **4** | Partner/pre-sales POC review is a real, recurring, unserved need. Not 5: it is a productivity tool, not an enterprise must-have. |
 | README quality | 1–5 | **5** | Quickstart, architecture (diagram + accessibility text), ADRs, cost, limitations, and — the thing that used to hold this at 4 — a real deployment has now been run and every command in this README verified against it. |
 | Starter Toolkit | −2 | **0** | Not used. Test asserts no `.bedrock_agentcore.yaml` exists. |
-| **Total** | | **16** | |
+| **Total** | | **17** | |
 
-**Rubric verdict: UPDATE** (12–19). Not `KEEP AS-IS`, which needs ≥ 20. In the same range
-as `AWS-operations-agent` (16) and `customer-support-assistant` (15), both currently
+**Rubric verdict: UPDATE** (12–19). Not `KEEP AS-IS`, which needs ≥ 20. Above
+`AWS-operations-agent` (16) and `customer-support-assistant` (15), both currently
 `KEEP — UPDATE` in this repo.
+
+A ninth capability, a Knowledge Base (FMKB) for shared FAQ search, was also added (see
+ADR 0011) but is not counted here — "Knowledge Base" is not one of the 13 named features
+in this repo's own rubric, so claiming a point for it would be inventing a category rather
+than scoring against the real one.
 
 ## What changed since the first draft of this document
 
@@ -61,8 +66,7 @@ The points genuinely still in reach:
 | Action | Gain | Notes |
 |---|---|---|
 | Add AWS Pricing MCP as a second Gateway target | 0 | Gateway already counted; would move pricing from a static snapshot to live, which is a real quality improvement even at 0 rubric points |
-| Add Code Interpreter for cost modelling | +1 | Would let a reviewer run what-if pricing in session |
-| Add Harness | +1 | Plausible: declarative agent config for the SOW grader |
+| Add Harness | +1 | Plausible: declarative agent config for the SOW grader. Considered for Code Interpreter access specifically and rejected — see ADR 0010 — but remains open as its own feature |
 | Write an accompanying blog post | +2 | Still the single largest available gain |
 
 Realistic ceiling without a blog post: **18**. With one: **20**.
@@ -80,10 +84,13 @@ Audited by grepping the runtime code and, this time, by watching it run:
 | Policy | yes | yes | Cedar engine in `ENFORCE` mode on the Gateway | yes |
 | Evaluations | yes | configured, currently blocked | Two custom `llmAsAJudge` evaluators (`agentcore/mcp-targets/evaluators-stage2.json`) | `CreateEvaluator` rejects the grading model on two independent deploy attempts in this account, most recently with `Role does not have access for model` — consistent with the account's Bedrock Marketplace payment-instrument restriction (see main README's Known Limitations), not a config defect: `agentcore validate` passes, and the same model ID works for ordinary `InvokeModel` calls. `deploy.sh` ships without evaluators by default so this never blocks the rest of the stack. |
 | Observability | yes | yes | `AGENT_OBSERVABILITY_ENABLED`, `enableOtel: true` | yes |
+| Code Interpreter | yes | partial | Optional Phase 6a, `tools/what_if_pricing.py`, AWS-managed sandbox (`aws.codeinterpreter.v1`) | Sandbox path (`StartCodeInterpreterSession`/`InvokeCodeInterpreter`/`StopCodeInterpreterSession`) verified directly against the real IAM grant, independent of the model-gated authoring step — see ADR 0010's "Verified independent of the Marketplace gate" for the exact result. The authoring step itself is expected to degrade under the same Marketplace restriction as SOW grading. |
+| Knowledge Base (not in the 13, not scored) | yes | partial | Optional Phase 6b, `tools/faq_search.py`, `bedrock-agent-runtime:Retrieve` against `PocValidatorFaqKB` | See ADR 0011's "Verified independent of the Marketplace gate" for the exact result. |
 
-Six of seven fired successfully against the real account; Evaluations is fully configured
-and would fire in an account without the Marketplace restriction — nothing here is
-declared for the score alone.
+Six of seven core-13 features fired successfully against the real account; Evaluations is
+fully configured and would fire in an account without the Marketplace restriction. Code
+Interpreter's sandbox call was verified directly; nothing here is declared for the score
+alone.
 
 ## Configuration verified against the real CLI
 

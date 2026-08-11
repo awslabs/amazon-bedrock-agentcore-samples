@@ -41,6 +41,10 @@
         {
           "name": "AGENTCORE_GATEWAY_OAUTH_SCOPES",
           "value": "agentcore/invoke"
+        },
+        {
+          "name": "FAQ_KNOWLEDGE_BASE_ID",
+          "value": "PLACEHOLDER_FAQ_KNOWLEDGE_BASE_ID"
         }
       ],
       "networkMode": "PUBLIC",
@@ -81,7 +85,19 @@
       ]
     }
   ],
-  "knowledgeBases": [],
+  "knowledgeBases": [
+    {
+      "type": "AgentCoreKnowledgeBase",
+      "name": "PocValidatorFaqKB",
+      "description": "Curated AWS architecture-review FAQ (HIPAA/VPC, RDS storage, Multi-AZ, WAF, CloudTrail, Cognito MFA, retention, IMDSv2) so recurring findings are grounded, not model memory.",
+      "dataSources": [
+        {
+          "type": "S3",
+          "uri": "s3://poc-validator-faq-kb-PLACEHOLDER_ACCOUNT_ID/faq/"
+        }
+      ]
+    }
+  ],
   "credentials": [
     {
       "authorizerType": "OAuthCredentialProvider",

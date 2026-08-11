@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parent.parent
 os.environ.setdefault("POC_VALIDATOR_ROOT", str(ROOT))
 sys.path.insert(0, str(ROOT / "app"))
 
-from pocvalidator.core import catalog, engine, sow
-from pocvalidator.core.models import Severity
+from pocvalidator.core import catalog, engine, sow  # noqa: E402
+from pocvalidator.core.models import Severity  # noqa: E402
 
 
 def main() -> int:

@@ -393,6 +393,41 @@ def test_malformed_tool_payloads_do_not_raise():
     assert "Could not parse" in so.record_sow_assessment("{}")
 
 
+def test_whatif_code_tool_records_and_resets():
+    """Same typed-tool-call pattern as structured_output.py — the code the
+    model submits is captured verbatim, and reset_whatif_state() clears it
+    between what-if calls the same way reset_state() does for extraction."""
+    sys.path.insert(0, str(ROOT / "app" / "pocvalidator"))
+    from tools import what_if_pricing as wip
+
+    wip.reset_whatif_state()
+    assert wip.get_last_whatif_code() == ""
+
+    wip.record_whatif_code("def compute(lines):\n    return {'x': 1}\n")
+    assert "def compute(lines):" in wip.get_last_whatif_code()
+
+    wip.reset_whatif_state()
+    assert wip.get_last_whatif_code() == ""
+
+
+def test_faq_search_degrades_without_knowledge_base_id():
+    """No AWS account, no network — search_faq must return status=unavailable
+    rather than raise when FAQ_KNOWLEDGE_BASE_ID isn't configured, same
+    graceful-degradation contract as run_what_if() and the SOW model pass."""
+    sys.path.insert(0, str(ROOT / "app" / "pocvalidator"))
+    import config
+    from tools import faq_search
+
+    original = config.FAQ_KNOWLEDGE_BASE_ID
+    faq_search.FAQ_KNOWLEDGE_BASE_ID = ""
+    try:
+        result = faq_search.search_faq("why does RDS need Multi-AZ?")
+        assert result["status"] == "unavailable"
+        assert "reason" in result
+    finally:
+        faq_search.FAQ_KNOWLEDGE_BASE_ID = original
+
+
 # ── Config discipline ─────────────────────────────────────────────────────────
 
 def test_env_vars_are_only_read_in_config():
@@ -438,8 +473,8 @@ def test_broken_example_actually_fails():
 def test_agentcore_json_is_valid_and_uses_the_current_cli_schema():
     import json
     config = json.loads((ROOT / "agentcore" / "agentcore.json.template").read_text())
-    for key in ("runtimes", "memories", "agentCoreGateways", "policyEngines",
-                "evaluators", "onlineEvalConfigs", "credentials"):
+    for key in ("runtimes", "memories", "knowledgeBases", "agentCoreGateways",
+                "policyEngines", "evaluators", "onlineEvalConfigs", "credentials"):
         assert key in config, key
     assert config["runtimes"][0]["entrypoint"] == "main.py"
     assert not (ROOT / ".bedrock_agentcore.yaml").exists(), \
@@ -467,6 +502,16 @@ def test_agentcore_json_matches_the_cli_schema():
     assert target["lambdaFunctionArn"]["toolSchemaFile"].endswith(".json")
     # lambdaFunctionArn targets are invoked over IAM; no outboundAuth block.
     assert "outboundAuth" not in target
+
+    # knowledgeBases[]: written by `agentcore add knowledge-base --json`, not
+    # guessed — type is "AgentCoreKnowledgeBase" (not "KnowledgeBase"), and
+    # dataSources is an array of {type, uri}, not a single object.
+    kb = config["knowledgeBases"][0]
+    assert kb["type"] == "AgentCoreKnowledgeBase"
+    assert len(kb["description"]) <= 200, "AWS::Bedrock::KnowledgeBase Description has a 200-char limit"
+    source = kb["dataSources"][0]
+    assert source["type"] == "S3"
+    assert source["uri"].startswith("s3://")
 
 
 def test_aws_targets_template_is_a_bare_array():

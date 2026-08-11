@@ -23,8 +23,8 @@ SAMPLE_ROOT = Path(__file__).resolve().parent.parent
 os.environ.setdefault("POC_VALIDATOR_ROOT", str(SAMPLE_ROOT))
 sys.path.insert(0, str(SAMPLE_ROOT / "app"))
 
-from pocvalidator.core import catalog, chaining, diagrams, engine, sow
-from pocvalidator.core.models import EdgeType, Severity
+from pocvalidator.core import catalog, chaining, diagrams, engine, sow  # noqa: E402
+from pocvalidator.core.models import EdgeType, Severity  # noqa: E402
 
 st.set_page_config(page_title="POC Validator", page_icon="✓", layout="wide")
 
