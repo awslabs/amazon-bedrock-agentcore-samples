@@ -662,7 +662,12 @@ if not st.session_state.idp_config:
 with st.sidebar:
     st.title("🏥 Claims Assistant")
     # IdP badge (non-load-bearing): shows the active provider + GW2 notes-auth model.
-    st.caption(f"🔐 Identity Provider: {IDP_PROVIDER.title()}")
+    # Rendered from shared code ABOVE the login widget, so it is identical on both paths
+    # and visible before sign-in. The provider name is emphasised rather than captioned
+    # because its job is to answer "which path am I on?" at a glance -- the two login
+    # experiences differ by design (a password form here, a redirect to the provider on
+    # Okta), and without this a reader reporting a problem cannot say which they saw.
+    st.markdown(f"🔐 **Identity Provider: {IDP_PROVIDER.title()}**")
     st.caption("Notes auth: OBO token exchange" if IDP_PROVIDER == "okta" else "Notes auth: REQUEST interceptor")
     st.markdown("---")
 
@@ -775,7 +780,13 @@ with st.sidebar:
         else:
             # ── Cognito: password-grant flow (upstream, preserved) ───────────
             with st.expander("🔐 User Login", expanded=True):
-                st.markdown("*Default password: TempPass123!*")
+                # The test-persona password is documented in notebook 08, immediately
+                # before the reader is told to sign in. It is deliberately NOT shown
+                # here: the app cannot know which value the setup script actually
+                # applied, so a credential printed in this panel can silently disagree
+                # with reality -- and a hint that is confidently wrong is worse than no
+                # hint, because it is the one value a reader will try.
+                st.caption("Test-persona password: see notebook 08.")
                 st.markdown("---")
 
                 # Test users dropdown
@@ -787,7 +798,7 @@ with st.sidebar:
                     "admin@example.com",
                 ]
                 username = st.selectbox("Email", options=test_users, index=0)
-                password = st.text_input("Password", type="password", placeholder="TempPass123!")
+                password = st.text_input("Password", type="password")
 
                 config = st.session_state.idp_config
 
