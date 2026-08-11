@@ -2,9 +2,9 @@ streamlit>=1.30.0
 requests>=2.31.0
 boto3>=1.43.0
 
-# Okta path (Authorization Code + PKCE via streamlit-oauth; PyJWT decodes the
-# id_token for display only). Inert on the Cognito path.
-streamlit-oauth>=0.1.14
+# Okta path: Authorization Code + PKCE is implemented directly in the app, using
+# only the standard library plus requests, so no OAuth component is needed. PyJWT
+# decodes the id_token for display only. Inert on the Cognito path.
 PyJWT>=2.8.0
 
 # MCP client for the shared "Tools available to you" panel (queries GW1's

@@ -11,10 +11,14 @@ agent invocation, and the per-persona tools panel are IdP-agnostic and shared.
 # client_secret, so a display-side decode does not require independent
 # signature verification.
 import asyncio
+import base64
+import hashlib
 import json
 import os
+import secrets
 import sys
 import threading
+import time
 import urllib.parse
 import uuid
 from typing import Optional
@@ -26,7 +30,6 @@ import requests
 import streamlit as st
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
-from streamlit_oauth import OAuth2Component
 
 # utils/ lives one level up from streamlit-ui/; put it on the path so we can read
 # the IDP_PROVIDER flag through the same shared helper the notebooks use.
@@ -116,6 +119,168 @@ def fetch_interceptor_tools(gateway_url: str, token: str):
 # value, also amend setup_okta.py atomically so the writer and consumer of the
 # redirect URI stay in sync.
 REDIRECT_URI = "http://localhost:8501/"
+
+# ── Okta Authorization Code + PKCE, run server-side in this app ──────────────────
+# The app IS the web server, so its own origin is the redirect target and no second
+# listener or popup is involved. Okta returns the authorization code as a query
+# parameter on this page, which the code below exchanges for tokens.
+#
+# `claims.query` is the smallest scope sufficient for the interceptor side. Scope-name
+# form is the bare `claims.query` (Okta convention), NOT `<audience>/<scope>` prefixed
+# (Cognito convention) — the prefixed form returns `invalid_scope`. `groups` is a CLAIM
+# rather than a scope on this authorization server (alwaysIncludeInToken), so the access
+# token carries it regardless of the scopes requested.
+OKTA_SCOPE = "openid profile email claims.query"
+
+# How long an in-flight login may take before its PKCE verifier is discarded. Long
+# enough for a password change plus authenticator enrolment on a first login; short
+# enough that an abandoned attempt does not leave a verifier resident.
+OKTA_LOGIN_TTL_SECONDS = 15 * 60
+
+
+@st.cache_resource
+def _okta_pending_logins() -> dict:
+    """Server-side store for in-flight logins, keyed by the OAuth `state` value.
+
+    WHY THIS EXISTS: the PKCE verifier is created before the browser leaves for Okta
+    and is needed after it comes back, but the return trip is a full page navigation,
+    which gives Streamlit a NEW session. `st.session_state` does not survive it. This
+    store lives in the server process instead, so it does.
+
+    SECURITY-RELEVANT, not plumbing:
+      - the returned `state` is looked up here, so a value we never issued is rejected;
+      - entries are SINGLE-USE (popped on lookup), so a replayed authorization code
+        cannot be paired with the same verifier twice;
+      - entries EXPIRE, so an abandoned login does not leave a verifier resident.
+    """
+    return {}
+
+
+def _okta_new_pkce_login(login_hint: str = "") -> tuple[str, str]:
+    """Create one login attempt: returns (state, verifier) and records it server-side.
+
+    S256 only. The verifier is high-entropy and never leaves the server; only its
+    SHA-256 challenge is sent to Okta.
+    """
+    verifier = base64.urlsafe_b64encode(secrets.token_bytes(64)).decode().rstrip("=")
+    state = secrets.token_urlsafe(24)
+    store = _okta_pending_logins()
+    _okta_expire_pending(store)
+    store[state] = {
+        "verifier": verifier,
+        "created_at": time.time(),
+        "login_hint": login_hint,
+    }
+    return state, verifier
+
+
+def _okta_expire_pending(store: dict, now: float | None = None) -> int:
+    """Drop expired entries. Returns how many were removed."""
+    now = time.time() if now is None else now
+    stale = [k for k, v in store.items() if now - v.get("created_at", 0) > OKTA_LOGIN_TTL_SECONDS]
+    for k in stale:
+        store.pop(k, None)
+    return len(stale)
+
+
+def _okta_claim_pending(state: str) -> dict | None:
+    """Single-use lookup of an in-flight login. Returns None if unknown or expired.
+
+    Popping before validating is deliberate: even a state that turns out to be expired
+    is consumed, so a replay cannot get a second attempt at it.
+    """
+    store = _okta_pending_logins()
+    _okta_expire_pending(store)
+    if not state:
+        return None
+    return store.pop(state, None)
+
+
+def _okta_pkce_challenge(verifier: str) -> str:
+    """S256 challenge for a verifier: base64url(sha256(verifier)), unpadded."""
+    digest = hashlib.sha256(verifier.encode()).digest()
+    return base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+
+def _okta_authorize_url(config: dict, state: str, verifier: str, login_hint: str = "") -> str:
+    """Build the /v1/authorize URL for this login attempt."""
+    params = {
+        "client_id": config["okta_app_client_id"],
+        "response_type": "code",
+        "scope": OKTA_SCOPE,
+        "redirect_uri": REDIRECT_URI,
+        "state": state,
+        "code_challenge": _okta_pkce_challenge(verifier),
+        "code_challenge_method": "S256",
+        # Force Okta to re-prompt for credentials rather than silently reusing an
+        # existing SSO cookie, so a reader can switch test users without signing out
+        # of Okta first.
+        "prompt": "login",
+    }
+    if login_hint:
+        params["login_hint"] = login_hint
+    base = f"https://{config['okta_org_url']}/oauth2/{config['okta_auth_server_id']}"
+    return f"{base}/v1/authorize?" + urllib.parse.urlencode(params)
+
+
+def _okta_exchange_code(config: dict, code: str, verifier: str) -> dict:
+    """Exchange an authorization code for tokens. Confidential client, HTTP Basic auth.
+
+    Raises RuntimeError with the provider's message on a non-2xx response, so the caller
+    can surface something actionable instead of a bare failure.
+    """
+    base = f"https://{config['okta_org_url']}/oauth2/{config['okta_auth_server_id']}"
+    basic = base64.b64encode(f"{config['okta_app_client_id']}:{config['okta_app_client_secret']}".encode()).decode()
+    response = requests.post(
+        f"{base}/v1/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": REDIRECT_URI,
+            "code_verifier": verifier,
+        },
+        headers={
+            "Authorization": f"Basic {basic}",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        },
+        timeout=30,
+    )
+    if response.status_code // 100 != 2:
+        raise RuntimeError(f"token exchange failed (HTTP {response.status_code}): {response.text[:300]}")
+    tokens = response.json()
+    if not tokens.get("access_token"):
+        raise RuntimeError(f"token response carried no access_token (keys: {sorted(tokens)})")
+    return tokens
+
+
+def _okta_identity_from_tokens(tokens: dict) -> str:
+    """Best-effort display identity. Unverified decode — display only.
+
+    The tokens were just issued by the provider over TLS in response to our own
+    client-authenticated request, so a display-side decode does not require independent
+    signature verification. Nothing security-relevant is derived from this value.
+    """
+
+    def _claims_or_none(raw_token: str) -> dict | None:
+        try:
+            return jwt.decode(raw_token, options={"verify_signature": False})
+        except Exception as decode_error:
+            # Display-only, so a malformed token must never break sign-in — but say so
+            # rather than swallowing it silently.
+            print(f"⚠️  Could not decode a token for display: {decode_error}")
+            return None
+
+    for token_key in ("id_token", "access_token"):
+        raw = tokens.get(token_key)
+        claims = _claims_or_none(raw) if raw else None
+        if not claims:
+            continue
+        identity = claims.get("email") or claims.get("preferred_username") or claims.get("sub")
+        if identity:
+            return str(identity)
+    return "(unknown)"
+
 
 # Per-path response labels. The agent response is free text and does NOT expose
 # which gateway/tool served it, so we label the path from the clicked example's
@@ -245,7 +410,7 @@ def load_config_from_ssm():
             except Exception:
                 config[key] = None
 
-        # Okta needs the client secret in-config for OAuth2Component's token
+        # Okta needs the client secret in-config for the authorization-code token
         # exchange (a confidential Auth-Code+PKCE client). Cognito does NOT: its
         # authenticate_user / set_new_password fetch the secret themselves on
         # demand (SecureString, WithDecryption), so we never hold a decrypted
@@ -515,60 +680,82 @@ with st.sidebar:
                     "okta_app_client_secret",
                 )
                 if all(config.get(k) for k in required_keys):
-                    oauth_base = f"https://{config['okta_org_url']}/oauth2/{config['okta_auth_server_id']}"
-                    oauth2 = OAuth2Component(
-                        client_id=config["okta_app_client_id"],
-                        client_secret=config["okta_app_client_secret"],
-                        authorize_endpoint=f"{oauth_base}/v1/authorize",
-                        token_endpoint=f"{oauth_base}/v1/token",
-                        refresh_token_endpoint=f"{oauth_base}/v1/token",
-                        revoke_token_endpoint=f"{oauth_base}/v1/revoke",
-                    )
-                    # `claims.query` scope is the smallest set sufficient for the
-                    # interceptor side. Scope-name form: bare `claims.query` (Okta
-                    # convention), NOT `<audience>/<scope>` prefixed (Cognito
-                    # convention) — the prefixed form returns `invalid_scope`.
-                    # `groups` is a CLAIM, not a scope, on this auth server
-                    # (alwaysIncludeInToken=True in setup_okta.py), so the
-                    # access_token carries `groups` regardless of scopes.
-                    result = oauth2.authorize_button(
-                        name="🔑 Login with Okta",
-                        redirect_uri=REDIRECT_URI,
-                        scope="openid profile email claims.query",
-                        use_container_width=True,
-                        pkce="S256",  # Authorization Code + PKCE per design §7g.
-                        # Force Okta to re-prompt for credentials instead of silently
-                        # re-using an existing SSO session cookie, so a reader can switch
-                        # personas (policyholder001 → policyholder002) without manually
-                        # signing out of Okta first.
-                        extras_params={"prompt": "login"},
-                    )
-                    if result and "token" in result:
-                        tok = result["token"]
-                        st.session_state.access_token = tok.get("access_token")
-                        st.session_state.id_token = tok.get("id_token")
-                        # Unverified decode of id_token for display only
-                        # (see PyJWT import comment).
-                        if st.session_state.id_token:
+                    # The redirect from Okta lands back on THIS page with ?code= and
+                    # ?state=. Handle that first: if a code is present, this rerun is
+                    # the tail of a login rather than the start of one.
+                    query = st.query_params
+                    returned_code = query.get("code")
+                    returned_state = query.get("state")
+                    returned_error = query.get("error")
+
+                    if returned_error:
+                        description = query.get("error_description") or ""
+                        st.error(f"❌ Okta returned an error: {returned_error} {description}".strip())
+                        # Clear the parameters so the error does not reappear on every
+                        # subsequent rerun.
+                        st.query_params.clear()
+                    elif returned_code:
+                        # Single-use, expiring lookup. An unknown or stale state means
+                        # this code was not requested by this server.
+                        pending = _okta_claim_pending(returned_state or "")
+                        if pending is None:
+                            st.error(
+                                "❌ Sign-in could not be verified: the returned state does not match "
+                                "an in-flight login. Start the sign-in again. (This also happens if the "
+                                "attempt sat unfinished for more than "
+                                f"{OKTA_LOGIN_TTL_SECONDS // 60} minutes, or if the page was reloaded "
+                                "with a used link.)"
+                            )
+                            st.query_params.clear()
+                        else:
                             try:
-                                claims = jwt.decode(
-                                    st.session_state.id_token,
-                                    options={"verify_signature": False},
+                                tokens = _okta_exchange_code(config, returned_code, pending["verifier"])
+                            except Exception as exchange_error:
+                                st.error(f"❌ Could not complete sign-in: {exchange_error}")
+                                st.query_params.clear()
+                            else:
+                                st.session_state.access_token = tokens.get("access_token")
+                                st.session_state.id_token = tokens.get("id_token")
+                                st.session_state.user_email = _okta_identity_from_tokens(tokens)
+                                # Gated dev convenience (LAKEHOUSE_SAVE_TOKENS=1); no-op
+                                # by default. Never surfaces the token — see the helper
+                                # docstring.
+                                _lakehouse_save_token_if_enabled(
+                                    st.session_state.access_token,
+                                    st.session_state.user_email,
                                 )
-                                st.session_state.user_email = (
-                                    claims.get("email") or claims.get("preferred_username") or claims.get("sub")
-                                )
-                            except Exception:
-                                st.session_state.user_email = "(unknown)"
-                        st.success(f"✅ Logged in as {st.session_state.user_email}")
-                        # Gated dev convenience (LAKEHOUSE_SAVE_TOKENS=1); no-op by
-                        # default. Never surfaces the token — see helper docstring.
-                        _lakehouse_save_token_if_enabled(
-                            st.session_state.access_token,
-                            st.session_state.user_email,
+                                st.session_state.persona_tools = None  # refetch for the new persona
+                                # Clear ?code= BEFORE rerunning. Streamlit reruns
+                                # frequently, and a code left in the URL would be
+                                # re-submitted against a code the provider has already
+                                # consumed, which fails on the second attempt.
+                                st.query_params.clear()
+                                st.success(f"✅ Logged in as {st.session_state.user_email}")
+                                st.rerun()
+                    else:
+                        # Start of a login. The optional hint pre-fills the username at
+                        # Okta, which makes switching between test users quicker; it is
+                        # only a hint and the provider still prompts for credentials.
+                        login_hint = st.text_input(
+                            "Email (optional)",
+                            key="okta_login_hint",
+                            placeholder="policyholder001@example.com",
+                            help="Pre-fills the username on the Okta sign-in page. Leave blank to type it there.",
                         )
-                        st.session_state.persona_tools = None  # refetch for the new persona
-                        st.rerun()
+                        # Mint the attempt ONCE per session, not once per rerun.
+                        # Streamlit reruns on every keystroke in the field above, and
+                        # minting per rerun would add a pending entry each time. Reusing
+                        # one attempt is also correct: it is still single-use and still
+                        # expiring, and the link always carries the state we hold.
+                        if "okta_pkce_attempt" not in st.session_state:
+                            st.session_state.okta_pkce_attempt = _okta_new_pkce_login(login_hint.strip())
+                        state, verifier = st.session_state.okta_pkce_attempt
+                        st.link_button(
+                            "🔑 Login with Okta",
+                            _okta_authorize_url(config, state, verifier, login_hint.strip()),
+                            use_container_width=True,
+                        )
+                        st.caption("Opens the Okta sign-in page, then returns here.")
                 else:
                     st.error("❌ Okta not configured. Run `01-deploy-idp.ipynb` first.")
         else:
