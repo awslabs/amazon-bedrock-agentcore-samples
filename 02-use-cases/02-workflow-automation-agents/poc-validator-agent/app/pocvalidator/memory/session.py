@@ -4,7 +4,11 @@ Adapted from event-driven-claims-agent/app/claimsagent/memory/session.py.
 
 SEMANTIC gives cross-session recall — a partner submitting a second POC gets
 findings informed by their first. SUMMARIZATION compresses session history so a
-long review does not overflow context.
+long review does not overflow context. USER_PREFERENCE accumulates durable,
+per-actor preferences across sessions — e.g. a partner who always reviews
+ap-south-1/FSI submissions gets that inferred over time rather than re-stated
+every call. Meaningful only when the same actor_id is reused across calls for
+the same real reviewer — see the caller for how actor_id is actually derived.
 
 If Memory is not deployed (local dev, pre-deploy, or evaluation without an AWS
 account) this returns None and the agent runs without recall.
@@ -37,6 +41,10 @@ def get_memory_session_manager(
             top_k=MEMORY_RETRIEVAL_TOP_K, relevance_score=MEMORY_RETRIEVAL_RELEVANCE
         ),
         f"pocvalidator/{actor_id}/{session_id}": RetrievalConfig(
+            top_k=max(MEMORY_RETRIEVAL_TOP_K - 2, 1),
+            relevance_score=MEMORY_RETRIEVAL_RELEVANCE,
+        ),
+        f"pocvalidator/{actor_id}/preferences": RetrievalConfig(
             top_k=max(MEMORY_RETRIEVAL_TOP_K - 2, 1),
             relevance_score=MEMORY_RETRIEVAL_RELEVANCE,
         ),

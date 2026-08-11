@@ -74,7 +74,7 @@ Audited by grepping the runtime code and, this time, by watching it run:
 | Feature | Declared | Exercised at runtime | Where | Observed live |
 |---|---|---|---|---|
 | Runtime | yes | yes | `BedrockAgentCoreApp()`, `@app.entrypoint` in `main.py` | yes |
-| Memory | yes | yes | `AgentCoreMemorySessionManager` in `memory/session.py` | yes (session created; graceful-degradation path also observed when unavailable) |
+| Memory | yes | yes | `AgentCoreMemorySessionManager` in `memory/session.py`; 3 strategies (SEMANTIC, SUMMARIZATION, USER_PREFERENCE) | yes (session created; graceful-degradation path also observed when unavailable). See [ADR 0009](decisions/0009-user-preference-memory-needs-a-real-actor-id.md) for why USER_PREFERENCE needed a real per-browser actor_id in the web layer, not just the config entry. |
 | Gateway | yes | yes | `MCPClient` over `streamablehttp_client`, tools attached to the extractor | yes — real Lambda MCP target, confirmed with a direct pre-wiring `aws lambda invoke` |
 | Identity | yes | yes | `@requires_access_token(auth_flow="M2M")` on `_build_mcp_client` | yes — real Cognito M2M token minted |
 | Policy | yes | yes | Cedar engine in `ENFORCE` mode on the Gateway | yes |

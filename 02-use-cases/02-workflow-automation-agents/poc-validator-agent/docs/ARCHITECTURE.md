@@ -30,9 +30,14 @@ AgentCore Runtime — app/pocvalidator/main.py, 5-phase entrypoint
   │            "awaiting_confirmation" is returned and nothing else runs until the
   │            caller resubmits with extraction_confirmed: true.
   │
-  ├─ AgentCore Memory (session.py) — SEMANTIC + SUMMARIZATION strategies, attached to
-  │  the vision-extraction agent for cross-session recall. Degrades gracefully
-  │  (logged, not raised) if Memory is unavailable.
+  ├─ AgentCore Memory (session.py) — SEMANTIC + SUMMARIZATION for cross-session
+  │  recall, plus USER_PREFERENCE for durable per-reviewer preferences (namespace
+  │  pocvalidator/{actorId}/preferences), attached to the vision-extraction agent.
+  │  Degrades gracefully (logged, not raised) if Memory is unavailable. Only
+  │  meaningful when actor_id is a real, stable identity per caller — the CLI path
+  │  derives it from partner_id/user_id in the payload; the web layer generates a
+  │  per-browser id client-side (localStorage) precisely so USER_PREFERENCE has
+  │  something real to attach to instead of every visitor sharing one identity.
   │
   ├─ AgentCore Gateway — reached via MCPClient over streamablehttp_client, CUSTOM_JWT
   │  authorizer (Cognito M2M, client_credentials, minted via

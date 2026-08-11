@@ -13,3 +13,4 @@ event-driven-claims-agent sample.
 | [0006](0006-curated-resource-catalogue-over-web-search.md) | Curated resource catalogue over live web search |
 | [0007](0007-deterministic-diagram-sources-over-vision.md) | Deterministic diagram sources preferred over vision |
 | [0008](0008-view-limited-share-links-via-conditional-write.md) | View-limited share links enforced by a conditional write, not client trust |
+| [0009](0009-user-preference-memory-needs-a-real-actor-id.md) | USER_PREFERENCE memory is only as real as the actor_id behind it |

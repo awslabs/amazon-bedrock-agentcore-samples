@@ -109,6 +109,14 @@ def _handle_invoke(event):
     if not sow_text and not diagram_text:
         return _response(400, {"status": "error", "message": "Provide at least an SOW document or a diagram."})
 
+    # A stable per-browser id (generated client-side, kept in localStorage) so
+    # AgentCore Memory's USER_PREFERENCE strategy has a real, consistent actor
+    # to attach preferences to instead of every visitor sharing one identity.
+    # Validated strictly — this becomes part of a Memory namespace string.
+    browser_id = body.get("browser_id") or ""
+    if not re.fullmatch(r"[a-f0-9]{32}", browser_id):
+        browser_id = "anonymous"
+
     payload = {
         "segment": segment,
         "industry": industry,
@@ -116,7 +124,7 @@ def _handle_invoke(event):
         "sow_text": sow_text,
         "diagram_text": diagram_text,
         "diagram_filename": diagram_filename,
-        "user_id": "web-demo",
+        "user_id": f"web-{browser_id}",
     }
 
     try:

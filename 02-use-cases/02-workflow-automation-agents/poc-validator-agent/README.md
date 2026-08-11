@@ -298,7 +298,7 @@ config, env reads confined to `config.py`).
 | Service | What it does here |
 |---------|-------------------|
 | **Runtime** | Hosts the 5-phase entrypoint (Strands SDK, containerized, streaming responses) |
-| **Memory** | SEMANTIC + SUMMARIZATION strategies for cross-session recall |
+| **Memory** | SEMANTIC + SUMMARIZATION for cross-session recall, plus USER_PREFERENCE for durable per-reviewer preferences (region, segment, industry a partner tends to submit) |
 | **Gateway** | MCP protocol, semantic search, 1 Lambda-backed target (real AWS Documentation MCP server) |
 | **Identity** | `@requires_access_token(auth_flow="M2M")` — Gateway OAuth via the Identity vault, no secret in env vars |
 | **Policy Engine** | Cedar policy in `ENFORCE` mode — read-only tool access is a platform constraint |

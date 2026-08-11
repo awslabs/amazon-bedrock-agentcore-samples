@@ -70,6 +70,13 @@
           "namespaces": [
             "pocvalidator/{actorId}/{sessionId}"
           ]
+        },
+        {
+          "type": "USER_PREFERENCE",
+          "name": "preference_strategy",
+          "namespaces": [
+            "pocvalidator/{actorId}/preferences"
+          ]
         }
       ]
     }
