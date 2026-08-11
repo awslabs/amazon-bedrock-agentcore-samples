@@ -11,6 +11,8 @@
 | Agent framework | [OpenClaw](https://openclaw.ai) |
 | Components | OpenClaw, `@aws/aws-agents-pay`, AgentCore Payments, x402 v2 |
 
+![Architecture](images/architecture_openclaw_agent.png)
+
 Unlike the other two paths in this folder, this one skips the coding-assistant
 handoff entirely -- there is no `AGENTS.md` to load and no prompt to hand to a
 coding assistant. OpenClaw installs the plugin and reads its config directly.
