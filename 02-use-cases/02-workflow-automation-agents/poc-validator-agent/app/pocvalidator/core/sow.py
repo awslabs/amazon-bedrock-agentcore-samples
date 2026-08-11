@@ -111,7 +111,9 @@ def _is_toc_occurrence(text_lower: str, idx: int) -> bool:
     return bool(_TOC_LINE_ENDING.search(text_lower[line_start:line_end]))
 
 
-def _best_window(text_lower: str, hits: list[str], signals: list[str], span: int = 600) -> str:
+def _best_window(
+    text_lower: str, hits: list[str], signals: list[str], span: int = 600
+) -> str:
     """Find the richest window around any occurrence of a hit signal.
 
     A document's Table of Contents repeats section headings near the top of the
@@ -134,7 +136,10 @@ def _best_window(text_lower: str, hits: list[str], signals: list[str], span: int
                 fallback_window = text_lower[idx : idx + span]
             if not _is_toc_occurrence(text_lower, idx):
                 window = text_lower[idx : idx + span]
-                score = (sum(1 for signal in signals if signal in window), len(window.split()))
+                score = (
+                    sum(1 for signal in signals if signal in window),
+                    len(window.split()),
+                )
                 if score > best_score:
                     best_score, best_window = score, window
             start = idx + len(hit)
@@ -160,9 +165,15 @@ def _heuristic_band(text_lower: str, signals: list[str]) -> tuple[int, str]:
     window_words = len(window.split())
 
     if len(hits) >= 3 and window_words > 60:
-        return 3, f"Found {len(hits)} related signals with substantive surrounding text."
+        return (
+            3,
+            f"Found {len(hits)} related signals with substantive surrounding text.",
+        )
     if len(hits) >= 2 and window_words > 100:
-        return 3, f"Found {len(hits)} related signals with a substantial section around them."
+        return (
+            3,
+            f"Found {len(hits)} related signals with a substantial section around them.",
+        )
     if len(hits) >= 2:
         return 2, f"Found {len(hits)} related signals, but limited detail around them."
     if window_words > 120:
@@ -200,7 +211,9 @@ def score_heuristic(sow_text: str) -> SOWScore:
     )
 
 
-def apply_model_bands(score: SOWScore, bands_by_id: dict[str, dict[str, Any]]) -> SOWScore:
+def apply_model_bands(
+    score: SOWScore, bands_by_id: dict[str, dict[str, Any]]
+) -> SOWScore:
     """Overlay model-assigned bands onto a heuristic score.
 
     ``bands_by_id`` maps criterion id to ``{"band": int, "justification": str}``,

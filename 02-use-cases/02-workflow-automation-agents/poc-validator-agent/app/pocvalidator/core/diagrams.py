@@ -56,7 +56,7 @@ def _decompress_drawio(payload: str) -> str | None:
         raw = base64.b64decode(payload)
         inflated = zlib.decompress(raw, -zlib.MAX_WBITS)
         return urllib.parse.unquote(inflated.decode("utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — any malformed payload degrades to "not compressed", never a crash
         return None
 
 
@@ -147,7 +147,9 @@ def parse_mermaid(text: str) -> ExtractedDiagram:
 
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith(("%%", "graph ", "flowchart ", "subgraph")):
+        if not stripped or stripped.startswith(
+            ("%%", "graph ", "flowchart ", "subgraph")
+        ):
             continue
         if stripped in {"end"}:
             continue
@@ -192,7 +194,11 @@ def parse_mermaid(text: str) -> ExtractedDiagram:
 def parse(filename: str, content: bytes | str) -> ExtractedDiagram:
     """Dispatch on file extension. Returns an empty result for image formats,
     which must go through the vision path and the confirmation gate."""
-    text = content.decode("utf-8", errors="replace") if isinstance(content, bytes) else content
+    text = (
+        content.decode("utf-8", errors="replace")
+        if isinstance(content, bytes)
+        else content
+    )
     lowered = filename.lower()
 
     if lowered.endswith((".drawio", ".xml")):

@@ -73,7 +73,9 @@ def is_allowed(url: str) -> bool:
     if host in ALLOWED_HOSTS:
         return True
     if host in ALLOWED_YOUTUBE_HOSTS:
-        return any(parsed.path.startswith(prefix) for prefix in ALLOWED_YOUTUBE_PREFIXES)
+        return any(
+            parsed.path.startswith(prefix) for prefix in ALLOWED_YOUTUBE_PREFIXES
+        )
     return False
 
 
@@ -120,8 +122,13 @@ def recommend(report, sow_score=None, limit: int = 8) -> list[tuple[Resource, st
     def want(tag: str, reason: str) -> None:
         wanted.setdefault(tag, []).append(reason)
 
-    want(graph.industry_id, f"you selected the {graph.industry_id.upper()} industry lens")
-    want(graph.segment_id, f"you selected the {graph.segment_id.replace('_', ' ')} segment")
+    want(
+        graph.industry_id, f"you selected the {graph.industry_id.upper()} industry lens"
+    )
+    want(
+        graph.segment_id,
+        f"you selected the {graph.segment_id.replace('_', ' ')} segment",
+    )
     want("general", "general architecture practice")
 
     for finding in report.findings:
@@ -141,8 +148,16 @@ def recommend(report, sow_score=None, limit: int = 8) -> list[tuple[Resource, st
 
     # Broad tags explain nothing useful, so they rank last when choosing which
     # reason to show the user even though they still contribute to relevance.
-    broad = {"general", "architecture", "security", "reliability", "cost",
-             "operational-excellence", "performance-efficiency", "industry"}
+    broad = {
+        "general",
+        "architecture",
+        "security",
+        "reliability",
+        "cost",
+        "operational-excellence",
+        "performance-efficiency",
+        "industry",
+    }
 
     scored: list[tuple[int, Resource, str]] = []
     for resource in all_resources():

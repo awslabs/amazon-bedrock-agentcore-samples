@@ -20,9 +20,7 @@ def _applies(requirement: dict[str, Any], node: Node) -> bool:
     if "categories" in scope and node.category in scope["categories"]:
         return True
     # A rule may name a service in the categories list as a convenience.
-    if "categories" in scope and node.service_id in scope["categories"]:
-        return True
-    return False
+    return "categories" in scope and node.service_id in scope["categories"]
 
 
 def _satisfied(requirement: dict[str, Any], node: Node) -> bool:

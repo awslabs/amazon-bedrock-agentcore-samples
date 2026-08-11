@@ -74,8 +74,8 @@ class Finding:
     title: str
     severity: Severity
     pillar: str
-    source: str          # which rule pack fired: segment id, industry id, or "chaining"
-    source_label: str    # human-readable pack name
+    source: str  # which rule pack fired: segment id, industry id, or "chaining"
+    source_label: str  # human-readable pack name
     rationale: str
     remediation: str
     doc_url: str
@@ -144,7 +144,7 @@ class ValidationReport:
     conflicts: list[Conflict] = field(default_factory=list)
     cost: CostEstimate | None = None
     evidence: list[dict[str, str]] = field(default_factory=list)
-    sow: Any = None                 # SOWScore, when a Scope of Work was submitted
+    sow: Any = None  # SOWScore, when a Scope of Work was submitted
     recommendations: list = field(default_factory=list)  # [(Resource, reason)]
 
     @property
@@ -162,23 +162,31 @@ class ValidationReport:
         if crit:
             return (
                 "Not ready",
-                f"{crit} critical finding{'s' if crit != 1 else ''} must be resolved "
-                "before this design goes in front of a customer.",
+                (
+                    f"{crit} critical finding{'s' if crit != 1 else ''} must be resolved "
+                    "before this design goes in front of a customer."
+                ),
             )
         if high >= 3:
             return (
                 "Needs work",
-                f"{high} high-severity findings. No single blocker, but the "
-                "aggregate gap is too wide to present as production-ready.",
+                (
+                    f"{high} high-severity findings. No single blocker, but the "
+                    "aggregate gap is too wide to present as production-ready."
+                ),
             )
         if high:
             return (
                 "Conditionally ready",
-                f"{high} high-severity finding{'s' if high != 1 else ''} to close, "
-                "each with a clear remediation.",
+                (
+                    f"{high} high-severity finding{'s' if high != 1 else ''} to close, "
+                    "each with a clear remediation."
+                ),
             )
         return (
             "Ready",
-            "No critical or high-severity findings against the selected "
-            "segment and industry rules.",
+            (
+                "No critical or high-severity findings against the selected "
+                "segment and industry rules."
+            ),
         )

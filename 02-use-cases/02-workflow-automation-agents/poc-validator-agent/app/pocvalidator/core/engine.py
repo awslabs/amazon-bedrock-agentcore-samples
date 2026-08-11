@@ -61,12 +61,12 @@ def extraction_from_raw(raw: dict[str, Any]) -> ExtractedDiagram:
             source_label, target_label = edge
         else:
             continue
-        source = alias.get(str(source_label).strip().lower()) or catalog.resolve_service(
-            str(source_label)
-        )
-        target = alias.get(str(target_label).strip().lower()) or catalog.resolve_service(
-            str(target_label)
-        )
+        source = alias.get(
+            str(source_label).strip().lower()
+        ) or catalog.resolve_service(str(source_label))
+        target = alias.get(
+            str(target_label).strip().lower()
+        ) or catalog.resolve_service(str(target_label))
         if source and target and source != target and (source, target) not in edges:
             edges.append((source, target))
 

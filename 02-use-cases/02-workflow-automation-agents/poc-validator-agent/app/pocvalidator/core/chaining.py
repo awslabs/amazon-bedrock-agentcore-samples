@@ -143,10 +143,12 @@ def dot(graph: DesignGraph) -> str:
     """Render the design graph as Graphviz DOT for st.graphviz_chart."""
     lines = [
         "digraph design {",
-        '  rankdir=LR;',
+        "  rankdir=LR;",
         '  bgcolor="transparent";',
-        '  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
-        'penwidth=0.8 color="#c8ccd2" margin="0.18,0.10"];',
+        (
+            '  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
+            'penwidth=0.8 color="#c8ccd2" margin="0.18,0.10"];'
+        ),
         '  edge [fontname="Helvetica" fontsize=9];',
     ]
     for sid, node in graph.nodes.items():
@@ -155,7 +157,9 @@ def dot(graph: DesignGraph) -> str:
     for edge in graph.edges:
         lines.append(f"  {edge.source} -> {edge.target} [{DOT_STYLE[edge.edge_type]}];")
     if not graph.edges:
-        lines.append('  _note [label="No connections defined" fillcolor="#f2f2f2" '
-                     'fontcolor="#6b6b6b" style="rounded,filled,dashed"];')
+        lines.append(
+            '  _note [label="No connections defined" fillcolor="#f2f2f2" '
+            'fontcolor="#6b6b6b" style="rounded,filled,dashed"];'
+        )
     lines.append("}")
     return "\n".join(lines)

@@ -50,7 +50,7 @@ from tools.structured_output import (
 from tools.what_if_pricing import run_what_if
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from core import catalog, diagrams, engine, resources, sow
+from core import diagrams, engine, sow
 from core.models import Severity
 
 app = BedrockAgentCoreApp()
@@ -127,7 +127,7 @@ def get_mcp_client():
             return None
         try:
             _mcp_client = _build_mcp_client()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — Gateway/Identity unavailable degrades to no tools, not a crash
             log.warning("Failed to build MCP client (Identity auth): %s", exc)
             return None
     return _mcp_client
@@ -147,7 +147,9 @@ def get_extractor(session_manager=None):
             session_manager=session_manager,
         )
     if _extractor is None:
-        _extractor = Agent(model=load_model(), system_prompt=EXTRACTION_PROMPT, tools=tools)
+        _extractor = Agent(
+            model=load_model(), system_prompt=EXTRACTION_PROMPT, tools=tools
+        )
     return _extractor
 
 
@@ -176,7 +178,7 @@ def _decode_diagram(payload: dict):
         return None
     try:
         return {"image": {"format": fmt, "source": {"bytes": base64.b64decode(raw)}}}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — malformed base64 degrades to "no image", never a crash
         log.warning("Could not decode diagram: %s", exc)
         return None
 
@@ -221,7 +223,7 @@ async def invoke(payload, context):
     session_manager = None
     try:
         session_manager = get_memory_session_manager(session_id, actor_id)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — Memory unavailable degrades to no recall, not a crash
         log.warning("Memory unavailable (running without recall): %s", exc)
 
     # ── Phase 1: diagram extraction ──────────────────────────────────────────
@@ -260,7 +262,7 @@ async def invoke(payload, context):
             async for event in extractor.stream_async(message):
                 if "data" in event and isinstance(event["data"], str):
                     yield event["data"]
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — model access is expected to be blocked in this account
             log.warning("Diagram extraction failed: %s", exc)
             yield f"\n\nDiagram extraction unavailable: {exc}\n"
 
@@ -324,7 +326,7 @@ async def invoke(payload, context):
             bands = get_last_sow_bands()
             if bands:
                 sow_score = sow.apply_model_bands(sow_score, bands)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — model access is expected to be blocked in this account
             log.warning("SOW model pass unavailable, using heuristic floor: %s", exc)
             yield f"\n\nModel grading unavailable — heuristic floor only ({exc}).\n"
 
@@ -349,9 +351,7 @@ async def invoke(payload, context):
         "status": "complete",
         "session_id": session_id,
         "verdict": {"result": verdict, "reasoning": reasoning},
-        "counts": {
-            severity.value: report.count(severity) for severity in Severity
-        },
+        "counts": {severity.value: report.count(severity) for severity in Severity},
         "findings": [
             {
                 "rule_id": finding.rule_id,

@@ -16,7 +16,9 @@ import os
 AGENT_MODEL_ID = os.getenv("AGENT_MODEL_ID", "global.anthropic.claude-sonnet-4-6")
 # Haiku handles SOW criterion classification — a banding task, not a reasoning
 # task. Same cost-routing rationale as ADR 0013 in the claims agent.
-FAST_MODEL_ID = os.getenv("FAST_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+FAST_MODEL_ID = os.getenv(
+    "FAST_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+)
 
 # ─── AWS Region ─────────────────────────────────────────────────────────────
 REGION = os.getenv("AWS_REGION", "us-west-2")
