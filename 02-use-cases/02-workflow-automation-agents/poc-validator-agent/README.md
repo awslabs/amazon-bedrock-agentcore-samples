@@ -178,7 +178,7 @@ origin — genuinely circular, so it's resolved in two steps, not hidden).
 python -m pytest tests/ -q
 ```
 
-69 tests, under a second, no network — see [Tests](#tests) below for what they cover.
+106 tests, under three seconds, no network — see [Tests](#tests) below for what they cover.
 
 To exercise the deployed agent directly:
 
@@ -235,7 +235,7 @@ sample's numbers are based on.
 arithmetic and the SOW total are deterministic Python. The model reads diagrams and bands
 prose — tasks that need judgement — and nothing else. Phases 2, 3 and 5 involve no model
 at all. This follows the same reasoning as ADR 0014 in the
-[event-driven-claims-agent](../event-driven-claims-agent/) sample.
+event-driven-claims-agent sample in [awslabs/agentcore-samples](https://github.com/awslabs/agentcore-samples).
 
 **Unknown integrations are reported, never guessed.** A service pair absent from
 `data/integrations.yaml` is labelled *unverified* and raised as a finding asking the
@@ -294,7 +294,7 @@ web/                      Optional public front end
   lambda/handler.py         POST /api/invoke, GET /share/*.json (view-limited)
   cdk/                       CDK for the web layer (Lambda, DynamoDB, CloudFront routing)
 scripts/local_review.py  CLI review, no AWS account
-tests/                    69 tests, offline
+tests/                    106 tests, offline
 docs/decisions/           ADRs
 diagrams.py               Regenerates architecture.png (Graphviz via `diagrams`)
 ```
@@ -310,7 +310,7 @@ pip install pytest PyYAML
 python -m pytest tests/ -q
 ```
 
-69 tests, under a second, no network. They cover catalogue integrity, the chaining
+106 tests, under three seconds, no network. They cover catalogue integrity, the chaining
 classifier including the unverified path, segment sensitivity in both directions, cost
 arithmetic against hand-computed values, diagram-label resolution and its failure modes,
 SOW banding and the rejection of malformed model output, the AWS-domain allowlist against
@@ -369,33 +369,27 @@ config, env reads confined to `config.py`).
   a small internal/demo tool from being found and poked at random — not a real multi-user
   auth system.
 - **One open dependency advisory: `brace-expansion` (HIGH) in both CDK apps.** `aws-cdk-lib`
-  bundles a vulnerable `brace-expansion` version through its own internal `minimatch`
-  dependency. Bundled dependencies are packaged directly inside the published `aws-cdk-lib`
-  release and are not reachable by `npm overrides` or `npm audit fix` — confirmed by
-  checking `aws-cdk-lib`'s `bundleDependencies` field directly, and by testing the latest
-  published version (2.264.0 at the time of writing), which still resolves to an affected
-  `brace-expansion` release. `package.json` in `agentcore/cdk/` and `web/cdk/` pins an
-  `overrides` entry that patches every reachable copy of `brace-expansion` (confirmed via
-  `npm ls brace-expansion`); the one remaining copy is exercised only during `cdk synth`
-  asset-globbing at build time, never by attacker-supplied input in the deployed
-  application. Re-run `npm audit` after bumping `aws-cdk-lib` in a future update — this
-  should clear automatically once AWS publishes a release bundling the fix.
+  bundles its own `brace-expansion` copy through its internal `minimatch` dependency, and
+  bundled dependencies are not reachable by `npm overrides` or `npm audit fix`. Both CDK
+  apps now pin `aws-cdk-lib` 2.264.0, whose bundled copy is 5.0.8 — one patch behind the
+  5.0.9 the newest advisory (GHSA-rgw5-rvv9-x895) requires. The `overrides` entry in
+  `agentcore/cdk/package.json` and `web/cdk/package.json` patches every *reachable* copy
+  to ≥5.0.9 (confirmed via `npm ls brace-expansion`); the one remaining bundled copy is
+  exercised only during `cdk synth` asset-globbing at build time — a devDependency path —
+  never by attacker-supplied input in the deployed application. Re-run `npm audit` after
+  the next `aws-cdk-lib` bump; this clears automatically once AWS bundles 5.0.9.
 
 ## Submission readiness
 
 Scored against the repository's own rubric in
 [docs/self-assessment.md](docs/self-assessment.md).
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](../../../CONTRIBUTING.md) for details.
-
 ## 📄 License
 
-This project is licensed under the Apache-2.0 License — see the [LICENSE](../../../LICENSE) file for details.
+This project is licensed under the Apache-2.0 License — see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/awslabs/agentcore-samples/issues)
 - **AgentCore Docs**: [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html)
 - **Architecture & Decisions**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/decisions/](docs/decisions/)
+- **CI & security scanning**: [docs/CI_AND_SECURITY.md](docs/CI_AND_SECURITY.md)

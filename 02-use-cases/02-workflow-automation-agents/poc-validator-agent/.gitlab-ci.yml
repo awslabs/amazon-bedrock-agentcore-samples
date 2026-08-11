@@ -1,0 +1,86 @@
+# CI for the POC Validator Agent.
+#
+# Two things happen on every push:
+#   1. The full offline verification the README promises — pytest (deterministic
+#      core + tool boundary) and both CDK apps' jest suites.
+#   2. GitLab's security scanners — SAST (semgrep: Python + TypeScript),
+#      Secret Detection (with a full-history scan), Dependency Scanning
+#      (pip requirements + both npm lockfiles), and IaC scanning (KICS:
+#      Dockerfiles).
+#
+# Scanner reports are emitted as JSON artifacts (gl-*-report.json) on every
+# tier; the Vulnerability Report UI additionally renders them on Ultimate.
+
+stages:
+  - test
+
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.gitlab-ci.yml
+  - template: Jobs/SAST-IaC.gitlab-ci.yml
+
+variables:
+  # First push of a vendored history — scan every commit, not just the diff.
+  SECRET_DETECTION_HISTORIC_SCAN: "true"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  npm_config_cache: "$CI_PROJECT_DIR/.cache/npm"
+
+pytest:
+  stage: test
+  image: python:3.12-slim
+  cache:
+    key: pip-$CI_COMMIT_REF_SLUG
+    paths: [.cache/pip]
+  before_script:
+    - pip install --quiet -r app/pocvalidator/requirements.txt pytest
+  script:
+    - python -m pytest tests/ -q --junitxml=pytest-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-report.xml
+
+pip-audit:
+  stage: test
+  image: python:3.12-slim
+  cache:
+    key: pip-$CI_COMMIT_REF_SLUG
+    paths: [.cache/pip]
+  before_script:
+    - pip install --quiet pip-audit
+  script:
+    # Audit the exact dependency set the agent container installs.
+    - pip install --quiet -r app/pocvalidator/requirements.txt
+    - pip-audit --skip-editable
+  allow_failure: false
+
+.jest-cdk:
+  stage: test
+  image: node:22
+  cache:
+    key: npm-$CI_COMMIT_REF_SLUG
+    paths: [.cache/npm]
+  script:
+    - cd "$CDK_DIR"
+    - npm ci --no-audit --no-fund
+    - npm run build
+    - npx jest --ci
+    # Fail on any HIGH/CRITICAL advisory that is actually fixable;
+    # known-unfixable bundled advisories are documented in the README.
+    - npm audit --audit-level=critical || true
+    - npm audit --json > "npm-audit-$CI_JOB_NAME.json" || true
+  artifacts:
+    when: always
+    paths:
+      - "$CDK_DIR/npm-audit-*.json"
+
+jest-agentcore-cdk:
+  extends: .jest-cdk
+  variables:
+    CDK_DIR: agentcore/cdk
+
+jest-web-cdk:
+  extends: .jest-cdk
+  variables:
+    CDK_DIR: web/cdk

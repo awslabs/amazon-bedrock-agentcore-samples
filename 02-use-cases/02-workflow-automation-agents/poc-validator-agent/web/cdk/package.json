@@ -14,13 +14,13 @@
   "devDependencies": {
     "@types/jest": "~29.5.14",
     "@types/node": "~24.13.3",
+    "aws-cdk": "~2.1126.0",
     "jest": "~29.7.0",
     "ts-jest": "~29.4.11",
-    "aws-cdk": "~2.1126.0",
     "typescript": "~5.9.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "~2.261.0",
+    "aws-cdk-lib": "2.264.0",
     "constructs": "~10.7.0"
   },
   "overrides": {

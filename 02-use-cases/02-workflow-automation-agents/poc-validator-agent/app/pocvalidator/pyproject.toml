@@ -4,11 +4,11 @@ version = "0.1.0"
 description = "POC Validator agent — AWS architecture, pricing and SOW review on Amazon Bedrock AgentCore"
 requires-python = ">=3.12"
 dependencies = [
-    "aws-opentelemetry-distro>=0.18.0,<1.0",
-    "bedrock-agentcore>=1.15.0,<2.0",
-    "botocore[crt]>=1.43.36,<2.0",
-    "mcp>=1.28.0,<2.0",
-    "strands-agents>=1.44.0,<2.0",
+    "aws-opentelemetry-distro>=0.19.0,<1.0",
+    "bedrock-agentcore>=1.21.0,<2.0",
+    "botocore[crt]>=1.43.69,<2.0",
+    "mcp>=1.29.0,<2.0",
+    "strands-agents>=1.51.0,<2.0",
     "PyYAML>=6.0,<7.0",
     "defusedxml>=0.7.1,<1.0",
 ]
