@@ -750,12 +750,26 @@ with st.sidebar:
                         if "okta_pkce_attempt" not in st.session_state:
                             st.session_state.okta_pkce_attempt = _okta_new_pkce_login(login_hint.strip())
                         state, verifier = st.session_state.okta_pkce_attempt
-                        st.link_button(
-                            "🔑 Login with Okta",
-                            _okta_authorize_url(config, state, verifier, login_hint.strip()),
-                            use_container_width=True,
+                        # Rendered as an anchor with target="_self" rather than with
+                        # st.link_button, which always opens a NEW tab. A new tab leaves
+                        # the original one sitting at a logged-out login form while the
+                        # signed-in session lives somewhere else — it looks broken even
+                        # though the sign-in succeeded. Navigating the current tab keeps
+                        # the flow in one place: this tab leaves for Okta and comes back
+                        # signed in.
+                        st.markdown(
+                            f"""
+                            <a href="{_okta_authorize_url(config, state, verifier, login_hint.strip())}"
+                               target="_self"
+                               style="display:block; padding:0.5rem 1rem; text-align:center;
+                                      border:1px solid rgba(49,51,63,0.2); border-radius:0.5rem;
+                                      text-decoration:none; font-weight:600;">
+                               🔑 Login with Okta
+                            </a>
+                            """,
+                            unsafe_allow_html=True,
                         )
-                        st.caption("Opens the Okta sign-in page, then returns here.")
+                        st.caption("Takes this tab to the Okta sign-in page, then returns here signed in.")
                 else:
                     st.error("❌ Okta not configured. Run `01-deploy-idp.ipynb` first.")
         else:
