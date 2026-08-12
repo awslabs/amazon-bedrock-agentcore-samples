@@ -43,6 +43,24 @@ from tools import signals
 
 logger = logging.getLogger("claims-demo.graph")
 
+# Cap on free-form policyholder text interpolated into agent prompts. Defense
+# in depth alongside the untrusted-data delimiting below: bounds prompt size and
+# limits the surface for injection attempts in the description fields.
+MAX_DESCRIPTION_CHARS = 2000
+
+
+def _sanitize_free_text(value, limit: int = MAX_DESCRIPTION_CHARS) -> str:
+    """Coerce untrusted claim text to a bounded string.
+
+    Non-string input becomes empty; anything longer than `limit` is truncated.
+    """
+    if not isinstance(value, str):
+        return ""
+    if len(value) > limit:
+        logger.warning("Truncated free-text field from %d to %d chars", len(value), limit)
+        return value[:limit]
+    return value
+
 
 # ---------------------------------------------------------------------------
 # Graph Construction
@@ -124,6 +142,10 @@ def process_claim(
     """Run the claims graph. Returns a formatted result string for the Intake Agent."""
 
     signals.configure_trace(memory_client, memory_id)
+
+    # Validate/bound untrusted free-text fields before interpolating into prompts.
+    claim.description = _sanitize_free_text(claim.description)
+    claim.damage_description = _sanitize_free_text(claim.damage_description)
 
     task = (
         f"Process this insurance claim:\n"
