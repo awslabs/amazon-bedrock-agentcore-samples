@@ -123,9 +123,10 @@ explicit payment policy:
 }
 ```
 
-`region` has no default -- set it explicitly to the payment manager's actual
-deployment region. The example above uses `us-east-1` as a placeholder; do
-not leave it in place if your manager lives elsewhere.
+If omitted, `region` defaults to `us-east-1`. Set it explicitly to your
+payment manager's actual deployment region if it lives elsewhere -- the
+plugin will not warn you on a mismatch, it will just fail to find the
+manager.
 
 `100000` is 0.10 USDC at six decimals. This is the per-payment ceiling, not
 the same as the session budget -- the session (created out of band) separately
