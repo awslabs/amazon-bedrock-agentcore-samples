@@ -45,7 +45,7 @@ TRANSIENT = ("InternalServerException", "RuntimeClientError")
 def state() -> dict:
     try:
         return json.loads(STATE_FILE.read_text())
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         sys.exit(f"{STATE_FILE.name} not found — run `python deploy.py` first")
 
 
@@ -74,12 +74,12 @@ def show(o: dict, sent_tp: str, elapsed: float, via: str) -> bool:
     print(f"  │  answer   : {str(m.get('answer'))[:120]}")
     print(f"  │  model    : {str(m.get('model'))[:44]}")
     print(f"  │  tokens   : {m.get('tokens')}  (LLM took {m.get('latency_s')}s)")
-    print(f"  ├─ infrastructure")
+    print("  ├─ infrastructure")
     print(f"  │  EC2      : {ev.get('instance_id')}  {ev.get('instance_type')}")
     print(f"  │  public IP: {ev.get('public_ipv4')}   ← 404/error = it has none")
     print(f"  │  EBS      : {st.get('state_dir')}  invocation #{st.get('invocations')}"
           f"  persisted={st.get('persisted_from_previous_invocation')}")
-    print(f"  ├─ end-to-end trace")
+    print("  ├─ end-to-end trace")
     print(f"  │  client   → {expected_trace}")
     print(f"  │  agent    → {tr.get('trace_id')}")
     print(f"  └─ SAME TRACE? {'YES ✓' if same else 'NO ✗'}")

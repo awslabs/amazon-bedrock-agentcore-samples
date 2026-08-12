@@ -51,6 +51,7 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 
+
 # ─────────────────────────── configuration ───────────────────────────
 def resolve_region() -> str:
     """Resolves the region like any other AWS tool: AWS_REGION, then
@@ -167,7 +168,7 @@ def save_state(**kw) -> dict:
 def load_state() -> dict:
     try:
         return json.loads(STATE_FILE.read_text())
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return {}
 
 
@@ -350,9 +351,18 @@ def ensure_network(ec2) -> tuple[str, str, str]:
     for e in ec2.describe_vpc_endpoints(
             Filters=[{"Name": "vpc-id", "Values": [vpc]}])["VpcEndpoints"]:
         existing[e["ServiceName"]] = e
-    rt = [t for t in ec2.describe_route_tables(
+    # The S3 gateway endpoint is a ROUTE, so it needs the main route table to attach to.
+    # A VPC with no main route table is rare but possible, and a bare IndexError here
+    # would say nothing about what to do next.
+    main_rt = next((t for t in ec2.describe_route_tables(
         Filters=[{"Name": "vpc-id", "Values": [vpc]}])["RouteTables"]
-        if any(a.get("Main") for a in t["Associations"])][0]["RouteTableId"]
+        if any(a.get("Main") for a in t["Associations"])), None)
+    if main_rt is None:
+        sys.exit(f"\nVPC {vpc} has no main route table, so the S3 gateway endpoint has nowhere "
+                 f"to\nattach — and without S3 the instance cannot pull the agent image layers "
+                 f"from ECR.\n\nAssociate a main route table with {vpc}, or run this sample in a "
+                 f"VPC that has one.\n")
+    rt = main_rt["RouteTableId"]
 
     pending = []
     s3 = f"com.amazonaws.{REGION}.s3"
@@ -694,7 +704,7 @@ def ensure_xray_logs_resource_policy(logs) -> None:
     for p in current:
         try:
             doc = json.loads(p.get("policyDocument", "{}"))
-        except Exception:
+        except json.JSONDecodeError:
             continue
         for stm in doc.get("Statement", []):
             if "xray.amazonaws.com" not in json.dumps(stm.get("Principal", {})):
@@ -798,7 +808,7 @@ def main() -> None:
     sess = boto3.Session(region_name=REGION)
     ACCOUNT = sess.client("sts").get_caller_identity()["Account"]
 
-    log(f"\033[1mDeploy: agent on an AWS-managed EC2 instance (AgentCore CapacityProvider)\033[0m")
+    log("\033[1mDeploy: agent on an AWS-managed EC2 instance (AgentCore CapacityProvider)\033[0m")
     log(f"  account   : {ACCOUNT}")
     log(f"  region    : {REGION}")
     log(f"  instance  : {INSTANCE_TYPE} ({OPERATING_SYSTEM}, {ARCH['instance_hint']})")
@@ -842,10 +852,10 @@ def main() -> None:
     if gurl:
         log(f"   Gateway          : {gurl}/{TARGET_NAME}/invocations")
     log(f"\n   state saved to   : {STATE_FILE.name}")
-    log(f"\n   next step:  python invoke.py")
-    log(f"   the 1st invocation takes ~45-60s (it provisions the EC2). See README → Cold start.")
+    log("\n   next step:  python invoke.py")
+    log("   the 1st invocation takes ~45-60s (it provisions the EC2). See README → Cold start.")
     log(f"   there is cost running: EC2 + EBS + {len(INTERFACE_ENDPOINTS)} interface endpoints.")
-    log(f"       clean up with:  python cleanup.py\n")
+    log("       clean up with:  python cleanup.py\n")
 
 
 if __name__ == "__main__":

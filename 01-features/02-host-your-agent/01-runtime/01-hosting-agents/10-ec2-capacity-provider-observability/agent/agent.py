@@ -135,8 +135,9 @@ def run_command(command: str) -> str:
     ``nproc``, ``df -h /mnt/data``, or ``cat /etc/os-release``.
     """
     try:
+        # check=False on purpose: a failing command's stderr is exactly what we want to show
         r = subprocess.run(command, shell=True, capture_output=True,
-                           text=True, timeout=15)
+                           text=True, timeout=15, check=False)
     except subprocess.TimeoutExpired:
         return "Command timed out after 15s."
     return (r.stdout + r.stderr).strip()[:4000] or "(no output)"
