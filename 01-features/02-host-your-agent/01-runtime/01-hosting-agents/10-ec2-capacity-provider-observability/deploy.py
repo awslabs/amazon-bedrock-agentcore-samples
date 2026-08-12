@@ -33,7 +33,7 @@ Environment variables (see README):
     AWS_REGION            REQUIRED unless your AWS profile sets a region
     CP_INSTANCE_TYPE      default m6g.large   (same as the official AWS sample)
     CP_OS                 LINUX_ARM64 | LINUX_X86_64
-    BEDROCK_MODEL_ID      default au.anthropic.claude-haiku-4-5-20251001-v1:0
+    BEDROCK_MODEL_ID      default global.anthropic.claude-haiku-4-5-20251001-v1:0
     CP_IDLE_TIMEOUT       default 900   (seconds)
     CP_MAX_LIFETIME       default 3600  (seconds; ceiling 1209600 = 14 days)
 """
@@ -73,8 +73,12 @@ def resolve_region() -> str:
 REGION = resolve_region()
 INSTANCE_TYPE = os.environ.get("CP_INSTANCE_TYPE", "m6g.large")
 OPERATING_SYSTEM = os.environ.get("CP_OS", "LINUX_ARM64")
+# A "global." inference profile is the only prefix that resolves in every region
+# this sample can run in. A geographic prefix (us./eu./apac./au.) is valid only
+# inside its own geography, so a hardcoded one makes the agent fail with
+# "The provided model identifier is invalid" the moment you deploy elsewhere.
 MODEL_ID = os.environ.get("BEDROCK_MODEL_ID",
-                          "au.anthropic.claude-haiku-4-5-20251001-v1:0")
+                          "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 IDLE_TIMEOUT = int(os.environ.get("CP_IDLE_TIMEOUT", "900"))
 MAX_LIFETIME = int(os.environ.get("CP_MAX_LIFETIME", "3600"))
 

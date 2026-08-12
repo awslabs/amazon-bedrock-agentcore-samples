@@ -30,7 +30,7 @@ app = BedrockAgentCoreApp()
 # deploy.py injects BEDROCK_MODEL_ID; MODEL_ID is the name the official sample
 # uses. We accept both so this file works in either context.
 MODEL_ID = os.environ.get("BEDROCK_MODEL_ID") or os.environ.get(
-    "MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    "MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 )
 STATE_DIR = os.environ.get("AGENT_STATE_DIR", "/mnt/data")
 

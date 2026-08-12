@@ -84,7 +84,7 @@ python cleanup.py                 # when you are done
 | `AWS_REGION` | **none — required** | Falls back to your AWS profile's region. No silent default: a sample that launches EC2 where you did not ask is worse than one that refuses to run. The CP is GA in 9 regions: BOM, CMH, DUB, FRA, IAD, NRT, PDX, SIN, SYD |
 | `CP_INSTANCE_TYPE` | `m6g.large` | Change it together with `CP_OS` |
 | `CP_OS` | `LINUX_ARM64` | or `LINUX_X86_64` |
-| `BEDROCK_MODEL_ID` | `au.anthropic.claude-haiku-4-5-20251001-v1:0` | |
+| `BEDROCK_MODEL_ID` | `global.anthropic.claude-haiku-4-5-20251001-v1:0` | A `global.` inference profile resolves in every region this sample runs in. A geographic prefix (`us.`, `eu.`, `apac.`, `au.`) only resolves inside its own geography, so it fails with `The provided model identifier is invalid` as soon as you deploy elsewhere |
 | `CP_IDLE_TIMEOUT` | `900` | The instance self-terminates after this long idle |
 | `CP_MAX_LIFETIME` | `3600` | Ceiling: `1209600` (14 days) |
 | `CP_SUBNET_CIDR` | `172.31.200.0/24` | Must fit inside the default VPC |
