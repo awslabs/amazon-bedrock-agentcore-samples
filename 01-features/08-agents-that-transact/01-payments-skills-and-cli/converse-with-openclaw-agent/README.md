@@ -13,6 +13,18 @@
 
 ![Architecture](images/architecture_openclaw_agent.png)
 
+**Figure 1:** OpenClaw calls a paid x402 endpoint, which returns an HTTP 402
+challenge. The `aws-agents-pay` plugin hands that challenge to Amazon Bedrock
+AgentCore Payments, which signs and settles against the payment instrument
+(testnet wallet) within the bounds a human operator configured up front
+(dashed line). OpenClaw never touches the wallet or IAM directly.
+
+OpenClaw can be hosted on AWS alongside AgentCore Payments -- see
+[aws-samples/sample-openclaw-on-aws](https://github.com/aws-samples/sample-openclaw-on-aws)
+for deployment options, including AgentCore Runtime Instances, Amazon EC2,
+and Amazon EKS. This tutorial's steps apply regardless of where you choose
+to run OpenClaw.
+
 Unlike the other two paths in this folder, this one skips the coding-assistant
 handoff entirely -- there is no `AGENTS.md` to load and no prompt to hand to a
 coding assistant. OpenClaw installs the plugin and reads its config directly.
