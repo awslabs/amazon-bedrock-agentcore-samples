@@ -126,5 +126,6 @@ agentcore deploy -y
 ## Resources
 
 - Plugin: [`aws-agents`](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents)
-- Payments skill (source of truth): [`references/payments.md`](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-build/references/payments.md)
+- Payments skill for the coding-assistant paths (source of truth): [`references/payments.md`](https://github.com/aws/agent-toolkit-for-aws/blob/main/plugins/aws-agents/skills/agents-build/references/payments.md)
+- Payments skill for the OpenClaw path (source of truth): [`agents-pay`](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay) (SKILL.md + references/)
 - [AgentCore payments documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments.html)

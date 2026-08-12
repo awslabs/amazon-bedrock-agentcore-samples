@@ -45,14 +45,26 @@ and
 
 ## 1. Install the package
 
+Ask OpenClaw to set it up conversationally:
+
+```
+Help me set up the agents-pay skill.
+```
+
+Or install manually:
+
 ```bash
 openclaw plugins install clawhub:@aws/aws-agents-pay
 ```
 
+The package name is `@aws/aws-agents-pay`, the installed plugin ID is
+`aws-agents-pay`, and the bundled skill name is `agents-pay`.
+
 Verify that the runtime exposes exactly:
 
-- `get_payment_session_status`
-- `get_paid_content`
+- `get_payment_session_status`, which checks the configured payment session
+- `get_paid_content`, which requests an approved paid URL and completes the
+  payment within the configured policy
 
 The runtime must not expose setup, session-creation, or raw-proof tools.
 
@@ -92,9 +104,24 @@ policy:
 }
 ```
 
-`100000` is 0.10 USDC at six decimals. Use the actual merchant origin and
-recipient approved out of band. No other path in this folder uses this
-config format -- it is specific to the `aws-agents-pay` OpenClaw plugin.
+`region` has no default -- set it explicitly to the payment manager's actual
+deployment region. The example above uses `us-east-1` as a placeholder; do
+not leave it in place if your manager lives elsewhere.
+
+`100000` is 0.10 USDC at six decimals. This is the per-payment ceiling, not
+the same as the session budget -- the session (created out of band) separately
+limits cumulative spend until it expires or is exhausted. Use the actual
+merchant origin and recipient approved out of band. No other path in this
+folder uses this config format -- it is specific to the `aws-agents-pay`
+OpenClaw plugin.
+
+For a fixed merchant set, verify every address in `allowedRecipients` out of
+band using merchant documentation or another known-good source. For broader
+discovery scenarios, set `allowAnyRecipient: true` instead of
+`allowedRecipients` to let the publisher select the beneficiary -- the two
+options are mutually exclusive. This trades recipient allowlisting for
+flexibility; origin, network, asset, per-payment, and session-budget controls
+still apply.
 
 For standalone config-file usage and file-permission requirements, see the
 [operator guide](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay/references/operator-guide.md)
@@ -129,6 +156,13 @@ Expected output resembles:
 Analyse paid content only through a separate component that has neither payment
 authority nor network access.
 
+This walkthrough shows `content_returned: false` because `returnBody` is unset
+by default -- the safer posture, returning metadata and a digest only. Set
+`returnBody: true` in Step 2's config if you want the agent to use the paid
+response body directly; the plugin then caps it at 10 KiB and marks it
+`untrusted: true`. Publisher-controlled content can contain prompt-injection
+instructions, so only enable this when the agent actually needs the body.
+
 ## Troubleshooting
 
 | Symptom | Action |
@@ -136,10 +170,13 @@ authority nor network access.
 | Session is missing, expired, or drained | Stop. Create a reviewed session through the trusted administrative path. |
 | Payment option is refused | Verify origin, resource path, scheme, network, exact asset, recipient, and amount policy. |
 | Manager-not-found or `AccessDeniedException` despite a correct ARN | Confirm `region` in `openclaw.json` matches the payment manager's actual deployment region. Always set `region` explicitly rather than omitting it. |
-| No paid body appears | Expected. The payment-capable model receives metadata only. |
+| No paid body appears | Expected when `returnBody` is unset or `false`. Set `returnBody: true` if the agent needs the response body. |
+| Config rejected with an `allowedRecipients`/`allowAnyRecipient` error | Set exactly one of the two -- they are mutually exclusive. |
 
 ## References
 
+- [Build OpenClaw agents that transact with Amazon Bedrock AgentCore Payments](https://aws.amazon.com/blogs/machine-learning/build-openclaw-agents-that-transact-with-amazon-bedrock-agentcore-payments/)
+  (AWS blog walkthrough of this pattern)
 - [`aws-agents-pay` skill references](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay/references)
   (operator guide, security model, full troubleshooting)
 - [AgentCore Payments](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments.html)
