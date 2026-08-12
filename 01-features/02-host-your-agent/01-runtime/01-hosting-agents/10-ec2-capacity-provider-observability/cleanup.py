@@ -55,10 +55,14 @@ def main() -> None:
 
     try:
         st = json.loads(STATE_FILE.read_text())
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         sys.exit("state not found (.deploy-state.json) — nothing to clean up")
 
-    region = st.get("region", "ap-southeast-2")
+    # No fallback region on purpose: guessing one would delete — or fail to find —
+    # resources in a region you never deployed to. deploy.py always writes it.
+    region = st.get("region")
+    if not region:
+        sys.exit(f"no region in {STATE_FILE.name} — add the region you deployed to, or delete the file")
     log(f"\033[1mCleanup\033[0m  account {st.get('account')}  region {region}")
     for k in ("cp_id", "runtime_id", "gateway_id", "subnet", "sg_agent"):
         if st.get(k):
