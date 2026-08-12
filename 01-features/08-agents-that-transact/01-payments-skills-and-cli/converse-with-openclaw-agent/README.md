@@ -29,14 +29,6 @@ Unlike the other two paths in this folder, this one skips the coding-assistant
 handoff entirely -- there is no `AGENTS.md` to load and no prompt to hand to a
 coding assistant. OpenClaw installs the plugin and reads its config directly.
 
-Payment infrastructure (manager, connector, instrument, session) must already
-exist -- provisioned through the
-[AgentCore Payments getting started guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-getting-started.html)
-or the human-only admin CLI documented in the bundled skill's
-[operator guide](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay/references/operator-guide.md).
-This tutorial only covers wiring OpenClaw to that already-provisioned
-infrastructure and validating a payment from chat.
-
 For the security boundary between human-run administration and the
 model-facing runtime, see the bundled skill's
 [security model](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay/references/security-model.md)
@@ -44,14 +36,6 @@ and
 [AgentCore Payments IAM roles](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-iam-roles.html).
 
 ## 1. Install the package
-
-Ask OpenClaw to set it up conversationally:
-
-```
-Help me set up the agents-pay skill.
-```
-
-Or install manually:
 
 ```bash
 openclaw plugins install clawhub:@aws/aws-agents-pay
@@ -68,10 +52,44 @@ Verify that the runtime exposes exactly:
 
 The runtime must not expose setup, session-creation, or raw-proof tools.
 
-## 2. Configure trusted policy
+## 2. Provision payment infrastructure
 
-Configure the package with the operator-created resources and explicit payment
-policy:
+Payment infrastructure (manager, connector, instrument, session) does not
+exist yet after Step 1 -- installing the plugin only wires up the model-facing
+runtime tools. Provisioning still goes through the human-only admin CLI
+either way; OpenClaw cannot create this infrastructure for you. Pick how you
+want to run those steps:
+
+- **Option A -- OpenClaw-assisted.** Ask OpenClaw to walk you through it:
+
+  ```
+  Help me set up the agents-pay skill.
+  ```
+
+  OpenClaw explains each `agentcore` CLI prompt and admin-script step as you
+  go, but you still run the commands and type `approve` yourself. Session
+  creation has no `--yes` flag and refuses outright without an interactive
+  terminal -- that gate exists specifically so an agent cannot self-approve
+  its own spending session, and OpenClaw walking you through it does not
+  change that.
+
+- **Option B -- Fully manual.** Follow the
+  [AgentCore Payments getting started guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-getting-started.html)
+  or the skill's
+  [operator guide](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay/references/operator-guide.md)
+  directly, with no OpenClaw involvement until you wire the resulting
+  resource IDs into the config in Step 3.
+
+Both options run the identical `agentcore` CLI wizards and admin script for
+manager, connector, instrument, and session creation. The only difference is
+whether OpenClaw explains each prompt as you go or you read the docs
+yourself -- either way, provisioning happens in your own terminal, under your
+own credentials, with typed human approval for session creation.
+
+## 3. Configure trusted policy
+
+Configure the package with the operator-created resources from Step 2 and an
+explicit payment policy:
 
 ```json
 {
@@ -87,16 +105,17 @@ policy:
           "payment_session_id": "payment-session-EXAMPLE",
           "userId": "openclaw-test-user",
           "networkPreferences": ["eip155:84532"],
-          "allowedOrigins": ["https://merchant.example"],
+          "allowedOrigins": ["https://sandbox.node4all.com"],
           "allowedRecipients": [
-            "0x1111111111111111111111111111111111111111"
+            "0xd275612Bf0BB35638432c4D95eAA8D5d22346Ca6"
           ],
           "allowedAssetsByNetwork": {
             "eip155:84532": [
               "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
             ]
           },
-          "maxPaymentAmountAtomic": "100000"
+          "maxPaymentAmountAtomic": "100000",
+          "returnBody": true
         }
       }
     }
@@ -110,10 +129,16 @@ not leave it in place if your manager lives elsewhere.
 
 `100000` is 0.10 USDC at six decimals. This is the per-payment ceiling, not
 the same as the session budget -- the session (created out of band) separately
-limits cumulative spend until it expires or is exhausted. Use the actual
-merchant origin and recipient approved out of band. No other path in this
-folder uses this config format -- it is specific to the `aws-agents-pay`
-OpenClaw plugin.
+limits cumulative spend until it expires or is exhausted.
+
+`allowedOrigins` and `allowedRecipients` above are the actual origin and
+`payTo` address for the Step 4 test endpoint
+(`sandbox.node4all.com/v1/x402-test`), taken directly from its x402 challenge
+response -- not generic placeholders. Copy this config as written and Step 4
+will complete an end-to-end payment. Swap in your own merchant origin and
+recipient, verified out of band, once you move past this walkthrough. No
+other path in this folder uses this config format -- it is specific to the
+`aws-agents-pay` OpenClaw plugin.
 
 For a fixed merchant set, verify every address in `allowedRecipients` out of
 band using merchant documentation or another known-good source. For broader
@@ -123,11 +148,19 @@ options are mutually exclusive. This trades recipient allowlisting for
 flexibility; origin, network, asset, per-payment, and session-budget controls
 still apply.
 
+The sandbox endpoint above happens to be listed in the Coinbase x402 Bazaar
+(visible in its challenge response's `extensions.bazaar` field), but that is
+incidental here: this tutorial already knows the URL, so it pays it directly
+with no discovery step. If you want an agent that searches for paid tools
+instead of being given a URL, see
+[Tutorial 04 -- Agent with Coinbase Bazaar via Gateway](../../00-getting-started/04-agent-with-coinbase-bazaar-via-gateway/),
+a separate Strands-based sample with its own SDK-created session.
+
 For standalone config-file usage and file-permission requirements, see the
 [operator guide](https://github.com/aws/agent-toolkit-for-aws/tree/main/plugins/aws-agents/skills/agents-pay/references/operator-guide.md)
 in the bundled skill.
 
-## 3. Validate x402 v2
+## 4. Validate x402 v2
 
 Ask OpenClaw to check payment-session status first. If the session is not
 usable, stop and use the trusted administrative path to review and create a new
@@ -149,19 +182,21 @@ Expected output resembles:
   "content_type": "application/json",
   "body_sha256": "<sha256>",
   "body_bytes": 123,
-  "content_returned": false
+  "content_returned": true,
+  "body": "{\"status\":\"success\", ...}",
+  "truncated": false,
+  "untrusted": true
 }
 ```
 
-Analyse paid content only through a separate component that has neither payment
-authority nor network access.
-
-This walkthrough shows `content_returned: false` because `returnBody` is unset
-by default -- the safer posture, returning metadata and a digest only. Set
-`returnBody: true` in Step 2's config if you want the agent to use the paid
-response body directly; the plugin then caps it at 10 KiB and marks it
-`untrusted: true`. Publisher-controlled content can contain prompt-injection
-instructions, so only enable this when the agent actually needs the body.
+This walkthrough sets `"returnBody": true` in Step 3 so you can see the paid
+content and confirm the payment actually worked. The plugin caps the returned
+body at 10 KiB and always marks it `untrusted: true` -- publisher-controlled
+content can carry prompt-injection instructions, so treat `body` as data, not
+as instructions, and analyse it only through a component with no payment
+authority or network access. Leave `returnBody` unset or `false` for any
+endpoint where the agent only needs metadata and a digest, or where you don't
+want paid content anywhere near the payment-capable model's context.
 
 ## Troubleshooting
 
@@ -170,7 +205,7 @@ instructions, so only enable this when the agent actually needs the body.
 | Session is missing, expired, or drained | Stop. Create a reviewed session through the trusted administrative path. |
 | Payment option is refused | Verify origin, resource path, scheme, network, exact asset, recipient, and amount policy. |
 | Manager-not-found or `AccessDeniedException` despite a correct ARN | Confirm `region` in `openclaw.json` matches the payment manager's actual deployment region. Always set `region` explicitly rather than omitting it. |
-| No paid body appears | Expected when `returnBody` is unset or `false`. Set `returnBody: true` if the agent needs the response body. |
+| No paid body appears | Expected when `returnBody` is unset or `false`. Set `returnBody: true` (as this walkthrough does) if the agent needs the response body. |
 | Config rejected with an `allowedRecipients`/`allowAnyRecipient` error | Set exactly one of the two -- they are mutually exclusive. |
 
 ## References
