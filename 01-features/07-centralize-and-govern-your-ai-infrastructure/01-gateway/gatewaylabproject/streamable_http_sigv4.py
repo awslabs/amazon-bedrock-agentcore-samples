@@ -140,6 +140,9 @@ async def streamablehttp_client_with_sigv4(
             - get_session_id_callback: Function to retrieve the current session ID
     """
 
+    if not url.rstrip("/").endswith("/mcp"):
+        url = url.rstrip("/") + "/mcp"
+
     async with streamablehttp_client(
         url=url,
         headers=headers,

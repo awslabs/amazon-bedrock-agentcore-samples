@@ -75,6 +75,9 @@ async def main():
 
     token = get_token(token_endpoint, gw_client_id, gw_client_secret, gw_scope)
 
+    if not gateway_url.rstrip("/").endswith("/mcp"):
+        gateway_url = gateway_url.rstrip("/") + "/mcp"
+
     print(f"Gateway URL: {gateway_url}")
     print(f"Token: {token[:20]}...\n")
 

@@ -57,6 +57,8 @@ class GatewayMCPClient:
         If ``initialize()`` is later called and the gateway returns a
         session id, the captured value replaces this one.
         """
+        if not gateway_url.rstrip("/").endswith("/mcp"):
+            gateway_url = gateway_url.rstrip("/") + "/mcp"
         self.gateway_url = gateway_url
         self._get_token = get_token
         self._protocol_version = protocol_version
