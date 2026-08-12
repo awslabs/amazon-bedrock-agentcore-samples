@@ -10,9 +10,20 @@ client → AgentCore Gateway → AgentRuntime → EC2 (CapacityProvider) → Bed
                                    OTEL: metrics · logs · spans · GenAI Observability
 ```
 
-Everything below was **measured** in a real account, in two regions (`us-west-2`
-and `ap-southeast-2`). The traps documented here were hit in practice, and two of
-them only surfaced when switching regions.
+Everything below was **measured** in a real account, in three regions (`us-east-2`,
+`us-west-2` and `ap-southeast-2`). The traps documented here were hit in practice,
+and two of them only surfaced when switching regions.
+
+![One trace, from the HTTP entrypoint down to the tool call, with the agent
+reporting the machine it is running on](images/otel-trace-tree-whoami.png)
+
+That is a single trace in the CloudWatch GenAI Observability screen. The span tree
+on the left is the agent's own execution — `POST /invocations` → `invoke_agent` →
+`execute_event_loop_cycle` → `chat` → `execute_tool whoami` — and the panel on the
+right is the answer that came back: **an `m6g.large` with an `aarch64` kernel, 2
+vCPUs and 7.7 GB, in `us-east-2a`**. Token counts, latency per span and cost per
+trace come along for free, because the spans carry the OpenTelemetry `gen_ai.*`
+attributes that screen is built on.
 
 ## What makes this different from serverless compute
 
@@ -381,6 +392,15 @@ span with `gen_ai.tool.status`.
 The `Agent(trace_attributes={...})` argument stamps `agentcore.compute_type` on
 every span, which makes filtering in X-Ray easy.
 
+![Spans grouped by capability, with traces, tokens, cost and latency per span
+name](images/otel-spans-by-capability.png)
+
+Those same span names come back aggregated, one row each, with the model span
+resolved to its capability type (`AWS::Bedrock::Model`) and priced. Note how cheap
+the tool spans are next to the model span — `execute_tool whoami` averages 9 ms
+against 1.25 s for `chat`. That contrast is the argument for tracing tools
+separately instead of timing the invocation as a whole.
+
 ### Do not instrument the IMDS
 
 The `public-ipv4` check returns **404** — which is the network requirement
@@ -461,6 +481,16 @@ The platform manages it — and does convert the incoming `traceparent` into
 Validated: **every invocation matched**, with the `trace_id` of the span created
 inside the EC2 instance **identical** to the `traceparent` the client sent.
 
+![Timeline view of one trace, with the prompt and the tool-use payload beside
+it](images/otel-trace-timeline.png)
+
+Flip the same trace to the timeline and the shape of an agent turn becomes obvious:
+one `POST /invocations` spanning the whole thing, two `execute_event_loop_cycle`
+passes because the model needed a second turn to read the tool result, and
+`execute_tool run_command` as the thin sliver between them. The right-hand panel is
+the payload the span captured — the system prompt, and the `toolUse` block the model
+emitted. This is the view that tells you *why* a turn was slow, not just that it was.
+
 ## The Gateway in front
 
 ### Two traps
@@ -527,6 +557,15 @@ agentcore.create_capacity_provider(
 instance profile (see *Why this sample does not pass an instance profile*). Only
 `description` is editable afterwards; to change instance type, VPC or volumes, create
 a new CP (blue/green).
+
+![The capacity provider this sample creates, as the console renders
+it](images/capacity-provider-details.png)
+
+Every field above maps to one argument in that call, which makes this page a decent
+way to check your own deployment. Two worth pointing at: **Instance profile is `-`**,
+which is the omission described below rendered as a dash, and the lifecycle pair —
+**idle instance timeout 15 minutes, instance max lifetime 1 hour** — which is what
+stops a forgotten sample from billing all weekend.
 
 ### Step 2 — AgentRuntime
 
@@ -620,6 +659,12 @@ from some docs); the runtime and gateway roles use inline policies.
 
 `python cleanup.py` removes everything, endpoints included. What it does **not**
 undo is listed in its own output.
+
+![Model cost broken down per trace](images/otel-cost-per-trace.png)
+
+The model half of that bill is visible per trace, not just per month: the run behind
+these screenshots cost **$0.041 in tokens, about $0.002 per trace**. Worth knowing
+which number to be scared of — the tokens are pennies, the idle VPC endpoints are not.
 
 ## References
 
