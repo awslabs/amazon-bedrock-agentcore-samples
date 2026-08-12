@@ -666,14 +666,23 @@ if __name__ == "__main__":
     print(
         f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}"
     )  # codeql[py/clear-text-logging-sensitive-data]
+    # Neither client secret is printed. Both were written to SSM Parameter Store as
+    # SecureStrings earlier in this run (store_parameters_in_ssm), and every component that
+    # needs them reads them from there -- so printing the value adds exposure and no
+    # capability.
+    #
+    # The exposure is not hypothetical. This script is run from 01-deploy-idp.ipynb via
+    # subprocess.run(...) with no capture_output, so its stdout is inherited by the Jupyter
+    # kernel, captured as that cell's output, and SAVED INTO THE .ipynb FILE. A printed
+    # secret is therefore committed by any reader who commits their completed notebook, and
+    # readers also paste console output into issues and chats.
+    #
+    # Masking convention matches deployment/5a-gateway-setup/create_gateway.py, which prints
+    # a fixed-width mask when it loads a secret rather than the value.
     if "client_secret" in result:
-        print(f"\n🔐 User App Client Secret: {result['client_secret']}")  # codeql[py/clear-text-logging-sensitive-data]
-        print("   (Also stored securely in SSM Parameter Store)")
+        print("\n🔐 User App Client Secret: ****** (stored in SSM Parameter Store)")
     if "m2m_client_secret" in result:
-        print(
-            f"\n🤖 M2M App Client Secret: {result['m2m_client_secret']}"
-        )  # codeql[py/clear-text-logging-sensitive-data]
-        print("   (Also stored securely in SSM Parameter Store)")
+        print("\n🤖 M2M App Client Secret: ****** (stored in SSM Parameter Store)")
 
     print("\n💾 SSM Parameters Stored:")
     print("   • /app/lakehouse-agent/cognito-user-pool-id")
