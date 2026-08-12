@@ -3,7 +3,7 @@
 # Cleanup — Delete all infrastructure created by deploy_all.sh.
 #
 # Usage:
-#   bash cleanup/teardown.sh [--region us-east-1]
+#   bash cleanup/teardown.sh [--region us-east-1] [--yes]
 #
 set -euo pipefail
 
@@ -12,9 +12,17 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIG_FILE="$PROJECT_DIR/setup/config.json"
 
 REGION="${AWS_DEFAULT_REGION:-us-east-1}"
-if [ "${1:-}" = "--region" ] && [ -n "${2:-}" ]; then
-  REGION="$2"
-elif [ -f "$CONFIG_FILE" ]; then
+SKIP_CONFIRM=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --region) REGION="$2"; shift 2 ;;
+    --yes|-y) SKIP_CONFIRM=true; shift ;;
+    *) echo "Unknown arg: $1"; exit 1 ;;
+  esac
+done
+
+if [ -f "$CONFIG_FILE" ] && [ "$REGION" = "${AWS_DEFAULT_REGION:-us-east-1}" ]; then
   REGION=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['region'])" 2>/dev/null || echo "$REGION")
 fi
 
@@ -45,8 +53,26 @@ else
 fi
 
 echo "=== Insurance Claims Demo — Teardown ==="
-echo "Region: $REGION"
 echo ""
+echo "Account:  $(aws sts get-caller-identity --query Account --output text --region "$REGION")"
+echo "Identity: $(aws sts get-caller-identity --query Arn --output text --region "$REGION")"
+echo "Region:   $REGION"
+echo ""
+echo "Resources to delete:"
+echo "  Stacks:  $STACK_RUNTIME, $STACK_REVIEWS, $STACK_SESSION, $STACK_ADMIN, $STACK_COGNITO"
+echo "  Memory:  ${MEMORY_ID:-<none found>}"
+echo "  Role:    $EXEC_ROLE_NAME"
+echo "  SSM:     /insurance-claims-demo/{memory_id,decision_mode,review_tasks_table,reviews_api_url}"
+echo ""
+
+if [ "$SKIP_CONFIRM" = false ]; then
+  read -r -p "Type 'yes' to confirm deletion: " CONFIRM
+  if [ "$CONFIRM" != "yes" ]; then
+    echo "Aborted."
+    exit 0
+  fi
+  echo ""
+fi
 
 # 1. Delete AgentCore Memory
 if [ -n "$MEMORY_ID" ]; then

@@ -59,7 +59,7 @@ def _parse_event(e):
                     tu = c['toolUse']
                     kind = 'tool_use'
                     out['tool'] = tu.get('name')
-                    parts.append(f"f527 {tu.get('name')}({json.dumps(tu.get('input', {}))})")
+                    parts.append(f"Tool: {tu.get('name')}({json.dumps(tu.get('input', {}))})")
                 elif 'toolResult' in c:
                     tr = c['toolResult']
                     kind = 'tool_result'
@@ -106,6 +106,21 @@ def _parse_record(r):
     }
 
 
+def _list_events(memory_id, actor_id, session_id):
+    out, token = [], None
+    while True:
+        kw = {'memoryId': memory_id, 'actorId': actor_id, 'sessionId': session_id,
+              'maxResults': 100, 'includePayloads': True}
+        if token:
+            kw['nextToken'] = token
+        r = _bac.list_events(**kw)
+        out.extend(r.get('events', []))
+        token = r.get('nextToken')
+        if not token:
+            break
+    return out
+
+
 def _list_records(namespace):
     out, token = [], None
     while True:
@@ -141,20 +156,14 @@ def handler(event, context):
         # Raw events for actor+session
         if actor_id and session_id:
             try:
-                evs = _bac.list_events(
-                    memoryId=memory_id, actorId=actor_id, sessionId=session_id,
-                    maxResults=100, includePayloads=True,
-                ).get('events', [])
+                evs = _list_events(memory_id, actor_id, session_id)
                 out['events'] = [_parse_event(e) for e in reversed(evs)]
             except Exception as e:
                 print(f'list_events failed: {e}')
 
             # Subtool trace events (written by memory tools for observability)
             try:
-                sub_evs = _bac.list_events(
-                    memoryId=memory_id, actorId='system', sessionId=session_id,
-                    maxResults=100, includePayloads=True,
-                ).get('events', [])
+                sub_evs = _list_events(memory_id, 'system', session_id)
                 for e in reversed(sub_evs):
                     for p in e.get('payload', []) or []:
                         conv = p.get('conversational')
@@ -203,7 +212,7 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
             'body': json.dumps(out, default=str),
         }
 
@@ -211,6 +220,6 @@ def handler(event, context):
         print(f'Error: {e}')
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': str(e)}),
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
+            'body': json.dumps({'error': 'Internal server error'}),
         }

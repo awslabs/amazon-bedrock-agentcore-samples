@@ -1,5 +1,4 @@
 {
-  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
   "name": "ClaimsAgent",
   "version": 1,
   "managedBy": "CDK",
@@ -13,7 +12,7 @@
       "build": "CodeZip",
       "entrypoint": "main.py",
       "codeLocation": "src/",
-      "runtimeVersion": "PYTHON_3_14",
+      "runtimeVersion": "PYTHON_3_13",
       "networkMode": "PUBLIC",
       "protocol": "HTTP",
       "authorizerType": "CUSTOM_JWT",

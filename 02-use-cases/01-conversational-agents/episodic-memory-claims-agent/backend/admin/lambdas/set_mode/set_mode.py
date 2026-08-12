@@ -15,7 +15,7 @@ def handler(event, context):
         if mode not in ('auto', 'human'):
             return {
                 'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
                 'body': json.dumps({'error': "mode must be 'auto' or 'human'"}),
             }
 
@@ -23,13 +23,14 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
             'body': json.dumps({'mode': mode}),
         }
 
     except Exception as e:
+        print(f'Error: {e}')
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': str(e)}),
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
+            'body': json.dumps({'error': 'Internal server error'}),
         }

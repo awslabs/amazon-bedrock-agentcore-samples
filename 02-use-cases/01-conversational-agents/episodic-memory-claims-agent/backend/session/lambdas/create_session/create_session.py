@@ -23,7 +23,7 @@ def handler(event, context):
         timestamp = datetime.utcnow()
         session_id = f"{timestamp.strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:8]}"
 
-        session_title = body.get('session_title', 'New conversation')
+        session_title = body.get('session_title', 'New conversation')[:50]
 
         session_item = {
             'user_id': user_id,
@@ -41,7 +41,7 @@ def handler(event, context):
             'statusCode': 201,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*'),
                 'Access-Control-Allow-Credentials': True,
             },
             'body': json.dumps({'message': 'Session created', 'session': session_item}),
@@ -51,6 +51,6 @@ def handler(event, context):
         print(f"Error: {e}")
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
             'body': json.dumps({'error': 'Internal server error'}),
         }

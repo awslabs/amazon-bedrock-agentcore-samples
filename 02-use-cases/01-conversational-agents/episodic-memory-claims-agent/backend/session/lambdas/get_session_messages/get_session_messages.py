@@ -34,7 +34,7 @@ def handler(event, context):
         if 'Item' not in session_response:
             return {
                 'statusCode': 404,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
                 'body': json.dumps({'error': 'Session not found'}),
             }
 
@@ -130,7 +130,7 @@ def handler(event, context):
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*'),
                 'Access-Control-Allow-Credentials': True,
             },
             'body': json.dumps({'messages': messages, 'count': len(messages)}),
@@ -142,6 +142,6 @@ def handler(event, context):
         traceback.print_exc()
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': 'Could not load conversation history', 'details': str(e)}),
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
+            'body': json.dumps({'error': 'Could not load conversation history'}),
         }

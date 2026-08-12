@@ -59,6 +59,10 @@ HUMAN_GROUNDED_FILTER = [
 ]
 
 
+AGENT_MODEL_ID = "global.anthropic.claude-sonnet-4-6"
+EXTRACTION_MODEL_ID = "global.anthropic.claude-sonnet-4-6"
+
+
 def episode_namespace_path(actor_id: str) -> str:
     """Hierarchical prefix for all of one policyholder's episodes (all sessions).
 

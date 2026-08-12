@@ -8,12 +8,11 @@ decisions — just reports facts.
 from strands import Agent
 
 from agents.prompts import with_current_date
+from memory.config import AGENT_MODEL_ID
 from tools.policy_lookup import make_lookup_policy_tool
 from tools.claims_history import make_check_claims_history_tool
 from tools.fraud_check import make_check_fraud_indicators_tool
 from tools.coverage_validator import make_validate_coverage_tool
-
-MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 
 INVESTIGATION_PROMPT = """\
 You are the Claims Investigation Agent. You receive a claim summary and must
@@ -51,7 +50,7 @@ Do NOT use emojis.
 def create_investigation_agent(session_id: str) -> Agent:
     return Agent(
         name="investigation",
-        model=MODEL_ID,
+        model=AGENT_MODEL_ID,
         system_prompt=with_current_date(INVESTIGATION_PROMPT),
         tools=[
             make_lookup_policy_tool(session_id),

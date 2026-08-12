@@ -23,6 +23,11 @@ Parameters:
     Default: insurance-claims-demo
     Description: Cognito stack name, for importing the User Pool ARN
 
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: 'Allowed CORS origin'
+
 Resources:
   # ----- Review tasks table (unchanged logical id/name => no recreation) -----
   ReviewTasksTable:
@@ -84,7 +89,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - bedrock-agentcore:CreateEvent
-                Resource: '*'
+                Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/{{resolve:ssm:/insurance-claims-demo/memory_id}}'
         - PolicyName: SSMParameterAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -107,6 +112,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ReviewTasksTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   ListReviewsFunction:
@@ -120,6 +126,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ReviewTasksTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   GetReviewFunction:
@@ -133,6 +140,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ReviewTasksTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   ResolveReviewFunction:
@@ -147,6 +155,7 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ReviewTasksTable
           MEMORY_ID_SSM_PARAM: /insurance-claims-demo/memory_id
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   # ----- API Gateway -----
@@ -257,7 +266,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -284,7 +293,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -311,7 +320,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH

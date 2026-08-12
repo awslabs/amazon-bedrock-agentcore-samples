@@ -49,12 +49,21 @@ def handler(event, context):
         query = params.get('query', '')
         namespace = params.get('namespace', 'claims/')
         grounding = params.get('grounding', '')
-        top_k = int(params.get('topK', '5'))
+
+        try:
+            top_k = int(params.get('topK', '5'))
+        except (ValueError, TypeError):
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
+                'body': json.dumps({'error': 'topK must be an integer'}),
+            }
+        top_k = max(1, min(top_k, 10))
 
         if not query:
             return {
                 'statusCode': 400,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
                 'body': json.dumps({'error': 'query parameter is required'}),
             }
 
@@ -65,7 +74,7 @@ def handler(event, context):
             'namespace': namespace,
             'searchCriteria': {
                 'searchQuery': query,
-                'topK': min(top_k, 10),
+                'topK': top_k,
             },
         }
 
@@ -85,7 +94,7 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
             'body': json.dumps({
                 'query': query,
                 'namespace': namespace,
@@ -101,6 +110,6 @@ def handler(event, context):
         traceback.print_exc()
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': str(e)}),
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
+            'body': json.dumps({'error': 'Internal server error'}),
         }

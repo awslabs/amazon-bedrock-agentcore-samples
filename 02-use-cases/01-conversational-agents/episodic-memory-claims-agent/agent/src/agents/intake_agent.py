@@ -17,11 +17,10 @@ from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemory
 
 from agents.prompts import with_current_date
 from claims_graph import process_claim
+from memory.config import AGENT_MODEL_ID
 from schemas import TypedClaimSummary
 
 logger = logging.getLogger("claims-demo.intake_agent")
-
-MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 
 
 INTAKE_V2_PROMPT = """\
@@ -175,7 +174,7 @@ def create_intake_agent(
     )
 
     return Agent(
-        model=MODEL_ID,
+        model=AGENT_MODEL_ID,
         system_prompt=with_current_date(INTAKE_V2_PROMPT),
         tools=[process_claim_tool],
         session_manager=session_manager,

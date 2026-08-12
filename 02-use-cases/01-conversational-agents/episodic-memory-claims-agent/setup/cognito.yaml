@@ -13,13 +13,15 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub '${StackPrefix}-pool'
+      # Demo-only: passwords are hardcoded in setup scripts for reproducibility.
+      # For non-demo deployments, generate credentials at setup time.
       Policies:
         PasswordPolicy:
           MinimumLength: 8
-          RequireUppercase: false
-          RequireLowercase: false
-          RequireNumbers: false
-          RequireSymbols: false
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
       AutoVerifiedAttributes: []
       Schema:
         - Name: actor_id

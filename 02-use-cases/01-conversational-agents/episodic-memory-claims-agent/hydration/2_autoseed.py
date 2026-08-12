@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "agent", "src"))
 sys.path.insert(0, PROJECT_ROOT)
 
 from hydration.scenarios import get_scenarios
-from memory.config import load_config
+from memory.config import get_decision_mode, load_config
 
 MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 
@@ -140,21 +140,6 @@ def _create_session(session_api: str, id_token: str, title: str) -> dict:
     return resp.json()["session"]
 
 
-def _get_mode(admin_api: str, id_token: str) -> str:
-    """Get decision mode from the admin API."""
-    try:
-        resp = requests.get(
-            f"{admin_api}/admin/mode",
-            headers={"Authorization": f"Bearer {id_token}"},
-            timeout=10,
-        )
-        if resp.ok:
-            return resp.json().get("mode", "?")
-    except Exception:
-        pass
-    return "?"
-
-
 def _title_for(scn: dict) -> str:
     return f"[Training] {scn['id']}"
 
@@ -202,7 +187,6 @@ def main():
     parser.add_argument("--delay", type=float, default=2.0, help="Seconds between scenarios")
     parser.add_argument("--runtime-url", default=None, help="Override AgentCore Runtime URL")
     parser.add_argument("--session-api", default=None, help="Override session backend API URL")
-    parser.add_argument("--admin-api", default=None, help="Override admin API URL")
     args = parser.parse_args()
 
     config = load_config()
@@ -210,7 +194,6 @@ def main():
     client_id = config["cognito"]["client_id"]
     runtime_url = args.runtime_url or config.get("agentcore_runtime", {}).get("url", "")
     session_api = args.session_api or config.get("session_backend", {}).get("api_url")
-    admin_api = args.admin_api or config.get("admin_backend", {}).get("api_url")
 
     if not runtime_url:
         print("ERROR: AgentCore Runtime URL not found. Pass --runtime-url or add agentcore_runtime.url to config.json")
@@ -222,10 +205,9 @@ def main():
     creds = {u["actor_id"]: u for u in config.get("users", [])}
     cognito = boto3.client("cognito-idp", region_name=region)
 
-    # Use the first user's token to check mode via admin API
-    first_user = config["users"][0]
-    check_id_token, _ = _login(cognito, client_id, first_user["username"], first_user["password"])
-    mode = _get_mode(admin_api, check_id_token) if admin_api else "?"
+    # Mode is read from SSM (source of truth), not the admin API — the admin
+    # API is now group-restricted and policyholder tokens get a 403.
+    mode = get_decision_mode(config)
 
     if mode != "human":
         print(f"WARNING: decision_mode is '{mode}', not 'human'. This seeder expects human mode.")

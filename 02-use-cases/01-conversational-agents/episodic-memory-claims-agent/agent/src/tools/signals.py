@@ -1,64 +1,43 @@
 """
-Per-session investigation signals collector (Phase 3.1).
+Per-session investigation signals collector.
 
-The investigation tools already compute structured facts (policy status,
-coverage determination, fraud score + flags, claims history). This collector
-captures those structured results at the source, keyed by ``session_id``, so
-``/invoke`` can persist a review task from real data instead of regex-parsing
-the agent's free-text closing message (brittle, wording drifts).
+Investigation tools produce structured facts (policy status, coverage
+determination, fraud score, claims history). This module captures those
+results keyed by session_id so the orchestrator can bundle them into a
+review task for the adjuster console (displayed as cards).
 
-Design notes
-------------
-- In-process and decoupled from AWS: tools call ``record(...)`` as a side
-  effect; no DynamoDB / IAM needed in the tool layer (easy to unit-test).
-- Thread-safe: the Flask dev server runs ``threaded=True``, so concurrent
-  claims must not clobber each other's signals.
-- Latest-write-wins per tool: if a tool is called more than once in a single
-  investigation, the most recent structured result is kept.
+All signals are produced and consumed within a single process_claim()
+invocation — record() is called by tools during graph execution, and
+get() is called immediately after the graph completes, in the same
+synchronous call. No signal needs to survive across invocations.
 
-LIMITATION (tracked in HITL_IMPLEMENTATION.md, Phase 3 Open Q): this store is
-in-process. When the system moves to AgentCore Runtime / Lambda (multi-process),
-the collector must become external (e.g. a scratch store keyed by session, or
-the task record itself). In-process is fine for the local demo.
+This design requires all graph nodes to run in-process (local Agent
+instances). If agents are distributed via A2AAgent (remote runtimes),
+signals must move to an external store (e.g. DynamoDB) since remote
+tools would write to their own process memory.
 """
 
-import threading
 from typing import Any
 
 # session_id -> { tool_name: structured_result }
 _signals: dict[str, dict[str, Any]] = {}
-_lock = threading.Lock()
 
 
 def record(session_id: str, tool_name: str, structured_result: dict) -> None:
-    """Record a tool's structured result for a session (latest-write-wins).
-
-    Args:
-        session_id: The claim/session this signal belongs to (from agent state).
-        tool_name: Logical name of the investigation tool (e.g. "policy",
-            "claims_history", "fraud", "coverage").
-        structured_result: The structured facts the tool computed.
-    """
+    """Record a tool's structured result for a session (latest-write-wins)."""
     if not session_id:
         return
-    with _lock:
-        _signals.setdefault(session_id, {})[tool_name] = structured_result
+    _signals.setdefault(session_id, {})[tool_name] = structured_result
 
 
 def get(session_id: str) -> dict[str, Any]:
-    """Return a copy of all recorded signals for a session.
-
-    Returns a dict of ``{tool_name: structured_result}``. Empty dict if nothing
-    has been recorded for the session.
-    """
-    with _lock:
-        return dict(_signals.get(session_id, {}))
+    """Return a copy of all recorded signals for a session."""
+    return dict(_signals.get(session_id, {}))
 
 
 def clear(session_id: str) -> None:
     """Drop all recorded signals for a session (call after persisting a task)."""
-    with _lock:
-        _signals.pop(session_id, None)
+    _signals.pop(session_id, None)
 
 
 # ---------------------------------------------------------------------------

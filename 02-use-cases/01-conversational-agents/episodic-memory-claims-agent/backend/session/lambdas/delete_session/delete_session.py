@@ -16,7 +16,7 @@ def handler(event, context):
         if 'Item' not in existing:
             return {
                 'statusCode': 404,
-                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
                 'body': json.dumps({'error': 'Session not found'}),
             }
 
@@ -26,7 +26,7 @@ def handler(event, context):
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*'),
                 'Access-Control-Allow-Credentials': True,
             },
             'body': json.dumps({'message': 'Session deleted', 'session_id': session_id}),
@@ -36,6 +36,6 @@ def handler(event, context):
         print(f"Error: {e}")
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
             'body': json.dumps({'error': 'Internal server error'}),
         }

@@ -6,11 +6,6 @@ Parameters:
     Type: String
     Description: Name for the stack
 
-  CognitoStackName:
-    Type: String
-    Description: Name of the Cognito stack (for User Pool ARN reference)
-    Default: insurance-claims-demo
-
   SessionTableName:
     Type: String
     Description: DynamoDB table name for the session backend
@@ -24,7 +19,43 @@ Parameters:
     Type: String
     Default: /insurance-claims-demo/memory_id
 
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+
 Resources:
+  # Lambda Authorizer (admin group check)
+  AuthorizerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  AuthorizerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${StackName}-authorizer'
+      Runtime: python3.11
+      Handler: authorizer.handler
+      Role: !GetAtt AuthorizerExecutionRole.Arn
+      Code: lambdas/authorizer/
+      Timeout: 5
+
+  AuthorizerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AuthorizerFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/authorizers/*'
+
   # Lambda Execution Role
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -56,11 +87,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:Scan
                   - dynamodb:GetItem
                   - dynamodb:Query
                 Resource:
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTableName}'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTableName}/index/*'
         - PolicyName: AgentCoreMemoryAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -68,10 +99,18 @@ Resources:
               - Effect: Allow
                 Action:
                   - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:GetMemory
+                Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/{{resolve:ssm:${MemoryIdSsmParam}}}'
+              - Effect: Allow
+                Action:
                   - bedrock-agentcore:ListMemoryRecords
                   - bedrock-agentcore:RetrieveMemoryRecords
-                  - bedrock-agentcore:GetMemory
-                Resource: '*'
+                Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/{{resolve:ssm:${MemoryIdSsmParam}}}'
+                Condition:
+                  StringLike:
+                    bedrock-agentcore:namespace:
+                      - 'claims/*'
+                      - 'subtools/*'
 
   # Lambda Functions
   GetModeFunction:
@@ -85,6 +124,7 @@ Resources:
       Environment:
         Variables:
           DECISION_MODE_SSM_PARAM: !Ref DecisionModeSsmParam
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 10
 
   SetModeFunction:
@@ -98,6 +138,7 @@ Resources:
       Environment:
         Variables:
           DECISION_MODE_SSM_PARAM: !Ref DecisionModeSsmParam
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 10
 
   GetSessionsFunction:
@@ -111,6 +152,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionTableName
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   GetMemoryFunction:
@@ -125,6 +167,7 @@ Resources:
         Variables:
           MEMORY_ID_SSM_PARAM: !Ref MemoryIdSsmParam
           DECISION_MODE_SSM_PARAM: !Ref DecisionModeSsmParam
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   SearchMemoryFunction:
@@ -138,6 +181,7 @@ Resources:
       Environment:
         Variables:
           MEMORY_ID_SSM_PARAM: !Ref MemoryIdSsmParam
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   # API Gateway
@@ -147,16 +191,16 @@ Resources:
       Name: !Sub '${StackName}-api'
       Description: Admin API for Insurance Claims Demo
 
-  # Cognito Authorizer
+  # Lambda Authorizer (validates JWT + admin group membership)
   ApiAuthorizer:
     Type: AWS::ApiGateway::Authorizer
     Properties:
-      Name: CognitoAdminAuthorizer
-      Type: COGNITO_USER_POOLS
+      Name: AdminGroupAuthorizer
+      Type: TOKEN
       IdentitySource: method.request.header.Authorization
       RestApiId: !Ref RestApi
-      ProviderARNs:
-        - Fn::ImportValue: !Sub '${CognitoStackName}-pool-arn'
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerFunction.Arn}/invocations'
+      AuthorizerResultTtlInSeconds: 300
 
   # Resources: /admin
   AdminResource:
@@ -205,7 +249,7 @@ Resources:
       RestApiId: !Ref RestApi
       ResourceId: !Ref ModeResource
       HttpMethod: GET
-      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizationType: CUSTOM
       AuthorizerId: !Ref ApiAuthorizer
       Integration:
         Type: AWS_PROXY
@@ -219,7 +263,7 @@ Resources:
       RestApiId: !Ref RestApi
       ResourceId: !Ref ModeResource
       HttpMethod: POST
-      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizationType: CUSTOM
       AuthorizerId: !Ref ApiAuthorizer
       Integration:
         Type: AWS_PROXY
@@ -233,7 +277,7 @@ Resources:
       RestApiId: !Ref RestApi
       ResourceId: !Ref MemoryResource
       HttpMethod: GET
-      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizationType: CUSTOM
       AuthorizerId: !Ref ApiAuthorizer
       Integration:
         Type: AWS_PROXY
@@ -247,7 +291,7 @@ Resources:
       RestApiId: !Ref RestApi
       ResourceId: !Ref SessionsResource
       HttpMethod: GET
-      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizationType: CUSTOM
       AuthorizerId: !Ref ApiAuthorizer
       Integration:
         Type: AWS_PROXY
@@ -261,7 +305,7 @@ Resources:
       RestApiId: !Ref RestApi
       ResourceId: !Ref MemorySearchResource
       HttpMethod: GET
-      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizationType: CUSTOM
       AuthorizerId: !Ref ApiAuthorizer
       Integration:
         Type: AWS_PROXY
@@ -283,7 +327,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -310,7 +354,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -337,7 +381,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -364,7 +408,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH

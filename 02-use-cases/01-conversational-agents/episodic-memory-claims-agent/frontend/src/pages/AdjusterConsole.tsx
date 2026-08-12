@@ -6,6 +6,15 @@ import './AdjusterConsole.css';
 
 const DECISIONS: Decision[] = ['APPROVE', 'DENY'];
 
+// Claim amounts arrive inconsistently from intake — bare numbers ("7200") or
+// formatted strings ("$8,880"). Strip non-numeric chars before parsing so we
+// never render "$NaN"; return a fallback when there's no usable number.
+function formatAmount(value: unknown, fallback = ''): string {
+  if (value == null || value === '') return fallback;
+  const n = Number(String(value).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) ? `$${n.toLocaleString()}` : fallback;
+}
+
 export default function AdjusterConsole() {
   const { session, logout } = useAuth();
   const { tasks, loading, error, listReviews, getReview, resolveReview } = useReviews();
@@ -93,7 +102,7 @@ export default function AdjusterConsole() {
               >
                 <div className="adj-list-row">
                   <span className="adj-list-incident">{t.claim?.incident_type ?? 'Claim'}</span>
-                  <span className="adj-list-amount">{t.claim?.claimed_amount ? `$${Number(t.claim.claimed_amount).toLocaleString()}` : ''}</span>
+                  <span className="adj-list-amount">{formatAmount(t.claim?.claimed_amount)}</span>
                 </div>
                 <div className="adj-list-row adj-list-sub">
                   <span>{t.policyholder_name || t.actor_id}</span>
@@ -169,7 +178,7 @@ function TaskDetail({
       <section className="adj-card">
         <h3>Claim</h3>
         <div className="adj-kv"><span>Incident date</span><span>{claim?.incident_date ?? '—'}</span></div>
-        <div className="adj-kv"><span>Amount</span><span>{claim?.claimed_amount ? `$${Number(claim.claimed_amount).toLocaleString()}` : '—'}</span></div>
+        <div className="adj-kv"><span>Amount</span><span>{formatAmount(claim?.claimed_amount, '—')}</span></div>
         <p className="adj-desc">{claim?.description}</p>
       </section>
 

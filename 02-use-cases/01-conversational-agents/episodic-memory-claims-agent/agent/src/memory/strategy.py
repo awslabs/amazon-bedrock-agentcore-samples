@@ -19,12 +19,9 @@ Design notes (learned the hard way — see MEMORY_REDESIGN_PLAN.md):
 
 import logging
 
-logger = logging.getLogger("claims-demo.memory.strategy")
+from memory.config import EXTRACTION_MODEL_ID
 
-# ---------------------------------------------------------------------------
-# Model + namespaces
-# ---------------------------------------------------------------------------
-EXTRACTION_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+logger = logging.getLogger("claims-demo.memory.strategy")
 
 STRATEGY_NAME = "ClaimsEpisodes"
 EPISODE_NAMESPACE_TEMPLATE = "claims/{actorId}/{sessionId}/"

@@ -1,6 +1,9 @@
 """Typed schemas for the claims pipeline."""
 
 from dataclasses import dataclass, field
+from typing import Literal
+
+Decision = Literal["APPROVE", "DENY", "ESCALATE"]
 
 
 @dataclass
@@ -24,7 +27,7 @@ class TypedClaimSummary:
 @dataclass
 class TypedDecision:
     """Structured decision from the Adjudication Agent."""
-    decision: str  # APPROVE | DENY
+    decision: Decision
     amount: float | None = None
     internal_reasoning: str = ""
     customer_reasoning: str = ""

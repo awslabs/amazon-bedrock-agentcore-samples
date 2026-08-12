@@ -89,7 +89,6 @@ aws cloudformation deploy \
   --stack-name "$ADMIN_STACK" \
   --parameter-overrides \
     StackName="$ADMIN_STACK" \
-    CognitoStackName="$COGNITO_STACK" \
     SessionTableName="$SESSION_TABLE" \
   --capabilities CAPABILITY_IAM \
   --region "$REGION" \

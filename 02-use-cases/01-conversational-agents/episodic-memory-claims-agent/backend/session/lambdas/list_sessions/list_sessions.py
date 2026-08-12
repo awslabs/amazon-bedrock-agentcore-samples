@@ -31,7 +31,7 @@ def handler(event, context):
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*'),
                 'Access-Control-Allow-Credentials': True,
             },
             'body': json.dumps({'sessions': sessions, 'count': len(sessions)}, cls=DecimalEncoder),
@@ -41,6 +41,6 @@ def handler(event, context):
         print(f"Error: {e}")
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
             'body': json.dumps({'error': 'Internal server error'}),
         }

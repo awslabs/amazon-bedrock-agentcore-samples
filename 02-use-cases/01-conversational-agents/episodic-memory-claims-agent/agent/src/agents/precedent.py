@@ -15,13 +15,11 @@ import logging
 from strands import Agent, tool as strands_tool
 
 from agents.prompts import with_current_date
-from memory.config import REFLECTION_NAMESPACE, HUMAN_GROUNDED_FILTER, episode_namespace_path
+from memory.config import AGENT_MODEL_ID, REFLECTION_NAMESPACE, HUMAN_GROUNDED_FILTER, episode_namespace_path
 from schemas import TypedClaimSummary
 from tools import signals
 
 logger = logging.getLogger("claims-demo.precedent")
-
-MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 
 PRECEDENT_PROMPT = """\
 You are the Precedent Agent. Your job is to retrieve past decisions and
@@ -164,8 +162,6 @@ def create_precedent_agent(
                 query=ep_query,
                 top_k=3,
             )
-            if refl_filters:
-                kwargs["metadata_filters"] = refl_filters
             records = memory_client.retrieve_memories(**kwargs)
 
             results = []
@@ -220,7 +216,7 @@ def create_precedent_agent(
 
     return Agent(
         name="precedent",
-        model=MODEL_ID,
+        model=AGENT_MODEL_ID,
         system_prompt=with_current_date(PRECEDENT_PROMPT),
         tools=[search_claim_patterns, lookup_policyholder_history],
     )

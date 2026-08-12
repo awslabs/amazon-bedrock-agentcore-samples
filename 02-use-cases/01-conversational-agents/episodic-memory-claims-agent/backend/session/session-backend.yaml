@@ -21,6 +21,11 @@ Parameters:
     Default: /insurance-claims-demo/memory_id
     Description: SSM parameter name holding the current AgentCore Memory ID (source of truth).
 
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: Allowed CORS origin
+
 Resources:
   # DynamoDB Table for Session Metadata
   SessionsTable:
@@ -33,11 +38,22 @@ Resources:
           AttributeType: S
         - AttributeName: session_id
           AttributeType: S
+        - AttributeName: actor_id
+          AttributeType: S
       KeySchema:
         - AttributeName: user_id
           KeyType: HASH
         - AttributeName: session_id
           KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: actor_id-index
+          KeySchema:
+            - AttributeName: actor_id
+              KeyType: HASH
+            - AttributeName: session_id
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   # Lambda Execution Role
   LambdaExecutionRole:
@@ -74,7 +90,7 @@ Resources:
                 Action:
                   - bedrock-agentcore:ListEvents
                   - bedrock-agentcore:GetMemory
-                Resource: '*'
+                Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/{{resolve:ssm:${MemoryIdSsmParam}}}'
         - PolicyName: SSMParameterAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -97,6 +113,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionsTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   ListSessionsFunction:
@@ -110,6 +127,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionsTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   GetSessionFunction:
@@ -123,6 +141,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionsTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   UpdateSessionFunction:
@@ -136,6 +155,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionsTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   DeleteSessionFunction:
@@ -149,6 +169,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref SessionsTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   GetSessionMessagesFunction:
@@ -164,6 +185,7 @@ Resources:
           TABLE_NAME: !Ref SessionsTable
           MEMORY_ID_SSM_PARAM: !Ref MemoryIdSsmParam
           MEMORY_ID: !Ref MemoryId
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       Timeout: 30
 
   # API Gateway
@@ -305,7 +327,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -332,7 +354,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,PATCH,DELETE,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH
@@ -359,7 +381,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
               method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
             ResponseTemplates:
               application/json: ''
         PassthroughBehavior: WHEN_NO_MATCH

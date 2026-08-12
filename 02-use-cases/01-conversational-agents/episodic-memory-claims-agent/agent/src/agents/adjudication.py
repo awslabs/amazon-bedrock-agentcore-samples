@@ -13,8 +13,7 @@ Produces a structured JSON decision with:
 from strands import Agent
 
 from agents.prompts import with_current_date
-
-MODEL_ID = "global.anthropic.claude-sonnet-4-6"
+from memory.config import AGENT_MODEL_ID
 
 ADJUDICATION_PROMPT = """\
 You are the Claims Adjudication Agent. You receive inputs from two previous
@@ -89,6 +88,6 @@ Do NOT use emojis. Do NOT include any text outside the JSON object.
 def create_adjudication_agent() -> Agent:
     return Agent(
         name="adjudication",
-        model=MODEL_ID,
+        model=AGENT_MODEL_ID,
         system_prompt=with_current_date(ADJUDICATION_PROMPT),
     )

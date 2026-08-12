@@ -20,7 +20,7 @@ from strands import Agent
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent", "src"))
 
-from memory.config import load_config
+from memory.config import get_decision_mode, load_config
 
 MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 
@@ -88,18 +88,6 @@ def _create_session(session_api: str, id_token: str, title: str) -> dict:
     )
     resp.raise_for_status()
     return resp.json()["session"]
-
-
-def _get_mode(admin_api: str, id_token: str) -> str:
-    """Get decision mode from the admin API."""
-    resp = requests.get(
-        f"{admin_api}/admin/mode",
-        headers={"Authorization": f"Bearer {id_token}"},
-        timeout=10,
-    )
-    if resp.ok:
-        return resp.json().get("mode", "?")
-    return "?"
 
 
 def call_agent(prompt: str, actor_id: str, session_id: str, runtime_url: str, access_token: str) -> str:
@@ -196,7 +184,6 @@ def main():
     region = config["region"]
     client_id = config["cognito"]["client_id"]
     session_api = config.get("session_backend", {}).get("api_url")
-    admin_api = config.get("admin_backend", {}).get("api_url")
     runtime_url = args.runtime_url or config.get("agentcore_runtime", {}).get("url", "")
 
     if not runtime_url:
@@ -209,8 +196,8 @@ def main():
     cognito = boto3.client("cognito-idp", region_name=region)
     id_token, access_token = _login(cognito, client_id, u["username"], u["password"])
 
-    # Check mode
-    mode = _get_mode(admin_api, id_token) if admin_api else "?"
+    # Check mode from SSM (source of truth)
+    mode = get_decision_mode(config)
     print(f"Running claim against AgentCore Runtime (mode={mode})")
 
     # Create session
