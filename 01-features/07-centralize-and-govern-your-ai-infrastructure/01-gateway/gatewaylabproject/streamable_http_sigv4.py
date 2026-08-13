@@ -5,10 +5,9 @@ This module extends the MCP StreamableHTTPTransport to add AWS SigV4 request sig
 for authentication with MCP servers that authenticate using AWS IAM.
 """
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Generator
 
 import httpx
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream

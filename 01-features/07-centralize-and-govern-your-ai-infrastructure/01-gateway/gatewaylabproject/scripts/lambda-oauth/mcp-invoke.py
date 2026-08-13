@@ -15,8 +15,8 @@ import sys
 
 import boto3
 import requests
-from mcp.client.streamable_http import streamablehttp_client
 from mcp.client.session import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
 
 
 def load_env():
@@ -83,50 +83,49 @@ async def main():
 
     async with streamablehttp_client(
         gateway_url, headers={"Authorization": f"Bearer {token}"}
-    ) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
+    ) as (read, write, _), ClientSession(read, write) as session:
+        await session.initialize()
 
-            print("=" * 60)
-            print("tools/list")
-            print("=" * 60)
-            tools_result = await session.list_tools()
-            for tool in tools_result.tools:
-                print(f"  {tool.name}: {tool.description or ''}")
+        print("=" * 60)
+        print("tools/list")
+        print("=" * 60)
+        tools_result = await session.list_tools()
+        for tool in tools_result.tools:
+            print(f"  {tool.name}: {tool.description or ''}")
 
-            print("\n" + "=" * 60)
-            print("tools/call - get_order_tool")
-            print("=" * 60)
-            get_order = next(
-                (t.name for t in tools_result.tools if "get_order" in t.name),
-                None,
-            )
-            if get_order:
-                result = await session.call_tool(get_order, {"orderId": "123"})
-                print(
-                    json.dumps(
-                        {"content": [c.model_dump() for c in result.content]}, indent=2
-                    )
+        print("\n" + "=" * 60)
+        print("tools/call - get_order_tool")
+        print("=" * 60)
+        get_order = next(
+            (t.name for t in tools_result.tools if "get_order" in t.name),
+            None,
+        )
+        if get_order:
+            result = await session.call_tool(get_order, {"orderId": "123"})
+            print(
+                json.dumps(
+                    {"content": [c.model_dump() for c in result.content]}, indent=2
                 )
-            else:
-                print("  Tool not found")
-
-            print("\n" + "=" * 60)
-            print("tools/call - update_order_tool")
-            print("=" * 60)
-            update_order = next(
-                (t.name for t in tools_result.tools if "update_order" in t.name),
-                None,
             )
-            if update_order:
-                result = await session.call_tool(update_order, {"orderId": "123"})
-                print(
-                    json.dumps(
-                        {"content": [c.model_dump() for c in result.content]}, indent=2
-                    )
+        else:
+            print("  Tool not found")
+
+        print("\n" + "=" * 60)
+        print("tools/call - update_order_tool")
+        print("=" * 60)
+        update_order = next(
+            (t.name for t in tools_result.tools if "update_order" in t.name),
+            None,
+        )
+        if update_order:
+            result = await session.call_tool(update_order, {"orderId": "123"})
+            print(
+                json.dumps(
+                    {"content": [c.model_dump() for c in result.content]}, indent=2
                 )
-            else:
-                print("  Tool not found")
+            )
+        else:
+            print("  Tool not found")
 
 
 if __name__ == "__main__":
