@@ -2,7 +2,9 @@
 
 This guide walks through setting up a new AgentCore Gateway with CUSTOM_JWT inbound authorization backed by Microsoft Entra ID. By the end, an MCP client (Claude Code, Codex, Kiro, etc.) can connect to your gateway, discover OAuth metadata via RFC 9728, acquire a token from Entra, and invoke MCP tools.
 
-![Demo: Claude Code connecting to an Entra-protected AgentCore Gateway](entra-gateway-auth-demo.gif)
+![claude](./claude-code.gif)
+
+![kiro](./kiro.gif)
 
 ## Prerequisites
 
@@ -12,7 +14,7 @@ This guide walks through setting up a new AgentCore Gateway with CUSTOM_JWT inbo
 
 > [!TIP]
 > This guide uses the Azure CLI and Microsoft Graph API. You can also perform all Entra steps through the [Entra admin center](https://entra.microsoft.com) (App registrations > your app > Expose an API / Authentication / API permissions).
-> 
+
 ## Overview
 
 | Step | What happens |
@@ -24,6 +26,9 @@ This guide walks through setting up a new AgentCore Gateway with CUSTOM_JWT inbo
 | 5 | Register a client app that requests tokens for your gateway. |
 | 6 | Connect your MCP client to the gateway. |
 
+## Step 0: Recommend reading the Security Considerations first
+
+Read more [here](#security-considerations).
 
 ## Step 1: Create the Entra App Registration (Resource App)
 
@@ -62,14 +67,15 @@ Key fields to note:
 | `api.requestedAccessTokenVersion` | Must be `2` to allow arbitrary identifier URIs (Step 4). |
 | `signInAudience` | Who can sign in (`AzureADMyOrg` = single tenant). |
 
----
-
 ## Step 2: Expose an API Scope
 
 Define a delegated permission scope that clients will request. This scope is what appears in the token's `scp` claim and what the gateway validates via `allowedScopes`.
 
 This step also sets `requestedAccessTokenVersion: 2`, which is required in Step 4 to register the gateway URL as an identifier URI. Without it, Entra rejects `https://` URIs on domains you do not own.
 
+> [!WARNING]
+> If this is an existing app that already has clients in production, changing `requestedAccessTokenVersion` from null/1 to 2 is a **breaking change** for those clients. The `aud` claim format changes, which causes their token validation to fail. Only set this on new apps or after coordinating with all existing consumers.
+> 
 ```bash
 # Generate a UUID for the scope
 SCOPE_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
