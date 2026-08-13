@@ -8,13 +8,24 @@ GATEWAY_URL in the shared .env).
 What it checks (read-only — no payments, no wallet required):
   1. The Gateway exposes the three Bazaar tools (search_resources, proxy_tool_call,
      validate_endpoint), prefixed with the target name (e.g. CoinbaseBazaar___...).
-  2. search_resources accepts the `curatedOnly` filter and the filter is HONORED —
-     i.e. an uncurated search surfaces resources a curated search does not.
+  2. Curation is enabled and honored. The Bazaar returns curated resources BY DEFAULT,
+     so the check does not pass a redundant curatedOnly=true; instead it verifies, from
+     each result's own curation metadata:
+       - the DEFAULT search (no curatedOnly) returns only curated resources — every
+         result carries _meta["x402/curation"].curated == true; and
+       - a curatedOnly=false search surfaces resources that omit that block entirely
+         (genuinely uncurated endpoints the default view hides), proving the filter
+         actually narrows results.
 
-Note on counting: search_resources returns at most 20 results per call, sets
-`partialResults=true` when more match, and has no offset/cursor — so the full catalog
-cannot be enumerated. This script reports the number of DISTINCT curated endpoints it
-discovered across a set of probe queries as a LOWER BOUND, not the catalog size.
+Why per-result metadata, not set math: search_resources returns at most 20 results per
+call, sets `partialResults=true` when more match, and has no offset/cursor — each result
+set is a relevance-ranked, truncated sample. Comparing two such samples by set difference
+is unreliable (they can differ from ranking alone). The per-result `curated` flag is
+deterministic, so the verdict uses it.
+
+Note on counting: because of the 20-result cap and lack of pagination, the full catalog
+cannot be enumerated. Endpoint counts below are the DISTINCT resources discovered across a
+set of probe queries — a LOWER BOUND, not the catalog size.
 
 Usage:
     python validate_bazaar_curation.py
@@ -25,9 +36,8 @@ as bazaar_gateway_agent.py). NONE-auth gateways need no credentials.
 
 Note: you may see MCP output-schema validation warnings on stderr. The Bazaar returns extra
 fields (e.g. `bundleSlugs`) that its advertised _meta.x402/curation schema doesn't declare, so
-strict validation rejects the response ("Additional properties are not allowed"). The warnings
-are benign (server-side schema drift) and do not affect the verdict — they only make the
-discovered count a conservative lower bound.
+strict validation rejects those responses. Such a probe is skipped (counted below) rather than
+failing the run, which only makes the discovered counts a more conservative lower bound.
 """
 
 import json
@@ -99,30 +109,46 @@ def _extract_json(tool_result):
     return {}
 
 
+def _is_curated(tool):
+    """True if the resource is tagged curated. Curated resources carry
+    _meta["x402/curation"].curated == true; uncurated resources omit that block entirely
+    (per the Bazaar schema), so absence of the flag means uncurated."""
+    meta = tool.get("_meta") or {}
+    curation = meta.get("x402/curation") or {}
+    return curation.get("curated") is True
+
+
 def search(mcp_client, query, curated_only, idx):
     """Call search_resources through the Gateway; return (tools, partialResults).
 
-    Some Bazaar responses fail Strands' output-schema validation (the server returns extra
-    fields its advertised _meta.x402/curation schema doesn't declare, e.g. `bundleSlugs`),
-    which raises here. We treat that as a skipped probe rather than a hard failure, so counts
-    are a lower bound.
+    `curated_only` is True/False to set the filter, or None to omit it (the Bazaar's
+    default, which returns curated resources only).
+
+    Returns (None, False) for a skipped probe. Some Bazaar responses fail Strands'
+    output-schema validation because the server returns extra fields its advertised
+    _meta.x402/curation schema doesn't declare (e.g. `bundleSlugs`). Depending on the
+    installed Strands/mcp version that surfaces either as a raised exception or as an
+    error ToolResult (status == "error") — both are treated as a skipped probe, so one
+    bad response never tanks the run and counts stay a lower bound.
     """
+    arguments = {"query": query, "limit": 20}
+    if curated_only is not None:
+        arguments["curatedOnly"] = curated_only
     try:
-        result = mcp_client.call_tool_sync(
-            tool_use_id=f"validate-{idx}",
-            name=SEARCH_TOOL,
-            arguments={"query": query, "curatedOnly": curated_only, "limit": 20},
-        )
+        result = mcp_client.call_tool_sync(tool_use_id=f"validate-{idx}", name=SEARCH_TOOL, arguments=arguments)
     except Exception as e:  # noqa: BLE001 — one bad response shouldn't tank the run
         print(f"  (skipped query {query!r} curatedOnly={curated_only}: {type(e).__name__})")
+        return None, False
+    if isinstance(result, dict) and result.get("status") == "error":
+        print(f"  (skipped query {query!r} curatedOnly={curated_only}: error ToolResult)")
         return None, False
     payload = _extract_json(result)
     return payload.get("tools", []), payload.get("partialResults", False)
 
 
 def discover(mcp_client, curated_only):
-    """Run every probe query; return {tool_name: description} deduped, whether any call
-    reported partialResults, and how many probes were skipped."""
+    """Run every probe query; return ({tool_name: (description, is_curated)}, whether any
+    call reported partialResults, and how many probes were skipped)."""
     found, partial_seen, skipped = {}, False, 0
     for i, q in enumerate(QUERIES):
         tools, partial = search(mcp_client, q, curated_only, i)
@@ -131,13 +157,13 @@ def discover(mcp_client, curated_only):
             continue
         partial_seen = partial_seen or bool(partial)
         for t in tools:
-            found[t["name"]] = t.get("description", "") or ""
+            found[t["name"]] = (t.get("description", "") or "", _is_curated(t))
     return found, partial_seen, skipped
 
 
 def categorize(tools):
     counts = {c: 0 for c in CATEGORIES}
-    for name, desc in tools.items():
+    for name, (desc, _curated) in tools.items():
         hay = f"{name} {desc}".lower()
         for cat, kws in CATEGORIES.items():
             if any(kw in hay for kw in kws):
@@ -184,49 +210,63 @@ def main():
         if missing:
             print(f"⚠️  Expected Bazaar tools not found: {sorted(missing)}")
 
-        # 2) Curated vs. uncurated
-        print(f"\nProbing search_resources with {len(QUERIES)} queries (curatedOnly=true and false)...")
-        curated, curated_partial, curated_skipped = discover(mcp_client, True)
-        uncurated, uncurated_partial, uncurated_skipped = discover(mcp_client, False)
+        # 2) Default view vs. unfiltered view. The Bazaar returns curated results by
+        # default, so we DON'T pass a redundant curatedOnly=true — we verify the default
+        # is curated-only, then pass curatedOnly=false to lift the filter and let
+        # uncurated resources through.
+        print(f"\nProbing search_resources with {len(QUERIES)} queries (default, then curatedOnly=false)...")
+        default_view, default_partial, default_skipped = discover(mcp_client, None)
+        unfiltered, unfiltered_partial, unfiltered_skipped = discover(mcp_client, False)
 
-    curated_only_names = set(curated) - set(uncurated)
-    uncurated_only_names = set(uncurated) - set(curated)
+    # Judge on each result's own curation flag (deterministic), not on set differences
+    # between two truncated, relevance-ranked samples (which can differ by ranking alone).
+    default_uncurated = sum(1 for _, (_, is_cur) in default_view.items() if not is_cur)
+    unfiltered_uncurated = sum(1 for _, (_, is_cur) in unfiltered.items() if not is_cur)
 
     print(f"\n{'=' * 64}")
-    print(f"Distinct curated endpoints discovered:   {len(curated)}  (lower bound)")
-    print(f"Distinct uncurated endpoints discovered: {len(uncurated)}  (lower bound)")
-    print(f"partialResults seen (more exist):        curated={curated_partial}, uncurated={uncurated_partial}")
-    if curated_skipped or uncurated_skipped:
-        print(f"probes skipped (output-schema validation):curated={curated_skipped}, uncurated={uncurated_skipped}")
+    print(f"Default view (no curatedOnly):       {len(default_view):3} distinct, {default_uncurated} uncurated")
+    print(
+        f"Unfiltered view (curatedOnly=false):{len(unfiltered):4} distinct, {unfiltered_uncurated} genuinely uncurated"
+    )
+    print(f"partialResults seen (more exist):    default={default_partial}, unfiltered={unfiltered_partial}")
+    if default_skipped or unfiltered_skipped:
+        print(f"probes skipped (schema validation):  default={default_skipped}, unfiltered={unfiltered_skipped}")
+    print("(counts are query-dependent lower bounds — 20 results/call, no pagination)")
     print(f"{'=' * 64}")
 
-    cats = categorize(curated)
+    cats = categorize(default_view)
     if cats:
         print("\nCurated endpoints by category (sample):")
         for cat, n in sorted(cats.items(), key=lambda kv: -kv[1]):
             print(f"  {n:3}  {cat}")
 
-    # Verdict: curation is ENABLED and HONORED if curated returns results AND the
-    # uncurated search surfaces resources the curated search excludes.
+    # Verdict — deterministic, from per-result curation metadata:
+    #   PASS = the default search returns resources AND none are uncurated (Bazaar
+    #          defaults to curated-only) AND curatedOnly=false surfaces genuinely-uncurated
+    #          resources the default view hides (the filter meaningfully narrows results).
     print(f"\n{'=' * 64}")
-    curation_returns = len(curated) > 0
-    filter_narrows = len(uncurated_only_names) > 0
-    if curation_returns and filter_narrows:
+    default_returns = len(default_view) > 0
+    default_is_curated = default_returns and default_uncurated == 0
+    filter_reveals_uncurated = unfiltered_uncurated > 0
+
+    if default_is_curated and filter_reveals_uncurated:
         print("✅ PASS — curation is enabled and the curatedOnly filter is honored.")
-        print(
-            f"   curated set is distinct from uncurated ({len(uncurated_only_names)} "
-            f"uncurated-only endpoints excluded by the filter)."
-        )
-        print("   NOTE: the count above is a query-dependent lower bound, not the catalog size")
-        print("   (search_resources caps at 20 results/call with no pagination).")
+        print(f"   the default search returns curated resources only ({len(default_view)} distinct, all")
+        print(f"   tagged curated=true), and curatedOnly=false surfaced {unfiltered_uncurated} uncurated")
+        print("   resource(s) the default view hides — so the filter genuinely narrows results.")
         code = 0
-    elif curation_returns and not filter_narrows:
-        print("⚠️  INCONCLUSIVE — curatedOnly=true returned results, but curated and uncurated")
-        print("   sets were identical across these probes. Curation may not be enabled on this")
-        print("   endpoint, or the probe set was too narrow. Try broadening QUERIES.")
+    elif default_returns and not default_is_curated:
+        print("⚠️  UNEXPECTED — the default search returned uncurated resources, so this endpoint")
+        print(f"   does not appear to default to curated-only ({default_uncurated} of {len(default_view)} untagged).")
+        print("   Curation may be disabled for this endpoint.")
+        code = 2
+    elif default_is_curated and not filter_reveals_uncurated:
+        print("⚠️  INCONCLUSIVE — the default view is curated-only, but no uncurated resources")
+        print("   surfaced with curatedOnly=false across these probes. Curation may cover")
+        print("   everything queried, or the probe set was too narrow. Broaden QUERIES.")
         code = 2
     else:
-        print("❌ FAIL — curatedOnly=true returned no endpoints. Check that the Bazaar target is")
+        print("❌ FAIL — the default search returned no endpoints. Check that the Bazaar target is")
         print("   reachable and that curation is enabled for this endpoint.")
         code = 1
     print(f"{'=' * 64}")
