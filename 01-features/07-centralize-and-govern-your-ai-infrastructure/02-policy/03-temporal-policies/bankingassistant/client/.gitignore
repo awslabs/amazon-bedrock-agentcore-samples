@@ -3,6 +3,7 @@ dist/
 package-lock.json
 .env
 *.log
+.vite/
 
 # Python artifacts (reference CLI kept for history only)
 .venv/
