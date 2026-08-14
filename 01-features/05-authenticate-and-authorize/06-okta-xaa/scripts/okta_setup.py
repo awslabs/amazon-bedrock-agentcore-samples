@@ -156,8 +156,7 @@ def main() -> None:
     parser.add_argument("--user-email")
     parser.add_argument(
         "--user-password",
-        help="Test user password. Omit to be prompted securely (avoids leaking "
-        "it via shell history / process list).",
+        help="Test user password. Omit to be prompted securely (avoids leaking it via shell history / process list).",
     )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -197,9 +196,11 @@ def main() -> None:
         user = create_user(client, args.user_email, user_password, args.dry_run)
         assign_app_to_user(client, app["id"], user["id"], args.dry_run)
 
-    oauth = app.get("credentials", {}).get("oauthClient", {})
-    client_id = oauth.get("client_id", "<app client_id>")
-    has_secret = bool(oauth.get("client_secret"))
+    # For Okta OIDC apps the client_id equals the app id. Read it from the app
+    # id (independent of the credentials block) so we never log a value derived
+    # from the structure that also carries the client secret.
+    client_id = app.get("id", "<app client_id>")
+    has_secret = bool(app.get("credentials", {}).get("oauthClient", {}).get("client_secret"))
 
     print("\n--- Add to scripts/.env ---")
     print(f"OKTA_LOGIN_CLIENT_ID={client_id}")

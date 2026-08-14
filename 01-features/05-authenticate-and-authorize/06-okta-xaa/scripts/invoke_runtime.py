@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from test_xaa_flow import login_and_get_id_token  # noqa: E402
+from test_xaa_flow import login_and_get_id_token
 
 ARN = os.environ["AGENT_RUNTIME_ARN"]
 REGION = os.environ.get("AWS_REGION", "us-east-1")

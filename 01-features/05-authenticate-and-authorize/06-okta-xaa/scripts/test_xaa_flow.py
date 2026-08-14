@@ -30,9 +30,8 @@ import webbrowser
 
 import httpx
 import jwt
-from dotenv import load_dotenv
-
 from client_auth import apply_client_auth
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -93,7 +92,7 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
     code: str | None = None
     state: str | None = None
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         _CallbackHandler.code = params.get("code", [None])[0]
         _CallbackHandler.state = params.get("state", [None])[0]
@@ -108,24 +107,24 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
 
 def _pkce() -> tuple[str, str]:
     verifier = base64.urlsafe_b64encode(secrets.token_bytes(64)).rstrip(b"=").decode()
-    challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-    )
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     return verifier, challenge
 
 
 def login_and_get_id_token() -> str:
     verifier, challenge = _pkce()
     state = secrets.token_urlsafe(16)
-    query = urllib.parse.urlencode({
-        "client_id": LOGIN_CLIENT_ID,
-        "response_type": "code",
-        "scope": "openid profile email",
-        "redirect_uri": REDIRECT_URI,
-        "state": state,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
-    })
+    query = urllib.parse.urlencode(
+        {
+            "client_id": LOGIN_CLIENT_ID,
+            "response_type": "code",
+            "scope": "openid profile email",
+            "redirect_uri": REDIRECT_URI,
+            "state": state,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+        }
+    )
     parsed = urllib.parse.urlparse(REDIRECT_URI)
     server = http.server.HTTPServer((parsed.hostname, parsed.port), _CallbackHandler)
     thread = threading.Thread(target=server.handle_request, daemon=True)
@@ -176,8 +175,10 @@ def exchange_id_token_for_id_jag(id_token: str) -> str:
         raise SystemExit(f"Step 1 (ID-JAG) failed ({resp.status_code}): {resp.text}")
     id_jag = resp.json()["access_token"]
     claims = jwt.decode(id_jag, options={"verify_signature": False})
-    print(f"Step 1 OK: ID-JAG (aud={claims.get('aud')}, sub={claims.get('sub')}, "
-          f"scope={claims.get('scope') or claims.get('scp')})")
+    print(
+        f"Step 1 OK: ID-JAG (aud={claims.get('aud')}, sub={claims.get('sub')}, "
+        f"scope={claims.get('scope') or claims.get('scp')})"
+    )
     return id_jag
 
 
@@ -193,8 +194,10 @@ def exchange_id_jag_for_access_token(id_jag: str) -> str:
         raise SystemExit(f"Step 2 (access token) failed ({resp.status_code}): {resp.text}")
     at = resp.json()["access_token"]
     claims = jwt.decode(at, options={"verify_signature": False})
-    print(f"Step 2 OK: access token (iss={claims.get('iss')}, aud={claims.get('aud')}, "
-          f"sub={claims.get('sub')}, scp={claims.get('scp') or claims.get('scope')})")
+    print(
+        f"Step 2 OK: access token (iss={claims.get('iss')}, aud={claims.get('aud')}, "
+        f"sub={claims.get('sub')}, scp={claims.get('scp') or claims.get('scope')})"
+    )
     return at
 
 
@@ -205,8 +208,7 @@ def call_todo_api(access_token: str) -> None:
     if not RESOURCE_API_URL:
         print("Step 3 skipped: RESOURCE_API_URL not set (token exchange already proven).")
         return
-    resp = httpx.get(f"{RESOURCE_API_URL}/todos",
-                     headers={"Authorization": f"Bearer {access_token}"}, timeout=30)
+    resp = httpx.get(f"{RESOURCE_API_URL}/todos", headers={"Authorization": f"Bearer {access_token}"}, timeout=30)
     if resp.status_code >= 400:
         raise SystemExit(f"Step 3 (/todos) failed ({resp.status_code}): {resp.text}")
     print("Step 3 OK: todos returned by the resource API:")

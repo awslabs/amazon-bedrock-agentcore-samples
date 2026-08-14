@@ -66,8 +66,11 @@ def cleanup_aws(dry: bool) -> None:
 
     sm = boto3.client("secretsmanager", region_name=REGION)
     # Note: the secret name is intentionally kept out of the log message.
-    _do(dry, "delete Secrets Manager secret",
-        lambda: sm.delete_secret(SecretId=SECRET_ID, ForceDeleteWithoutRecovery=True))
+    _do(
+        dry,
+        "delete Secrets Manager secret",
+        lambda: sm.delete_secret(SecretId=SECRET_ID, ForceDeleteWithoutRecovery=True),
+    )
 
     iam = boto3.client("iam")
 
@@ -96,8 +99,11 @@ def cleanup_okta(dry: bool) -> None:
     if not base or not token:
         print("  - skip: set OKTA_ORG_URL + OKTA_API_TOKEN to clean up Okta resources")
         return
-    c = httpx.Client(base_url=base, headers={"Authorization": f"SSWS {token}", "Accept": "application/json",
-                                             "Content-Type": "application/json"}, timeout=30)
+    c = httpx.Client(
+        base_url=base,
+        headers={"Authorization": f"SSWS {token}", "Accept": "application/json", "Content-Type": "application/json"},
+        timeout=30,
+    )
 
     def _delete(desc: str, deactivate_path: str, delete_path: str) -> None:
         if dry:
@@ -108,22 +114,25 @@ def cleanup_okta(dry: bool) -> None:
         if r.status_code in (200, 202, 204, 404):
             print(f"  ✓ {desc}")
         elif r.status_code == 409:
-            print(f"  ! {desc}: in use (409) — remove the AI Agent first (it holds a "
-                  f"delegation/resource connection), then re-run.")
+            print(
+                f"  ! {desc}: in use (409) — remove the AI Agent first (it holds a "
+                f"delegation/resource connection), then re-run."
+            )
         else:
             print(f"  ! {desc}: HTTP {r.status_code}")
 
     login_id = os.environ.get("OKTA_LOGIN_CLIENT_ID", "")
     if login_id and not login_id.startswith("your-"):
-        _delete(f"login app {login_id}",
-                f"/api/v1/apps/{login_id}/lifecycle/deactivate", f"/api/v1/apps/{login_id}")
+        _delete(f"login app {login_id}", f"/api/v1/apps/{login_id}/lifecycle/deactivate", f"/api/v1/apps/{login_id}")
 
     as_issuer = os.environ.get("RESOURCE_AS_ISSUER", "")
     as_id = as_issuer.rstrip("/").split("/oauth2/", 1)[-1] if "/oauth2/" in as_issuer else ""
     if as_id:
-        _delete(f"custom AS {as_id}",
-                f"/api/v1/authorizationServers/{as_id}/lifecycle/deactivate",
-                f"/api/v1/authorizationServers/{as_id}")
+        _delete(
+            f"custom AS {as_id}",
+            f"/api/v1/authorizationServers/{as_id}/lifecycle/deactivate",
+            f"/api/v1/authorizationServers/{as_id}",
+        )
 
     print("  NOTE: delete the AI Agent manually (Admin Console > Directory > AI Agents);")
     print("        it must be removed before the custom AS can be deleted.")

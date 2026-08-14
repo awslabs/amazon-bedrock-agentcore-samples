@@ -27,7 +27,6 @@ from dataclasses import dataclass
 
 import httpx
 import jwt
-
 from client_auth import apply_client_auth
 
 # OAuth grant/token-type URIs (RFC 8693 / draft ID-JAG) — not credentials.
@@ -77,7 +76,7 @@ class XaaConfig:
         return f"{self.resource_as_issuer}/v1/token"
 
     @classmethod
-    def from_env(cls) -> "XaaConfig":
+    def from_env(cls) -> XaaConfig:
         private_key = os.environ.get("OKTA_PRIVATE_KEY", "")
         secret_id = os.environ.get("XAA_KEY_SECRET_ID", "")
         if not private_key and secret_id:

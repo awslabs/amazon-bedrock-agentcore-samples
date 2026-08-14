@@ -31,7 +31,7 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-except Exception:  # dotenv optional
+except ImportError:  # dotenv optional
     load_dotenv = None
 
 
@@ -72,8 +72,11 @@ def main() -> None:
 
     agentcore_json = project_dir / "agentcore" / "agentcore.json"
     if not agentcore_json.exists():
-        print(f"ERROR: {agentcore_json} not found. Run `agentcore create` first and "
-              f"run this from inside the project dir.", file=sys.stderr)
+        print(
+            f"ERROR: {agentcore_json} not found. Run `agentcore create` first and "
+            f"run this from inside the project dir.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     config = json.loads(agentcore_json.read_text())

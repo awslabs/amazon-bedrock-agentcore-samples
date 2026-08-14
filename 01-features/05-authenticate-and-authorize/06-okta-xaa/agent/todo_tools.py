@@ -25,7 +25,6 @@ import os
 
 import httpx
 from strands import tool
-
 from xaa_client import XaaConfig, get_resource_access_token
 
 # Set per-request by the agent entrypoint.

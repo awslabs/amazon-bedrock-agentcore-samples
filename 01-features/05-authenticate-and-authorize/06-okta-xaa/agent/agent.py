@@ -19,11 +19,10 @@ import json
 import logging
 import os
 
+import todo_tools
 from bedrock_agentcore.runtime import BedrockAgentCoreApp, RequestContext
 from strands import Agent
 from strands.models import BedrockModel
-
-import todo_tools
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +46,10 @@ def _extract_id_token(payload: dict, context: RequestContext) -> str | None:
     headers = getattr(context, "request_headers", None) or {}
     auth = headers.get("Authorization") or headers.get("authorization")
     if auth:
-        return auth[7:] if auth.startswith("Bearer ") else auth
+        return auth.removeprefix("Bearer ")
     token = payload.get("id_token")
     if token:
-        return token[7:] if token.startswith("Bearer ") else token
+        return token.removeprefix("Bearer ")
     return None
 
 
@@ -90,7 +89,7 @@ async def invocations(payload, context: RequestContext):
         agent = _create_agent()
         async for event in agent.stream_async(user_query):
             yield json.loads(json.dumps(dict(event), default=str))
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Log the full exception server-side, but return a generic message so
         # internal details (tokens, endpoints, stack context) are not leaked to
         # the caller.
