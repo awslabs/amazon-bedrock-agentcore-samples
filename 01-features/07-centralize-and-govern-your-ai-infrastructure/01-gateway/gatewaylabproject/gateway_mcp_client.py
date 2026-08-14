@@ -87,9 +87,7 @@ class GatewayMCPClient:
             h["Mcp-Session-Id"] = self._session_id
         return h
 
-    def _rpc(
-        self, method: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def _rpc(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": method.replace("/", "-") + "-request",

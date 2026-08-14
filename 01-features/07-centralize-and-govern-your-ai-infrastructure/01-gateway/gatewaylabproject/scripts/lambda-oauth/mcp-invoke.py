@@ -81,9 +81,12 @@ async def main():
     print(f"Gateway URL: {gateway_url}")
     print(f"Token: {token[:20]}...\n")
 
-    async with streamablehttp_client(
-        gateway_url, headers={"Authorization": f"Bearer {token}"}
-    ) as (read, write, _), ClientSession(read, write) as session:
+    async with (
+        streamablehttp_client(
+            gateway_url, headers={"Authorization": f"Bearer {token}"}
+        ) as (read, write, _),
+        ClientSession(read, write) as session,
+    ):
         await session.initialize()
 
         print("=" * 60)
