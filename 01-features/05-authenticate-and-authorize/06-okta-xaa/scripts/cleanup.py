@@ -65,7 +65,8 @@ def cleanup_aws(dry: bool) -> None:
     _do(dry, f"delete Lambda function {LAMBDA_NAME}", lambda: lam.delete_function(FunctionName=LAMBDA_NAME))
 
     sm = boto3.client("secretsmanager", region_name=REGION)
-    _do(dry, f"delete secret {SECRET_ID}",
+    # Note: the secret name is intentionally kept out of the log message.
+    _do(dry, "delete Secrets Manager secret",
         lambda: sm.delete_secret(SecretId=SECRET_ID, ForceDeleteWithoutRecovery=True))
 
     iam = boto3.client("iam")
@@ -110,7 +111,7 @@ def cleanup_okta(dry: bool) -> None:
             print(f"  ! {desc}: in use (409) — remove the AI Agent first (it holds a "
                   f"delegation/resource connection), then re-run.")
         else:
-            print(f"  ! {desc}: HTTP {r.status_code} {r.text[:120]}")
+            print(f"  ! {desc}: HTTP {r.status_code}")
 
     login_id = os.environ.get("OKTA_LOGIN_CLIENT_ID", "")
     if login_id and not login_id.startswith("your-"):

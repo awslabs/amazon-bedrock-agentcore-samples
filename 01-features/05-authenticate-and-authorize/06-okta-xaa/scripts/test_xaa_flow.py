@@ -61,10 +61,11 @@ OKTA_PRIVATE_KEY = os.environ.get("OKTA_PRIVATE_KEY", "")
 OKTA_PRIVATE_KEY_PATH = os.environ.get("OKTA_PRIVATE_KEY_PATH", "")
 OKTA_PRIVATE_KEY_KID = os.environ.get("OKTA_PRIVATE_KEY_KID", "")
 
-TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"
-JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-ID_JAG_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id-jag"
-ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"
+# OAuth grant/token-type URIs (RFC 8693 / draft ID-JAG) — not credentials.
+TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"  # nosec B105
+JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"  # nosec B105
+ID_JAG_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id-jag"  # nosec B105
+ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"  # nosec B105
 
 ORG_AUTHORIZE_ENDPOINT = f"{OKTA_ISSUER}/oauth2/v1/authorize"
 ORG_TOKEN_ENDPOINT = f"{OKTA_ISSUER}/oauth2/v1/token"
@@ -76,7 +77,7 @@ def _agent_auth(token_endpoint: str):
     return apply_client_auth(
         method=CLIENT_AUTH_METHOD,
         client_id=AGENT_CLIENT_ID,
-        client_secret="",
+        client_secret="",  # nosec B106 - private_key_jwt; no secret used
         token_endpoint=token_endpoint,
         private_key=OKTA_PRIVATE_KEY,
         private_key_path=OKTA_PRIVATE_KEY_PATH,

@@ -179,4 +179,6 @@ if __name__ == "__main__":
     import uvicorn  # local dev only; not needed on Lambda
 
     port = int(os.environ.get("PORT", "5001"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Bind to loopback by default; set HOST=0.0.0.0 explicitly for container use.
+    host = os.environ.get("HOST", "127.0.0.1")
+    uvicorn.run(app, host=host, port=port)

@@ -30,10 +30,11 @@ import jwt
 
 from client_auth import apply_client_auth
 
-TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"
-JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-ID_JAG_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id-jag"
-ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"
+# OAuth grant/token-type URIs (RFC 8693 / draft ID-JAG) — not credentials.
+TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"  # nosec B105
+JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"  # nosec B105
+ID_JAG_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id-jag"  # nosec B105
+ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"  # nosec B105
 
 
 def _load_key_from_secrets_manager(secret_id: str, region: str) -> str:
@@ -113,7 +114,7 @@ def _agent_auth(cfg: XaaConfig, token_endpoint: str):
     return apply_client_auth(
         method=cfg.client_auth_method,
         client_id=cfg.agent_client_id,
-        client_secret="",
+        client_secret="",  # nosec B106 - private_key_jwt; no secret used
         token_endpoint=token_endpoint,
         private_key=cfg.private_key,
         private_key_path=cfg.private_key_path,

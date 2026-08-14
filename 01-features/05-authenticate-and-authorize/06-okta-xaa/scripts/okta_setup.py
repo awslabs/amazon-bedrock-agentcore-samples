@@ -41,7 +41,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"
+# OAuth grant-type URI (RFC 8693) — not a credential.
+TOKEN_EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange"  # nosec B105
 
 
 def _client(base_url: str, token: str) -> httpx.Client:
@@ -198,17 +199,18 @@ def main() -> None:
 
     oauth = app.get("credentials", {}).get("oauthClient", {})
     client_id = oauth.get("client_id", "<app client_id>")
-    client_secret = oauth.get("client_secret")
+    has_secret = bool(oauth.get("client_secret"))
 
     print("\n--- Add to scripts/.env ---")
     print(f"OKTA_LOGIN_CLIENT_ID={client_id}")
-    if client_secret:
-        print(f"OKTA_LOGIN_CLIENT_SECRET={client_secret}")
+    if has_secret:
+        # Do NOT print the client secret (avoid writing secrets to stdout/logs).
+        # Retrieve it from the Okta Admin Console: Applications -> this app ->
+        # General -> Client Credentials, and paste it into OKTA_LOGIN_CLIENT_SECRET.
+        print("OKTA_LOGIN_CLIENT_SECRET=<copy from Okta Admin Console; not printed>")
     print(
         "\nNote: this app is the login/caller. Register the AI Agent separately\n"
-        "(README -> Okta setup -> Option A) and set OKTA_CLIENT_ID to its AI Agent ID.\n"
-        "If you used --with-token-exchange (Option B), this same client is also\n"
-        "OKTA_CLIENT_ID/OKTA_CLIENT_SECRET."
+        "(README -> Okta setup) and set OKTA_CLIENT_ID to its AI Agent ID."
     )
 
 
