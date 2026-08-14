@@ -10,7 +10,7 @@ An event-driven insurance claims processing system built on **Amazon Bedrock Age
 | ⏱️ **Time to deploy** | ~20-30 minutes (first time, with prerequisites met) |
 | 💰 **Running cost** | ~$3-5/day (Fargate + DynamoDB on-demand + Lambda). Tear down when not testing. |
 | 🏗️ **Resources created** | ~76 (via single CloudFormation stack) |
-| 🧹 **Teardown** | `agentcore destroy --target dev --yes` removes everything |
+| 🧹 **Teardown** | `./scripts/destroy.sh us-west-2` removes everything (stack + Cognito + state) |
 
 ## What You'll Learn
 
@@ -22,23 +22,23 @@ This sample teaches you how to build a production-realistic agent system on Agen
 | **Event-driven triggers** | S3 → EventBridge → Lambda → AgentCore Runtime pipeline for asynchronous processing |
 | **MCP Gateway + Lambda tools** | Tools deployed as Lambda functions behind the Model Context Protocol Gateway, discoverable via semantic search |
 | **Cedar policy enforcement** | A Policy Engine that blocks tool calls at runtime (e.g., claims ≥$100k are denied before execution) |
-| **Cognito M2M authentication** | OAuth2 `client_credentials` flow for service-to-service auth — both inbound (callers → Runtime) and outbound (Runtime → Gateway) |
+| **AgentCore Identity for auth** | `@requires_access_token` decorator manages OAuth tokens via Identity vault — no secrets in env vars |
 | **Agent memory** | SEMANTIC + SUMMARIZATION strategies for cross-session recall of repeat claimants |
 | **Online evaluation** | Built-in quality metrics (Helpfulness, Correctness, Tool Selection Accuracy) running on every invocation |
-| **Observability** | X-Ray tracing + structured CloudWatch logs for debugging agent behavior |
+| **Full observability automation** | CloudWatch Transaction Search + TRACES/LOGS delivery for Gateway/Memory enabled via scripts |
 
 ## Architecture
 
-![High-Level Architecture](./docs/diagrams/high-level-architecture.png)
+![High-Level Architecture](./architecture.png)
 
 <details>
 <summary>Text description (for accessibility)</summary>
 
 The system has three layers:
 
-1. **Ingress:** Email → Amazon SES → S3 bucket (claims-inbox/) → EventBridge rule → Trigger Lambda
+1. **Ingress:** Email → Amazon SES → S3 bucket (claims-inbox/) → EventBridge rule → Trigger Lambda (SigV4 auth to Runtime)
 2. **Processing:** AgentCore Runtime runs Phase 1 (Claims Processor), Phase 2 (Validation Agent), Phase 3 (Execution based on confidence score)
-3. **Tools:** MCP Gateway + Cedar Policy Engine routes tool calls to 6 Lambda functions → DynamoDB, SNS, and SES
+3. **Tools:** MCP Gateway (Cognito CUSTOM_JWT auth) + Cedar Policy Engine routes tool calls to 6 Lambda functions → DynamoDB, SNS, and SES
 
 </details>
 
@@ -92,7 +92,10 @@ ROUTING: AUTO_APPROVE
 ---
 ## Phase 3: Execution
 **Auto-approved** (confidence: 92/100)
-[Agent creates claim record and sends notification email]
+✅ Claim created: CLM-XXXXXXXX
+📧 Approval notification sent to claimant@example.com
+
+✅ Processing complete.
 
 ━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -110,17 +113,22 @@ python3 scripts/test_invoke.py --region us-west-2 \
 
 # Run all 5 E2E scenarios
 python3 scripts/test_e2e.py --region us-west-2
+
+# Validate the authentication patterns (SigV4 inbound, JWT rejection, Gateway M2M, negative cases)
+python3 scripts/test_auth.py --region us-west-2
 ```
 
 ### Teardown
 
 ```bash
-agentcore destroy --target dev --yes
+./scripts/destroy.sh us-west-2
 ```
 
 ## Demo
 
-> A demo video showing the full claim processing flow is available here: [demo.mp4](demo.mp4).
+<p align="center">
+  <img src="docs/demo.gif" alt="Event-Driven Claims Agent demo: a claim is auto-approved with an email notification, a $150k claim is blocked by the Cedar policy, and a claim flows through the S3 to EventBridge to Agent pipeline" width="800" />
+</p>
 
 The demo shows: (1) auto-approved claim with email notification, (2) Cedar policy blocking a $150k claim, (3) event-driven S3 → EventBridge → Agent flow.
 
@@ -131,19 +139,18 @@ The demo shows: (1) auto-approved claim with email notification, (2) Cedar polic
 | [Architecture](./docs/ARCHITECTURE.md) | System components, data flows, dual-agent pipeline, Mermaid diagrams |
 | [Deployment Guide](./docs/deployment.md) | Prerequisites, step-by-step deploy, verify, local dev, troubleshooting, teardown |
 | [Configuration Reference](./docs/CONFIGURATION.md) | All env vars, Cedar policies, Cognito, SES, model, memory settings |
-| [Decision Records](./docs/decisions/README.md) | 10 ADRs explaining every architectural choice and what was rejected |
 | [Tutorial: Make It Your Own](./docs/tutorial.md) | Guided walkthrough to modify the sample for your own use case |
 
 ## AgentCore Services Demonstrated
 
 | Service | What it does here |
 |---------|-------------------|
-| **Runtime** | Hosts the dual-agent container (Strands SDK, Cognito JWT auth, streaming responses) |
+| **Runtime** | Hosts the dual-agent container (Strands SDK, SigV4 inbound auth, streaming responses) |
 | **Gateway** | MCP protocol for tool discovery + invocation, 6 Lambda targets, semantic search |
-| **Identity** | Cognito JWT auth (inbound) + WorkloadIdentity (outbound M2M) |
+| **Identity** | Manages OAuth credentials for Runtime → Gateway auth (no secrets in env vars) |
 | **Policy Engine** | Cedar policies enforced before every tool call (`AllowAll` + `BlockExcessiveClaims`) |
 | **Memory** | SEMANTIC retrieval + SUMMARIZATION for repeat claimant recall across sessions |
-| **Observability** | X-Ray tracing + CloudWatch APPLICATION_LOGS (1-week retention) |
+| **Observability** | X-Ray tracing + CloudWatch APPLICATION_LOGS + Transaction Search with TRACES/LOGS delivery |
 | **Evaluation** | 3 built-in metrics at 100% sampling + custom LLM-as-judge evaluator |
 
 ## Project Structure
@@ -151,27 +158,36 @@ The demo shows: (1) auto-approved claim with email notification, (2) Cedar polic
 ```
 event-driven-claims-agent/
 ├── app/claimsagent/           # Agent runtime (Strands SDK, dual-agent logic)
-│   ├── main.py                # Entrypoint: prompts, agents, routing
+│   ├── main.py                # Entrypoint: prompts, agents, routing, Identity-managed Gateway OAuth
+│   ├── config.py              # Centralized env var reads
 │   ├── Dockerfile             # Container image (Python 3.12, multi-stage)
-│   └── model/load.py          # Bedrock model loading
+│   ├── memory/session.py      # AgentCore Memory (graceful degradation)
+│   └── tools/                 # Co-located tools (structured output)
 ├── agentcore/
 │   ├── agentcore.json         # AgentCore resources (Runtime, Gateway, Memory, PolicyEngine, Eval)
-│   └── cdk/lib/               # CDK: supplementary infra (DynamoDB, S3, Cognito, Lambda, EventBridge)
+│   └── cdk/lib/               # CDK: supplementary infra (DynamoDB, S3, Lambda, EventBridge — NO Cognito)
 ├── lambdas/                   # One Lambda per Gateway tool
 │   ├── schemas/               # MCP tool schemas (JSON)
-│   ├── trigger/               # EventBridge → Runtime invocation
+│   ├── trigger/               # EventBridge → Runtime invocation (SigV4 auth)
 │   ├── create_claim/          # DynamoDB write
 │   ├── policy_lookup/         # DynamoDB read
 │   ├── human_review/          # SNS + DynamoDB
 │   ├── notification/          # SES email
 │   ├── list_pending_claims/   # DynamoDB scan
 │   └── resolve_claim/         # DynamoDB update
-├── scripts/                   # Deploy + test utilities
-│   ├── test_invoke.py         # Interactive agent invocation (streaming)
+├── scripts/                   # Deploy + test + Cognito + observability utilities
+│   ├── setup_cognito.sh       # Create Cognito User Pool (AWS CLI, not CDK)
+│   ├── teardown_cognito.sh    # Delete Cognito if script-created
+│   ├── enable_observability.py  # Enable Transaction Search + deliveries
+│   ├── disable_observability.py # Clean up observability deliveries
+│   ├── destroy.sh             # Unified teardown: observability → stack → Cognito → state
+│   ├── test_invoke.py         # Interactive agent invocation (SigV4 auth, streaming)
+│   ├── test_auth.py           # Authentication pattern tests (SigV4, JWT rejection, Gateway M2M)
+│   ├── test_cedar.py          # Cedar policy enforcement tests
 │   ├── test_e2e.py            # 5-scenario E2E test suite
 │   └── seed_dynamodb.py       # Populate test policies
 ├── docs/                      # Full documentation set
-├── deploy.sh                  # One-command deploy
+├── deploy.sh                  # One-command deploy (interactive Cognito setup)
 └── README.md                  # This file
 ```
 
@@ -195,7 +211,7 @@ In `app/claimsagent/main.py`, search for `confidence >= 80`. Change `80` to your
 
 ### Add a new tool
 
-See the step-by-step guide in [docs/tutorial.md](./docs/tutorial.md#experiment-4-add-a-new-tool).
+See the step-by-step guide in [docs/tutorial.md](./docs/tutorial.md#experiment-5-add-a-new-tool).
 
 ### Adapt to a different domain
 

@@ -11,6 +11,7 @@
 - aurbac
 - bergjaak
 - bioerrorlog
+- Bharathi Srinivasan
 - chanbi
 - crupakheti
 - danystinson
@@ -76,7 +77,6 @@
 - Bhuvan Annamreddi
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
-- Bharathi Srinivasan
 - Trevor Schiavone
 - Antonio Rodriguez (rodzanto)
 - otamaryx
@@ -118,7 +118,16 @@
 - Cristiano Scandura (scandura)
 - palbiren
 - Gui Ruggiero (guiruggiero)
+- Julia Furst Morgado (juliafmorgado)
 - Visakh Madathil (vmmadathil)
 - JobRamos (jobdram)
+- Neha Thakur (nehabthakur)
 - Will Matos (wilmatos)
 - Senthil Mohan (skmohan)
+- Guruprasad Seeryada (svguru)
+- Fabio Balancin (balancin)
+- Varun Gunda (vvargu)
+- tsubasakong
+- Chris Wajule (ggChris2)
+- Anil Nadiminti (aniloncloud)
+- ach1ntya

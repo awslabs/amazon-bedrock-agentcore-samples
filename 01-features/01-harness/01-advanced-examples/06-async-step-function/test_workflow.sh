@@ -23,8 +23,17 @@ STATE_MACHINE_ARN=$(jq -r '.stateMachineArn' deployment_info.json)
 TABLE_NAME=$(jq -r '.dynamoTableName' deployment_info.json)
 REGION=$(jq -r '.region' deployment_info.json)
 
+# How long to wait for an execution before giving up. The state machine allows
+# InvokeHarness 300s per attempt and retries transient errors up to 3 times with
+# exponential backoff, so a worst-case run is a little over 1200s. Wait past
+# that, otherwise a slow-but-healthy run gets reported as a timeout.
+POLL_INTERVAL=2
+POLL_ATTEMPTS=650   # 650 x 2s = 1300s
+
 echo "Region: $REGION"
-echo "State Machine: $(basename $STATE_MACHINE_ARN)"
+# A state machine ARN is colon-delimited, so `basename` left it untouched and
+# this line printed the full ARN. Take the field after the last colon.
+echo "State Machine: ${STATE_MACHINE_ARN##*:}"
 echo "DynamoDB Table: $TABLE_NAME"
 echo ""
 
@@ -33,11 +42,15 @@ if [ "$1" == "--use-samples" ]; then
   echo -e "${BLUE}Using sample data from example_inputs.json${NC}"
   echo ""
 
-  # Read samples
-  SAMPLES=$(jq -r '.examples[0:3] | .[] | .input | @json' example_inputs.json)
+  # Read samples. Emit one compact JSON object per line and iterate with
+  # `while read`, NOT `for SAMPLE in $SAMPLES`: the inputs contain spaces
+  # (e.g. {"city":"New York",...}), so word-splitting an unquoted $SAMPLES
+  # would break each object apart and feed jq a fragment — the classic
+  # "jq: parse error: Unfinished string at EOF" that aborted this whole test.
   COUNT=0
 
-  for SAMPLE in $SAMPLES; do
+  while IFS= read -r SAMPLE; do
+    [ -z "$SAMPLE" ] && continue
     COUNT=$((COUNT+1))
     CITY=$(echo "$SAMPLE" | jq -r '.city')
     DATE=$(echo "$SAMPLE" | jq -r '.date')
@@ -54,8 +67,11 @@ if [ "$1" == "--use-samples" ]; then
     echo "  Execution ARN: $EXEC_ARN"
     echo "  Waiting for completion..."
 
-    # Wait for result
-    for i in {1..60}; do
+    # Wait for result. Handle every terminal status, and treat running-out
+    # of attempts as a timeout instead of silently falling through to the
+    # results section as if the run had succeeded.
+    SETTLED=""
+    for _ in $(seq 1 $POLL_ATTEMPTS); do
       STATUS=$(aws stepfunctions describe-execution \
         --execution-arn "$EXEC_ARN" \
         --region $REGION \
@@ -64,9 +80,10 @@ if [ "$1" == "--use-samples" ]; then
 
       if [ "$STATUS" == "SUCCEEDED" ]; then
         echo -e "  ${GREEN}✓ Success${NC}"
+        SETTLED="$STATUS"
         break
-      elif [ "$STATUS" == "FAILED" ]; then
-        echo -e "  ${RED}✗ Failed${NC}"
+      elif [ "$STATUS" == "FAILED" ] || [ "$STATUS" == "TIMED_OUT" ] || [ "$STATUS" == "ABORTED" ]; then
+        echo -e "  ${RED}✗ $STATUS${NC}"
         aws stepfunctions describe-execution \
           --execution-arn "$EXEC_ARN" \
           --region $REGION \
@@ -74,10 +91,15 @@ if [ "$1" == "--use-samples" ]; then
           --output text
         exit 1
       fi
-      sleep 2
+      sleep $POLL_INTERVAL
     done
+
+    if [ -z "$SETTLED" ]; then
+      echo -e "  ${RED}✗ Gave up after $((POLL_ATTEMPTS * POLL_INTERVAL))s waiting for the execution to finish${NC}"
+      exit 1
+    fi
     echo ""
-  done
+  done < <(jq -c '.examples[0:3] | .[] | .input' example_inputs.json)
 
 else
   # Interactive mode
@@ -113,23 +135,22 @@ else
   echo ""
   echo "Monitoring execution..."
 
-  for i in {1..60}; do
+  SETTLED=""
+  for _ in $(seq 1 $POLL_ATTEMPTS); do
     STATUS=$(aws stepfunctions describe-execution \
       --execution-arn "$EXEC_ARN" \
       --region $REGION \
       --query 'status' \
       --output text)
 
-    if [ "$STATUS" == "RUNNING" ]; then
-      echo -n "."
-      sleep 2
-    elif [ "$STATUS" == "SUCCEEDED" ]; then
+    if [ "$STATUS" == "SUCCEEDED" ]; then
       echo ""
       echo -e "${GREEN}✓ Execution succeeded!${NC}"
+      SETTLED="$STATUS"
       break
-    elif [ "$STATUS" == "FAILED" ]; then
+    elif [ "$STATUS" == "FAILED" ] || [ "$STATUS" == "TIMED_OUT" ] || [ "$STATUS" == "ABORTED" ]; then
       echo ""
-      echo -e "${RED}✗ Execution failed${NC}"
+      echo -e "${RED}✗ Execution $STATUS${NC}"
       ERROR=$(aws stepfunctions describe-execution \
         --execution-arn "$EXEC_ARN" \
         --region $REGION \
@@ -144,7 +165,16 @@ else
       echo "Cause: $CAUSE"
       exit 1
     fi
+    # Any non-terminal status (RUNNING, PENDING_REDRIVE): keep waiting.
+    echo -n "."
+    sleep $POLL_INTERVAL
   done
+
+  if [ -z "$SETTLED" ]; then
+    echo ""
+    echo -e "${RED}✗ Gave up after $((POLL_ATTEMPTS * POLL_INTERVAL))s waiting for the execution to finish${NC}"
+    exit 1
+  fi
 
   echo ""
 fi

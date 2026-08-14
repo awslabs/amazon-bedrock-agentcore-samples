@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Mount S3 as the Harness Filesystem
 
@@ -78,24 +77,20 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
 import uuid
-
 from pathlib import Path
 
 import boto3
-import botocore.exceptions
+from botocore.exceptions import BotoCoreError, ClientError
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from utils.iam import create_harness_role, ROLE_NAME
 from utils.client import get_agentcore_client, get_agentcore_control_client
-
-REGION = os.getenv("AWS_DEFAULT_REGION")
-
+from utils.harness import poll_harness_status
+from utils.iam import ROLE_NAME, create_harness_role, delete_harness_role
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -107,9 +102,6 @@ S3_FILES_POLICY_NAME = "HarnessS3FilesAccess"
 
 # mountPath must match /mnt/<name> (see the service model: MountPath)
 MOUNT_PATH_PATTERN = re.compile(r"^/mnt/[a-zA-Z0-9._-]+/?$")
-
-HARNESS_POLL_INTERVAL = 5
-HARNESS_POLL_TIMEOUT = 180
 
 
 # ---------------------------------------------------------------------------
@@ -181,9 +173,12 @@ parser.add_argument(
 def attach_s3_files_policy(role_name, access_point_arn):
     """Allow the execution role to validate and mount the S3 Files access point.
 
-    * `s3files:GetAccessPoint` on `*` — the runtime validates this at harness
-      create time. Keep it unscoped; a scoped/conditioned form is rejected at
-      create with "Ensure the role has s3files:GetAccessPoint".
+    * `s3files:GetAccessPoint` **and `s3files:ListMountTargets`** on `*` — the
+      runtime validates both while creating the harness, so both must be
+      unscoped. `ListMountTargets` is easy to miss: it takes a file-system ID
+      rather than an access point, and without it CreateHarness accepts the
+      request and then lands in CREATE_FAILED with "Execution role is missing
+      required permissions. Ensure the role has s3files:ListMountTargets".
     * `s3files:ClientMount`/`ClientWrite` — used when the microVM mounts the
       access point; scoped to the file system with an AccessPointArn condition.
     """
@@ -195,7 +190,7 @@ def attach_s3_files_policy(role_name, access_point_arn):
             {
                 "Sid": "S3FilesValidate",
                 "Effect": "Allow",
-                "Action": ["s3files:GetAccessPoint"],
+                "Action": ["s3files:GetAccessPoint", "s3files:ListMountTargets"],
                 "Resource": "*",
             },
             {
@@ -215,23 +210,6 @@ def attach_s3_files_policy(role_name, access_point_arn):
     print(f"  Attached S3 Files access policy: {S3_FILES_POLICY_NAME}")
 
 
-def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
-    """Poll until a Harness reaches the target status or times out."""
-    deadline = time.monotonic() + timeout
-    while True:
-        resp = control.get_harness(harnessId=harness_id)
-        status = resp["harness"]["status"]
-        print(f"  Harness status: {status}")
-        if status == target_status:
-            return resp
-        if status in ("FAILED", "DELETE_FAILED"):
-            reason = resp["harness"].get("failureReason", "")
-            raise RuntimeError(f"Harness entered {status}. {reason}")
-        if time.monotonic() > deadline:
-            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
-        time.sleep(HARNESS_POLL_INTERVAL)
-
-
 def stream_response(client, harness_arn, session_id, message, model_id, raw=False):
     """Invoke a Harness and stream the response to stdout."""
     response = client.invoke_harness(
@@ -246,6 +224,11 @@ def stream_response(client, harness_arn, session_id, message, model_id, raw=Fals
         for event in response["stream"]:
             if raw:
                 print(json.dumps(event, default=str))
+                # Accumulate in raw mode too, so the guard below can tell a
+                # stream that produced content from one that produced none.
+                delta = event.get("contentBlockDelta", {}).get("delta", {})
+                if "text" in delta:
+                    full_text += delta["text"]
                 continue
 
             if "contentBlockStart" in event:
@@ -261,7 +244,14 @@ def stream_response(client, harness_arn, session_id, message, model_id, raw=Fals
                 print()
             elif "internalServerException" in event:
                 print(f"\n  Error: {event['internalServerException']}")
-    except botocore.exceptions.EventStreamError:
+    # A mid-stream failure is raised out of the iterator, not delivered as an
+    # event: a modeled service error (EventStreamError/ClientError — throttling,
+    # access denied) or a transport error (read timeout, connection reset — a
+    # BotoCoreError). Catching only EventStreamError let a read timeout abort the
+    # demo even after the answer had streamed, with a traceback that named
+    # nothing useful. Re-raise only when nothing arrived.
+    except (BotoCoreError, ClientError) as e:
+        print(f"\n  Stream error: {e}")
         if not full_text:
             raise
 
@@ -284,6 +274,7 @@ def main(args=None):
     mount = args.mount_path.rstrip("/")
     remote_file = f"{mount}/{args.filename}"
     harness_id = None
+    created_role = False
 
     try:
         # ── Step 0: IAM role (with S3 access) ─────────────────────────
@@ -296,6 +287,7 @@ def main(args=None):
             print("  (ensure it can access the S3 Files access point)")
         else:
             role_arn = create_harness_role()
+            created_role = True
             attach_s3_files_policy(ROLE_NAME, args.access_point_arn)
             print("  Waiting for IAM propagation...")
             time.sleep(10)
@@ -384,13 +376,21 @@ def main(args=None):
         print("=" * 60)
 
     finally:
-        if not args.skip_cleanup and harness_id:
+        if not args.skip_cleanup:
             print("\nCleaning up...")
-            try:
-                control.delete_harness(harnessId=harness_id)
-                print(f"  Deleted harness: {harness_id}")
-            except Exception as e:
-                print(f"  Warning: failed to delete harness: {e}")
+            if harness_id:
+                try:
+                    control.delete_harness(harnessId=harness_id)
+                    print(f"  Deleted harness: {harness_id}")
+                except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
+                    print(f"  Warning: failed to delete harness: {e}")
+            # The role and its two inline policies were left behind on every run,
+            # including successful ones — and the role name is shared by every
+            # sample in this folder, so the leftovers broke the next sample too.
+            # Only delete the role when this run created it; a --role-arn passed
+            # in by the caller belongs to them.
+            if created_role:
+                delete_harness_role()
             print("  Note: the S3 bucket and access point are left intact.")
 
 

@@ -11,7 +11,7 @@ Memory records can carry structured metadata (key → value) so retrieval can ap
 ## Run
 
 ```bash
-pip install boto3 bedrock-agentcore
+pip install -r ../requirements.txt   # indexedKeys needs boto3>=1.43.35
 python structured-metadata.py boto3   # default — direct service calls
 python structured-metadata.py sdk     # documents the SDK gap (no indexedKeys / batch / metadataFilters helpers)
 ```

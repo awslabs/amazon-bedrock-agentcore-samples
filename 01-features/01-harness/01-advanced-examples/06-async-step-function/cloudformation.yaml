@@ -131,7 +131,10 @@ Resources:
                   - bedrock-agentcore:GetWorkloadAccessTokenForJWT
                 Resource:
                   - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
-                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/harness_harness_*
+                  # The identity a harness gets is named `harness_<HarnessName>-<suffix>`
+                  # (e.g. harness_WeatherHarness-JhUExN3fko), so the doubled
+                  # `harness_harness_*` prefix here matched nothing.
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/harness_*
               - Sid: AgentCoreBrowserDefault
                 Effect: Allow
                 Action:
@@ -152,6 +155,34 @@ Resources:
                   - bedrock-agentcore:ListCodeInterpreterSessions
                   - bedrock-agentcore:InvokeCodeInterpreter
                 Resource: !Sub arn:aws:bedrock-agentcore:${AWS::Region}:aws:code-interpreter/*
+              # Creating a harness auto-provisions a managed memory
+              # (harness_<HarnessName>_*). Without these actions the very first
+              # InvokeHarness fails with AccessDeniedException on ListEvents —
+              # and because the Step Functions Catch routes that to a
+              # success-shaped result, executions report SUCCEEDED while nothing
+              # is ever written to DynamoDB. These mirror the shared
+              # utils/iam.py policy the Python samples use.
+              - Sid: AgentCoreMemoryAccess
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:DeleteMemory
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetEvent
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/*
+              # CreateMemory and ListMemories act on the account, not on a memory
+              # that exists yet, so they cannot be scoped to `memory/*` — doing so
+              # leaves them implicitly denied (confirmed with
+              # iam:SimulateCustomPolicy). They must sit in their own statement.
+              - Sid: AgentCoreMemoryAccountScoped
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:CreateMemory
+                  - bedrock-agentcore:ListMemories
+                Resource: '*'
               - Sid: EFSClientAccess
                 Effect: Allow
                 Action:
@@ -298,6 +329,16 @@ Resources:
               "TimeoutSeconds": 300,
               "Retry": [
                 {
+                  "Comment": "Caller-fault errors are never fixed by trying again. Retriers are evaluated in order, so matching these first with MaxAttempts 0 makes them fail fast. Without this, the States.TaskFailed retrier below matched every failure and a bad IAM policy or harness ARN was billed as four identical invocations before surfacing.",
+                  "ErrorEquals": [
+                    "BedrockAgentCore.AccessDeniedException",
+                    "BedrockAgentCore.ValidationException",
+                    "BedrockAgentCore.ResourceNotFoundException",
+                    "BedrockAgentCore.RuntimeClientErrorException"
+                  ],
+                  "MaxAttempts": 0
+                },
+                {
                   "ErrorEquals": ["States.Timeout", "States.TaskFailed"],
                   "IntervalSeconds": 2,
                   "MaxAttempts": 3,
@@ -311,23 +352,38 @@ Resources:
                   "Next": "HandleError"
                 }
               ],
-              "Next": "ExtractBetweenBraces"
+              "Next": "ExtractJson"
             },
-            "ExtractBetweenBraces": {
+            "ExtractJson": {
+              "Comment": "Pull the JSON object out of the agent's reply with a single JSONata regex match. The previous version split the text on '{' and took element 1, which crashed with States.Runtime/Invalid arguments in States.ArrayGetItem whenever the model replied with bare JSON (no leading prose, so no element 1), and silently truncated any nested object at its first '}'. Matching greedily from the first '{' to the last '}' handles bare, prose-wrapped and ```json-fenced replies, and keeps nested objects intact. The $exists guard turns 'no JSON at all' into an empty string so the Choice below can report it clearly instead of failing with an opaque JSONata error.",
               "Type": "Pass",
-              "Parameters": {
-                "fullText.$": "$.harnessOutput.Output.Message.Content[0].Text",
-                "reconstructed.$": "States.Format('\\{{}\\}', States.ArrayGetItem(States.StringSplit(States.ArrayGetItem(States.StringSplit($.harnessOutput.Output.Message.Content[0].Text, '{'), 1), '}'), 0))"
+              "QueryLanguage": "JSONata",
+              "Output": {
+                "city": "{% $states.input.city %}",
+                "date": "{% $states.input.date %}",
+                "jsonText": "{% ( $m := $match($states.input.harnessOutput.Output.Message.Content[0].Text, /\\{[\\s\\S]*\\}/).match; $exists($m) ? $m : '' ) %}"
               },
-              "ResultPath": "$.extracted",
-              "Next": "ParseJSON"
+              "Next": "CheckJsonFound"
             },
-            "ParseJSON": {
+            "CheckJsonFound": {
+              "Type": "Choice",
+              "QueryLanguage": "JSONata",
+              "Choices": [
+                {
+                  "Condition": "{% $states.input.jsonText != '' %}",
+                  "Next": "ParseJson"
+                }
+              ],
+              "Default": "HandleUnparseableResponse"
+            },
+            "ParseJson": {
               "Type": "Pass",
-              "Parameters": {
-                "data.$": "States.StringToJson($.extracted.reconstructed)"
+              "QueryLanguage": "JSONata",
+              "Output": {
+                "city": "{% $states.input.city %}",
+                "date": "{% $states.input.date %}",
+                "parsed": "{% $parse($states.input.jsonText) %}"
               },
-              "ResultPath": "$.parsed",
               "Next": "StoreToDynamoDB"
             },
             "StoreToDynamoDB": {
@@ -337,25 +393,25 @@ Resources:
                 "TableName": "${TableName}",
                 "Item": {
                   "id": {
-                    "S.$": "$.parsed.data.id"
+                    "S.$": "$.parsed.id"
                   },
                   "timestamp": {
-                    "S.$": "States.Format('{}', $.parsed.data.timestamp)"
+                    "S.$": "States.Format('{}', $.parsed.timestamp)"
                   },
                   "city": {
-                    "S.$": "$.parsed.data.city"
+                    "S.$": "$.parsed.city"
                   },
                   "date": {
-                    "S.$": "$.parsed.data.date"
+                    "S.$": "$.parsed.date"
                   },
                   "temperature_c": {
-                    "N.$": "States.Format('{}', $.parsed.data.temperature_c)"
+                    "N.$": "States.Format('{}', $.parsed.temperature_c)"
                   },
                   "temperature_f": {
-                    "N.$": "States.Format('{}', $.parsed.data.temperature_f)"
+                    "N.$": "States.Format('{}', $.parsed.temperature_f)"
                   },
                   "conditions": {
-                    "S.$": "$.parsed.data.conditions"
+                    "S.$": "$.parsed.conditions"
                   },
                   "input_city": {
                     "S.$": "$.city"
@@ -367,13 +423,17 @@ Resources:
               },
               "End": true
             },
+            "HandleUnparseableResponse": {
+              "Comment": "The harness answered, but the answer contained no JSON object to store.",
+              "Type": "Fail",
+              "Error": "AgentResponseNotJson",
+              "Cause": "The harness reply contained no parseable JSON object, so there was nothing to write to DynamoDB. Inspect the InvokeHarness output text in the execution history."
+            },
             "HandleError": {
-              "Type": "Pass",
-              "Parameters": {
-                "error": "Harness invocation failed",
-                "details.$": "$.error"
-              },
-              "End": true
+              "Comment": "Fail the execution so a caught harness error surfaces as FAILED. A Pass/End here would report SUCCEEDED while nothing was written to DynamoDB, hiding the failure behind a green checkmark.",
+              "Type": "Fail",
+              "Error": "HarnessInvocationFailed",
+              "Cause": "The harness invocation did not complete successfully. See the InvokeHarness task error in the execution history for the underlying cause. No item was written to DynamoDB."
             }
           }
         }
@@ -405,6 +465,9 @@ Outputs:
 
   HarnessId:
     Description: AgentCore harness ID
-    Value: !Ref WeatherHarness
+    # !Ref on AWS::BedrockAgentCore::Harness returns the ARN, not the ID, so this
+    # output used to duplicate HarnessArn. Take the last path segment of the ARN
+    # to get the real harness ID that GetHarness/DeleteHarness expect.
+    Value: !Select [1, !Split ['harness/', !GetAtt WeatherHarness.Arn]]
     Export:
       Name: !Sub ${AWS::StackName}-HarnessId

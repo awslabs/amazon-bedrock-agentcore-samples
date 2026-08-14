@@ -16,7 +16,7 @@ A single memory resource can host any combination of these; records land in dist
 ## Run
 
 ```bash
-pip install boto3 bedrock-agentcore
+pip install -r ../requirements.txt   # the sdk surface needs bedrock-agentcore>=1.14
 python semantic.py boto3        # default — direct service calls
 python semantic.py sdk          # AgentCore MemoryClient helpers
 ```

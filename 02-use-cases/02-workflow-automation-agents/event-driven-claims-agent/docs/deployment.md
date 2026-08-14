@@ -6,7 +6,18 @@
 ./deploy.sh us-west-2
 ```
 
-This runs all steps below automatically and seeds test data. When complete, you'll see:
+This runs all steps below automatically:
+1. Configures deployment target (auto-detects account ID, generates `aws-targets.json`)
+2. Checks/creates Cognito User Pool for Gateway auth (interactive — auto-creates if needed)
+3. Registers OAuth credential with AgentCore Identity (`agentcore add credential`)
+4. Installs CDK dependencies (`npm install`)
+5. Installs agent Python dependencies (`uv sync`)
+6. Validates `agentcore.json`
+7. Bootstraps CDK (first-time only)
+8. Deploys via `agentcore deploy --target dev --yes`
+9. Seeds DynamoDB with test data (4 policies)
+
+When complete, you'll see:
 
 ```
 ✅ Done! Claims Agent deployed to us-west-2
@@ -17,8 +28,11 @@ This runs all steps below automatically and seeds test data. When complete, you'
 🛡️  Test Cedar policy (should block $100k+ claims):
    python3 scripts/test_invoke.py --region us-west-2 --prompt 'File a claim for POL-12345. Car totaled. $150000 damage.'
 
-🧪 Local dev:
-   agentcore dev --no-browser
+🔭 Enable full observability (optional — adds Gateway/Memory trace + log delivery):
+   python3 scripts/enable_observability.py --region us-west-2 --stack-name AgentCore-ClaimsAgent-dev
+
+🧹 Teardown:
+   ./scripts/destroy.sh us-west-2
 ```
 
 If the deploy fails at any step, see [Troubleshooting](#troubleshooting) below.
@@ -122,10 +136,11 @@ Sets environment variables, validates, bootstraps, deploys, and seeds data.
 python3 scripts/seed_dynamodb.py --region us-west-2
 ```
 
-Creates three test policies:
+Creates four test policies:
 - `POL-12345` — John Smith, auto, $50,000 coverage
 - `POL-67890` — Jane Doe, home, $250,000 coverage
 - `POL-11111` — Bob Johnson, auto, $75,000 coverage
+- `POL-99999` — Alice Williams, auto, $100,000 coverage (expired)
 
 ### 9. Verify Deployment
 
@@ -160,12 +175,15 @@ ROUTING: AUTO_APPROVE
 ---
 ## Phase 3: Execution
 **Auto-approved** (confidence: 92/100)
-[Agent calls create_claim and send_notification]
+✅ Claim created: CLM-XXXXXXXX
+📧 Approval notification sent to claimant@example.com
+
+✅ Processing complete.
 
 ━━━━━━━━━━━━━━━━━━━━━
 ```
 
-> **Note:** The exact wording varies between runs (LLM output is non-deterministic), but the structure (3 phases, DECISION, CONFIDENCE, ROUTING) is consistent.
+> **Note:** Phase 3 is deterministic — it does not use an LLM call. Tool calls are made directly via MCPClient based on the routing decision from Phase 2. The exact wording of Phase 1/2 varies between runs (LLM output is non-deterministic), but the structure (3 phases, DECISION, CONFIDENCE, ROUTING) is consistent.
 
 **Test Cedar policy enforcement (should block — $150k exceeds the $100k threshold):**
 
@@ -200,19 +218,44 @@ Run a single test:
 python3 scripts/test_e2e.py --region us-west-2 --test 2
 ```
 
-### 10. Teardown
-
-**Destroy all resources:**
+**Validate authentication patterns:**
 
 ```bash
-agentcore destroy --target dev --yes
+python3 scripts/test_auth.py --region us-west-2
 ```
 
-Or manually:
+This exercises the full auth model:
+1. SigV4 → Runtime (the correct inbound path) succeeds
+2. JWT → Runtime is rejected (Runtime uses AWS_IAM inbound, not CUSTOM_JWT)
+3. Runtime → Gateway Cognito M2M auth works (verified via a tool call)
+4. Unauthenticated request is rejected
+5. Invalid/expired JWT is rejected
+6. Wrong-scope token is rejected at the Cognito token endpoint
+
+### 10. Teardown
+
+**Unified teardown (recommended):**
 
 ```bash
-cd agentcore/cdk
-cdk destroy --all --force
+./scripts/destroy.sh us-west-2
+```
+
+This runs a two-step process:
+1. Removes observability deliveries (CloudWatch logs + traces) if enabled
+2. Calls `cleanup_agentcore.py` which handles stack deletion (with `DELETE_FAILED` auto-recovery), orphaned AgentCore resource cleanup, Cognito teardown, and local state cleanup
+
+**Manual teardown:**
+
+The AgentCore CLI does not have a `destroy` command. Use CDK directly:
+
+```bash
+cd agentcore/cdk && npx cdk destroy --all --force
+```
+
+Then clean up orphaned resources and Cognito:
+
+```bash
+python3 scripts/cleanup_agentcore.py --region us-west-2 --project-dir .
 ```
 
 **Note:** S3 buckets and DynamoDB tables are configured with `removalPolicy: DESTROY` and `autoDeleteObjects: true` for development. They will be deleted on stack teardown.
@@ -255,25 +298,36 @@ Run the agent locally while tools, auth, and data stay in the cloud.
    ```bash
    cp .env.example .env
    ```
-   Fill in values from the CloudFormation outputs:
+   Fill in values from the deployed stack. Note that for the new Identity-based auth, you only need:
    ```
    AGENTCORE_GATEWAY_URL=https://xxx.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp
-   AGENTCORE_GATEWAY_TOKEN_ENDPOINT=https://claims-agent-XXXXXX.auth.us-west-2.amazoncognito.com/oauth2/token
-   AGENTCORE_GATEWAY_CLIENT_ID=<from outputs>
-   AGENTCORE_GATEWAY_CLIENT_SECRET=<from outputs>
+   COGNITO_DISCOVERY_URL=https://cognito-idp.us-west-2.amazonaws.com/<pool-id>/.well-known/openid-configuration
+   AGENTCORE_GATEWAY_CLIENT_ID=<client-id>
+   AGENTCORE_GATEWAY_CLIENT_SECRET=<client-secret>
    AGENTCORE_GATEWAY_OAUTH_SCOPES=agentcore/invoke
+   AGENTCORE_GATEWAY_CREDENTIAL_PROVIDER=cognito-gateway-m2m
    ```
+
+   Optional tuning (safe defaults are provided):
+   ```
+   # Confidence threshold for auto-approval (0-100)
+   AUTO_APPROVE_THRESHOLD=80
+   # Memory retrieval tuning
+   MEMORY_RETRIEVAL_TOP_K=5
+   MEMORY_RETRIEVAL_RELEVANCE=0.5
+   ```
+
+   The local `agentcore dev` server will use these to register a local workload identity automatically.
 
 4. Start the local dev server:
    ```bash
-   agentcore dev --no-browser
+   agentcore dev --logs
    ```
-   Expected output:
+   Or run the agent directly:
+   ```bash
+   cd app/claimsagent && source .venv/bin/activate && python main.py
    ```
-   🚀 Starting local development server...
-   ✅ Runtime available at http://localhost:3000
-   👀 Watching for file changes...
-   ```
+   The agent serves on `http://localhost:8080`.
 
 5. Test against local:
    ```bash
@@ -281,7 +335,7 @@ Run the agent locally while tools, auth, and data stay in the cloud.
    ```
    Or use curl directly:
    ```bash
-   curl -X POST http://localhost:3000/invocations \
+   curl -X POST http://localhost:8080/invocations \
      -H "Content-Type: application/json" \
      -d '{"prompt": "File a claim for POL-12345. $3000 windshield damage."}'
    ```
@@ -313,6 +367,36 @@ No container rebuild needed during local dev — only when deploying to the clou
 ---
 
 ## Troubleshooting
+
+### agentcore validate — schema errors after CLI upgrade
+
+If `agentcore validate` reports errors like:
+- `memories[0].type: expected "AgentCoreMemory"`
+- `credentials[0].type: invalid "type" value`
+
+This means the CLI version has been upgraded and expects new schema fields. Common fixes:
+
+1. **Memories** — add `"type": "AgentCoreMemory"` to each memory object in `agentcore.json`
+2. **Credentials** — remove the `credentials` array entirely (credentials are managed via `agentcore add credential` CLI command, not the JSON file)
+
+After fixing:
+```bash
+agentcore validate   # Should print "Valid"
+```
+
+### Deploy fails: "No agents or gateways defined"
+
+CLI v0.3.0+ expects `agents` (not `runtimes`) as the top-level key. However, `agentcore validate` still accepts `runtimes`. If you encounter this discrepancy, rename `runtimes` → `agents` and add `"type": "AgentCoreRuntime"` to each entry. Also add `"runtimeVersion": "PYTHON_3_12"` if not present.
+
+### Stack in REVIEW_IN_PROGRESS state
+
+If a previous deploy failed during CloudFormation changeset review, the stack may be stuck:
+
+```bash
+aws cloudformation delete-stack --stack-name AgentCore-ClaimsAgent-dev --region us-west-2
+aws cloudformation wait stack-delete-complete --stack-name AgentCore-ClaimsAgent-dev --region us-west-2
+./deploy.sh us-west-2
+```
 
 ### CDK Bootstrap Failed
 
@@ -355,6 +439,72 @@ If tools fail with "Function not found", verify IAM permissions on Lambda ARNs i
 agentcore deploy --target dev --yes
 ```
 
+### Agent reports a Gateway tool is unavailable (e.g. "lookup_policy is not available")
+
+**Symptom:** The agent responds that it can't access a Gateway tool (`lookup_policy`, `create_claim`, etc.) and rejects/flags the claim for manual review. Runtime logs show, on every invocation:
+
+```
+Failed to build MCP client (Identity auth): GetResourceOauth2Token:
+Failed to fetch discovery document from:
+https://cognito-idp.<region>.amazonaws.com/<pool-id>/.well-known/openid-configuration
+```
+
+**Cause:** The `cognito-gateway-m2m` credential provider in AgentCore Identity has a discovery URL pointing at a Cognito pool that no longer exists or is in a different region than the deployment. This commonly happens after redeploying to a **new region**: `setup_cognito.sh` creates a fresh pool and updates `.env`, but `agentcore add credential` is **idempotent** — since the provider already exists, the `add` is a no-op and the stale discovery URL is never updated. The Runtime can't fetch a Gateway token, so `get_mcp_client()` returns `None` and no Gateway tools load (the co-located `submit_decision` tool still works, so the agent runs but can't verify policies).
+
+**Diagnose:**
+```bash
+# Check the provider's current discovery URL vs. the deployed region
+aws bedrock-agentcore-control get-oauth2-credential-provider \
+  --name cognito-gateway-m2m --region <region> \
+  --query "oauth2ProviderConfigOutput.customOauth2ProviderConfig.oauthDiscovery.discoveryUrl" \
+  --output text
+# Compare against COGNITO_DISCOVERY_URL in .env
+grep COGNITO_DISCOVERY_URL .env
+```
+
+**Fix:** Reconcile the credential provider with the current `.env` values (secret is sourced in-shell, never printed):
+```bash
+./scripts/fix_credential_region.sh <region>
+```
+
+Then invoke with a **fresh session** — the Runtime caches the MCP client as a module-level singleton, so a warm session keeps the old failure; a new cold session picks up the corrected token.
+
+### `agentcore deploy` fails: Gateway `DiscoveryUrl: failed validation` / PLACEHOLDER in synth
+
+**Symptom:** Running `agentcore deploy` directly (not via `deploy.sh`) fails with:
+```
+Properties validation failed ... #/AuthorizerConfiguration/CustomJWTAuthorizer/DiscoveryUrl:
+failed validation constraint for keyword [pattern]
+```
+and the synthesized template shows `DiscoveryUrl: PLACEHOLDER_DISCOVERY_URL`.
+
+**Cause:** The CDK stack reads `COGNITO_DISCOVERY_URL` and `AGENTCORE_GATEWAY_CLIENT_ID` from the environment at synth time. `deploy.sh` sources `.env` first; a bare `agentcore deploy` does not, so the placeholders never get patched.
+
+**Fix:** Export the env before deploying (or just use `./deploy.sh <region>`):
+```bash
+set -a && source .env && set +a
+export AWS_REGION=<region> CDK_DEFAULT_REGION=<region>
+agentcore deploy --target dev --yes
+```
+
+### Event-driven (email/S3) claim never appears in DynamoDB
+
+**Symptom:** You upload an email to `s3://claims-inbox-.../claims-inbox/` but no claim shows up.
+
+**Cause / expected behavior:** The Trigger Lambda is **fire-and-forget** — it invokes the Runtime and returns in a few seconds without waiting for the full dual-agent pipeline (~60–90s). Results are written to DynamoDB by the agent's tool calls *after* the Lambda returns.
+
+**Diagnose:**
+```bash
+# 1. Confirm the Trigger Lambda fired
+aws logs tail /aws/lambda/ClaimsAgent-Trigger --region <region> --since 5m
+
+# 2. Wait ~90s, then check the Claims table
+aws dynamodb scan --table-name ClaimsAgent-dev-Claims --region <region> \
+  --filter-expression "policy_number = :p" \
+  --expression-attribute-values '{":p":{"S":"POL-67890"}}'
+```
+If the Lambda log shows `Runtime accepted claim ... (HTTP 200)` but nothing lands in DynamoDB, check the Runtime logs for the "tool unavailable" issue above (a failed Gateway connection means `create_claim` never runs).
+
 ### SES Email Not Sending
 
 In SES sandbox mode, verify sender and recipient emails:
@@ -391,3 +541,9 @@ agentcore deploy --target dev --yes
 ```
 
 **Note:** Ensure the Bedrock model (`global.anthropic.claude-sonnet-4-6`) is available in your target region. The global inference profile automatically routes to the nearest available region.
+
+**⚠️ Credential provider region caveat:** The `cognito-gateway-m2m` credential provider is created once and `agentcore add credential` is idempotent. When you deploy to a **different region** than a previous run, the provider keeps its old discovery URL and the agent will fail to load Gateway tools (see [Agent reports a Gateway tool is unavailable](#agent-reports-a-gateway-tool-is-unavailable-eg-lookup_policy-is-not-available)). After a cross-region redeploy, run:
+
+```bash
+./scripts/fix_credential_region.sh <new-region>
+```

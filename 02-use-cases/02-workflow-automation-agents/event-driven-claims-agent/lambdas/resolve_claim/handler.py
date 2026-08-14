@@ -1,8 +1,13 @@
 import json
+import logging
 import os
 from datetime import datetime, timezone
 
 import boto3
+from boto3.dynamodb.conditions import Key
+
+logger = logging.getLogger()
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 dynamodb = boto3.resource("dynamodb")
 claims_table = dynamodb.Table(os.environ.get("CLAIMS_TABLE", "ClaimsAgent-Claims"))
@@ -36,11 +41,12 @@ def handler(event, context):
             },
         )
 
-        # Also update review record if exists
-        from boto3.dynamodb.conditions import Attr
-
-        reviews = reviews_table.scan(FilterExpression=Attr("claim_id").eq(claim_id))
-        for review in reviews.get("Items", []):
+        # Use claim-id-index GSI instead of scan to find related reviews
+        reviews_resp = reviews_table.query(
+            IndexName="claim-id-index",
+            KeyConditionExpression=Key("claim_id").eq(claim_id),
+        )
+        for review in reviews_resp.get("Items", []):
             reviews_table.update_item(
                 Key={"review_id": review["review_id"]},
                 UpdateExpression="SET #s = :status, resolved_at = :ts",
@@ -58,4 +64,5 @@ def handler(event, context):
             }
         )
     except Exception as e:
+        logger.error("Failed to resolve claim", extra={"error": str(e), "claim_id": event.get("claim_id")})
         return json.dumps({"error": str(e)})

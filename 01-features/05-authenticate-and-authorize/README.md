@@ -84,6 +84,7 @@ AgentCore identity integrates seamlessly with other AgentCore components:
 | `02-outbound-auth/` | Give agents secure access to external APIs: OpenAI (API key), Google Calendar (3LO), GitHub (3LO), self-hosted OAuth2 |
 | `03-m2m-3lo/` | Combined M2M + Auth Code flows in one runtime agent using the AgentCore CLI; Cognito inbound, GitHub + Google outbound |
 | `04-entra-obo-mcp-runtime/` | Advanced: Entra ID On-Behalf-Of token exchange across two runtimes (Agent + MCP Server); user identity preserved end-to-end |
+| `05-certificate-based-auth/` | Outbound `PRIVATE_KEY_JWT` client authentication (RFC 7523) with KMS-hosted signing keys for Okta and Entra ID; M2M, 3LO, and OBO flows |
 | `okta-auth-three-tier-end-to-end-demo/` | End-to-end Okta OAuth2 three-tier demo: per-tier JWT isolation across User → Runtime → Gateway → MCP Server with RBAC |
 | `auth0-multi-agent-obo/` | Multi-agent RFC 8693 On-Behalf-Of token exchange via Auth0: coordinator mints attenuated tokens per sub-agent rather than forwarding the user JWT |
 
@@ -110,14 +111,15 @@ followed by combined multi-flow examples in `03-m2m-3lo/` and `04-entra-obo-mcp-
 | M2M outbound | 02-outbound-auth/04 | Agent calls self-hosted resource server with client credentials |
 | M2M + 3LO combined | 03-m2m-3lo/ | Single agent with both M2M and Auth Code outbound flows |
 | Entra OBO | 04-entra-obo-mcp-runtime/ | Agent calls MCP server carrying user-delegated Graph token |
+| PRIVATE_KEY_JWT (Okta + Entra) | 05-certificate-based-auth/ | KMS-signed client assertions for outbound M2M, 3LO, and OBO flows; no client secret |
 | Auth0 OBO (multi-agent) | auth0-multi-agent-obo/ | Coordinator mints scoped tokens per sub-agent using RFC 8693 via Auth0 |
 
 ## Finding Things
 
 **By identity provider:**
 - Cognito → `01-inbound-auth/01-inbound-auth-cognito/`, `03-m2m-3lo/`
-- Microsoft Entra ID → `01-inbound-auth/02-inbound-auth-EntraID/`, `04-entra-obo-mcp-runtime/`
-- Okta → `01-inbound-auth/03-inbound-auth-okta/`
+- Microsoft Entra ID → `01-inbound-auth/02-inbound-auth-EntraID/`, `04-entra-obo-mcp-runtime/`, `05-certificate-based-auth/entra/`
+- Okta → `01-inbound-auth/03-inbound-auth-okta/`, `05-certificate-based-auth/okta/`
 - PingFederate → `01-inbound-auth/04-inbound-auth-pingfederate/`
 
 **By external API:**
@@ -194,6 +196,20 @@ python setup_cognito.py
 cd 04-entra-obo-mcp-runtime/
 pip install -r requirements.txt
 python entra_obo_mcp_runtime.py
+
+# PRIVATE_KEY_JWT — Okta (M2M + OBO)
+cd 05-certificate-based-auth/okta/
+pip install -r requirements.txt
+# One-time setup: python setup/00_provision_signing_key.py ... (see okta/README.md)
+python outbound_private_key_jwt_m2m.py
+python outbound_private_key_jwt_obo.py
+
+# PRIVATE_KEY_JWT — Entra ID (M2M + OBO)
+cd 05-certificate-based-auth/entra/
+pip install -r requirements.txt
+# One-time setup: python setup/00_provision_signing_key.py ... (see entra/README.md)
+python outbound_private_key_jwt_m2m.py
+python outbound_private_key_jwt_obo.py
 ```
 
 ## AgentCore CLI
@@ -263,3 +279,4 @@ CDK deployment, and 3LO consent flows require SDK-level control not available vi
 - [Inbound auth configuration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/inbound-auth.html)
 - [Outbound auth configuration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/outbound-auth.html)
 - [On-Behalf-Of token exchange](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/on-behalf-of-token-exchange.html)
+- [PRIVATE_KEY_JWT client authentication](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/private-key-jwt.html)

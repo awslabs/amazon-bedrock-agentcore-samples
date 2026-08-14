@@ -19,6 +19,7 @@ Events marked with `extractionMode="SKIP"` are stored in short-term memory norma
 ### Run
 
 ```bash
+pip install -r ../requirements.txt   # extractionMode needs boto3>=1.43.35
 python skip-extraction.py boto3   # direct service calls
 python skip-extraction.py sdk     # AgentCore MemoryClient helpers
 ```

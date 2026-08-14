@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { AgentCoreStack } from '../lib/cdk-stack';
-import { ConfigIO, type AwsDeploymentTarget } from '@aws/agentcore-cdk';
-import { App, type Environment } from 'aws-cdk-lib';
+import { ConfigIO, type AgentCoreMcpSpec, type AwsDeploymentTarget } from '@aws/agentcore-cdk';
+import { App, Aspects, type Environment } from 'aws-cdk-lib';
+import { AwsSolutionsChecks } from 'cdk-nag';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -28,15 +29,12 @@ async function main() {
   const spec = await configIO.readProjectSpec();
   const targets = await configIO.readAWSDeploymentTargets();
 
-  // Extract MCP/Gateway configuration from project spec (dynamic cast — gateway
-  // fields may not yet be on the AgentCoreProjectSpec type from @aws/agentcore-cdk)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const specAny = spec as any;
-  const mcpSpec = specAny.agentCoreGateways?.length
+  // Extract MCP/Gateway configuration from the project spec. These fields are
+  // now typed on AgentCoreProjectSpec (@aws/agentcore-cdk alpha.39+).
+  const mcpSpec: AgentCoreMcpSpec | undefined = spec.agentCoreGateways?.length
     ? {
-        agentCoreGateways: specAny.agentCoreGateways,
-        mcpRuntimeTools: specAny.mcpRuntimeTools,
-        unassignedTargets: specAny.unassignedTargets,
+        agentCoreGateways: spec.agentCoreGateways,
+        mcpRuntimeTools: spec.mcpRuntimeTools,
       }
     : undefined;
 
@@ -80,6 +78,9 @@ async function main() {
     });
   }
 
+  if (process.env.CDK_NAG === "true") {
+    Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+  }
   app.synth();
 }
 

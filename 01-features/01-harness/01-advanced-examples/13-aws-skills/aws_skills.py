@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AWS Skills for Harness
 
@@ -60,23 +59,18 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 import time
 import uuid
-
 from pathlib import Path
 
-import boto3
-import botocore.exceptions
+from botocore.exceptions import BotoCoreError, ClientError
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from utils.iam import create_harness_role
 from utils.client import get_agentcore_client, get_agentcore_control_client
-
-REGION = os.getenv("AWS_DEFAULT_REGION")
-
+from utils.harness import poll_harness_status
+from utils.iam import create_harness_role, delete_harness_role
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -85,9 +79,6 @@ DEFAULT_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_GLOB = "core-skills/*"
 DEFAULT_SPECIFIC = "specialized-skills/operations-skills/troubleshooting-application-failures"
 DEFAULT_PROMPT = "What AWS skills do you have available? Give a short bulleted summary by category."
-
-HARNESS_POLL_INTERVAL = 5
-HARNESS_POLL_TIMEOUT = 120
 
 
 # ---------------------------------------------------------------------------
@@ -168,22 +159,6 @@ def build_skills(args):
     ]
 
 
-def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
-    """Poll until a Harness reaches the target status or times out."""
-    deadline = time.monotonic() + timeout
-    while True:
-        resp = control.get_harness(harnessId=harness_id)
-        status = resp["harness"]["status"]
-        print(f"  Harness status: {status}")
-        if status == target_status:
-            return resp
-        if status in ("FAILED", "DELETE_FAILED"):
-            raise RuntimeError(f"Harness entered {status}")
-        if time.monotonic() > deadline:
-            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
-        time.sleep(HARNESS_POLL_INTERVAL)
-
-
 def stream_response(client, harness_arn, session_id, message, model_id, raw=False):
     """Invoke a Harness and stream the response to stdout."""
     response = client.invoke_harness(
@@ -194,10 +169,24 @@ def stream_response(client, harness_arn, session_id, message, model_id, raw=Fals
     )
 
     full_text = ""
+    # A failure mid-stream is raised out of the iterator by botocore, not
+    # delivered as an {"internalServerException": ...} event. It can be a modeled
+    # service error (EventStreamError/ClientError — throttling, access denied) or
+    # a transport error (ReadTimeoutError, connection reset — a BotoCoreError,
+    # which the agent can trigger just by going quiet during a long tool call).
+    # Catch both base classes: EventStreamError alone let a read timeout or a
+    # throttle abort the script before the `finally` in main() had reported the
+    # partial answer, and the traceback said nothing about the real cause.
     try:
         for event in response["stream"]:
             if raw:
                 print(json.dumps(event, default=str))
+                # Keep accumulating text in raw mode too. Skipping it left
+                # full_text empty, so the error handling below could not tell a
+                # stream that had produced content from one that had not.
+                delta = event.get("contentBlockDelta", {}).get("delta", {})
+                if "text" in delta:
+                    full_text += delta["text"]
                 continue
 
             if "contentBlockStart" in event:
@@ -213,9 +202,11 @@ def stream_response(client, harness_arn, session_id, message, model_id, raw=Fals
                 print()
             elif "internalServerException" in event:
                 print(f"\n  Error: {event['internalServerException']}")
-    except botocore.exceptions.EventStreamError:
-        # The stream may send an empty error event on close; safe to ignore
-        # if we already received content.
+    except (BotoCoreError, ClientError) as e:
+        # The stream may fail on close after delivering the whole answer. Report
+        # it either way, but only re-raise when nothing arrived — otherwise a
+        # cosmetic close error would throw away a complete, correct response.
+        print(f"\n  Stream error: {e}")
         if not full_text:
             raise
 
@@ -234,6 +225,7 @@ def main(args=None):
 
     skills = build_skills(args)
     harness_id = None
+    created_role = False
 
     try:
         # ── Step 0: IAM role ──────────────────────────────────────────
@@ -245,6 +237,7 @@ def main(args=None):
             print(f"  Using provided role: {role_arn}")
         else:
             role_arn = create_harness_role()
+            created_role = True
             print("  Waiting for IAM propagation...")
             time.sleep(10)
 
@@ -258,14 +251,17 @@ def main(args=None):
             harnessName=harness_name,
             executionRoleArn=role_arn,
             skills=skills,
-            # Smaller models benefit most from skills; allow the agent to use
-            # its default tools (fs/shell) so it can act on what the skill teaches.
+            # No `tools`/`allowedTools` is set, so the harness keeps its built-in
+            # toolset (fs/shell) — that is what lets the agent read the skill
+            # files it was given and act on what they teach.
             systemPrompt=[{"text": "You are a helpful AWS engineering assistant."}],
         )
         harness_id = resp["harness"]["harnessId"]
         harness_arn = resp["harness"]["arn"]
         print(f"  Harness ID:  {harness_id}")
         print(f"  Harness ARN: {harness_arn}")
+        # Harnesses that enable native AWS Skills routinely take ~3 minutes to
+        # reach READY; the shared poller's default timeout already allows for it.
         poll_harness_status(control, harness_id)
 
         # ── Step 2: Invoke and observe the loaded skills ──────────────
@@ -284,13 +280,21 @@ def main(args=None):
         print("=" * 60)
 
     finally:
-        if not args.skip_cleanup and harness_id:
+        if not args.skip_cleanup:
             print("\nCleaning up...")
-            try:
-                control.delete_harness(harnessId=harness_id)
-                print(f"  Deleted harness: {harness_id}")
-            except Exception as e:
-                print(f"  Warning: failed to delete harness: {e}")
+            if harness_id:
+                try:
+                    control.delete_harness(harnessId=harness_id)
+                    print(f"  Deleted harness: {harness_id}")
+                except Exception as e:  # noqa: BLE001 - cleanup must continue regardless
+                    print(f"  Warning: failed to delete harness: {e}")
+            # Delete the execution role too, but only the one we created — the
+            # role name is shared by every sample in this folder, so deleting a
+            # role the caller passed in with --role-arn would destroy something
+            # we don't own. Without this the role outlived the script and was
+            # left behind on any failure before Step 1 completed.
+            if created_role:
+                delete_harness_role()
 
 
 if __name__ == "__main__":

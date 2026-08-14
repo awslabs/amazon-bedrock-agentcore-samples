@@ -1,4 +1,4 @@
-# AgentCore policy — Fine-Grained Access Control
+# Policy in Amazon Bedrock AgentCore — Fine-Grained Access Control
 
 Enforce Cedar policies on AI agent-to-tool interactions through an AgentCore MCP gateway.
 Covers NL2Cedar (natural language → Cedar) and hand-authored attribute-based access control
@@ -6,23 +6,7 @@ Covers NL2Cedar (natural language → Cedar) and hand-authored attribute-based a
 
 ## Architecture
 
-```
-┌──────────────┐  JWT Token    ┌────────────────────┐
-│   AI Agent   │──────────────▶│  AgentCore gateway  │
-│  (Strands)   │               │  + JWT Authorizer   │
-└──────────────┘               └────────┬───────────┘
-                                        │ Cedar policy check
-                                        ▼
-                               ┌────────────────────┐      ┌──────────────┐
-                               │  Cedar policy Eng. │      │  Lambda Tool │
-                               │  (ENFORCE mode)    │─────▶│  (if ALLOW)  │
-                               └────────────────────┘      └──────────────┘
-         ┌──────────────────────────────────────┐
-         │  Amazon Cognito (V3_0 trigger)        │
-         │  Injects custom claims into JWT:      │
-         │  department_name, groups, role, ...   │
-         └──────────────────────────────────────┘
-```
+![architecture](./images/architecture.png)
 
 **Demo scenario:** Insurance underwriting system with three Lambda-backed tools:
 - `ApplicationTool` — create insurance applications (`applicant_region`, `coverage_amount`)
@@ -652,10 +636,11 @@ The `like` operator supports wildcards for flexible substring matching:
 ## Additional Resources
 
 - [Cedar policy Language](https://docs.cedarpolicy.com/)
-- [Amazon Bedrock AgentCore policy — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)
+- [Policy in Amazon Bedrock AgentCore — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)
 - [AgentCore gateway — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html)
 - [Supported Cedar policy Examples](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/example-policies.html)
 - [Amazon Cognito Pre-Token-Generation Trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html)
+- [`02-guardrails-in-policy/`](./02-guardrails-in-policy/): guardrails in policy — content safety enforcement at the gateway layer
 
 ## Files
 
