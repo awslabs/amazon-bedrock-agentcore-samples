@@ -89,7 +89,7 @@ This Terraform configuration creates:
 The `mcp-server-code/` directory contains your MCP server's source files:
 - `mcp_server.py` - MCP server implementation with three tools
 - `Dockerfile` - Container configuration
-- `requirements.txt` - Python dependencies (mcp>=1.10.0, boto3, bedrock-agentcore)
+- `requirements.txt` - Python dependencies (mcp>=1.10.0,<2.0.0, boto3, bedrock-agentcore)
 
 **Automatic Change Detection**: 
 - Terraform archives the `mcp-server-code/` directory
@@ -115,7 +115,7 @@ The `mcp-server-code/` directory contains your MCP server's source files:
 3. **Python 3.11+** (for testing scripts)
    ```bash
    python --version  # Verify Python 3.11 or later
-   pip install boto3 mcp
+   pip install boto3 "mcp<2.0.0"
    ```
 
 4. **Docker** (for local testing, optional)
@@ -244,12 +244,12 @@ Before testing, ensure you have the required packages installed:
 ```bash
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install boto3 mcp  # Both required for MCP server testing
+uv pip install boto3 "mcp<2.0.0"  # Both required for MCP server testing
 ```
 
 **Option B: System-wide installation**
 ```bash
-pip install boto3 mcp  # Both required for MCP server testing
+pip install boto3 "mcp<2.0.0"  # Both required for MCP server testing
 ```
 
 **Note**: Both `boto3` (for AWS API calls) and `mcp` (for MCP protocol) are required for testing the MCP server.
@@ -361,7 +361,7 @@ def subtract_numbers(a: int, b: int) -> int:
 
 Edit `mcp-server-code/requirements.txt`:
 ```
-mcp>=1.10.0
+mcp>=1.10.0,<2.0.0
 boto3
 bedrock-agentcore
 your-new-package>=1.0.0
