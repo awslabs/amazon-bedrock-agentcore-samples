@@ -20,6 +20,10 @@ resource "aws_cognito_user_pool" "mcp_user_pool" {
     mutable             = true
   }
 
+  lifecycle {
+    ignore_changes = [schema]
+  }
+
   tags = {
     Name      = "${var.stack_name}-user-pool"
     StackName = var.stack_name
