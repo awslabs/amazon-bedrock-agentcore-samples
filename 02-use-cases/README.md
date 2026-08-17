@@ -6,21 +6,6 @@ End-to-end samples organized by agent type. Each folder maps to one of the three
 
 ### [01-conversational-agents](./01-conversational-agents/) 
 
-* **[AWS Operations Agent](./AWS-operations-agent/)**: Intelligent AWS operations assistant with Okta authentication and comprehensive monitoring capabilities
-* **[Customer Support Assistant](./customer-support-assistant/)**: Production-ready customer service agent with memory, knowledge base integration, and Google OAuth
-* **[DB Performance Analyzer](./DB-performance-analyzer/)**: Database performance monitoring and analysis agent with PostgreSQL integration
-* **[Device Management Agent](./device-management-agent/)**: IoT device management system with Cognito authentication and real-time monitoring
-* **[Enterprise Web Intelligence Agent](./enterprise-web-intelligence-agent/)**: Web research and analysis agent using browser tools for competitive intelligence
-* **[Farm Management Advisor](./farm-management-advisor/)**: Agricultural advisory system with plant detection, weather forecasting, and care recommendations
-* **[Auth0 Multi-Agent OBO](./auth0-multi-agent-obo/)**: RFC 8693 On-Behalf-Of token exchange with Auth0 PKCE — coordinator exchanges user JWT for attenuated per-agent tokens in a multi-agent financial services system
-* **[Finance Personal Assistant](./finance-personal-assistant/)**: Personal budget management with multi-agent workflows and guardrails
-* **[Healthcare Appointment Agent](./healthcare-appointment-agent/)**: FHIR-compliant healthcare appointment scheduling with patient data integration
-* **[Local Prototype to AgentCore](./local-prototype-to-agentcore/)**: Migration guide from local development to production AgentCore deployment
-* **[Market Trends Agent](./market-trends-agent/)**: Financial market analysis with browser tools and memory integration
-* **[SRE Agent](./SRE-agent/)**: Site reliability engineering assistant with multi-agent LangGraph workflows
-* **[Text to Python IDE](./text-to-python-ide/)**: Code generation and execution environment with AgentCore Code Interpreter
-* **[Data Analyst Conversational Assistant](./data-analyst-conversational-assistant/)**: Data analysis assistant with Amplify frontend and CDK deployment
-* **[Claude Code Gateway MCP Server](./claude-code-gateway-mcp-server/)**: Integrate Claude Code with MCP Server using AgentCore Gateway for dynamic tool loading and centralized access
 Agents that interact with users in real time. Users authenticate through an identity provider, the agent maintains session and long-term memory per user, and responses stream back as the agent works. See the [category README](./01-conversational-agents/README.md) for the full list and a guide on which sample to start with.
 
 | Sample | Vertical | Key Features |
@@ -28,6 +13,7 @@ Agents that interact with users in real time. Users authenticate through an iden
 | [A2A-multi-agent-incident-response](./01-conversational-agents/A2A-multi-agent-incident-response/) | IT / DevOps | Runtime, Gateway, Memory, A2A (3 frameworks) |
 | [AWS-operations-agent](./01-conversational-agents/AWS-operations-agent/) | Cloud Operations | Runtime, Gateway, Memory, Policy, Observability |
 | [customer-support-assistant-vpc](./01-conversational-agents/customer-support-assistant-vpc/) | Retail / E-commerce | Runtime, Gateway (VPC) |
+| [data-analyst-conversational-assistant](./data-analyst-conversational-assistant/) | Data and Analytics | Runtime, Gateway, Memory, Policy, Identity, Evaluations, Observability |
 | [deep-research-agent](./01-conversational-agents/deep-research-agent/) | Research / Q&A | Gateway (Web Search), Runtime |
 | [device-management-agent](./01-conversational-agents/device-management-agent/) | IoT / Smart Home | Runtime, Gateway, Policy, Identity (Cognito) |
 | [finance-personal-assistant](./01-conversational-agents/finance-personal-assistant/) | Personal Finance | Gateway, Policy |
