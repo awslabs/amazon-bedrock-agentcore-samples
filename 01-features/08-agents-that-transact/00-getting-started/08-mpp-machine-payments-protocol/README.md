@@ -210,6 +210,15 @@ print(sess["availableLimits"]["availableSpendAmount"])
 | Browserbase | `POST https://mpp.browserbase.com/search`        | $0.01  |
 | Allium      | `POST https://agents.allium.so/api/v1/developer/prices` | $0.02 |
 
+## Observability
+
+Enable observability on your Payment Manager to trace payment operations, monitor
+transaction success rates, and troubleshoot errors. AgentCore payments automatically
+generates spans and metrics for every data plane API call, viewable in Amazon CloudWatch
+and AWS X-Ray via AgentCore Observability.
+
+See: [AgentCore payments observability data](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-payments-metrics.html)
+
 ## Troubleshooting
 
 | Symptom | Cause | Resolution |
@@ -219,6 +228,7 @@ print(sess["availableLimits"]["availableSpendAmount"])
 
 ## References
 
+- [AgentCore payments GA blog](https://aws.amazon.com/blogs/machine-learning/amazon-bedrock-agentcore-payments-is-now-generally-available-enabling-agents-to-transact-safely-and-autonomously-at-scale/)
 - [MPP Protocol Overview](https://mpp.dev/overview)
 - [MPP credential spec](https://mpp.dev/protocol/credentials)
 - [Payment HTTP Authentication spec](https://paymentauth.org/draft-httpauth-payment-00.html)
