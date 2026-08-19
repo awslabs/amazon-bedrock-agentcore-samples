@@ -52,21 +52,23 @@ args = parser.parse_args()
 def load_icons() -> dict:
     """Return {name: data-URI}, reading from source icons or a local cache."""
     if os.path.exists(args.cache):
-        return json.load(open(args.cache))
+        with open(args.cache) as f:
+            return json.load(f)
 
     icons = {}
     for name, rel in ICON_SOURCES.items():
         path = os.path.join(args.icons, rel)
         if not os.path.exists(path):
             raise SystemExit(
-                f"Icon not found: {path}\nPass --icons pointing at the unpacked "
-                f"AWS Architecture Icons asset package."
+                f"Icon not found: {path}\nPass --icons pointing at the unpacked AWS Architecture Icons asset package."
             )
         mime = "image/svg+xml" if path.endswith(".svg") else "image/png"
-        blob = base64.b64encode(open(path, "rb").read()).decode()
+        with open(path, "rb") as f:
+            blob = base64.b64encode(f.read()).decode()
         icons[name] = f"data:{mime};base64,{blob}"
 
-    json.dump(icons, open(args.cache, "w"))
+    with open(args.cache, "w") as f:
+        json.dump(icons, f)
     return icons
 
 
@@ -74,8 +76,8 @@ ICONS = load_icons()
 
 W, H = 1720, 900
 
-INK = "#232F3E"        # AWS squid ink, body text
-MUTED = "#5A6B7B"      # secondary labels
+INK = "#232F3E"  # AWS squid ink, body text
+MUTED = "#5A6B7B"  # secondary labels
 LINE = "#57728B"
 BOX_AWS_BG = "#FBF6EF"
 BOX_AWS_EDGE = "#ED7100"
@@ -87,32 +89,35 @@ BOX_DBX_EDGE = "#FF3621"
 p = []
 a = p.append
 
-a(f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-  f'width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
-  f'font-family="Helvetica Neue, Helvetica, Arial, sans-serif">')
+a(
+    f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+    f'width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
+    f'font-family="Helvetica Neue, Helvetica, Arial, sans-serif">'
+)
 a(f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>')
 
-a('<defs>')
-a(f'<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
-  f'orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="{LINE}"/></marker>')
-a(f'<marker id="ahd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
-  f'orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="{MUTED}"/></marker>')
-a('</defs>')
+a("<defs>")
+a(
+    f'<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+    f'orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="{LINE}"/></marker>'
+)
+a(
+    f'<marker id="ahd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+    f'orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="{MUTED}"/></marker>'
+)
+a("</defs>")
 
 
 def box(x, y, w, h, label, bg, edge, dash=None):
     d = f' stroke-dasharray="{dash}"' if dash else ""
-    a(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="{bg}" '
-      f'stroke="{edge}" stroke-width="2"{d}/>')
+    a(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="{bg}" stroke="{edge}" stroke-width="2"{d}/>')
     a(f'<text x="{x + 18}" y="{y + 27}" font-size="17" font-weight="600" fill="{edge}">{label}</text>')
 
 
 def node(cx, cy, icon, title, sub=None, sub2=None, size=60):
-    a(f'<image x="{cx - size / 2}" y="{cy - size / 2}" width="{size}" height="{size}" '
-      f'xlink:href="{ICONS[icon]}"/>')
+    a(f'<image x="{cx - size / 2}" y="{cy - size / 2}" width="{size}" height="{size}" xlink:href="{ICONS[icon]}"/>')
     ty = cy + size / 2 + 21
-    a(f'<text x="{cx}" y="{ty}" font-size="15.5" font-weight="600" fill="{INK}" '
-      f'text-anchor="middle">{title}</text>')
+    a(f'<text x="{cx}" y="{ty}" font-size="15.5" font-weight="600" fill="{INK}" text-anchor="middle">{title}</text>')
     if sub:
         a(f'<text x="{cx}" y="{ty + 18}" font-size="13.5" fill="{MUTED}" text-anchor="middle">{sub}</text>')
     if sub2:
@@ -123,8 +128,7 @@ def arrow(x1, y1, x2, y2, dashed=False):
     d = ' stroke-dasharray="6 5"' if dashed else ""
     m = "ahd" if dashed else "ah"
     col = MUTED if dashed else LINE
-    a(f'<path d="M {x1} {y1} L {x2} {y2}" fill="none" stroke="{col}" stroke-width="2"{d} '
-      f'marker-end="url(#{m})"/>')
+    a(f'<path d="M {x1} {y1} L {x2} {y2}" fill="none" stroke="{col}" stroke-width="2"{d} marker-end="url(#{m})"/>')
 
 
 def elbow(x1, y1, x2, y2, dashed=False):
@@ -132,8 +136,10 @@ def elbow(x1, y1, x2, y2, dashed=False):
     d = ' stroke-dasharray="6 5"' if dashed else ""
     m = "ahd" if dashed else "ah"
     col = MUTED if dashed else LINE
-    a(f'<path d="M {x1} {y1} L {x2} {y1} L {x2} {y2}" fill="none" stroke="{col}" '
-      f'stroke-width="2"{d} marker-end="url(#{m})"/>')
+    a(
+        f'<path d="M {x1} {y1} L {x2} {y1} L {x2} {y2}" fill="none" stroke="{col}" '
+        f'stroke-width="2"{d} marker-end="url(#{m})"/>'
+    )
 
 
 def label(x, y, text, anchor="middle", mono=False, small=False):
@@ -143,11 +149,15 @@ def label(x, y, text, anchor="middle", mono=False, small=False):
 
 
 # ---------------------------------------------------------------- title
-a(f'<text x="40" y="46" font-size="24" font-weight="700" fill="{INK}">'
-  f'Databricks Genie as a governed MCP tool, via Amazon Bedrock AgentCore</text>')
-a(f'<text x="40" y="73" font-size="15" fill="{MUTED}">'
-  f'Machine-to-machine (client-credentials) auth end to end — Genie runs as a Databricks '
-  f'service principal</text>')
+a(
+    f'<text x="40" y="46" font-size="24" font-weight="700" fill="{INK}">'
+    f"Databricks Genie as a governed MCP tool, via Amazon Bedrock AgentCore</text>"
+)
+a(
+    f'<text x="40" y="73" font-size="15" fill="{MUTED}">'
+    f"Machine-to-machine (client-credentials) auth end to end — Genie runs as a Databricks "
+    f"service principal</text>"
+)
 
 # ---------------------------------------------------------------- end user
 node(86, 292, "data-analyst-persona", "End user", "(business analyst)", size=56)
@@ -198,13 +208,17 @@ arrow(350, 312, 358, 662, dashed=True)
 label(366, 480, "invoke model", anchor="start")
 
 # Cognito -> Gateway (inbound JWT), into the Gateway's left edge
-a(f'<path d="M 700 668 L 580 668 L 580 262 L 726 262" fill="none" stroke="{MUTED}" '
-  f'stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahd)"/>')
+a(
+    f'<path d="M 700 668 L 580 668 L 580 262 L 726 262" fill="none" stroke="{MUTED}" '
+    f'stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahd)"/>'
+)
 label(570, 470, "JWT", anchor="end")
 
 # Gateway -> CloudWatch, out of the Gateway's right edge
-a(f'<path d="M 794 262 L 962 262 L 962 700 L 926 700" fill="none" stroke="{MUTED}" '
-  f'stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahd)"/>')
+a(
+    f'<path d="M 794 262 L 962 262 L 962 700 L 926 700" fill="none" stroke="{MUTED}" '
+    f'stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahd)"/>'
+)
 label(972, 470, "traces", anchor="start")
 
 # Gateway -> Databricks managed MCP (the governed hop)
@@ -224,12 +238,17 @@ arrow(1240, 600, 1490, 600)
 label(1365, 590, "authorized read")
 
 # ---------------------------------------------------------------- footnote
-a(f'<text x="1052" y="772" font-size="14" fill="{MUTED}">'
-  f'Unity Catalog enforces the service principal’s permissions and audits SQL under that identity.</text>')
-a(f'<text x="1052" y="793" font-size="14" fill="{MUTED}">'
-  f'For per-user identity and attribution, see databricks-dbsql-per-user-delegation.</text>')
+a(
+    f'<text x="1052" y="772" font-size="14" fill="{MUTED}">'
+    f"Unity Catalog enforces the service principal’s permissions and audits SQL under that identity.</text>"
+)
+a(
+    f'<text x="1052" y="793" font-size="14" fill="{MUTED}">'
+    f"For per-user identity and attribution, see databricks-dbsql-per-user-delegation.</text>"
+)
 
-a('</svg>')
+a("</svg>")
 
-open("architecture.svg", "w").write("\n".join(p))
+with open("architecture.svg", "w") as f:
+    f.write("\n".join(p))
 print("wrote architecture.svg")

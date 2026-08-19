@@ -15,15 +15,12 @@ import os
 import time
 
 import boto3
-
 from config import CREDENTIAL_PROVIDER_NAME, IAM_POLICY_NAME, STATE_FILE
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--yes", action="store_true", help="delete without confirmation"
-    )
+    parser.add_argument("--yes", action="store_true", help="delete without confirmation")
     args = parser.parse_args()
 
     try:
@@ -43,26 +40,28 @@ def main() -> None:
         print(f"  IAM role              {config['role_arn'].split('/')[-1]}")
     if (config.get("client_info") or {}).get("user_pool_id"):
         print(f"  Cognito user pool     {config['client_info']['user_pool_id']}")
-    if not args.yes:
-        if input("Proceed? [y/N] ").strip().lower() not in ("y", "yes"):
-            raise SystemExit("Aborted.")
+    if not args.yes and input("Proceed? [y/N] ").strip().lower() not in ("y", "yes"):
+        raise SystemExit("Aborted.")
 
     agentcore = boto3.client("bedrock-agentcore-control", region_name=config["region"])
+    # Teardown is best effort: each delete below catches broadly on purpose so that
+    # one failure cannot abandon the resources after it. Failures are collected and
+    # the state file is kept, so the command can be re-run to finish the job. That is
+    # why BLE001 is suppressed rather than narrowing to botocore exception types --
+    # doing so would let, say, an AttributeError from an older boto3 abort the drain.
     failures = []
 
     try:
-        agentcore.delete_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        )
+        agentcore.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
         print("Deleted gateway target.")
-    except Exception as exc:  # already gone
+    except Exception as exc:  # noqa: BLE001
         print(f"Could not delete gateway target: {exc}")
         failures.append("gateway target")
 
     try:
         agentcore.delete_oauth2_credential_provider(name=CREDENTIAL_PROVIDER_NAME)
         print("Deleted credential provider.")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"Could not delete credential provider: {exc}")
         failures.append("credential provider")
 
@@ -71,10 +70,8 @@ def main() -> None:
     print("Waiting for targets to detach...")
     for _ in range(30):
         try:
-            remaining = agentcore.list_gateway_targets(
-                gatewayIdentifier=gateway_id
-            ).get("items", [])
-        except Exception:
+            remaining = agentcore.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
+        except Exception:  # noqa: BLE001
             remaining = []
         if not remaining:
             break
@@ -83,7 +80,7 @@ def main() -> None:
     try:
         agentcore.delete_gateway(gatewayIdentifier=gateway_id)
         print("Deleted gateway.")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"Could not delete gateway: {exc}")
         failures.append("gateway")
 
@@ -97,7 +94,7 @@ def main() -> None:
             iam.delete_role_policy(RoleName=role_name, PolicyName=IAM_POLICY_NAME)
             iam.delete_role(RoleName=role_name)
             print(f"Deleted IAM role {role_name}.")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"Could not delete IAM role {role_name}: {exc}")
             failures.append("IAM role")
 
@@ -113,21 +110,18 @@ def main() -> None:
                 cognito.delete_user_pool_domain(Domain=domain, UserPoolId=pool_id)
                 print(f"Deleted Cognito domain {domain}.")
                 time.sleep(10)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(f"Could not delete Cognito domain {domain}: {exc}")
         try:
             cognito.delete_user_pool(UserPoolId=pool_id)
             print(f"Deleted Cognito user pool {pool_id}.")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"Could not delete Cognito user pool {pool_id}: {exc}")
             failures.append("Cognito user pool")
 
     if failures:
         # Keep the state file so the command can be re-run to finish the job.
-        print(
-            f"\nLeft {STATE_FILE} in place — re-run `python cleanup.py` to retry: "
-            + ", ".join(failures)
-        )
+        print(f"\nLeft {STATE_FILE} in place — re-run `python cleanup.py` to retry: " + ", ".join(failures))
     else:
         os.remove(STATE_FILE)
         print(f"Removed {STATE_FILE}")

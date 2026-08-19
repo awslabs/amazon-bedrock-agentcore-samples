@@ -13,13 +13,12 @@ Usage:
 import argparse
 import json
 
+from config import MODEL_ID, STATE_FILE, SYSTEM_PROMPT
+from gateway_setup import GatewaySetup
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
-
-from config import MODEL_ID, STATE_FILE, SYSTEM_PROMPT
-from gateway_setup import GatewaySetup
 
 DEFAULT_PROMPT = "What were our top 5 products by revenue last quarter?"
 
@@ -34,9 +33,7 @@ def load_config() -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "prompt", nargs="?", default=DEFAULT_PROMPT, help="question to ask Genie"
-    )
+    parser.add_argument("prompt", nargs="?", default=DEFAULT_PROMPT, help="question to ask Genie")
     parser.add_argument(
         "--list-tools",
         action="store_true",

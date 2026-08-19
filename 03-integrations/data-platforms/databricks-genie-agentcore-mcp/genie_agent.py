@@ -16,12 +16,11 @@ Requires gateway_config.json in the same directory (written by deploy.py).
 import json
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from gateway_setup import GatewaySetup
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
-
-from gateway_setup import GatewaySetup
 
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 SYSTEM_PROMPT = (

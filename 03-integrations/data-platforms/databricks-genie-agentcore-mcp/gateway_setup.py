@@ -62,10 +62,7 @@ class GatewaySetup:
             ExplicitAuthFlows=["ALLOW_REFRESH_TOKEN_AUTH"],
         )["UserPoolClient"]
 
-        discovery_url = (
-            f"https://cognito-idp.{self.region}.amazonaws.com/{pool_id}"
-            "/.well-known/openid-configuration"
-        )
+        discovery_url = f"https://cognito-idp.{self.region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
         client_info = {
             "user_pool_id": pool_id,
             "domain": domain,
@@ -109,9 +106,7 @@ class GatewaySetup:
                     "Action": "sts:AssumeRole",
                     "Condition": {
                         "StringEquals": {"aws:SourceAccount": self.account_id},
-                        "ArnLike": {
-                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:*"
-                        },
+                        "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:*"},
                     },
                 }
             ],
@@ -126,20 +121,17 @@ class GatewaySetup:
             time.sleep(10)  # let the role propagate
             return role["Role"]["Arn"]
         except self.iam.exceptions.EntityAlreadyExistsException:
-            self.iam.update_assume_role_policy(
-                RoleName=role_name, PolicyDocument=json.dumps(assume_role_policy)
-            )
+            self.iam.update_assume_role_policy(RoleName=role_name, PolicyDocument=json.dumps(assume_role_policy))
             print(f"  IAM role already exists: {role_name} (trust policy refreshed)")
             return self.iam.get_role(RoleName=role_name)["Role"]["Arn"]
 
-    def grant_oauth_permissions(
-        self, role_arn: str, policy_name: str, provider_arn: str, secret_arn: str
-    ) -> None:
+    def grant_oauth_permissions(self, role_arn: str, policy_name: str, provider_arn: str, secret_arn: str) -> None:
         """Allow the gateway role to fetch the Databricks token and its secret.
 
         Without this the target still reaches READY, but every tool call fails.
         """
         role_name = role_arn.split("/")[-1]
+        arn_prefix = f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}"
         policy_doc = json.dumps(
             {
                 "Version": "2012-10-17",
@@ -151,10 +143,8 @@ class GatewaySetup:
                             "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
                         ],
                         "Resource": [
-                            f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}"
-                            ":workload-identity-directory/default",
-                            f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}"
-                            ":workload-identity-directory/default/workload-identity/*",
+                            f"{arn_prefix}:workload-identity-directory/default",
+                            f"{arn_prefix}:workload-identity-directory/default/workload-identity/*",
                         ],
                     },
                     {
@@ -167,12 +157,9 @@ class GatewaySetup:
                         "Action": "bedrock-agentcore:GetResourceOauth2Token",
                         "Resource": [
                             provider_arn,
-                            f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}"
-                            ":token-vault/default",
-                            f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}"
-                            ":workload-identity-directory/default",
-                            f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}"
-                            ":workload-identity-directory/default/workload-identity/*",
+                            f"{arn_prefix}:token-vault/default",
+                            f"{arn_prefix}:workload-identity-directory/default",
+                            f"{arn_prefix}:workload-identity-directory/default/workload-identity/*",
                         ],
                     },
                     {
@@ -183,9 +170,7 @@ class GatewaySetup:
                 ],
             }
         )
-        self.iam.put_role_policy(
-            RoleName=role_name, PolicyName=policy_name, PolicyDocument=policy_doc
-        )
+        self.iam.put_role_policy(RoleName=role_name, PolicyName=policy_name, PolicyDocument=policy_doc)
         print(f"  Updated role: {role_name}")
         time.sleep(10)
 
@@ -198,9 +183,7 @@ class GatewaySetup:
             roleArn=role_arn,
             protocolType="MCP",
             description="Databricks Genie exposed as a governed MCP tool",
-            protocolConfiguration={
-                "mcp": {"supportedVersions": [MCP_PROTOCOL_VERSION]}
-            },
+            protocolConfiguration={"mcp": {"supportedVersions": [MCP_PROTOCOL_VERSION]}},
             authorizerType="CUSTOM_JWT",
             authorizerConfiguration={
                 "customJWTAuthorizer": {

@@ -13,7 +13,6 @@ import json
 
 import boto3
 import yaml
-
 from config import AWS_REGION
 
 DEFAULT_PROMPT = "What were our top 5 products by revenue last quarter?"
@@ -27,10 +26,7 @@ def resolve_agent_arn() -> str:
         with open(".bedrock_agentcore.yaml") as f:
             ac_config = yaml.safe_load(f)
     except FileNotFoundError:
-        raise SystemExit(
-            ".bedrock_agentcore.yaml not found — run `agentcore configure` and "
-            "`agentcore deploy` first."
-        )
+        raise SystemExit(".bedrock_agentcore.yaml not found — run `agentcore configure` and `agentcore deploy` first.")
 
     # The toolkit stores the ARN per-agent under
     # agents.<agent_name>.bedrock_agentcore.agent_arn

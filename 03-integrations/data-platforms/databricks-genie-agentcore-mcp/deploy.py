@@ -17,7 +17,6 @@ import json
 import time
 
 import boto3
-
 from config import (
     AWS_REGION,
     CREDENTIAL_PROVIDER_NAME,
@@ -79,16 +78,12 @@ def create_credential_provider(agentcore) -> tuple:
         },
     )
     provider_arn = provider["credentialProviderArn"]
-    secret_arn = provider.get("secretArn") or provider.get(
-        "clientSecretArn", {}
-    ).get("secretArn", "")
+    secret_arn = provider.get("secretArn") or provider.get("clientSecretArn", {}).get("secretArn", "")
     print(f"  Credential provider ARN: {provider_arn}")
     return provider_arn, secret_arn
 
 
-def grant_gateway_permissions(
-    setup: GatewaySetup, role_arn: str, provider_arn: str, secret_arn: str
-) -> None:
+def grant_gateway_permissions(setup: GatewaySetup, role_arn: str, provider_arn: str, secret_arn: str) -> None:
     """Allow the gateway role to mint workload tokens and read the DB secret."""
     print("Updating gateway role permissions...")
     setup.grant_oauth_permissions(role_arn, IAM_POLICY_NAME, provider_arn, secret_arn)
@@ -127,12 +122,7 @@ def register_genie_target(agentcore, gateway_id: str, provider_arn: str) -> str:
     print("Waiting for target to be ready...")
     status = ""
     for _ in range(60):
-        status = (
-            agentcore.get_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id
-            ).get("status")
-            or ""
-        )
+        status = agentcore.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id).get("status") or ""
         if status.upper() not in ("CREATING", "UPDATING", "SYNCHRONIZING"):
             break
         time.sleep(5)
@@ -146,9 +136,7 @@ def register_genie_target(agentcore, gateway_id: str, provider_arn: str) -> str:
         )
 
     print("Synchronizing tools from Databricks...")
-    agentcore.synchronize_gateway_targets(
-        gatewayIdentifier=gateway_id, targetIdList=[target_id]
-    )
+    agentcore.synchronize_gateway_targets(gatewayIdentifier=gateway_id, targetIdList=[target_id])
     print("  Tools synchronized.")
     return target_id
 

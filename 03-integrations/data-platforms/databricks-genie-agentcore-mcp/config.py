@@ -21,9 +21,7 @@ GENIE_SPACE_ID = os.environ.get("GENIE_SPACE_ID", "")
 
 # --- AWS --------------------------------------------------------------------
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-MODEL_ID = os.environ.get(
-    "MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
-)
+MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0")
 
 # --- Resource names ---------------------------------------------------------
 GATEWAY_NAME = "DatabricksGenieGateway"
