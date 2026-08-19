@@ -11,9 +11,10 @@ Tools (deterministic / mock data for reproducible evaluations):
 
 import logging
 import re
+from pathlib import Path
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from strands import Agent, tool
+from strands import Agent, AgentSkills, tool
 from strands.models import BedrockModel
 
 logging.basicConfig(level=logging.INFO)
@@ -59,9 +60,10 @@ _HR_POLICIES = {
 
 _BENEFITS = {
     "health": (
-        "Health Insurance: The company covers 90% of premiums for employee-only coverage and 75% "
-        "for family coverage. Plans available: Blue Shield PPO, Kaiser HMO, and HDHP with HSA. "
-        "Annual deductible: $500 (PPO), $0 (HMO), $1,500 (HDHP). "
+        "Health Insurance: All regular employees scheduled for at least 30 hours per week are eligible "
+        "on the first day of the month after their start date. The company covers 90% of premiums for "
+        "employee-only coverage and 75% for family coverage. Plans available: Blue Shield PPO, Kaiser HMO, "
+        "and HDHP with HSA. Annual deductible: $500 (PPO), $0 (HMO), $1,500 (HDHP). "
         "Open enrollment is each November for the following calendar year."
     ),
     "dental": (
@@ -262,6 +264,16 @@ Always use the available tools to answer questions accurately. Do not make up
 policy details, benefit amounts, or pay information. Look them up.
 Be concise, professional, and friendly."""
 
+_SKILLS_DIR = Path(__file__).parent / "skills"
+_SKILLS_ENABLED = _SKILLS_DIR.is_dir() and any(_SKILLS_DIR.glob("*/SKILL.md"))
+_SKILLS_PLUGIN = AgentSkills(skills=[str(_SKILLS_DIR)]) if _SKILLS_ENABLED else None
+_SKILLS_PROMPT = """
+
+For requests that match a skill in <available_skills>, load the most relevant
+skill with the `skills` tool before calling domain tools, then follow every
+loaded instruction. Do not load a skill for unrelated requests."""
+_AGENT_SYSTEM_PROMPT = SYSTEM_PROMPT + _SKILLS_PROMPT if _SKILLS_ENABLED else SYSTEM_PROMPT
+
 _MODEL = BedrockModel(model_id="us.amazon.nova-lite-v1:0")
 _TOOLS = [
     get_pto_balance,
@@ -285,7 +297,8 @@ async def invoke(payload, context):
     if session_id and session_id in _SESSION_AGENTS:
         agent = _SESSION_AGENTS[session_id]
     else:
-        agent = Agent(model=_MODEL, tools=_TOOLS, system_prompt=SYSTEM_PROMPT)
+        agent_kwargs = {"plugins": [_SKILLS_PLUGIN]} if _SKILLS_PLUGIN else {}
+        agent = Agent(model=_MODEL, tools=_TOOLS, system_prompt=_AGENT_SYSTEM_PROMPT, **agent_kwargs)
         if session_id:
             _SESSION_AGENTS[session_id] = agent
 
