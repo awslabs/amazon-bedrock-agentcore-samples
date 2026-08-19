@@ -22,11 +22,12 @@ New? There are various ways to get started with [AgentCore payments](https://doc
 | Folder | What's inside |
 |--------|---------------|
 | [`00-getting-started/`](00-getting-started/) | Eight step-by-step tutorials covering setup → local agents → runtime deploy → wallet ops → gateway → browser payments → memory + payments → multi-agent orchestration |
+| [`01-payments-skills-and-cli/`](01-payments-skills-and-cli/) | Add AgentCore x402 payments to an agent via the `aws-agents` coding-assistant plugin (existing agent, new agent, or OpenClaw — no coding assistant) |
 | [`02-use-cases/`](02-use-cases/) | Real-world end-to-end use cases deployed on AgentCore runtime |
 
 ## How this tree is organized
 
-Tutorials in `00-getting-started/` build on each other — start with Tutorial 00 which provisions the payment stack, then run any of 01–07 in the order that fits your use case. `02-use-cases/` contains production-style deployments that demonstrate complete end-to-end payment flows.
+Tutorials in `00-getting-started/` build on each other — start with Tutorial 00 which provisions the payment stack, then run any of 01–07 in the order that fits your use case. `01-payments-skills-and-cli/` is a coding-assistant-driven path that adds payments to an agent for you, rather than a set of tutorials to read through. `02-use-cases/` contains production-style deployments that demonstrate complete end-to-end payment flows.
 
 ## Finding things
 
@@ -39,7 +40,13 @@ Tutorials in `00-getting-started/` build on each other — start with Tutorial 0
 - **Browser + payment pattern** → `00-getting-started/05-agent-with-browser-tool-pay-for-content/`
 - **Memory-aware agent (skip redundant paid calls)** → `00-getting-started/06-research-agent-with-payment-memory/`
 - **Multi-agent with per-agent budgets** → `00-getting-started/07-multi-agent-payment-orchestrator/`
+- **Add payments to an existing agent (coding assistant)** → `01-payments-skills-and-cli/add-to-existing-agent/`
+- **Scaffold a new agent that can transact (coding assistant)** → `01-payments-skills-and-cli/build-new-agent-that-can-transact/`
+- **OpenClaw agent with payments (no coding assistant)** → `01-payments-skills-and-cli/converse-with-openclaw-agent/`
 - **End-to-end browser paywall use case** → `02-use-cases/pay-for-content-browser-use/`
+- **Pay for a metered HTTP API** → `02-use-cases/pay-for-api-agent/`
+- **Pay for data with a pre-payment trust gate (x402-secure)** → `02-use-cases/pay-for-x402-secure-data/`
+- **Pay for data (simple x402 flow)** → `02-use-cases/pay-for-data/`
 
 ## Resources
 
@@ -47,8 +54,7 @@ Tutorials in `00-getting-started/` build on each other — start with Tutorial 0
 - [Launch blog post](https://aws.amazon.com/blogs/machine-learning/agents-that-transact-introducing-amazon-bedrock-agentcore-payments-built-with-coinbase-and-stripe/)
 - [Coinbase announcement](https://www.coinbase.com/en-ca/blog/introducing-amazon-bedrock-agentcore-payments-powered-by-x402-and-coinbase)
 - [Stripe announcement](https://stripe.com/newsroom/news/aws-stripe-agentcore-privy)
-
-
+- [Technical Deep Dive blog](https://aws.amazon.com/blogs/machine-learning/technical-deep-dive-agentcore-payments-and-innovation-in-agentic-commerce/)
 
 ## Prerequisites
 
@@ -74,7 +80,7 @@ python 00-getting-started/01-agents-payments-and-limits/langgraph_payment_agent.
 
 ## Security
 
-- All tutorials use **testnet only** (Base Sepolia / Solana Devnet). No real funds are involved.
+- All tutorials use **testnet only** for learning and enablement purpose(Base Sepolia / Solana Devnet). No real funds are involved.
 - Never commit `.env` files or private keys. Use AWS Secrets Manager for production credentials.
 - Follow IAM least-privilege: separate ControlPlaneRole, ManagementRole, and ProcessPaymentRole.
 - Follow [AWS shared responsibility model](https://aws.amazon.com/compliance/shared-responsibility-model/)
