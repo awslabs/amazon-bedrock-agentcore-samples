@@ -10,14 +10,6 @@ Usage: python strands_mpp_agent_mainnet.py
 """
 
 
-# -- Compliance Notice -------------------------------------------------------
-# Applications processing real payment transactions may be subject to PCI-DSS
-# requirements. Customers are responsible for ensuring their use of this pattern
-# meets applicable compliance obligations. See:
-# https://aws.amazon.com/compliance/pci-dss-level-1-faqs/
-# This sample is for demonstration purposes and does not constitute compliance
-# guidance.
-# ----------------------------------------------------------------------------
 import os
 import sys
 import uuid as _uuid

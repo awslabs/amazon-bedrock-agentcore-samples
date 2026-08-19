@@ -214,7 +214,6 @@ print(sess["availableLimits"]["availableSpendAmount"])
 
 | Symptom | Cause | Resolution |
 |:--------|:------|:-----------|
-| `Tempo payments are not supported for Coinbase-managed payment instruments` | MPP charge settles on Tempo; Coinbase-managed instruments cannot sign Tempo. | Set `CREDENTIAL_PROVIDER_TYPE=StripePrivy` and use the Privy instrument. |
 | ProcessPayment rejects the challenge over gas fees | The challenge advertises `feePayer=false` (buyer pays gas) and the request did not authorize it. | Set `buyer_pays_gas_fees=True` on the plugin config (already set in this tutorial). |
 | The payment does not settle (agent run stops) | Delegated signing not granted for the wallet, the wallet is not funded with testnet pathUSD, or a Coinbase instrument is configured. | Grant delegated signing (Tutorial 00), fund the Tempo wallet from the testnet faucet, and confirm a Stripe/Privy instrument. |
 
