@@ -36,7 +36,7 @@ INSTRUMENT_ID = os.environ["INSTRUMENT_ID"]
 
 print(f"  Manager: {PAYMENT_MANAGER_ARN}")
 print(f"  Instrument: {INSTRUMENT_ID}")
-print(f"  Network: Tempo MAINNET (chain 4217)\n")
+print("  Network: Tempo MAINNET (chain 4217)\n")
 
 # -- Opt-in ------------------------------------------------------------------
 print("=" * 60)
@@ -108,8 +108,8 @@ print(f"\nResearching: {target}\n")
 
 result = agent(
     f"Research '{target}' using Browserbase. Make 2-3 searches from different angles "
-    f"(competitors, news, features). Synthesize a competitive intelligence briefing. "
-    f"Report total cost."
+    "(competitors, news, features). Synthesize a competitive intelligence briefing. "
+    "Report total cost."
 )
 
 if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):

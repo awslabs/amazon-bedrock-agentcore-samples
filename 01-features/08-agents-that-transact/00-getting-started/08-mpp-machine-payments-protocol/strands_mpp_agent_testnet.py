@@ -34,7 +34,7 @@ INSTRUMENT_ID = os.environ["INSTRUMENT_ID"]
 
 print(f"  Manager: {PAYMENT_MANAGER_ARN}")
 print(f"  Instrument: {INSTRUMENT_ID}")
-print(f"  Network: Tempo Moderato testnet (chain 42431)\n")
+print("  Network: Tempo Moderato testnet (chain 42431)\n")
 
 # -- Payment session + plugin ------------------------------------------------
 from bedrock_agentcore.payments import PaymentManager
@@ -94,7 +94,8 @@ result = agent(
 )
 
 if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
-    print("\n[!] Payment did not settle. Check: Stripe/Privy instrument, funded wallet, delegated signing.")
+    print("\n[!] Payment did not settle.")
+    print("    Check: Stripe/Privy instrument, funded wallet, delegated signing.")
     sys.exit(1)
 
 print("\nDone. See Module B (strands_mpp_agent_mainnet.py) for a mainnet use case.")
