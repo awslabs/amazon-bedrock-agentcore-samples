@@ -104,10 +104,12 @@ print("\n" + "=" * 60)
 print("COMPETITIVE INTELLIGENCE (mainnet, real funds)")
 print("=" * 60)
 target = input("\nResearch target (company/product): ").strip() or "cloud computing market trends"
+
 print(f"\nResearching: {target}\n")
 
 result = agent(
     f"Research '{target}' using Browserbase. Make 2-3 searches from different angles "
+
     "(competitors, news, features). Synthesize a competitive intelligence briefing. "
     "Report total cost."
 )

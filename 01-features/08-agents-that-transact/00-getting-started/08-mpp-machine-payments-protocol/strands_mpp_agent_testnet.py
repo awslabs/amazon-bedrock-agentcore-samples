@@ -94,6 +94,7 @@ result = agent(
 )
 
 if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
+
     print("\n[!] Payment did not settle.")
     print("    Check: Stripe/Privy instrument, funded wallet, delegated signing.")
     sys.exit(1)
