@@ -65,7 +65,7 @@ sess = manager.create_payment_session(
     client_token=str(_uuid.uuid4()),
 )
 SESSION_ID = sess["paymentSessionId"]
-print(f"\nSession: {SESSION_ID} (budget $1.00)")
+print(f"\nSession: ...{SESSION_ID[-4:]} (budget $1.00)")
 
 plugin = AgentCorePaymentsPlugin(
     config=AgentCorePaymentsPluginConfig(
