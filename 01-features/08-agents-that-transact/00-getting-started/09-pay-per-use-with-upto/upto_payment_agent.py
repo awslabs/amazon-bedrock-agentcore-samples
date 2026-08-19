@@ -62,7 +62,7 @@ ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 load_dotenv(ENV_FILE, override=True)
 
 # ── Mainnet opt-in ────────────────────────────────────────────────────────────
-# There is no testnet path here, so require the opt-in before any real funds move.
+# This tutorial runs on Base mainnet, so require the opt-in before any real funds move.
 if os.environ.get("UPTO_ALLOW_MAINNET") != "1":
     sys.exit(
         "This tutorial settles REAL USDC on Base mainnet (~$0.003 per call, final and irreversible).\n\n"
