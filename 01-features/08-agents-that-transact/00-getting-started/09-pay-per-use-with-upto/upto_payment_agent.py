@@ -295,6 +295,10 @@ class UptoOnlyPaymentHandler(handlers.HttpRequestPaymentHandler):
 
     Both extraction points are narrowed because either can carry the terms: a base64
     PAYMENT-REQUIRED header, or the payload in the body. The SDK prefers the header when present.
+
+    A 402 can advertise more than x402. A `WWW-Authenticate: Payment` challenge is one such offer,
+    and the SDK acts on it ahead of the x402 payload. This tutorial pays over x402, so
+    `extract_headers` removes that header and the request is paid with the scheme chosen here.
     """
 
     def extract_headers(self, result):
@@ -302,6 +306,9 @@ class UptoOnlyPaymentHandler(handlers.HttpRequestPaymentHandler):
         if not isinstance(headers, dict):
             return headers
         for key, value in list(headers.items()):
+            if key.lower() == "www-authenticate" and handlers.has_mpp_challenge({key: value}):
+                del headers[key]
+                continue
             if key.lower() != "payment-required" or not value:
                 continue
             try:
