@@ -210,6 +210,11 @@ print(sess["availableLimits"]["availableSpendAmount"])
 | Browserbase | `POST https://mpp.browserbase.com/search`        | $0.01  |
 | Allium      | `POST https://agents.allium.so/api/v1/developer/prices` | $0.02 |
 
+## Security and compliance
+
+- [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/)
+- [AgentCore payments security best practices](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-security-best-practices.html)
+
 ## Observability
 
 Enable observability on your Payment Manager to trace payment operations, monitor
