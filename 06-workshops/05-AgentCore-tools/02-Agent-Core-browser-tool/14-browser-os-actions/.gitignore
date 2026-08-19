@@ -1,0 +1,17 @@
+# Hidden folders
+.venv/
+.vscode/
+.kiro/
+
+# Credentials (NEVER commit these)
+.env
+setup_aws_creds.sh
+.scripts/
+.bkp/
+
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/

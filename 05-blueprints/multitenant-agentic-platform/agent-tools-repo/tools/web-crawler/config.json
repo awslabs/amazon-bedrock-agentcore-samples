@@ -1,0 +1,31 @@
+{
+  "name": "web-crawler",
+  "displayName": "Web Crawler",
+  "description": "Crawl and extract content from websites using Crawl4AI",
+  "category": "information",
+  "version": "1.0.0",
+  "dependencies": ["crawl4ai"],
+  "parameters": {
+    "extract_links": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to extract links from the page"
+    },
+    "extract_images": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to extract image URLs from the page"
+    },
+    "word_count_threshold": {
+      "type": "integer",
+      "default": 10,
+      "min": 0,
+      "max": 100,
+      "description": "Minimum word count for content blocks to be included"
+    }
+  },
+  "permissions": ["internet_access"],
+  "icon": "🕷️",
+  "author": "Agent Tools Team",
+  "license": "MIT"
+}

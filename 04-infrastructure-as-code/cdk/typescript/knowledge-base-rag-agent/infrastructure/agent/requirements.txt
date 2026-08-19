@@ -1,0 +1,16 @@
+# Bedrock AgentCore Runtime SDK
+bedrock-agentcore>=0.1.0
+
+# Strands Agents SDK
+strands-agents>=0.1.0
+
+# AWS SDK
+boto3>=1.35.0
+botocore>=1.35.0
+
+# OpenSearch client for RAG
+opensearch-py>=2.4.0
+requests-aws4auth>=1.2.0
+
+# Utilities
+python-dotenv>=1.0.0

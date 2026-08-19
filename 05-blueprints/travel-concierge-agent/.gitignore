@@ -1,0 +1,60 @@
+node_modules
+.amplify/
+*/cdk.out/
+cdk.out/
+
+# Amplify generated files
+amplify_outputs.json
+amplify_outputs*.json
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Temporary/personal files
+*_ht.json
+package-lock_ht.json
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificates
+localhost-key.pem
+localhost.pem
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Cache directories
+.cache/
+web-ui/.env.local
+*.backup
+OLD_amplify_outputs.json
+CERTs/

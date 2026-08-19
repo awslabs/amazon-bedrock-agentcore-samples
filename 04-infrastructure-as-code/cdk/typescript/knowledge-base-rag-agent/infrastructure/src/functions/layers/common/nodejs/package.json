@@ -1,0 +1,25 @@
+{
+  "name": "bedrock-agent-common-layer",
+  "version": "1.0.0",
+  "description": "Common dependencies for Bedrock Agent Lambda functions",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "postinstall": "echo 'Lambda layer dependencies installed'",
+    "build": "echo 'Lambda layer - no build required'",
+    "test": "echo 'Lambda layer - no tests'"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.0.0",
+    "@aws-sdk/client-opensearchserverless": "^3.0.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
+    "@aws-sdk/signature-v4": "^3.0.0",
+    "@aws-sdk/credential-provider-node": "^3.0.0",
+    "@aws-crypto/sha256-js": "^4.0.0",
+    "uuid": "^9.0.1"
+  }
+}

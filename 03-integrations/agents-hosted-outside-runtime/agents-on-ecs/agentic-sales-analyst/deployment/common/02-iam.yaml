@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IAM roles for Strands Agent'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: agentic-sales-analyst
+
+Resources:
+  ExecutionRole:  # cdk-nag: disable=AwsSolutions-IAM4:ECS requires AWS managed policy for task execution
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-task-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: arn:aws:bedrock:*::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0
+        - PolicyName: AgentCoreMemory
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:CreateMemory
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:UpdateMemory
+                  - bedrock-agentcore:DeleteMemory
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetLastKTurns
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:GetEvent
+                Resource: '*'  # cfn_nag: disable=F3 checkov:skip=CKV_AWS_111:AgentCore memory resources are created dynamically
+        - PolicyName: Observability
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: '*'
+
+Outputs:
+  ExecutionRoleArn:
+    Value: !GetAtt ExecutionRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-execution-role-arn
+  TaskRoleArn:
+    Value: !GetAtt TaskRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-task-role-arn

@@ -1,0 +1,37 @@
+{
+  "name": "email-sender",
+  "displayName": "Email Sender",
+  "description": "Send emails using AWS SES",
+  "category": "communication",
+  "version": "1.0.0",
+  "dependencies": ["boto3"],
+  "parameters": {
+    "to": {
+      "type": "string",
+      "description": "Recipient email address"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject line"
+    },
+    "body": {
+      "type": "string",
+      "description": "Email body content"
+    },
+    "from_email": {
+      "type": "string",
+      "default": "noreply@example.com",
+      "description": "Sender email address (must be verified in SES)"
+    }
+  },
+  "permissions": ["ses_send_email"],
+  "icon": "📧",
+  "author": "Agent Tools Team",
+  "license": "MIT",
+  "requirements": [
+    "AWS SES configured",
+    "Sender email verified in SES",
+    "IAM permissions for ses:SendEmail",
+    "For production: Move out of SES sandbox"
+  ]
+}

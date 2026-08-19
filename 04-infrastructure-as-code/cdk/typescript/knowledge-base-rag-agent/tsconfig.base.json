@@ -1,0 +1,63 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "commonjs",
+    "lib": ["ES2023", "dom"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    
+    // Strict Type Checking
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    
+    // Additional Checks
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    
+    // Module Resolution
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"],
+      "@config/*": ["config/*"],
+      "@utils/*": ["src/utils/*"],
+      "@lambda/*": ["lambda/*"]
+    },
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    // Emit
+    "noEmitOnError": true,
+    "preserveConstEnums": true,
+    "removeComments": false,
+    
+    // Interop Constraints
+    "isolatedModules": true,
+    "allowJs": false,
+    "checkJs": false,
+    
+    // Backwards Compatibility
+    "skipLibCheck": true,
+    
+    // Experimental
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "exclude": ["node_modules", "cdk.out", "dist", "build", "coverage", "**/*.test.ts", "**/*.spec.ts"]
+}

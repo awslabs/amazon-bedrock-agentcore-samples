@@ -1,0 +1,23 @@
+# Requirements for Accounts Agent - AgentCore Identity Sample
+
+# AgentCore Runtime SDK
+bedrock-agentcore==1.2.0
+
+# Strands Agents framework
+strands-agents==1.23.0
+
+# AWS SDK (includes Bedrock Runtime)
+boto3>=1.42.0,<2.0.0
+
+# JSON Web Token support for claim validation
+pyjwt>=2.10.0,<4.0.0
+cryptography>=42.0.0,<50.0.0
+
+# HTTP client
+requests>=2.32.0,<3.0.0
+
+# Data validation and parsing
+pydantic>=2.12.0,<3.0.0
+
+# Utilities
+python-dateutil>=2.8.2,<3.0.0

@@ -1,0 +1,62 @@
+{
+  "name": "knowledge-base-rag-agent",
+  "version": "1.0.0",
+  "description": "A comprehensive AWS CDK template for deploying a Bedrock Agent with Knowledge Base and web interface",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "infrastructure",
+    "web-console",
+    "infrastructure/src/functions/layers/common/nodejs"
+  ],
+  "scripts": {
+    "postinstall": "npm install --prefix infrastructure/src/functions/layers/common/nodejs",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "test:e2e": "cd web-console && npm run test:e2e",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "type-check": "tsc --noEmit && npm run type-check --workspaces",
+    "quality:check": "npm run lint:check && npm run format:check && npm run type-check",
+    "quality:fix": "npm run lint && npm run format",
+    "audit:fix": "npm audit fix && cd infrastructure && npm audit fix && cd ../web-console && npm audit fix && cd ../infrastructure/src/functions && npm audit fix && cd ../../..",
+    "security:check": "npm audit && cd infrastructure && npm audit && cd ../web-console && npm audit && cd ../infrastructure/src/functions && npm audit && cd ../../..",
+    "deploy": "./scripts/deploy.sh",
+    "start:web": "cd web-console && npm run dev"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agent": "^3.525.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.525.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^22.7.0",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-security": "^3.0.1",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=24.8.0",
+    "npm": ">=10.0.0"
+  },
+  "keywords": [
+    "aws",
+    "bedrock",
+    "ai",
+    "chatbot",
+    "knowledge-base",
+    "cdk",
+    "template"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

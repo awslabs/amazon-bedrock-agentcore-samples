@@ -1,0 +1,29 @@
+{
+  "name": "database-query",
+  "displayName": "Database Query",
+  "description": "Query databases using SQL with AWS RDS Data API",
+  "category": "data",
+  "version": "1.0.0",
+  "dependencies": ["boto3"],
+  "parameters": {
+    "sql": {
+      "type": "string",
+      "description": "SQL query to execute"
+    },
+    "database": {
+      "type": "string",
+      "default": "default",
+      "description": "Database name to query"
+    }
+  },
+  "permissions": ["rds_data_api"],
+  "icon": "🗄️",
+  "author": "Agent Tools Team",
+  "license": "MIT",
+  "requirements": [
+    "AWS RDS Data API enabled",
+    "Database cluster ARN configured",
+    "Secrets Manager secret ARN configured",
+    "IAM permissions for rds-data:ExecuteStatement"
+  ]
+}

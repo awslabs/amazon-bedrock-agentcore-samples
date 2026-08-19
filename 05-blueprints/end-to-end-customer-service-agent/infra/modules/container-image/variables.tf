@@ -1,0 +1,28 @@
+variable "force_image_rebuild" {
+  description = "Set true to force rebuild & push of image to ECR even if source appears unchanged"
+  default     = false
+  type        = bool
+}
+
+variable "image_build_tool" {
+  description = "Either 'docker' or a Docker-compatible alternative e.g. 'finch'"
+  default     = "docker"
+  type        = string
+}
+
+variable "relative_image_src_path" {
+  description = "Path to container image source folder, relative to Terraform root"
+  default     = "../cx-agent-backend"
+  type        = string
+}
+
+variable "image_tag" {
+  description = "Tag to apply to the pushed container image in Amazon ECR"
+  default     = "latest"
+  type        = string
+}
+
+variable "repository_name" {
+  description = "Name of the Amazon ECR repository to create and deploy the image to"
+  type        = string
+}

@@ -1,0 +1,39 @@
+# CDK specific
+.cdk.staging/
+cdk.out/
+cdk.context.json
+
+# TypeScript compiled files
+*.js
+!jest.config.js
+*.d.ts
+
+# Allow Lambda function source files
+!src/functions/**/*.js
+
+# Node.js dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# Build output
+dist/
+build/
+lib/**/*.js
+bin/**/*.js
+test/**/*.js
+
+# Exclude JavaScript files in lambda directories
+!lib/lambda/**/*.js
+
+# Logs
+*.log
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

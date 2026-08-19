@@ -1,0 +1,8 @@
+strands-agents[otel]
+flask>=2.3.0
+flask-cors>=4.0.0
+psycopg2-binary>=2.9.0
+requests>=2.31.0
+boto3>=1.34.0
+aws-opentelemetry-distro>=0.10.0
+bedrock-agentcore

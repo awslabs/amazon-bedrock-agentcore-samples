@@ -50,7 +50,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 # Initialize the LLM with Bedrock
 llm = init_chat_model(
-    "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     model_provider="bedrock_converse",
 )
 
@@ -95,10 +95,10 @@ app.run()
 
 ```bash
 # Configure your agent for deployment
-bedrock-agentcore-toolkit configure
+agentcore configure
 
 # Deploy your agent
-bedrock-agentcore-toolkit deploy --app-file langgraph_agent_web_search.py
+agentcore launch -e langgraph_agent_web_search.py
 ```
 
 During configuration, you'll be prompted to:
@@ -111,7 +111,7 @@ During configuration, you'll be prompted to:
 Once deployed, you can test your agent using:
 
 ```bash
-bedrock-agentcore-toolkit invoke --prompt "What are the latest developments in quantum computing?"
+agentcore invoke {"prompt":"What are the latest developments in quantum computing?"}
 ```
 
 The agent will:
@@ -124,7 +124,7 @@ The agent will:
 To remove your deployed agent:
 
 ```bash
-bedrock-agentcore-toolkit delete
+agentcore destroy
 ```
 
 ## How It Works

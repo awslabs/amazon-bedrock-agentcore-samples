@@ -1,0 +1,11 @@
+[project]
+name = "a2a-sample"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "a2a-sdk>=0.3.9",
+    "bedrock-agentcore>=1.0.0",
+    "pyyaml>=6.0.3",
+]

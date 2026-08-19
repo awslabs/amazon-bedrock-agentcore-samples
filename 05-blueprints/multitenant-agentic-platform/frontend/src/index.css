@@ -1,0 +1,70 @@
+/* Tailwind CSS v4 */
+@import "tailwindcss";
+
+/* HeroUI v3 styles - includes default theme */
+@import "@heroui/styles";
+
+/* HeroUI Default Font Family */
+:root {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* Apply default font to everything */
+html, body, #root {
+  font-family: var(--font-sans);
+}
+
+/* Utility Classes */
+.bg-background { background-color: var(--background); }
+.bg-surface { background-color: var(--surface); }
+.bg-surface-secondary { background-color: var(--default); }
+.bg-surface-tertiary { background-color: var(--separator); }
+.bg-overlay { background-color: var(--overlay); }
+.bg-accent { background-color: var(--accent); }
+.bg-accent-soft { background-color: rgba(98, 4, 195, 0.1); }
+.bg-success { background-color: var(--success); }
+.bg-success-soft { background-color: rgba(115, 41, 115, 0.1); }
+.bg-warning { background-color: var(--warning); }
+.bg-warning-soft { background-color: rgba(120, 25, 120, 0.1); }
+.bg-danger { background-color: var(--danger); }
+.bg-danger-soft { background-color: rgba(101, 50, 35, 0.1); }
+
+.text-foreground { color: var(--foreground); }
+.text-muted { color: var(--muted); }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+.border-border { border-color: var(--border); }
+.border-accent { border-color: var(--accent); }
+.border-separator { border-color: var(--separator); }
+
+.shadow-surface { box-shadow: var(--surface-shadow); }
+.shadow-overlay { box-shadow: var(--overlay-shadow); }
+
+/* Base body styles */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ensure all elements inherit the font */
+*, *::before, *::after {
+  font-family: inherit;
+}
+
+/* Monospace font for code elements */
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}

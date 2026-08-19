@@ -1,0 +1,27 @@
+# ============================================================================
+# Basic AgentCore Runtime - Example Configuration
+# ============================================================================
+# Copy this file to terraform.tfvars and customize the values
+# Example: cp terraform.tfvars.example terraform.tfvars
+
+# Agent Configuration
+agent_name  = "BasicAgent"
+stack_name  = "agentcore-basic"
+description = "Basic agent runtime without memory, code interpreter, or browser"
+
+# Network Configuration
+network_mode = "PUBLIC" # Options: PUBLIC, PRIVATE
+
+# Container Configuration
+ecr_repository_name = "basic-agent"
+image_tag           = "latest"
+
+# AWS Configuration
+aws_region  = "us-west-2"
+environment = "dev"
+
+# Optional: Environment Variables for the Agent Runtime
+# environment_variables = {
+#   LOG_LEVEL = "INFO"
+#   CUSTOM_VAR = "value"
+# }

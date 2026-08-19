@@ -1,0 +1,21 @@
+{
+  "name": "web-search",
+  "displayName": "Web Search",
+  "description": "Search the web using DuckDuckGo (requests + BeautifulSoup)",
+  "category": "information",
+  "version": "2.1.0",
+  "dependencies": ["requests", "beautifulsoup4"],
+  "parameters": {
+    "max_results": {
+      "type": "integer",
+      "default": 5,
+      "min": 1,
+      "max": 10,
+      "description": "Maximum number of search results to return"
+    }
+  },
+  "permissions": ["internet_access"],
+  "icon": "🔍",
+  "author": "Agent Tools Team",
+  "license": "MIT"
+}

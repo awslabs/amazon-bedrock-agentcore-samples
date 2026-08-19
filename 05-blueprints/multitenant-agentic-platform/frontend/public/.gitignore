@@ -1,0 +1,2 @@
+# config.js is generated at deployment time, not included in build
+config.js

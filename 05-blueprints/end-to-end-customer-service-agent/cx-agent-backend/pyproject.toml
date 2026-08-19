@@ -1,0 +1,59 @@
+[project]
+name = "cx-agent-backend"
+version = "0.1.0"
+description = "Customer service demo agent compatible with Bedrock AgentCore"
+requires-python = ">=3.11"
+dependencies = [
+    "bedrock-agentcore>=1.0.3",
+    "boto3>=1.34.0",
+    "dependency-injector>=4.41.0",
+    "fastapi>=0.104.0",
+    "langchain>=0.1.0",
+    "langchain[aws]",
+    "langchain-core>=0.1.0",
+    "langchain-openai>=0.1.0",
+    "langgraph>=0.1.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "structlog>=23.2.0",
+    "tavily-python>=0.3.0",
+    "uvicorn[standard]>=0.24.0",
+    "opentelemetry-instrumentation-langchain>=0.48.1",
+    "langsmith[otel]",
+    "bedrock-agentcore-starter-toolkit",
+    "mcp>=1.0.0",
+    "langchain-mcp>=0.1.0",
+    "langchain-mcp-adapters>=0.1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.25.0",
+    "ipykernel>=6.30.1",
+    "mypy>=1.7.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cx_agent_backend"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
+skips = ["B101", "B601", "B602"]
+
+[tool.ruff.lint]
+ignore = ["S602", "S603", "S113"]

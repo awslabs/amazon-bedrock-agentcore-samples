@@ -1,0 +1,10 @@
+# Visa Local Server Dependencies
+flask>=3.0.0
+requests>=2.31.0
+boto3>=1.34.0
+jwcrypto>=1.5.0
+cryptography>=41.0.0
+ntplib>=0.4.0
+pyopenssl>=23.0.0  # For SSL context in Flask
+mangum>=0.17.0  # Lambda adapter for ASGI apps
+asgiref>=3.7.0  # WSGI to ASGI adapter for Flask

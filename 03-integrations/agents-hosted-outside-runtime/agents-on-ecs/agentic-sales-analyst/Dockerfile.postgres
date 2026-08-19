@@ -1,0 +1,16 @@
+FROM postgres:16-alpine
+
+# Copy initialization scripts and data
+COPY create_and_load_sales_data.sql /docker-entrypoint-initdb.d/
+COPY sales_data_sample_utf8.csv /docker-entrypoint-initdb.d/
+
+# Set default environment variables
+ENV POSTGRES_DB=sales_db
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD pg_isready -U postgres || exit 1
+
+# checkov:skip=CKV_DOCKER_3:PostgreSQL requires root permissions for database initialization and management

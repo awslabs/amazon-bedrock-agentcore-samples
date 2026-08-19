@@ -1,0 +1,35 @@
+# ============================================================================
+# Multi-Agent Runtime - Example Configuration
+# ============================================================================
+# Copy this file to terraform.tfvars and customize
+# Example: cp terraform.tfvars.example terraform.tfvars
+
+# Agent Configuration
+orchestrator_name = "OrchestratorAgent"
+specialist_name   = "SpecialistAgent"
+stack_name        = "agentcore-multi-agent"
+
+# Network Configuration
+network_mode = "PUBLIC" # PUBLIC or PRIVATE
+
+# Container Configuration
+ecr_repository_name = "multi-agent"
+image_tag           = "latest"
+
+# AWS Configuration
+aws_region  = "us-west-2"
+environment = "dev"
+
+# Optional: Environment Variables (if needed for custom configurations)
+# environment_variables = {
+#   LOG_LEVEL = "INFO"
+# }
+
+# Notes:
+# - Orchestrator Agent: Receives user requests and delegates to Specialist
+# - Specialist Agent: Provides specialized data processing capabilities
+# - Orchestrator code in agent-orchestrator-code/ directory (includes A2A invocation logic)
+# - Specialist code in agent-specialist-code/ directory (independent specialist)
+# - A2A communication: Orchestrator can invoke Specialist via call_specialist_agent tool
+# - Sequential deployment: Specialist builds first, then Orchestrator
+# - Test with: python test_multi_agent.py

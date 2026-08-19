@@ -1,0 +1,31 @@
+# ============================================================================
+# MCP Server on AgentCore Runtime - Example Configuration
+# ============================================================================
+# Copy this file to terraform.tfvars and customize
+# Example: cp terraform.tfvars.example terraform.tfvars
+
+# Agent Configuration
+agent_name  = "MCPServerAgent"
+stack_name  = "agentcore-mcp-server"
+description = "MCP server runtime with JWT authentication"
+
+# Network Configuration
+network_mode = "PUBLIC" # PUBLIC or PRIVATE
+
+# Container Configuration
+ecr_repository_name = "mcp-server"
+image_tag           = "latest"
+
+# AWS Configuration
+aws_region  = "us-west-2"
+environment = "dev"
+
+# Optional: Environment Variables for MCP Server
+# environment_variables = {
+#   LOG_LEVEL = "INFO"
+# }
+
+# Notes:
+# - JWT auth via Cognito (test user: testuser/MyPassword123!)
+# - MCP server code in mcp-server-code/ directory
+# - Three tools included: add_numbers, multiply_numbers, greet_user

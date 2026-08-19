@@ -1,0 +1,21 @@
+# Requirements for Coordinator Agent - AgentCore Identity Sample
+# Note: Core SDK versions are pinned for reproducible builds
+
+# AgentCore Runtime SDK (pinned)
+bedrock-agentcore==1.2.0
+
+# Strands Agents framework (pinned)
+strands-agents==1.23.0
+
+# AWS SDK (includes Bedrock Runtime)
+boto3>=1.42.0,<2.0.0
+
+# JSON Web Token support for Auth0 integration
+pyjwt>=2.10.0,<4.0.0
+cryptography>=42.0.0,<50.0.0
+
+# HTTP client
+requests>=2.32.0,<3.0.0
+
+# Data validation and parsing
+pydantic>=2.12.0,<3.0.0
