@@ -4,8 +4,12 @@ Step-by-step Python tutorials for building payment-enabled AI agents with **Amaz
 AgentCore payments** —  protocol orchestration, configurable spend limits, and third-party
 wallet integration (Coinbase CDP, Stripe/Privy).
 
-> **Testnet only.** All tutorials use Base Sepolia (Ethereum) or Solana Devnet with free USDC from
-> [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
+> **Testnet by default.** Tutorials 00–07 use Base Sepolia (Ethereum) or Solana Devnet with free USDC
+> from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
+>
+> **Tutorial 09 is the exception.** It runs on Base mainnet and transfers **real USDC** from your
+> wallet. It refuses to run until you opt in explicitly — read
+> [its README](09-pay-per-use-with-upto/) first.
 
 ## How the pieces fit together  <a name="cli-vs-sdk"></a>
 
