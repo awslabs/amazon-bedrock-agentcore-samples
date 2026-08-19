@@ -53,8 +53,8 @@ numbered walkthrough, an inspect step, troubleshooting, and clean-up — so once
 
 ## Tutorials
 
-Run Tutorial 00 first; then 01–07 in any order. Each folder's README opens with a **Reads / Does**
-strip so you can see its inputs and outputs at a glance.
+Run Tutorial 00 first; then 01–07 and 09 in any order. Each folder's README opens with a
+**Reads / Does** strip so you can see its inputs and outputs at a glance.
 
 | # | Folder | What you build | Provisioning |
 |---|--------|----------------|:------------:|
@@ -66,8 +66,9 @@ strip so you can see its inputs and outputs at a glance.
 | 05 | [`05-agent-with-browser-tool-pay-for-content/`](05-agent-with-browser-tool-pay-for-content/) | Pay 402 paywalls inside a browser session | SDK |
 | 06 | [`06-research-agent-with-payment-memory/`](06-research-agent-with-payment-memory/) | Add AgentCore Memory to skip redundant paid calls | SDK |
 | 07 | [`07-multi-agent-payment-orchestrator/`](07-multi-agent-payment-orchestrator/) | Multiple agents, separate wallets, per-agent budgets | CLI + SDK |
+| 09 | [`09-pay-per-use-with-upto/`](09-pay-per-use-with-upto/) | Pay a metered seller with the x402 `upto` scheme (real USDC on Base mainnet) | SDK |
 
-MPP and Upto Tutorials are coming soon ! 
+MPP Tutorial is coming soon !
 
 ## Which tutorial do I need?
 
@@ -77,6 +78,7 @@ MPP and Upto Tutorials are coming soon !
 - **Paying for web/article content?** → 05 (Browser).
 - **Personalized agentic payments with memory?** → 06 (Memory).
 - **Several agents with independent budgets?** → 07 (needs multi-provider setup).
+- **Price not known until the work is done?** → 09 (`upto`, real funds on mainnet).
 
 ## Shared files
 
