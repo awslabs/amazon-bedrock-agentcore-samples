@@ -74,8 +74,7 @@ session = boto3.Session()
 print(f"Authenticated as: {session.client('sts').get_caller_identity()['Arn']}")
 
 # ── Modular sellers ───────────────────────────────────────────────────────────
-# Paid inference is the canonical `upto` use case. Switch sellers with UPTO_SELLER in .env, or set
-# UPTO_SELLER_URL to bypass this registry.
+# Switch sellers with UPTO_SELLER in .env, or set UPTO_SELLER_URL to bypass this registry.
 SELLERS = {
     "surplus": {
         "label": "Surplus Intelligence — OpenAI-compatible paid inference",
@@ -122,10 +121,9 @@ USER_ID = config["user_id"]
 
 # Multi-provider instrument selection. load_tutorial_env() resolves a single top-level
 # instrument_id from CREDENTIAL_PROVIDER_TYPE, and a .env provisioned for both wallet providers
-# (see Tutorial 07) also carries one instrument per provider under config["instruments"]. That
-# distinction matters more for `upto` than for `exact`: the Permit2 approval is granted per WALLET,
-# so each provider's wallet pays its own one-time approve gas fee before it can settle `upto`.
-# Pin the payer with UPTO_PROVIDER=coinbase|stripe_privy when the .env has both.
+# (see Tutorial 07) also carries one instrument per provider under config["instruments"]. The
+# Permit2 approval is granted per WALLET, so each provider's wallet grants its own before it can
+# settle `upto`. Pin the payer with UPTO_PROVIDER=coinbase|stripe_privy when the .env has both.
 PROVIDER_CHOICE = os.environ.get("UPTO_PROVIDER", "").strip().lower().replace("-", "_")
 INSTRUMENTS = config.get("instruments") or {}
 
@@ -158,12 +156,10 @@ SESSION_EXPIRY_MINUTES = 15
 # uint256; a bounded value limits the exposure if the approval is ever misused.
 PERMIT2_ALLOWANCE_LIMIT = os.environ.get("UPTO_PERMIT2_ALLOWANCE_LIMIT", "1000000")
 
-# Set UPTO_GRANT_PERMIT2_ALLOWANCE=0 when re-running against an already-approved wallet, so Step 5
-# does not pay a second gas fee to overwrite an identical allowance.
+# Set UPTO_GRANT_PERMIT2_ALLOWANCE=0 when re-running against a wallet that is already approved.
 GRANT_PERMIT2_ALLOWANCE = os.environ.get("UPTO_GRANT_PERMIT2_ALLOWANCE", "1") == "1"
 
-# Base mainnet. `eip155:8453` is the CAIP-2 identifier the plugin ranks `accepts` entries against;
-# `base` is the human-readable chain name, kept for readability.
+# Base mainnet, by CAIP-2 id and by name. The plugin ranks the 402's `accepts` entries against these.
 NETWORK_PREFS = ["eip155:8453", "base"]
 
 print_summary(
@@ -203,9 +199,8 @@ def narrow_to_scheme(payload, scheme=PAY_SCHEME):
 def narrow_or_stop(payload):
     """narrow_to_scheme(), but exit with a readable message instead of raising.
 
-    The handler below runs mid-payment, inside the plugin, where a raised RuntimeError would surface
-    as a traceback rather than an explanation. Step 2 checks the same condition up front, so this
-    only fires if the seller's terms change between reading them and paying.
+    The handler runs mid-payment, inside the plugin, where a RuntimeError would surface as a
+    traceback rather than an explanation.
     """
     try:
         return narrow_to_scheme(payload)
@@ -218,10 +213,7 @@ def narrow_or_stop(payload):
 
 
 def read_payment_terms(url, model):
-    """Return the seller's decoded 402 payload. Asking for terms settles nothing.
-
-    A 402 is a price list, so this costs no money and signs nothing.
-    """
+    """Return the seller's decoded 402 payload. Reading terms costs nothing and signs nothing."""
     body = {"messages": [{"role": "user", "content": "ping"}], "max_tokens": 16}
     if model:
         body["model"] = model
@@ -255,15 +247,14 @@ terms = read_payment_terms(seller["url"], SELLER_MODEL)
 advertised = terms.get("accepts") or []
 print(f"   HTTP 402 — the seller declares {len(advertised)} way(s) to pay:")
 for i, entry in enumerate(advertised):
-    # x402 v2 carries the amount in `amount`; v1 uses `maxAmountRequired`. `upto` is v2-only, so an
-    # `upto` entry always uses `amount` — the fallback is for the `exact` entries alongside it.
+    # x402 v2 names the amount `amount`; v1 names it `maxAmountRequired`.
     amount = str(entry.get("amount") or entry.get("maxAmountRequired") or "?")
     note = "ceiling for this request" if scheme_of(entry) == PAY_SCHEME else "fixed price"
     net = entry.get("network")
     print(f"     accepts[{i}]  scheme={scheme_of(entry):<6} amount={amount:<8} network={net}  ({note})")
 
-# Fail closed before spending anything. A seller that stops offering `upto` should stop this run,
-# not silently fall through to `exact` — the whole tutorial would then demonstrate the wrong scheme.
+# Fail closed before spending anything: a seller that stops offering `upto` stops this run rather
+# than falling through to `exact`.
 narrow_or_stop(terms)
 
 if advertised and scheme_of(advertised[0]) != PAY_SCHEME:
@@ -315,7 +306,7 @@ class UptoOnlyPaymentHandler(handlers.HttpRequestPaymentHandler):
                 padded = value + "=" * ((-len(value) % 4 + 4) % 4)
                 payload = json.loads(base64.b64decode(padded).decode())
             except (ValueError, binascii.Error, UnicodeDecodeError):
-                # Leave anything unparseable untouched; the SDK reports it far more precisely.
+                # Leave anything unparseable untouched; the SDK reports the parse failure itself.
                 continue
             narrowed = narrow_or_stop(payload)
             if narrowed is not None:
@@ -330,16 +321,14 @@ class UptoOnlyPaymentHandler(handlers.HttpRequestPaymentHandler):
         return narrowed if narrowed is not None else body
 
 
-# get_payment_handler() resolves handlers from this tool-name registry. The plugin config also has a
-# custom_handlers field, but as of SDK 1.22.0 only the LangGraph middleware consults it — the Strands
-# plugin reads the registry — so register here to stay on the path the plugin actually takes.
+# The plugin resolves a handler by tool name from this registry.
 handlers.PAYMENT_HANDLERS["http_request"] = UptoOnlyPaymentHandler()
 print(f"\n── Step 3: Scheme pinned to {PAY_SCHEME!r} via UptoOnlyPaymentHandler ──")
 
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 
-# Checked unconditionally: build_agent() always passes permit2_allowance_limit, so an older SDK
-# raises TypeError even when UPTO_GRANT_PERMIT2_ALLOWANCE=0. Fail readably instead.
+# build_agent() always passes permit2_allowance_limit, so an SDK without that field fails with a
+# TypeError. Check for it first and explain instead.
 if "permit2_allowance_limit" not in {f.name for f in dataclasses.fields(AgentCorePaymentsPluginConfig)}:
     sys.exit(
         "The installed bedrock-agentcore SDK has no permit2_allowance_limit field, so it does not\n"
@@ -414,7 +403,7 @@ def abort_if_payment_blocked(result):
     if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
         print(
             "\nThe payment did not complete, so the run cannot continue. Likely causes:\n"
-            "  • Delegated signing is not active for this wallet (Tutorial 00 Step 4).\n"
+            "  • Delegated signing is not active for this wallet (Tutorial 00).\n"
             "  • The session limit is below the seller's declared ceiling, so the budget check\n"
             "    denied the request before anything was signed.\n"
             "  • The wallet holds no ETH on Base for the approve(Permit2) gas fee.\n"

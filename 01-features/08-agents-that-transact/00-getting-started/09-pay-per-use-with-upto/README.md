@@ -116,9 +116,6 @@ sequenceDiagram
     M-->>A: 200 OK + result + PAYMENT-RESPONSE
 ```
 
-The proof header is `PAYMENT-SIGNATURE` for x402 v2, which this seller uses, and `X-PAYMENT` for v1; the
-plugin reads the version from the 402 and picks the right one.
-
 ## Pinning the scheme
 
 A seller may advertise several ways to pay, and the order is not meaningful. This one returns:
@@ -157,13 +154,8 @@ handlers.PAYMENT_HANDLERS["http_request"] = UptoOnlyPaymentHandler()
 Both extraction points are narrowed because either can carry the terms, and the SDK prefers the header
 whenever it is present.
 
-Two details worth knowing if you adapt this:
-
-- **It fails closed.** If a seller stops offering `upto`, the script exits instead of falling back to
-  `exact`.
-- **The plugin config's `custom_handlers` field does not apply here.** As of SDK 1.22.0 only the
-  LangGraph middleware consults it; the Strands plugin resolves handlers from the
-  `handlers.PAYMENT_HANDLERS` tool-name registry, which is why the example registers there.
+The handler fails closed: if a seller stops offering `upto`, the script exits instead of falling back to
+`exact`.
 
 When a seller offers a single scheme, none of this is needed — Tutorial 01's plain plugin setup is
 enough.
@@ -246,15 +238,13 @@ value is safer: the allowance is the outer bound on what Permit2 can ever move f
 - **A few cents of ETH on Base mainnet** for the one-time Permit2 approval.
 - **Python 3.10+** and AWS credentials configured (`aws sts get-caller-identity`).
 - **Python dependencies** — `upto` needs `bedrock-agentcore>=1.22.0`, the release that adds the plugin's
-  `permit2_allowance_limit` field; the script exits with an explicit message rather than a `TypeError` if
-  an older SDK is installed:
+  `permit2_allowance_limit` field:
   ```bash
   pip install -r requirements.txt
   ```
-- **AgentCore CLI (optional)** — only for the inspect step. Install a pinned version rather than letting
-  `npm` resolve whatever is newest (Node.js 20+):
+- **AgentCore CLI (optional)** — only for the inspect step. Requires Node.js 20+:
   ```bash
-  npm install -g @aws/agentcore@0.27.0
+  npm install -g @aws/agentcore
   ```
 
 ## Walkthrough
@@ -328,8 +318,8 @@ UPTO_ALLOW_MAINNET=1 UPTO_PROVIDER=stripe_privy python upto_payment_agent.py
 The script prints which wallet it is paying from, and exits listing the configured providers if
 `UPTO_PROVIDER` names one that is not in the `.env`.
 
-This matters more for `upto` than for `exact`, because the Permit2 approval is granted per wallet: each
-provider's wallet needs its own one-time `approve` before it can settle `upto`.
+The Permit2 approval is granted per wallet, so each provider's wallet needs its own one-time `approve`
+before it can settle `upto`.
 
 ## Switching sellers
 
@@ -368,22 +358,6 @@ resembles a payment failure but is not one:
 curl -s https://api.surplusintelligence.ai/v1/models | jq -r '.data[].id'
 ```
 
-## What the agent does
-
-| Scenario | How to run it | What it shows |
-|----------|---------------|---------------|
-| Read the declared terms | Default run, Step 2 | The amount in an `upto` 402 is a ceiling |
-| Pin the scheme | Default run, Steps 2–3 | The handler narrows a two-scheme 402 to `upto` |
-| Refuse a seller without `upto` | Point `UPTO_SELLER_URL` at an `exact`-only endpoint | Fails closed instead of paying with `exact` |
-| First payment from a wallet | Default run, Step 5 | `permit2_allowance_limit` triggers the on-chain approval |
-| Every later payment | Default run, Step 6 | The same code without the field; no approval, no gas fee |
-| Authorization vs settlement | Default run, budget printed each step | Budget drops by the ceiling, not the settlement |
-| Over-budget payment denied | `UPTO_SESSION_BUDGET=0.0001` | Infrastructure-layer enforcement, before signing |
-| A different wallet provider | `UPTO_PROVIDER=stripe_privy` | Per-wallet Permit2 approval |
-| Budget-aware tools | Default run, Step 7 | Plugin tools `get_payment_session`, `get_payment_instrument` |
-
-The declared `amount` is a ceiling, not a price.
-
 ## Inspect / verify
 
 ```bash
@@ -413,9 +387,9 @@ print(bal["tokenBalance"]["amount"] / 1_000_000, "USDC")  # micro-USDC → USDC
 ```
 
 To confirm what moved, take the transaction hash from the seller's `PAYMENT-RESPONSE` header and look it
-up on [BaseScan](https://basescan.org/). The transfer amount there is the settled amount; comparing it
-against the ceiling the session was charged is the clearest way to see `upto` working. On a wallet's
-first payment you also see the separate `approve` transaction and the ETH that paid its gas fee.
+up on [BaseScan](https://basescan.org/). The transfer amount there is the settled amount; compare it
+against the ceiling the session was charged. On a wallet's first payment you also see the separate
+`approve` transaction and the ETH that paid its gas fee.
 
 ## Troubleshooting
 
@@ -426,7 +400,7 @@ first payment you also see the separate `approve` transaction and the ETH that p
 | `Fail closed: seller offers ['exact'], not 'upto'` | The seller no longer advertises `upto` | Use a seller that does, or run Tutorial 01 for the `exact` flow |
 | `UPTO_PROVIDER=... is not configured in .env` | That wallet provider was never provisioned | Use one of the providers listed in the error, or omit `UPTO_PROVIDER` |
 | The run settles `exact` instead of `upto`, and the allowance is never sent | The handler registration was removed, or the tool is not named `http_request`, so the plugin resolved `accepts[0]`. The SDK forwards `permit2AllowanceLimit` only for `upto` and otherwise drops it silently | Register the handler under the tool name the agent actually calls |
-| The agent receives a 402 but the payment fails | Delegated signing was never granted | Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies. Stripe (Privy): open the Privy reference frontend at `http://localhost:3000`, sign in as `LINKED_EMAIL`, choose **Connect agent** |
+| The agent receives a 402 but the payment fails | Delegated signing was never granted for this wallet | Grant it with your wallet provider as described in [Tutorial 00](../00-setup-agentcore-payments/), then re-run |
 | The payment fails on a wallet's first `upto` call, or the approval never lands | `approve(Permit2)` could not be submitted — the wallet holds USDC but no ETH for the gas fee | Send a few cents of ETH on Base and re-run. Required once per wallet, asset, and chain |
 | The payment is signed, then the seller rejects the request | Signing is off-chain, so the proof is generated even when the wallet's Permit2 allowance is missing or too low — it fails when the seller settles. The plugin does not retry a 402 that arrives after successful signing, and **the session was already debited the ceiling** | Confirm on [BaseScan](https://basescan.org/) that the `approve` landed, then re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0` |
 | `TypeError: unexpected keyword argument 'permit2_allowance_limit'`, or the script exits saying the SDK lacks the field | The installed `bedrock-agentcore` predates 1.22.0 | `pip install -r requirements.txt` |
@@ -434,7 +408,7 @@ first payment you also see the separate `approve` transaction and the ETH that p
 | The budget is consumed faster than expected | Sessions are charged the authorized ceiling; settlement is not tracked | Expected. Size as `ceiling × expected calls` |
 | `404 no_sellers_for_model` **after** a successful payment | The model id is not in the seller's catalog — a seller error, not a payment error | Set `UPTO_SELLER_MODEL` to a current id |
 | The settled amount equals the ceiling | Not an error — the request consumed enough tokens to reach it | Nothing to fix |
-| `agentcore: command not found` | The CLI is not installed (only needed for the inspect step) | `npm install -g @aws/agentcore@0.27.0` |
+| `agentcore: command not found` | The CLI is not installed (only needed for the inspect step) | `npm install -g @aws/agentcore` |
 
 ## Clean Up
 
