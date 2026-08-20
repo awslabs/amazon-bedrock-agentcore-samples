@@ -8,10 +8,10 @@ Like Tutorial 01, this agent pays through AgentCorePaymentsPlugin: the plugin in
 calls ProcessPayment, and retries with the proof. What is new is that the buyer states WHICH scheme
 it pays with. The plugin selects an `accepts` entry by NETWORK (`network_preferences_config`) and has
 no scheme preference, and this seller advertises `exact` and `upto` at the same price on the same
-network — so the plugin resolves to `exact`, and the SDK forwards permit2AllowanceLimit only when the
-resolved scheme is `upto`. A payment handler (Step 3) narrows the terms to the `upto` entry before
-selection; that is the plugin's own extension point for shaping a 402. When a seller offers a single
-scheme, Tutorial 01's plain plugin setup is all you need.
+network, so the plugin resolves to `exact`. permit2AllowanceLimit applies only to the `upto` scheme,
+so nothing would then carry the allowance. A payment handler (Step 3) narrows the terms to the `upto`
+entry before selection; that is the plugin's own extension point for shaping a 402. When a seller
+offers a single scheme, Tutorial 01's plain plugin setup is all you need.
 
 Two behaviors differ from `exact`:
 
@@ -19,13 +19,11 @@ Two behaviors differ from `exact`:
      permit2_allowance_limit on the first payment (Step 5) and ProcessPayment submits the approval
      before signing. Its gas fee is paid in native token (ETH on Base), not USDC.
   2. Later payments omit the field (Step 6). approve() sets the allowance rather than adding to it,
-     so re-sending it grants nothing new.
+     so re-sending it grants nothing new and costs a redundant on-chain transaction.
 
-Budget semantics: a session limits AUTHORIZATION, not SETTLEMENT. Status PROOF_GENERATED means the
-transaction is signed and the session has been debited the ceiling. Authorize $0.003303 against a
-$0.05 session and $0.003303 leaves the session even when the seller settles $0.003003; the
-difference stays in the wallet and is never credited back. Size the budget as ceiling x expected
-calls.
+Budget semantics: a session limits AUTHORIZATION, not SETTLEMENT. It is debited the ceiling that was
+signed for, even when the seller settles less, and the difference is never credited back. Once the
+budget is reached, further payment requests in that session are denied.
 
 Documentation: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html
 Compliance: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/compliance-validation.html
@@ -146,17 +144,17 @@ if config.get("multi_provider") and not PROVIDER_CHOICE:
     print(f"\nNOTE: this .env has wallets for {sorted(INSTRUMENTS)}; paying with {PROVIDER!r} from")
     print("      CREDENTIAL_PROVIDER_TYPE. Set UPTO_PROVIDER to pay from the other wallet instead.")
 
-# Real funds on mainnet, so keep the session limit low. Two calls at a ~$0.0033 ceiling need well
-# under a cent; $0.05 leaves room to re-run.
+# Two calls at a ~$0.0033 ceiling need well under a cent; $0.05 leaves room to re-run.
 SESSION_BUDGET = {"maxSpendAmount": {"value": os.environ.get("UPTO_SESSION_BUDGET", "0.05"), "currency": "USD"}}
 SESSION_EXPIRY_MINUTES = 15
 
 # The outer bound on what Permit2 may ever transfer from this wallet, in the asset's smallest
-# denomination. "1000000" is 1 USDC at 6 decimals. An unlimited allowance is possible via max
-# uint256; a bounded value limits the exposure if the approval is ever misused.
+# denomination. "1000000" is 1 USDC at 6 decimals. Passing the maximum uint256 value as a string
+# grants an unlimited allowance instead.
 PERMIT2_ALLOWANCE_LIMIT = os.environ.get("UPTO_PERMIT2_ALLOWANCE_LIMIT", "1000000")
 
-# Set UPTO_GRANT_PERMIT2_ALLOWANCE=0 when re-running against a wallet that is already approved.
+# Set UPTO_GRANT_PERMIT2_ALLOWANCE=0 when re-running against a wallet that is already approved, to
+# skip a redundant on-chain approve().
 GRANT_PERMIT2_ALLOWANCE = os.environ.get("UPTO_GRANT_PERMIT2_ALLOWANCE", "1") == "1"
 
 # Base mainnet, by CAIP-2 id and by name. The plugin ranks the 402's `accepts` entries against these.
@@ -247,7 +245,8 @@ terms = read_payment_terms(seller["url"], SELLER_MODEL)
 advertised = terms.get("accepts") or []
 print(f"   HTTP 402 — the seller declares {len(advertised)} way(s) to pay:")
 for i, entry in enumerate(advertised):
-    # x402 v2 names the amount `amount`; v1 names it `maxAmountRequired`.
+    # Sellers advertise the amount as `amount` or as `maxAmountRequired`; for `upto`, either one
+    # carries the ceiling.
     amount = str(entry.get("amount") or entry.get("maxAmountRequired") or "?")
     note = "ceiling for this request" if scheme_of(entry) == PAY_SCHEME else "fixed price"
     net = entry.get("network")
@@ -261,7 +260,7 @@ if advertised and scheme_of(advertised[0]) != PAY_SCHEME:
     print(f"\n   This seller lists {scheme_of(advertised[0])!r} first and {PAY_SCHEME!r} second, both on the same")
     print("   network. The plugin selects by network only, so the handler below narrows the terms to")
     print(f"   the {PAY_SCHEME!r} entry before the plugin chooses. Without it the run would pay with")
-    print(f"   {scheme_of(advertised[0])!r} and permit2_allowance_limit would be silently dropped.")
+    print(f"   {scheme_of(advertised[0])!r}, and permit2_allowance_limit would not apply.")
 
 # ── Step 3: Teach the plugin which scheme this buyer pays with ────────────────
 from bedrock_agentcore.payments import PaymentManager
@@ -278,11 +277,11 @@ from strands_tools import http_request
 class UptoOnlyPaymentHandler(handlers.HttpRequestPaymentHandler):
     """An http_request handler that only ever lets the plugin see `upto` terms.
 
-    A payment handler is the plugin's seam between a tool's raw 402 and
-    PaymentManager.generate_payment_header: whatever `extract_headers` and `extract_body` return is
-    what the plugin selects an `accepts` entry from. Narrowing `accepts` here is therefore a
-    supported way to express the scheme preference the plugin config has no field for, and it keeps
-    every other part of the payment — budget check, signing, retry — inside the plugin.
+    A payment handler is the plugin's extension point between a tool's raw 402 and the payment call:
+    whatever `extract_headers` and `extract_body` return is what the plugin selects an `accepts`
+    entry from. Narrowing `accepts` here is therefore a supported way to express the scheme
+    preference the plugin config has no field for, and it keeps every other part of the payment —
+    budget check, signing, retry — inside the plugin.
 
     Both extraction points are narrowed because either can carry the terms: a base64
     PAYMENT-REQUIRED header, or the payload in the body. The SDK prefers the header when present.
@@ -387,8 +386,7 @@ returning_agent = build_agent()
 def agent_text(result):
     """Return only the assistant's text blocks from an agent result.
 
-    Printing result.message whole would echo every content block. Select the fields you need, and
-    in production filter the response for user-submitted or recalled PII before logging it.
+    Printing result.message whole would echo every content block, so this selects the text blocks.
     """
     content = (getattr(result, "message", None) or {}).get("content") or []
     return "\n".join(b["text"] for b in content if isinstance(b, dict) and "text" in b).strip()
@@ -448,13 +446,13 @@ print("Debited at the ceiling that was signed for, not at the amount the seller 
 
 # ── Step 6: Later payments, with no allowance field ───────────────────────────
 print("\n── Step 6: The same wallet, already approved ──")
-print("No allowance field, so no approve() and no gas fee. This is every payment after the first.")
+print("No allowance field, so no approve() transaction and no gas fee for it. Every later payment.")
 buy(returning_agent, "Explain usage-based pricing for AI agents, with two concrete examples.", max_tokens=256)
 print(f"\nBudget after payment 2: {remaining_budget()}")
 
 # ── Step 7: Budget-aware tools ────────────────────────────────────────────────
 # Set UPTO_SESSION_BUDGET below the seller's ceiling and re-run to watch AgentCore payments deny the
-# payment before anything is signed. No prompt can raise the limit.
+# payment before anything is signed. The agent cannot extend its session or spend beyond its limits.
 print("\n── Step 7: Budget-aware tools ──")
 print(agent_text(returning_agent("How much budget do I have left in my current session?")))
 

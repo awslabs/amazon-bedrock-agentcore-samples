@@ -43,8 +43,8 @@ settles the amount actually consumed.
 | Amount in the 402 | the price | a **ceiling**, the maximum for this request |
 | Buyer authorizes | the price | that ceiling |
 | Seller settles | the same amount | the **actual amount consumed** |
-| Asset transfer | EIP-3009 | Permit2 |
-| Wallet setup | none | one-time on-chain approval |
+| Settlement | a direct transfer | through the Permit2 contract |
+| Wallet setup | no allowance handling | a one-time Permit2 allowance |
 
 **Amazon Bedrock AgentCore payments supports both schemes, and `AgentCorePaymentsPlugin` pays either
 one for you** — it intercepts the 402, calls `ProcessPayment`, and retries with the proof, exactly as in
@@ -101,19 +101,44 @@ sequenceDiagram
     participant M as Metered seller<br/>(paid inference)
 
     A->>M: POST /v1/chat/completions
-    M-->>A: 402 (advertises both `exact` and `upto`)
-    A->>H: plugin reads the 402 through its handler
-    H->>H: narrow `accepts` to the `upto` entry, or fail closed
-    H->>P: terms containing only `upto`
+    M-->>A: 402 (advertises both exact and upto)
+    A->>P: plugin intercepts the 402
+    P->>H: read the terms through the tool's payment handler
+    H->>H: narrow accepts to the upto entry, or fail closed
+    H-->>P: terms containing only upto
     P->>S: ProcessPayment (+ permit2AllowanceLimit on the first call)
     S->>S: check the request against the session budget
     S->>C: first call only, approve(Permit2), paid in ETH gas
-    S->>S: sign an authorization for the ceiling
+    S->>S: sign an authorization for the ceiling, debiting the session
     S-->>P: signed payment proof
     P->>M: retry with the proof header
     M->>M: run inference, meter actual tokens
     M->>C: settle the actual amount, at or below the ceiling
     M-->>A: 200 OK + result + PAYMENT-RESPONSE
+```
+
+The same path, as components:
+
+```mermaid
+flowchart LR
+    A["Agent<br/>Strands + http_request"]
+    P["AgentCorePaymentsPlugin"]
+    H["UptoOnlyPaymentHandler"]
+    S["AgentCore payments<br/>ProcessPayment"]
+    M["Metered seller<br/>paid inference"]
+    C["Base mainnet<br/>Permit2 + USDC"]
+
+    A -- "tool call" --> P
+    P -- "requests" --> M
+    M -- "402: exact and upto" --> P
+    P -- "reads the terms" --> H
+    H -- "upto only, or fail closed" --> P
+    P -- "ProcessPayment" --> S
+    S -- "approve(Permit2), first call only" --> C
+    S -- "signed proof for the ceiling" --> P
+    P -- "retry with the proof header" --> M
+    M -- "settles the metered amount" --> C
+    P -- "result" --> A
 ```
 
 ## Pinning the scheme
@@ -127,14 +152,13 @@ accepts[1]  scheme=upto   amount=3302  network=eip155:8453   (ceiling for this r
 
 The plugin selects an entry by **network** (`network_preferences_config`) and has no scheme preference.
 Both entries share `eip155:8453`, so no network preference can separate them and the plugin resolves to
-`accepts[0]` — `exact`. The SDK adds `permit2AllowanceLimit` to the `ProcessPayment` input only when the
-resolved scheme is `upto`, so the allowance is dropped with no error: the run looks successful while
-paying under the wrong scheme.
+`accepts[0]` — `exact`. `permit2AllowanceLimit` applies only to the `upto` scheme, so the plugin sends it
+only when the resolved scheme is `upto`. If `exact` wins, the allowance is never applied and no error is
+raised: the run looks successful while paying under the wrong scheme.
 
-A **payment handler** is the plugin's seam between a tool's raw 402 and
-`PaymentManager.generate_payment_header`: whatever it returns is what the plugin selects from. Narrowing
-`accepts` there expresses the scheme preference the config has no field for, and leaves budget check,
-signing, and retry inside the plugin:
+A **payment handler** is the plugin's extension point between a tool's raw 402 and the payment call:
+whatever it returns is what the plugin selects from. Narrowing `accepts` there expresses the scheme
+preference the config has no field for, and leaves budget check, signing, and retry inside the plugin:
 
 ```python
 from bedrock_agentcore.payments.integrations import handlers
@@ -164,30 +188,24 @@ enough.
 
 ### 1. A session limits authorization, not settlement
 
-A payment session limits what AgentCore payments will **sign for**. It does not track what settles
-on-chain. `status: PROOF_GENERATED` is the moment the session is debited the authorized ceiling;
-settlement is the seller's subsequent action.
+A payment session limits what AgentCore payments will **sign for**, not what settles on-chain. It is
+debited the ceiling it signed for, and the unspent difference is not credited back:
 
 | | Amount |
 |---|---|
-| Seller's declared ceiling | `$0.003303` |
-| Debited from the session | `$0.003303` |
-| Settled on-chain | `$0.003003` |
-| Left in your wallet | `$0.000300` |
-| Returned to the session | `$0.000000` |
+| Authorized, and debited from the session | `$0.003303` |
+| Settled on-chain, and charged to your wallet | `$0.003003` |
 
-A successful authorization followed by a lower settlement is not a failure, and the difference is not
-credited back to the session.
-
-So a session budget can be consumed faster than your actual spend suggests. Size `maxSpendAmount` as
-`ceiling × expected calls`, not as expected spend. The script prints the remaining budget at each step.
+Before signing, AgentCore payments checks the request against the session budget and rejects requests
+that would push the session past its cap. The script prints the remaining budget at each step.
 
 ### 2. A new wallet needs one on-chain approval, and it costs gas
 
-The `upto` scheme transfers funds through Permit2, Uniswap's token approval contract, because the
-settled amount is unknown when the buyer signs. Permit2 can move only tokens the owner has already
-approved it to spend, so the wallet needs a one-time `ERC20.approve(Permit2)` per wallet, asset, and
-chain. Your agent does not call Permit2 directly.
+The `upto` scheme settles through Permit2, Uniswap's token approval contract, because the settled amount
+is unknown when the buyer signs. Permit2 moves funds with `transferFrom`, so the payer wallet must first
+grant it an ERC-20 allowance — once per wallet, asset, and chain. Your agent does not call Permit2
+directly. See *Permit2 allowance for upto payments* in
+[Process a payment](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html).
 
 Set `permit2_allowance_limit` on the **first** payment from a new instrument, and `ProcessPayment`
 submits the approval before it signs:
@@ -203,15 +221,8 @@ That approval is an on-chain transaction, so it costs a gas fee in **native toke
 the wallet's own balance. Every other tutorial in this series works with a USDC-only wallet.
 
 **Omit the field on every later payment.** `approve` *sets* the allowance rather than adding to it, so
-re-sending it grants nothing new. The field applies to `upto` only: the SDK forwards it just when the
-resolved scheme is `upto`, and otherwise drops it silently.
-
-| | First payment from a wallet | Every payment after |
-|---|---|---|
-| `permit2_allowance_limit` | set it | omit it |
-| On-chain approval | submitted | already in place |
-| ETH required | yes, for the gas fee | no |
-| USDC required | yes | yes |
+re-sending it grants nothing new and costs a redundant on-chain transaction. Only the first payment needs
+ETH; every payment needs USDC.
 
 The approval is granted **per wallet**, so a `.env` holding two wallet providers grants it once per
 wallet — see [Choosing which wallet pays](#choosing-which-wallet-pays).
@@ -223,8 +234,8 @@ the same wallet with the approval skipped:
 UPTO_ALLOW_MAINNET=1 UPTO_GRANT_PERMIT2_ALLOWANCE=0 python upto_payment_agent.py
 ```
 
-An unlimited allowance is possible by passing the maximum `uint256` value as a string, but a bounded
-value is safer: the allowance is the outer bound on what Permit2 can ever move from that wallet.
+Whatever value you set is the outer bound on what Permit2 can ever move from that wallet. Passing the
+maximum `uint256` value as a string grants an unlimited allowance instead.
 
 ## Prerequisites
 
@@ -290,8 +301,8 @@ request, so it varies slightly between calls.
 
 ### Step 3 — Confirm the session limit denies an over-budget payment (optional)
 
-Enforcement is deterministic and runs at the infrastructure layer, so prompt injection cannot raise the
-limit. Set a budget below the seller's ceiling:
+The check is deterministic and runs at the infrastructure layer, and the agent cannot extend its session
+or spend beyond the session's payment limits. Set a budget below the seller's ceiling:
 
 ```bash
 UPTO_ALLOW_MAINNET=1 UPTO_SESSION_BUDGET=0.0001 python upto_payment_agent.py
@@ -299,7 +310,7 @@ UPTO_ALLOW_MAINNET=1 UPTO_SESSION_BUDGET=0.0001 python upto_payment_agent.py
 
 ### Step 4 — Verify the settlement on-chain (optional)
 
-`upto` is the one scheme where authorized and settled amounts differ. Follow
+With `upto`, the authorized and settled amounts differ. Follow
 [Inspect / verify](#inspect--verify) to compare the ceiling the session was charged against the transfer
 that actually landed.
 
@@ -396,32 +407,31 @@ against the ceiling the session was charged. On a wallet's first payment you als
 | Symptom | Cause | Fix |
 |---|---|---|
 | The script exits saying it settles real USDC | The mainnet opt-in is missing — by design | Re-run with `UPTO_ALLOW_MAINNET=1` once you accept the cost |
-| `load_tutorial_env()` raises `FileNotFoundError`, or `PaymentManager` fails on a `None` ARN | Tutorial 00 did not finish — `../.env` has no resource IDs | Run Tutorial 00 again |
+| `load_tutorial_env()` raises `FileNotFoundError`, or `PaymentManager` fails because the manager ARN is missing | Tutorial 00 did not finish — `../.env` has no resource IDs | Run Tutorial 00 again |
 | `Fail closed: seller offers ['exact'], not 'upto'` | The seller no longer advertises `upto` | Use a seller that does, or run Tutorial 01 for the `exact` flow |
-| `UPTO_PROVIDER=... is not configured in .env` | That wallet provider was never provisioned | Use one of the providers listed in the error, or omit `UPTO_PROVIDER` |
-| The run settles `exact` instead of `upto`, and the allowance is never sent | The handler registration was removed, or the tool is not named `http_request`, so the plugin resolved `accepts[0]`. The SDK forwards `permit2AllowanceLimit` only for `upto` and otherwise drops it silently | Register the handler under the tool name the agent actually calls |
 | The agent receives a 402 but the payment fails | Delegated signing was never granted for this wallet | Grant it with your wallet provider as described in [Tutorial 00](../00-setup-agentcore-payments/), then re-run |
 | The payment fails on a wallet's first `upto` call, or the approval never lands | `approve(Permit2)` could not be submitted — the wallet holds USDC but no ETH for the gas fee | Send a few cents of ETH on Base and re-run. Required once per wallet, asset, and chain |
-| The payment is signed, then the seller rejects the request | Signing is off-chain, so the proof is generated even when the wallet's Permit2 allowance is missing or too low — it fails when the seller settles. The plugin does not retry a 402 that arrives after successful signing, and **the session was already debited the ceiling** | Confirm on [BaseScan](https://basescan.org/) that the `approve` landed, then re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0` |
-| `TypeError: unexpected keyword argument 'permit2_allowance_limit'`, or the script exits saying the SDK lacks the field | The installed `bedrock-agentcore` predates 1.22.0 | `pip install -r requirements.txt` |
+| The payment is signed, then the seller rejects the request | The wallet's Permit2 allowance is missing or too low, so settlement fails after signing with a Permit2-allowance precondition error — and **the session was already debited the ceiling** | Confirm on [BaseScan](https://basescan.org/) that the `approve` landed, then re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0` |
 | The budget is exceeded immediately | The session limit is below the seller's declared ceiling, so the budget check denies the request before signing | Raise `UPTO_SESSION_BUDGET` |
-| The budget is consumed faster than expected | Sessions are charged the authorized ceiling; settlement is not tracked | Expected. Size as `ceiling × expected calls` |
 | `404 no_sellers_for_model` **after** a successful payment | The model id is not in the seller's catalog — a seller error, not a payment error | Set `UPTO_SELLER_MODEL` to a current id |
-| The settled amount equals the ceiling | Not an error — the request consumed enough tokens to reach it | Nothing to fix |
-| `agentcore: command not found` | The CLI is not installed (only needed for the inspect step) | `npm install -g @aws/agentcore` |
 
 ## Clean Up
 
-Running the agent locally provisions nothing durable. Payment **sessions expire automatically** at
-`expiryTimeInMinutes`, after which nothing further can be authorized against them. To stop
-authorizations sooner, delete the session, or delete the payment instrument to prevent any further
-payment from that wallet. Neither reverses transactions that already settled.
+Running the agent locally provisions nothing durable, and the payment session expires on its own after
+15 minutes. To stop authorizations sooner, delete it:
 
-The Permit2 approval stays on-chain by design; that is what makes later payments gas-free. Revoking it
-means sending your own `approve(Permit2, 0)` transaction.
+```python
+manager.delete_payment_session(user_id=USER_ID, payment_session_id=SESSION_ID)
+```
 
-The shared manager, connector, and instrument are removed in Tutorial 00's Clean Up, which deletes the
-per-user instrument with the SDK first.
+Deleting the payment instrument stops any further payment from that wallet. Neither reverses
+transactions that already settled.
+
+The Permit2 approval stays on-chain by design; that is what lets later payments skip the approval.
+Revoking it means sending your own `approve(Permit2, 0)` transaction.
+
+The shared manager, connector, and instrument are removed in
+[Tutorial 00](../00-setup-agentcore-payments/)'s Clean Up.
 
 ## Next steps
 
