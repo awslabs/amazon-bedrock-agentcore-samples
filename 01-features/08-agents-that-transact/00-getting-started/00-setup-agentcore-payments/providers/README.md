@@ -25,7 +25,24 @@ python providers/stripe_privy_account_setup.py
 
 Each script prints step-by-step instructions for the manual browser steps, then prompts for the credentials to save to `.env`.
 
+See the detailed instructions to be followed [here](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-create-manager.html)
+
+
+## Important Note  
+
+To create a Coinbase payment connector, your account must have an active AWS Marketplace subscription to the Coinbase Wallets for AgentCore Payments listing. With this subscription, your Coinbase wallet usage charges are consolidated into your monthly AWS bill based on Coinbase’s pricing on the Coinbase website. There are no additional charges or obligations for the subscription. If the subscription is missing, CreatePaymentConnector fails with a SubscriptionRequiredException (HTTP 403). This requirement applies only to Coinbase; other providers, such as Stripe (Privy), are not affected. For more information, see Subscribe to Coinbase Wallets for AgentCore Payments in AWS Marketplace.
+
 ## Coinbase CDP Setup Summary
+
+
+If you choose Coinbase, choose how to provide the credentials for the payment auth:
+
+Quick create configurations - recommended — Quick create allows you to link to your Coinbase CDP account and let AgentCore payments create the credentials for you without leaving the AgentCore console. It opens a window to sign up or sign in to your Coinbase CDP account. The service then provisions the Coinbase CDP API key and Wallet secret and stores them as a payment auth on your behalf. You do not generate or paste any keys.
+Quick create does not support linking to an existing project with a Wallet Secret.
+
+Watch the detailed video for the steps here in this blog[https://aws.amazon.com/blogs/machine-learning/amazon-bedrock-agentcore-payments-is-now-generally-available-enabling-agents-to-transact-safely-and-autonomously-at-scale/] 
+
+Use existing configurations — Provide Coinbase CDP credentials that you generated yourself in the Coinbase Developer Platform.
 
 1. Create a Coinbase account at [coinbase.com](https://coinbase.com/)
 2. Enable CDP at [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com/)
