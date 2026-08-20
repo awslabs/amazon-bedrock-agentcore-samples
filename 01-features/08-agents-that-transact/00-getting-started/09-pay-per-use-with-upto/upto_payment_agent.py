@@ -19,16 +19,16 @@ Two behaviors differ from `exact`:
      permit2_allowance_limit on the first payment (Step 5) and ProcessPayment submits the approval
      before signing. Its gas fee is paid in native token (ETH on Base), not USDC.
   2. Later payments omit the field (Step 6). approve() sets the allowance rather than adding to it,
-     so re-sending it costs another gas fee and buys nothing.
+     so re-sending it grants nothing new.
 
 Budget semantics: a session limits AUTHORIZATION, not SETTLEMENT. Status PROOF_GENERATED means the
-transaction is signed and the session has been debited the ceiling. Authorize $0.003301 against a
-$0.05 session and $0.003301 leaves the session even when the seller settles $0.003001; the
+transaction is signed and the session has been debited the ceiling. Authorize $0.003303 against a
+$0.05 session and $0.003303 leaves the session even when the seller settles $0.003003; the
 difference stays in the wallet and is never credited back. Size the budget as ceiling x expected
 calls.
 
 Documentation: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html
-Compliance: https://aws.amazon.com/compliance/pci-dss-level-1-faqs/
+Compliance: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/compliance-validation.html
 
 WARNING: this tutorial settles REAL USDC on Base mainnet, roughly $0.003 per call, and settlement is
 final. The script refuses to run until you opt in with UPTO_ALLOW_MAINNET=1.

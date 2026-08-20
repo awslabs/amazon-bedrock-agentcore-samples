@@ -34,11 +34,9 @@
 Every other tutorial here pays a fixed price: the seller declares $0.01 and the agent pays $0.01. That
 is the x402 `exact` scheme, and it applies when the price is known before the work is done.
 
-Metered sellers do not meet that condition. An inference endpoint cannot quote a price in advance
-because the cost depends on tokens generated, so a fixed price means either overcharging and refunding,
-or estimating. The `upto` scheme removes the estimate: the agent **sets a spending ceiling rather than
-committing to a fixed price**, and a seller of LLM tokens, compute, or any usage-metered API charges for
-exactly what was consumed at the end of the call.
+A metered seller cannot quote a price in advance, because the cost depends on the tokens generated. The
+`upto` scheme replaces the price with a **ceiling**: the buyer authorizes a maximum, and the seller
+settles the amount actually consumed.
 
 | | `exact` | `upto` |
 |---|---|---|
@@ -55,19 +53,14 @@ inside `ProcessPayment`; see
 [Process a payment](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-process-payment.html)
 for the scheme reference.
 
-This tutorial has the buyer **state which scheme it is willing to pay with**. The seller used here
-advertises `exact` *and* `upto` at the same price on the same network, and without an explicit choice the
-run would silently pay with `exact`. See [Pinning the scheme](#pinning-the-scheme).
+What this tutorial adds is that the buyer **states which scheme it is willing to pay with**. The seller
+used here advertises `exact` *and* `upto` at the same price on the same network, and without an explicit
+choice the run would pay with `exact`. See [Pinning the scheme](#pinning-the-scheme).
 
 The payment manager, connector, IAM roles, and funded wallet are already provisioned by
 [Tutorial 00](../00-setup-agentcore-payments/). The `upto` scheme needs no additional infrastructure and
 no AgentCore CLI configuration, because the scheme and the Permit2 approval are per-request data-plane
 concerns.
-
-In the 402 itself, the ceiling arrives as `amount`. **`upto` is defined for x402 protocol version 2
-only** — a v1 402 offering `upto` is rejected before signing, with an HTTP 400 explaining that the scheme
-requires version 2. (`exact` works under either version; v1 names the amount `maxAmountRequired`.) Your
-code passes the seller's payload through unchanged either way.
 
 > **Billable resources.** Each call is metered by AgentCore payments and spends USDC from your wallet.
 > See [AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/) and [Cost](#cost).
@@ -80,13 +73,9 @@ code passes the seller's payload through unchanged either way.
 > **Supported regions.** Run this in a region where AgentCore payments is available — see
 > [AgentCore supported regions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html).
 
-> **Compliance.** AWS has completed its internal assessment that Amazon Bedrock AgentCore aligns with
-> the PCI compliance program, among others — see
+> **Compliance.** For the current compliance scope of Amazon Bedrock AgentCore, see
 > [Compliance validation for Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/compliance-validation.html)
-> and the [AWS PCI DSS Level 1 FAQs](https://aws.amazon.com/compliance/pci-dss-level-1-faqs/). To confirm
-> the current scope for your own program, check
-> [AWS services in scope by compliance program](https://aws.amazon.com/compliance/services-in-scope/) and
-> download the attestation from [AWS Artifact](https://aws.amazon.com/artifact/).
+> and download the attestation from [AWS Artifact](https://aws.amazon.com/artifact/).
 
 ## Cost
 
@@ -135,15 +124,15 @@ plugin reads the version from the 402 and picks the right one.
 A seller may advertise several ways to pay, and the order is not meaningful. This one returns:
 
 ```
-accepts[0]  scheme=exact  amount=3301  network=eip155:8453   (fixed price)
-accepts[1]  scheme=upto   amount=3301  network=eip155:8453   (ceiling for this request)
+accepts[0]  scheme=exact  amount=3302  network=eip155:8453   (fixed price)
+accepts[1]  scheme=upto   amount=3302  network=eip155:8453   (ceiling for this request)
 ```
 
 The plugin selects an entry by **network** (`network_preferences_config`) and has no scheme preference.
 Both entries share `eip155:8453`, so no network preference can separate them and the plugin resolves to
-`accepts[0]` — `exact`. The SDK then adds `permit2AllowanceLimit` to the `ProcessPayment` input only when
-the resolved scheme is `upto`, so the allowance is silently dropped too: no error, just an `exact` payment.
-The result is a run that appears to succeed while demonstrating the wrong scheme.
+`accepts[0]` — `exact`. The SDK adds `permit2AllowanceLimit` to the `ProcessPayment` input only when the
+resolved scheme is `upto`, so the allowance is dropped with no error: the run looks successful while
+paying under the wrong scheme.
 
 A **payment handler** is the plugin's seam between a tool's raw 402 and
 `PaymentManager.generate_payment_header`: whatever it returns is what the plugin selects from. Narrowing
@@ -189,15 +178,14 @@ settlement is the seller's subsequent action.
 
 | | Amount |
 |---|---|
-| Seller's declared ceiling | `$0.003301` |
-| Debited from the session | `$0.003301` |
-| Settled on-chain | `$0.003001` |
+| Seller's declared ceiling | `$0.003303` |
+| Debited from the session | `$0.003303` |
+| Settled on-chain | `$0.003003` |
 | Left in your wallet | `$0.000300` |
 | Returned to the session | `$0.000000` |
 
-If **signing itself fails** after a deduction, AgentCore payments rolls it back, so a failed payment
-consumes no budget. Successful authorization followed by lower settlement is not a failure and is not
-rolled back.
+A successful authorization followed by a lower settlement is not a failure, and the difference is not
+credited back to the session.
 
 So a session budget can be consumed faster than your actual spend suggests. Size `maxSpendAmount` as
 `ceiling × expected calls`, not as expected spend. The script prints the remaining budget at each step.
@@ -222,18 +210,9 @@ AgentCorePaymentsPluginConfig(
 That approval is an on-chain transaction, so it costs a gas fee in **native token** (ETH on Base) from
 the wallet's own balance. Every other tutorial in this series works with a USDC-only wallet.
 
-The `approve` is *submitted* before signing, not waited on for confirmation, so on a brand-new wallet the
-seller can attempt settlement before the approval has been mined. If a first payment is rejected right
-after signing, give the `approve` transaction a moment to confirm — check it on
-[BaseScan](https://basescan.org/) — and re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0`. The plugin does not
-retry a 402 that arrives after successful signing, and the session has already been debited the ceiling.
-
-**Omit the field on every later payment,** because `approve` *sets* the allowance rather than adding to
-it. Passing it again is not rejected, but it submits a second transaction that overwrites the allowance
-and charges another gas fee, and lowers the allowance if the new value is smaller. The field applies to
-`upto` only: on the plugin path the SDK forwards it just when the resolved scheme is `upto` and otherwise
-drops it silently, and calling `ProcessPayment` directly with it on an `exact` payment returns a
-`ValidationException`.
+**Omit the field on every later payment.** `approve` *sets* the allowance rather than adding to it, so
+re-sending it grants nothing new. The field applies to `upto` only: the SDK forwards it just when the
+resolved scheme is `upto`, and otherwise drops it silently.
 
 | | First payment from a wallet | Every payment after |
 |---|---|---|
@@ -242,11 +221,11 @@ drops it silently, and calling `ProcessPayment` directly with it on an `exact` p
 | ETH required | yes, for the gas fee | no |
 | USDC required | yes | yes |
 
-The approval is granted **per wallet**, so a `.env` holding two wallet providers pays the gas fee once
-per wallet — see [Choosing which wallet pays](#choosing-which-wallet-pays).
+The approval is granted **per wallet**, so a `.env` holding two wallet providers grants it once per
+wallet — see [Choosing which wallet pays](#choosing-which-wallet-pays).
 
-This applies to re-running the tutorial. Step 5 grants the approval by default, assuming a wallet that
-has never paid with `upto`. Re-run against the same wallet with the approval skipped:
+Step 5 grants the approval by default, assuming a wallet that has never paid with `upto`. Re-run against
+the same wallet with the approval skipped:
 
 ```bash
 UPTO_ALLOW_MAINNET=1 UPTO_GRANT_PERMIT2_ALLOWANCE=0 python upto_payment_agent.py
@@ -260,8 +239,8 @@ value is safer: the allowance is the outer bound on what Permit2 can ever move f
 - **Tutorial 00 completed** — the shared `.env` one directory up must contain `PAYMENT_MANAGER_ARN`,
   `USER_ID`, and `INSTRUMENT_ID`. The `upto` scheme works with either wallet provider, Coinbase CDP or
   Stripe (Privy), and needs no new payment manager or connector.
-- **Delegated signing granted** for the wallet (Tutorial 00, Step 4). The end user must authorize the
-  agent to transact on their behalf before any payment can be signed.
+- **Delegated signing granted** for the wallet (Tutorial 00). The end user must authorize the agent to
+  transact on their behalf before any payment can be signed.
 - **USDC on Base mainnet** above the seller's declared ceiling. There is no mainnet faucet, so transfer
   USDC to the wallet address (`manager.get_payment_instrument(...)` returns it).
 - **A few cents of ETH on Base mainnet** for the one-time Permit2 approval.
@@ -300,8 +279,8 @@ payments from the same wallet and session: one that grants the Permit2 approval 
 ```
 ── Step 2: What the seller is asking for ──
    HTTP 402 — the seller declares 2 way(s) to pay:
-     accepts[0]  scheme=exact  amount=3301     network=eip155:8453  (fixed price)
-     accepts[1]  scheme=upto   amount=3301     network=eip155:8453  (ceiling for this request)
+     accepts[0]  scheme=exact  amount=3302     network=eip155:8453  (fixed price)
+     accepts[1]  scheme=upto   amount=3302     network=eip155:8453  (ceiling for this request)
 
    This seller lists 'exact' first and 'upto' second, both on the same network. The plugin
    selects by network only, so the handler below narrows the terms to the 'upto' entry
@@ -310,13 +289,14 @@ payments from the same wallet and session: one that grants the Permit2 approval 
 ── Step 3: Scheme pinned to 'upto' via UptoOnlyPaymentHandler ──
 
 ── Step 5: First `upto` payment ── budget {'value': '0.05', 'currency': 'USD'}
-   ... authorized 3301 atomic ($0.003301) · settled 3001 atomic ($0.003001) · 98 tokens
+   ... authorized 3303 atomic ($0.003303) · settled 3003 atomic ($0.003003) · 99 tokens
 
-Budget after payment 1: {'value': '0.046699', 'currency': 'USD'}
+Budget after payment 1: {'value': '0.046697', 'currency': 'USD'}
 Debited at the ceiling that was signed for, not at the amount the seller settled.
 ```
 
-The budget dropped by the ceiling, even though a smaller amount settled.
+The budget dropped by the ceiling, even though a smaller amount settled. The ceiling is quoted per
+request, so it varies slightly between calls.
 
 ### Step 3 — Confirm the session limit denies an over-budget payment (optional)
 
@@ -349,8 +329,7 @@ The script prints which wallet it is paying from, and exits listing the configur
 `UPTO_PROVIDER` names one that is not in the `.env`.
 
 This matters more for `upto` than for `exact`, because the Permit2 approval is granted per wallet: each
-provider's wallet pays its own one-time `approve` gas fee before it can settle `upto`. Switching
-providers means `UPTO_GRANT_PERMIT2_ALLOWANCE=0` is wrong again until that wallet's approval lands.
+provider's wallet needs its own one-time `approve` before it can settle `upto`.
 
 ## Switching sellers
 
@@ -382,19 +361,12 @@ through the Coinbase x402 Bazaar MCP server, which
 Any replacement seller must advertise `upto`. If it does not, the script exits at Step 2 with the list of
 schemes it did offer rather than paying under a scheme you did not choose.
 
-It must also speak **x402 protocol version 2**. `upto` is not defined for v1, so a v1 402 advertising it
-is rejected before signing with an HTTP 400 — nothing is charged, but the run stops. Sellers offering only
-`exact` work under either version, which is what [Tutorial 01](../01-agents-payments-and-limits/) uses.
-
 Model ids change. A stale id returns `404 no_sellers_for_model` **after** payment verification, which
 resembles a payment failure but is not one:
 
 ```bash
 curl -s https://api.surplusintelligence.ai/v1/models | jq -r '.data[].id'
 ```
-
-An `upto` entry also carries `extra.facilitatorAddress`: the buyer binds its authorization to that
-facilitator, a field an `exact` 402 does not have.
 
 ## What the agent does
 
@@ -408,11 +380,9 @@ facilitator, a field an `exact` 402 does not have.
 | Authorization vs settlement | Default run, budget printed each step | Budget drops by the ceiling, not the settlement |
 | Over-budget payment denied | `UPTO_SESSION_BUDGET=0.0001` | Infrastructure-layer enforcement, before signing |
 | A different wallet provider | `UPTO_PROVIDER=stripe_privy` | Per-wallet Permit2 approval |
-| A different seller | Set `UPTO_SELLER_URL` | No code change; the plugin reads the terms from the 402 |
 | Budget-aware tools | Default run, Step 7 | Plugin tools `get_payment_session`, `get_payment_instrument` |
 
-The declared `amount` is a ceiling, not a price. Reading it as a price is the most common error with
-`upto`.
+The declared `amount` is a ceiling, not a price.
 
 ## Inspect / verify
 
@@ -455,15 +425,12 @@ first payment you also see the separate `approve` transaction and the ETH that p
 | `load_tutorial_env()` raises `FileNotFoundError`, or `PaymentManager` fails on a `None` ARN | Tutorial 00 did not finish — `../.env` has no resource IDs | Run Tutorial 00 again |
 | `Fail closed: seller offers ['exact'], not 'upto'` | The seller no longer advertises `upto` | Use a seller that does, or run Tutorial 01 for the `exact` flow |
 | `UPTO_PROVIDER=... is not configured in .env` | That wallet provider was never provisioned | Use one of the providers listed in the error, or omit `UPTO_PROVIDER` |
-| The run settles `exact` instead of `upto`, and the allowance is never sent | The handler registration was removed, or the tool is not named `http_request`, so the plugin resolved `accepts[0]`. The SDK forwards `permit2AllowanceLimit` only for `upto` and otherwise drops it silently, with no error | Register the handler under the tool name the agent actually calls |
+| The run settles `exact` instead of `upto`, and the allowance is never sent | The handler registration was removed, or the tool is not named `http_request`, so the plugin resolved `accepts[0]`. The SDK forwards `permit2AllowanceLimit` only for `upto` and otherwise drops it silently | Register the handler under the tool name the agent actually calls |
 | The agent receives a 402 but the payment fails | Delegated signing was never granted | Coinbase CDP: enable Delegated Signing in CDP Portal → Wallets → Embedded Wallet → Policies. Stripe (Privy): open the Privy reference frontend at `http://localhost:3000`, sign in as `LINKED_EMAIL`, choose **Connect agent** |
 | The payment fails on a wallet's first `upto` call, or the approval never lands | `approve(Permit2)` could not be submitted — the wallet holds USDC but no ETH for the gas fee | Send a few cents of ETH on Base and re-run. Required once per wallet, asset, and chain |
-| The payment is signed, then the seller rejects the request | Signing is off-chain, so the proof is generated even when the wallet's Permit2 allowance is missing, too low, or not yet mined — it fails when the seller settles. `approve` is submitted before signing rather than waited on, so a brand-new wallet can hit this on its first call. **The session was already debited the ceiling** | Check on [BaseScan](https://basescan.org/) whether the `approve` landed; grant it with the default `UPTO_GRANT_PERMIT2_ALLOWANCE=1` if it never ran, then re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0` |
-| An unexpected second `approve` and gas fee | The tutorial was re-run against an already-approved wallet. `approve` overwrites rather than adds | Re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0` |
-| `ValidationException` mentioning the allowance | The field was sent with an `exact` payment by calling `ProcessPayment` directly rather than through the plugin | Send it only for `upto` |
-| `TypeError: unexpected keyword argument 'permit2_allowance_limit'`, or the script exits saying the SDK lacks the field | The installed `bedrock-agentcore` predates 1.22.0 | `pip install -r requirements.txt` — 1.22.0 or later is required for `upto` either way |
+| The payment is signed, then the seller rejects the request | Signing is off-chain, so the proof is generated even when the wallet's Permit2 allowance is missing or too low — it fails when the seller settles. The plugin does not retry a 402 that arrives after successful signing, and **the session was already debited the ceiling** | Confirm on [BaseScan](https://basescan.org/) that the `approve` landed, then re-run with `UPTO_GRANT_PERMIT2_ALLOWANCE=0` |
+| `TypeError: unexpected keyword argument 'permit2_allowance_limit'`, or the script exits saying the SDK lacks the field | The installed `bedrock-agentcore` predates 1.22.0 | `pip install -r requirements.txt` |
 | The budget is exceeded immediately | The session limit is below the seller's declared ceiling, so the budget check denies the request before signing | Raise `UPTO_SESSION_BUDGET` |
-| HTTP 400 saying the `upto` scheme requires x402 protocol version 2 | The seller sent a v1 402 offering `upto` | Use a seller that speaks x402 v2; nothing was charged |
 | The budget is consumed faster than expected | Sessions are charged the authorized ceiling; settlement is not tracked | Expected. Size as `ceiling × expected calls` |
 | `404 no_sellers_for_model` **after** a successful payment | The model id is not in the seller's catalog — a seller error, not a payment error | Set `UPTO_SELLER_MODEL` to a current id |
 | The settled amount equals the ceiling | Not an error — the request consumed enough tokens to reach it | Nothing to fix |
