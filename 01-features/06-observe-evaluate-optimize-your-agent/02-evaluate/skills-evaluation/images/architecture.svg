@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 720" role="img" aria-labelledby="title description">
+  <title id="title">Agent Skills evaluation architecture</title>
+  <desc id="description">The evaluate script invokes a skill-enabled Strands HR Assistant on AgentCore Runtime. The runtime calls Amazon Nova Lite and exports skill-aware telemetry to CloudWatch. AgentCore Evaluations reads the telemetry and returns skill evaluation scores.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#111827" flood-opacity="0.18"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 Z" fill="#5f6b7a"/>
+    </marker>
+    <marker id="arrow-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+      <path d="M8 0 L0 4 L8 8 Z" fill="#5f6b7a"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #111827; }
+      .main-title { font-size: 28px; font-weight: 700; }
+      .subtitle { font-size: 15px; }
+      .cloud-label { font-size: 14px; fill: #232f3e; }
+      .card-title { font-size: 14px; font-weight: 700; }
+      .card-label { font-size: 12px; text-anchor: middle; }
+      .card-detail { font-size: 11px; font-style: italic; text-anchor: middle; }
+      .edge-label { font-size: 11px; text-anchor: middle; }
+      .panel-title { font-size: 21px; font-weight: 700; }
+      .step-title { font-size: 14px; font-weight: 700; }
+      .step-body { font-size: 13px; }
+      .flow-line { fill: none; stroke: #5f6b7a; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+      .badge { fill: #0073bb; stroke: #232f3e; stroke-width: 1.5; filter: url(#shadow); }
+      .badge-text { fill: #ffffff; font-size: 18px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="720" fill="#ffffff"/>
+  <text x="15" y="40" class="main-title">Agent Skills evaluation architecture</text>
+  <text x="15" y="68" class="subtitle">AgentCore Runtime hosts a skill-enabled HR Assistant and exports evaluable OpenTelemetry data to CloudWatch</text>
+  <line x1="15" y1="85" x2="1130" y2="85" stroke="#ff9900" stroke-width="2"/>
+
+  <rect x="230" y="130" width="920" height="560" fill="#f7f7f8" stroke="#5f6b7a"/>
+  <rect x="230" y="130" width="25" height="25" fill="#232f3e"/>
+  <path d="M236 147c0-3 2-5 5-5 1-3 5-4 7-2 3 0 5 2 5 5 0 3-2 5-5 5h-8c-2 0-4-1-4-3z" fill="none" stroke="#ffffff" stroke-width="1.2"/>
+  <text x="262" y="148" class="cloud-label">AWS Cloud</text>
+
+  <g id="developer" filter="url(#shadow)">
+    <rect x="20" y="270" width="150" height="115" rx="14" fill="#ffffff" stroke="#879196"/>
+    <text x="95" y="293" font-size="13" font-weight="700" text-anchor="middle">Developer / evaluate.py</text>
+    <rect x="70" y="310" width="50" height="50" fill="#232f3e"/>
+    <path d="M82 345c1-7 6-11 13-11s12 4 13 11M88 325a7 7 0 1 0 14 0 7 7 0 1 0-14 0z" fill="none" stroke="#ffffff" stroke-width="2"/>
+  </g>
+
+  <g id="runtime" filter="url(#shadow)">
+    <rect x="310" y="260" width="190" height="130" rx="15" fill="#e8f7f5" stroke="#00a88f" stroke-width="2"/>
+    <text x="325" y="282" class="card-title" fill="#008f83">Agent hosting</text>
+    <rect x="380" y="294" width="50" height="50" rx="5" fill="#8c4fff"/>
+    <circle cx="405" cy="319" r="13" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="398" cy="316" r="2.2" fill="#ffffff"/>
+    <circle cx="412" cy="316" r="2.2" fill="#ffffff"/>
+    <path d="M398 325q7 6 14 0M405 306v-7" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <text x="405" y="360" class="card-label">AgentCore Runtime</text>
+    <text x="405" y="375" class="card-detail">Strands HR Assistant</text>
+    <text x="405" y="387" class="card-detail">AgentSkills + SKILL.md</text>
+  </g>
+
+  <g id="bedrock" filter="url(#shadow)">
+    <rect x="560" y="180" width="190" height="130" rx="15" fill="#e8f7f5" stroke="#00a88f" stroke-width="2"/>
+    <text x="575" y="202" class="card-title" fill="#008f83">Model inference</text>
+    <rect x="630" y="214" width="50" height="50" rx="5" fill="#00a88f"/>
+    <path d="M655 221l15 9v18l-15 9-15-9v-18zM655 221v18m-15-9 15 9 15-9m-15 9v18" fill="none" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+    <text x="655" y="280" class="card-label">Amazon Bedrock</text>
+    <text x="655" y="295" class="card-detail">Amazon Nova Lite</text>
+  </g>
+
+  <g id="cloudwatch" filter="url(#shadow)">
+    <rect x="840" y="180" width="190" height="130" rx="15" fill="#fff0f6" stroke="#ff007a" stroke-width="2"/>
+    <text x="855" y="202" class="card-title" fill="#e60065">Telemetry store</text>
+    <rect x="910" y="214" width="50" height="50" rx="5" fill="#e60065"/>
+    <circle cx="935" cy="239" r="15" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <path d="M922 244l7-7 6 5 8-11 7 6m-3 13 8 8" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="935" y="280" class="card-label">Amazon CloudWatch</text>
+    <text x="935" y="295" class="card-detail">spans and events</text>
+  </g>
+
+  <g id="evaluations" filter="url(#shadow)">
+    <rect x="840" y="425" width="190" height="130" rx="15" fill="#e8f7f5" stroke="#00a88f" stroke-width="2"/>
+    <text x="855" y="447" class="card-title" fill="#008f83">Quality scoring</text>
+    <rect x="910" y="459" width="50" height="50" rx="5" fill="#8c4fff"/>
+    <path d="M921 482l8 8 18-20m-25 2h12m-12 27h26" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="935" y="525" class="card-label">AgentCore Evaluations</text>
+    <text x="935" y="540" class="card-detail">skill evaluators</text>
+  </g>
+
+  <path d="M170 328H307" class="flow-line" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+  <text x="239" y="317" class="edge-label">invoke / response</text>
+  <path d="M500 325H530V245H557" class="flow-line" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+  <text x="531" y="232" class="edge-label">Converse API</text>
+  <path d="M405 260V150H935V177" class="flow-line" marker-end="url(#arrow)"/>
+  <text x="680" y="144" class="edge-label">skill-aware OTel spans + events</text>
+  <path d="M935 310V422" class="flow-line" marker-end="url(#arrow)"/>
+  <text x="1010" y="370" class="edge-label">read session telemetry</text>
+  <path d="M840 490H810V610H95V388" class="flow-line" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
+  <text x="470" y="627" class="edge-label">Evaluation API / scores</text>
+
+  <g><rect x="185" y="300" width="36" height="36" rx="6" class="badge"/><text x="203" y="319" class="badge-text">1</text></g>
+  <g><rect x="515" y="235" width="36" height="36" rx="6" class="badge"/><text x="533" y="254" class="badge-text">2</text></g>
+  <g><rect x="500" y="132" width="36" height="36" rx="6" class="badge"/><text x="518" y="151" class="badge-text">3</text></g>
+  <g><rect x="917" y="355" width="36" height="36" rx="6" class="badge"/><text x="935" y="374" class="badge-text">4</text></g>
+  <g><rect x="700" y="592" width="36" height="36" rx="6" class="badge"/><text x="718" y="611" class="badge-text">5</text></g>
+
+  <rect x="1190" y="20" width="595" height="670" fill="#eaf2ff" stroke="#7a9cc6"/>
+  <text x="1220" y="70" class="panel-title">Request and evaluation flow</text>
+
+  <g><rect x="1220" y="100" width="40" height="40" rx="6" class="badge"/><text x="1240" y="121" class="badge-text">1</text></g>
+  <text x="1275" y="112" class="step-title">Invoke three scenarios</text>
+  <text x="1275" y="133" class="step-body"><tspan x="1275" dy="0">evaluate.py sends PTO, benefits, and no-skill prompts</tspan><tspan x="1275" dy="17">to the runtime.</tspan></text>
+
+  <g><rect x="1220" y="205" width="40" height="40" rx="6" class="badge"/><text x="1240" y="226" class="badge-text">2</text></g>
+  <text x="1275" y="217" class="step-title">Run model and skills</text>
+  <text x="1275" y="238" class="step-body"><tspan x="1275" dy="0">The HR Assistant calls Nova Lite, loads SKILL.md,</tspan><tspan x="1275" dy="17">and invokes HR tools.</tspan></text>
+
+  <g><rect x="1220" y="310" width="40" height="40" rx="6" class="badge"/><text x="1240" y="331" class="badge-text">3</text></g>
+  <text x="1275" y="322" class="step-title">Export telemetry</text>
+  <text x="1275" y="343" class="step-body"><tspan x="1275" dy="0">ADOT sends model, skill, and tool spans and events</tspan><tspan x="1275" dy="17">to CloudWatch.</tspan></text>
+
+  <g><rect x="1220" y="415" width="40" height="40" rx="6" class="badge"/><text x="1240" y="436" class="badge-text">4</text></g>
+  <text x="1275" y="427" class="step-title">Evaluate skill use</text>
+  <text x="1275" y="448" class="step-body"><tspan x="1275" dy="0">EvaluationClient and BatchEvaluationRunner run</tspan><tspan x="1275" dy="17">SkillSelectionAccuracy and SkillInstructionFollowing.</tspan></text>
+
+  <g><rect x="1220" y="535" width="40" height="40" rx="6" class="badge"/><text x="1240" y="556" class="badge-text">5</text></g>
+  <text x="1275" y="547" class="step-title">Return results</text>
+  <text x="1275" y="568" class="step-body"><tspan x="1275" dy="0">The script receives per-session and aggregate scores.</tspan><tspan x="1275" dy="17">No skill call produces zero skill results.</tspan></text>
+</svg>

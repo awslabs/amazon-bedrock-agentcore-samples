@@ -107,6 +107,11 @@ _TRUST = json.dumps(
     }
 )
 
+# Execution policy attached to the runtime's IAM role:
+#   bedrock:InvokeModel / InvokeModelWithResponseStream — call the Nova Lite model
+#   logs:*            — write the unified runtime log group used by AgentCore observability
+#   xray:*            — emit OTel trace segments for AgentCore spans
+#   cloudwatch:PutMetricData — publish agent metrics to CloudWatch
 _POLICY = json.dumps(
     {
         "Version": "2012-10-17",

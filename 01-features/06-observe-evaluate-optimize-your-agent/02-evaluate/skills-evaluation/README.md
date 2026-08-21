@@ -15,17 +15,7 @@ The evaluator scores are model-generated assessments, not deterministic test ass
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A[evaluate.py] -->|three prompts| B[AgentCore Runtime]
-    B --> C[Strands HR Assistant]
-    C -->|load matching SKILL.md| D[AgentSkills skills tool]
-    C -->|execute HR tools| E[Deterministic HR data]
-    B -->|OpenTelemetry| F[CloudWatch aws/spans and runtime logs]
-    A -->|query session records| F
-    A -->|Evaluate API + sessionSpans| G[SkillSelectionAccuracy]
-    A -->|Evaluate API + sessionSpans| H[SkillInstructionFollowing]
-```
+![AWS architecture diagram of the Agent Skills evaluation flow](images/architecture.svg)
 
 The shared HR Assistant remains unchanged for neighboring samples by default. Passing `--skills-dir` to `../utils/deploy.py` packages this folder's skills and enables `AgentSkills` only for a separate runtime whose configuration is written here.
 
@@ -69,11 +59,8 @@ It identifies the required steps in `SKILL.md`, checks the recorded tool calls a
 - Python 3.10+
 - AWS CLI installed and configured with credentials for the target account and Region
 - Amazon Bedrock model access for `us.amazon.nova-lite-v1:0`
-- CloudWatch Transaction Search enabled in the Region so AgentCore traces reach `aws/spans`
 - Permissions for AgentCore Runtime and Evaluations, CloudWatch Logs queries, IAM role creation and
   `iam:PassRole`, S3 bucket/object operations, STS identity lookup, and Bedrock model invocation
-
-See [Enable Transaction Search](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Enable-TransactionSearch.html) before deploying. Allow approximately 10 minutes after enabling it for telemetry to become available.
 
 ## Usage
 
@@ -112,18 +99,17 @@ script use the deployed runtime's Region. To use a different config or telemetry
 python evaluate.py --config agent_config.json --wait 300
 ```
 
-The script:
+The script runs in four steps:
 
-1. Invokes two explicit skill scenarios, matching the reference implementation, plus one no-skill control.
-2. Waits for AgentCore telemetry ingestion, following the same flow as the reference implementation.
-3. Collects each session from `aws/spans` and the runtime log group.
-4. Calls the synchronous `bedrock-agentcore:Evaluate` API with `evaluationInput.sessionSpans`; AgentCore detects and anchors each skill invocation.
-5. Runs both built-ins for each session and writes `results/skill_evaluation_results.json`.
-6. Verifies that each skill invocation produced one result per evaluator and that the no-skill control produced none.
+1. Invokes three scenarios: a PTO session, a benefits session, and a no-skill control.
+2. Waits for AgentCore telemetry ingestion into the unified runtime log group.
+3. **EvaluationClient** — for the PTO session, extracts the skill span attributes from CloudWatch to show what each evaluator receives, then calls `EvaluationClient.run()` on each session with `Builtin.SkillSelectionAccuracy` and `Builtin.SkillInstructionFollowing`. Writes `results/eval_client_results.json`.
+4. **BatchEvaluationRunner** — re-invokes all scenarios as a dataset and submits them in a single service-side batch job, returning aggregate scores per evaluator. Writes `results/batch_runner_results.json`.
 
-> **Where are the results?** This sample uses the on-demand `Evaluate` API. Results are printed and saved to
-> `results/skill_evaluation_results.json`; on-demand results do not populate the CloudWatch **Evaluations** tab.
-> That tab displays results from an [online evaluation configuration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/create-online-evaluations.html) associated with the endpoint.
+> **Where are the results?** On-demand results from `EvaluationClient` are printed and saved to
+> `results/eval_client_results.json`. Batch results are saved to `results/batch_runner_results.json`.
+> Neither populates the CloudWatch **Evaluations** tab, which shows results from an
+> [online evaluation configuration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/create-online-evaluations.html) associated with the endpoint.
 
 ### Test your own prompt
 
@@ -142,7 +128,7 @@ The script prints the agent response, waits for its telemetry, then runs both bu
 
 | Scenario | Prompt intent | Expected behavior |
 |:---------|:--------------|:------------------|
-| PTO planning | Request dated leave with `pto-planning` | Load `pto-planning`; check balance and policy before submission |
+| PTO planning | Request a PTO balance with `pto-planning` | Load `pto-planning`; check the balance and explain the PTO policy |
 | Benefits advice | Request health-plan details with `benefits-advisor` | Load `benefits-advisor`; retrieve health benefit details |
 | No-skill control | Retrieve an existing January 2026 pay stub | Call `get_pay_stub` directly; load no skill |
 
@@ -150,26 +136,102 @@ The complete prompt strings are defined in `evaluate.py` so they can be changed 
 
 ## Expected Output
 
-Values and explanations can vary, but the result shape is stable:
+Values and explanations vary across runs, but the four-step structure is stable:
 
 ```text
+========================================================================================
 HR Assistant — Agent Skills Evaluation
-Region: <deployed-region>
-Skills: benefits-advisor, pto-planning
+========================================================================================
+Region  : <deployed-region>
+Runtime : <agent-id>
+Skills  : benefits-advisor, pto-planning
 
-[Invoke] pto-planning (session=skill-eval-...)
-  Response: ...
+[1/4] Invoking scenarios ...
 
-[Evaluate] pto-planning: ... records, 1 skill invocation(s)
-  pto-planning         Builtin.SkillSelectionAccuracy       1.0   Yes
-  pto-planning         Builtin.SkillInstructionFollowing    1.0   Fully Followed
+  [pto-planning] session=skill-eval-<uuid>
+  Response: Based on the pto-planning skill workflow ...
 
-[Evaluate] no-skill-control: ... records, 0 skill invocation(s)
-  no-skill-control     Builtin.SkillSelectionAccuracy       SKIPPED (0 results)
-  no-skill-control     Builtin.SkillInstructionFollowing    SKIPPED (0 results)
+  [benefits-advisor] session=skill-eval-<uuid>
+  Response: Based on your health plan inquiry ...
+
+  [no-skill-control] session=skill-eval-<uuid>
+  Response: Here is your pay stub for January 2026 ...
+
+[2/4] Waiting 150s for AgentCore telemetry ingestion ...
+
+[3/4] EvaluationClient — per-session on-demand evaluation ...
+
+  --- pto-planning ---
+
+  Extracting skill span attributes (evaluator inputs) ...
+  11 span records found for session skill-eval-<uuid>
+
+  Skills tool-call event (inputs the evaluators use):
+    traceId        : <trace-id>
+    spanId         : <span-id>
+    session.id     : skill-eval-<uuid>
+
+  Trace-derived evaluator signals:
+    invoked_skill  : pto-planning
+    user_message   : 'Use the pto-planning skill. What is the available PTO balance ...'
+    skill_content  : '# PTO Planning Instructions\n\nUse this skill when an employee asks ...'
+    context        : (11 log records in this session span)
+
+  Configured skill catalog (deployment context):
+    - benefits-advisor: Explain an Acme employee benefit...
+    - pto-planning: Check an employee's PTO balance...
+
+  Note: Strands emits the runtime available_skills catalog natively in the trace.
+        AgentCore derives the available_skills placeholder for SkillSelectionAccuracy
+        service-side from those spans — not from this local catalog listing.
+
+  pto-planning         Builtin.SkillSelectionAccuracy          1.0   Yes
+  pto-planning         Builtin.SkillInstructionFollowing      1.0   Fully Followed
+
+  --- benefits-advisor ---
+  benefits-advisor     Builtin.SkillSelectionAccuracy          1.0   Yes
+  benefits-advisor     Builtin.SkillInstructionFollowing      0.75  Mostly Followed
+
+  --- no-skill-control ---
+  no-skill-control     Builtin.SkillSelectionAccuracy          SKIPPED (0 results)
+  no-skill-control     Builtin.SkillInstructionFollowing      SKIPPED (0 results)
+
+  EvaluationClient results saved to: results/eval_client_results.json
+
+[4/4] BatchEvaluationRunner — aggregate scores across all scenarios ...
+  Batch name : skill_eval_<hex>
+  Evaluators : ['Builtin.SkillSelectionAccuracy', 'Builtin.SkillInstructionFollowing']
+  Scenarios  : 3
+  Invoking agent + submitting batch (includes ingestion wait) ...
+
+  Batch ID : <batch-evaluation-id>
+  Status   : COMPLETED_WITH_ERRORS
+  Sessions : 2 completed, 1 failed
+
+  Aggregate scores per evaluator:
+  Evaluator                                avg score   n
+  ---------------------------------------- ----------  -
+  Builtin.SkillSelectionAccuracy               1.000  2
+  Builtin.SkillInstructionFollowing            0.875  2
+
+  BatchRunner results saved to: results/batch_runner_results.json
+
+========================================================================================
+Summary
+========================================================================================
+  EvaluationClient results : results/eval_client_results.json
+  BatchRunner results      : results/batch_runner_results.json
+
+  Interface comparison:
+    EvaluationClient      → per-session, on-demand, synchronous
+    BatchEvaluationRunner → dataset-level, service-side, aggregate scores
+
+Validation passed.
 ```
 
-A low score is a valid evaluation result and does not make the script fail. Missing results for an actual skill invocation, unexpected results for the control, telemetry errors, and evaluator API errors do fail validation.
+Instruction following can be `Partially Followed` even when skill selection is `Yes` if the agent loads the correct skill but skips a required workflow step. This distinction is why the sample runs both evaluators.
+
+A low score is a valid evaluation result and does not fail the script. The no-skill-control session normally counts as one "failed" session in the batch job because the skill evaluators find no invocation to score; validation permits at most this one expected failure. Span-display extraction errors are reported as warnings. Missing evaluator results for an actual skill invocation, unexpected results for the control, and evaluator API errors do fail validation.
 
 ## Troubleshooting
 
@@ -177,22 +239,21 @@ A low score is a valid evaluation result and does not make the script fail. Miss
 
 - Confirm the deployment config contains `"skills_enabled": true`.
 - Confirm both `skills/*/SKILL.md` files were present during deployment.
-- Enable CloudWatch Transaction Search and wait for setup to complete.
-- Verify that `aws/spans` contains records for the generated session ID.
 - Confirm the runtime includes `aws-opentelemetry-distro` and uses the instrumented entry point.
+- Verify that the runtime log group in `agent_config.json` contains records for the generated session ID.
 
 ### Where to find the selected skill
 
-The `aws/spans` record identifies the loader with `gen_ai.tool.name="skills"`, but the selected name is stored in the matching runtime event. Query the runtime log group from `agent_config.json` with the same trace ID or tool-call ID:
+The runtime log group contains a `gen_ai.tool.name="skills"` span for each skill invocation. Query it with the session ID printed during the run:
 
 ```text
 fields @timestamp, eventName, body, traceId, spanId
-| filter traceId = "<trace-id>"
+| filter @message like "<session-id>"
 | filter @message like /skills|skill_name/
 | sort @timestamp asc
 ```
 
-Look for `body.message.tool_calls[].function.arguments.skill_name` in the `gen_ai.choice` event. A subsequent `strands.telemetry.tracer` event with the same `gen_ai.tool.call.id` contains the loaded skill instructions. AgentCore correlates those runtime events with the `execute_tool skills` span when both log groups are supplied in `sessionSpans`.
+Look for `body.message.tool_calls[].function.arguments.skill_name` in the `gen_ai.choice` event. A subsequent `strands.telemetry.tracer` event with the same `gen_ai.tool.call.id` contains the loaded skill instructions.
 
 ### Both evaluators return zero results
 

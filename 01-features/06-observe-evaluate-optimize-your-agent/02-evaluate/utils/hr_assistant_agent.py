@@ -269,9 +269,15 @@ _SKILLS_ENABLED = _SKILLS_DIR.is_dir() and any(_SKILLS_DIR.glob("*/SKILL.md"))
 _SKILLS_PLUGIN = AgentSkills(skills=[str(_SKILLS_DIR)]) if _SKILLS_ENABLED else None
 _SKILLS_PROMPT = """
 
-For requests that match a skill in <available_skills>, load the most relevant
-skill with the `skills` tool before calling domain tools, then follow every
-loaded instruction. Do not load a skill for unrelated requests."""
+When skills are enabled, you MUST load the matching skill before calling any
+HR domain tools:
+- For PTO balance, policy, planning, or submission requests, first call
+  `skills(skill_name="pto-planning")`.
+- For health, dental, vision, 401(k), life-insurance, or other benefits
+  requests, first call `skills(skill_name="benefits-advisor")`.
+
+After loading the skill, follow every instruction it contains. Do not load a
+skill for pay-stub or unrelated requests."""
 _AGENT_SYSTEM_PROMPT = SYSTEM_PROMPT + _SKILLS_PROMPT if _SKILLS_ENABLED else SYSTEM_PROMPT
 
 _MODEL = BedrockModel(model_id="us.amazon.nova-lite-v1:0")
