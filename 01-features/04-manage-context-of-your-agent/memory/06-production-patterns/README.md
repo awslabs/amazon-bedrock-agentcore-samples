@@ -47,7 +47,7 @@ Everything in this section is grounded in one of three sources, and we say which
 
 - [`../04-observability/`](../04-observability/) — the metrics and alarms this section's checklist refers to
 - [`../05-security/`](../05-security/) — the IAM/Cognito/KMS deep-dives this section summarizes
-- [`../02-long-term-memory/07-batch-apis/`](../02-long-term-memory/07-batch-apis/) — partial-failure handling on batch calls
+- [`../02-long-term-memory/07-skip-STM/`](../02-long-term-memory/07-skip-STM/) — partial-failure handling on batch calls
 - [`../02-long-term-memory/08-redrive/`](../02-long-term-memory/08-redrive/) — recovering failed async extractions
 </content>
 </invoke>
