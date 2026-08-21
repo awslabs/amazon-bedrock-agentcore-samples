@@ -44,10 +44,18 @@ The same flow expressed with the AWS CLI:
 
 ```bash
 # 1. Create memory (no strategies needed for direct record CRUD).
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "BatchCli-$(date +%s)" \
-  --event-expiry-duration 30 --client-token "$(uuidgen)"
-export MEMORY_ID=<id>
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "BatchCli_$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --query 'memory.id' --output text)
+
+
+# Wait until ACTIVE. CreateEvent is rejected while the memory is still CREATING,
+# and creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. BatchCreate — insert records you extracted yourself
 aws bedrock-agentcore batch-create-memory-records \
