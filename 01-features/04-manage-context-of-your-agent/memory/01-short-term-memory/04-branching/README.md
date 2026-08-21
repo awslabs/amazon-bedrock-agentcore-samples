@@ -33,11 +33,19 @@ python event-branching.py sdk     # uses MemoryClient.fork_conversation
 The same flow expressed with the AWS CLI:
 
 ```bash
-# 1. Create memory
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "BranchingCli-$(date +%s)" \
-  --event-expiry-duration 30 --client-token "$(uuidgen)"
-export MEMORY_ID=<id>
+# 1. Create memory and wait until ACTIVE. `--name` accepts letters, digits and
+#    underscores only (pattern [a-zA-Z][a-zA-Z0-9_]{0,47}), so no hyphens.
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "BranchingCli_$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --query 'memory.id' --output text)
+
+# CreateEvent is rejected while the memory is CREATING, so wait it out. Takes a
+# couple of minutes. The loop also exits on FAILED, so it can't hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. Seed two events on the root branch. Capture the second event id as the fork point.
 aws bedrock-agentcore create-event \
@@ -46,12 +54,12 @@ aws bedrock-agentcore create-event \
   --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --payload '[{"conversational":{"role":"USER","content":{"text":"Trip to Lisbon."}}}]'
 
-aws bedrock-agentcore create-event \
+FORK_EVENT_ID=$(aws bedrock-agentcore create-event \
   --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
   --actor-id user-42 --session-id sess-cli \
   --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --payload '[{"conversational":{"role":"ASSISTANT","content":{"text":"When?"}}}]'
-export FORK_EVENT_ID=<id-from-second-create-event>
+  --payload '[{"conversational":{"role":"ASSISTANT","content":{"text":"When?"}}}]' \
+  --query 'event.eventId' --output text)
 
 # 3. Append two events on a new "autumn" branch rooted at FORK_EVENT_ID.
 aws bedrock-agentcore create-event \
