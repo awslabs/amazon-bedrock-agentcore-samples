@@ -114,7 +114,12 @@ def main(cleanup: bool = False) -> None:
     session_id = ingest(
         memory_id,
         [
-            {"conversational": {"role": "USER", "content": {"text": "Automatic sedan please. I really liked the Corolla."}}},
+            {
+                "conversational": {
+                    "role": "USER",
+                    "content": {"text": "Automatic sedan please. I really liked the Corolla."},
+                }
+            },
             {
                 "conversational": {
                     "role": "ASSISTANT",
@@ -204,9 +209,7 @@ def main(cleanup: bool = False) -> None:
     print(f"Polling up to {EXTRACTION_WAIT_SECONDS}s for extraction...")
     records, deadline = [], time.time() + EXTRACTION_WAIT_SECONDS
     while not records and time.time() < deadline:
-        records = data.list_memory_records(memoryId=memory_id, namespacePath=NAMESPACE_PREFIX)[
-            "memoryRecordSummaries"
-        ]
+        records = data.list_memory_records(memoryId=memory_id, namespacePath=NAMESPACE_PREFIX)["memoryRecordSummaries"]
         if not records:
             time.sleep(10)
 
