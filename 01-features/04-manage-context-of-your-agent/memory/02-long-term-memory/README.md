@@ -22,7 +22,7 @@ It creates a memory with a semantic strategy, sends a few `CreateEvent` calls, w
 | [`04-namespaces/`](./04-namespaces/) | Template variables, flexible namespaces (`namespaceKeys`), exact vs. prefix matching, multi-tenancy |
 | [`05-retrieval/`](./05-retrieval/) | `RetrieveMemoryRecords`, `ListMemoryRecords`, `GetMemoryRecord` |
 | [`06-record-metadata/`](./06-record-metadata/) | `indexedKeys`, structured metadata, `metadataFilters` |
-| [`07-batch-apis/`](./07-batch-apis/) | Direct CRUD with `BatchCreate/Update/DeleteMemoryRecords` |
+| [`07-skip-STM/`](./07-skip-STM/) | Write LTM without a short-term event: using `IngestData` API and direct CRUD with `BatchCreate/Update/DeleteMemoryRecords` |
 | [`08-manage-extraction/`](./08-manage-extraction/) | Skip extraction (`extractionMode=SKIP`) and redrive failed jobs |
 | [`09-record-streaming/`](./09-record-streaming/) | Push lifecycle events to Kinesis for event-driven pipelines |
 
