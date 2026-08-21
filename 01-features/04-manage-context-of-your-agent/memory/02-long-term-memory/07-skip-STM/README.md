@@ -69,6 +69,13 @@ Direct CRUD on records, bypassing the strategy pipeline entirely:
 
 Each call reports per-record success and failure independently — partial success is the norm, so always inspect `successfulRecords` and `failedRecords`.
 
+### What you learn
+
+- Inserting records you extracted yourself, e.g. from a self-managed strategy worker
+- Updating record content in place by `memoryRecordId`
+- Deleting records by id without touching the underlying events
+- Reading per-record outcomes out of `successfulRecords` / `failedRecords`
+
 ### When to use
 
 - **Self-managed strategy** — your worker extracted records out-of-band and writes them back with `BatchCreateMemoryRecords`.
@@ -82,6 +89,7 @@ Each call reports per-record success and failure independently — partial succe
 - **Cap at 100 records per call** — split larger workloads into chunks and parallelize.
 - **Created records are eventually consistent.** A record reported `SUCCEEDED` is not immediately updatable or listable; `BatchUpdate`/`Delete`/`List` can raise `ResourceNotFoundException` for seconds to a minute. Retry the dependent operation (the script shows the pattern) instead of assuming availability.
 - **Updates are full overwrites** of `content.text`. There is no patch semantics.
+- **Don't bypass extraction unintentionally.** Batch CRUD is for records you have already extracted. If you want AgentCore to do the extracting, use `IngestData` (above) or `CreateEvent` with a strategy attached.
 
 ## Run
 
@@ -102,12 +110,19 @@ Both keep the memory resource by default and print its `memoryId`; add `--cleanu
 
 ```bash
 # 1. Create memory. Strategies matter for ingest-data; batch CRUD needs none.
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "DirectIngestCli-$(date +%s)" \
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "DirectIngestCli_$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
   --memory-strategies '[{"semanticMemoryStrategy":{"name":"Facts",
-     "namespaceTemplates":["/customers/{actorId}/facts/"]}}]'
-export MEMORY_ID=<id>
+     "namespaceTemplates":["/customers/{actorId}/facts/"]}}]' \
+  --query 'memory.id' --output text)
+
+# Wait until ACTIVE. Writes are rejected while the memory is still CREATING, and
+# creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. IngestData — conversational + JSON in one payload, no event persisted
 aws bedrock-agentcore ingest-data \
