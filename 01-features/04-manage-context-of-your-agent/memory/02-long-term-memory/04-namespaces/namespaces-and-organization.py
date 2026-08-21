@@ -177,9 +177,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     # the templates resolve from.
     manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
     for actor_id, turns in CONVERSATIONS:
-        session = manager.create_memory_session(
-            actor_id=actor_id, session_id=f"{actor_id}-{int(time.time())}"
-        )
+        session = manager.create_memory_session(actor_id=actor_id, session_id=f"{actor_id}-{int(time.time())}")
         for user_text, assistant_text in turns:
             session.add_turns(
                 messages=[
@@ -196,9 +194,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     query_session = manager.create_memory_session(actor_id=CONVERSATIONS[0][0])
     for label, query, scope in QUERIES:
         kwargs = (
-            {"namespace": scope["namespace"]}
-            if "namespace" in scope
-            else {"namespace_path": scope["namespacePath"]}
+            {"namespace": scope["namespace"]} if "namespace" in scope else {"namespace_path": scope["namespacePath"]}
         )
         hits = query_session.search_long_term_memories(query=query, top_k=20, **kwargs)
         _print_hits("sdk", label, scope, hits)
