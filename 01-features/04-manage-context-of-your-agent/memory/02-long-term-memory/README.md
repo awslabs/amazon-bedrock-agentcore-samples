@@ -19,7 +19,7 @@ It creates a memory with a semantic strategy, sends a few `CreateEvent` calls, w
 | [`01-built-in-strategies/`](./01-built-in-strategies/) | The four built-in extractors: semantic, summary, user preference, episodic |
 | [`02-strategy-overrides/`](./02-strategy-overrides/) | Customise built-in extraction and consolidation prompts |
 | [`03-self-managed-strategy/`](./03-self-managed-strategy/) | Plug your own extraction worker via SNS + S3 with message/token/time triggers |
-| [`04-namespaces/`](./04-namespaces/) | Template variables, exact vs. prefix matching, multi-tenancy |
+| [`04-namespaces/`](./04-namespaces/) | Template variables, flexible namespaces (`namespaceKeys`), exact vs. prefix matching, multi-tenancy |
 | [`05-retrieval/`](./05-retrieval/) | `RetrieveMemoryRecords`, `ListMemoryRecords`, `GetMemoryRecord` |
 | [`06-record-metadata/`](./06-record-metadata/) | `indexedKeys`, structured metadata, `metadataFilters` |
 | [`07-batch-apis/`](./07-batch-apis/) | Direct CRUD with `BatchCreate/Update/DeleteMemoryRecords` |
