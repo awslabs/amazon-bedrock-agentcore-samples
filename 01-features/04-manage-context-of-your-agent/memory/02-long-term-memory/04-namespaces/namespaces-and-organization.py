@@ -87,7 +87,7 @@ QUERIES = [
 
 
 def _print_hits(prefix: str, label: str, scope: dict, hits: list) -> None:
-    print(f"\n[{prefix}] {label} — {list(scope.values())[0]} ({len(hits)}):")
+    print(f"\n[{prefix}] {label} — {next(iter(scope.values()))} ({len(hits)}):")
     for h in hits:
         # `namespaces` is the *resolved* path. Read it rather than assuming.
         print(f"  - [{','.join(h.get('namespaces', []))}] {h['content']['text'][:80]}")
