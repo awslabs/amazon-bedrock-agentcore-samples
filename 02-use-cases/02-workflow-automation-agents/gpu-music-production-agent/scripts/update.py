@@ -64,11 +64,10 @@ def run(cmd: list[str], **kwargs) -> None:
 
 
 def container_cli() -> str:
-    cli = next((c for c in ("finch", "docker", "nerdctl", "podman")
-                if shutil.which(c)), None)
+    cli = next((c for c in ("finch", "docker", "nerdctl", "podman") if shutil.which(c)), None)
     if not cli:
         die("no container CLI found")
-    if subprocess.run([cli, "info"], capture_output=True).returncode != 0:
+    if subprocess.run([cli, "info"], capture_output=True, check=False).returncode != 0:
         die(f"{cli} is installed but not usable (start its VM or daemon)")
     return cli
 
@@ -79,9 +78,23 @@ def vendor_agent_deps() -> Path:
         shutil.rmtree(target)
     target.mkdir(parents=True)
     log("vendoring agent dependencies")
-    run(["uv", "pip", "install", "--python-platform", WHEEL_PLATFORM,
-         "--python-version", PYTHON_VERSION, "--target", str(target),
-         "--only-binary", ":all:", "-r", str(PROJECT / "requirements.txt")])
+    run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            WHEEL_PLATFORM,
+            "--python-version",
+            PYTHON_VERSION,
+            "--target",
+            str(target),
+            "--only-binary",
+            ":all:",
+            "-r",
+            str(PROJECT / "requirements.txt"),
+        ]
+    )
     return target
 
 
@@ -91,14 +104,30 @@ def push_image(agent: str, account: str, region: str, cli: str, tag: str) -> str
     ecr = boto3.client("ecr", region_name=region)
     token = ecr.get_authorization_token()["authorizationData"][0]["authorizationToken"]
     password = base64.b64decode(token).decode().split(":", 1)[1]
-    subprocess.run([cli, "login", "--username", "AWS", "--password-stdin", registry],
-                   input=password.encode(), check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(
+        [cli, "login", "--username", "AWS", "--password-stdin", registry],
+        input=password.encode(),
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
     log(f"building {agent} for {BUILD_PLATFORM}")
-    run([cli, "build", "--platform", BUILD_PLATFORM, "-f",
-         str(PROJECT / f"Dockerfile.{agent}"), "-t", uri, str(PROJECT)])
+    run(
+        [
+            cli,
+            "build",
+            "--platform",
+            BUILD_PLATFORM,
+            "-f",
+            str(PROJECT / f"Dockerfile.{agent}"),
+            "-t",
+            uri,
+            str(PROJECT),
+        ]
+    )
     run([cli, "push", uri])
-    size = subprocess.run([cli, "images", "--format", "{{.Size}}", uri],
-                          capture_output=True, text=True).stdout.strip()
+    size = subprocess.run(
+        [cli, "images", "--format", "{{.Size}}", uri], capture_output=True, text=True, check=False
+    ).stdout.strip()
     log(f"{agent} image {size or '<unknown>'} (limit 2 GB)")
     return uri
 
@@ -111,9 +140,23 @@ def push_zip(state: dict, tag: str) -> str:
         shutil.rmtree(build_dir)
     build_dir.mkdir(parents=True)
     log("vendoring compliance dependencies")
-    run(["uv", "pip", "install", "--python-platform", WHEEL_PLATFORM,
-         "--python-version", PYTHON_VERSION, "--target", str(build_dir),
-         "--only-binary", ":all:", "-r", str(PROJECT / "requirements.txt")])
+    run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            WHEEL_PLATFORM,
+            "--python-version",
+            PYTHON_VERSION,
+            "--target",
+            str(build_dir),
+            "--only-binary",
+            ":all:",
+            "-r",
+            str(PROJECT / "requirements.txt"),
+        ]
+    )
     shutil.copy(PROJECT / "compliance_agent.py", build_dir)
     shutil.copy(PROJECT / "audio_dsp.py", build_dir)
     archive = PROJECT / "build" / "compliance_agent.zip"
@@ -161,9 +204,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("agents", nargs="*", choices=ALL_AGENTS, default=[])
     ap.add_argument("--all", action="store_true")
-    ap.add_argument("--restart-session", action="store_true",
-                    help="stop recorded sessions so the next invoke picks up the new "
-                         "version; without this a running session keeps serving the old code")
+    ap.add_argument(
+        "--restart-session",
+        action="store_true",
+        help="stop recorded sessions so the next invoke picks up the new "
+        "version; without this a running session keeps serving the old code",
+    )
     args = ap.parse_args()
 
     agents = list(ALL_AGENTS) if args.all else args.agents
@@ -187,10 +233,13 @@ def main() -> None:
             artifact = {"containerConfiguration": {"containerUri": uri}}
         else:
             key = push_zip(state, tag)
-            artifact = {"codeConfiguration": {
-                "code": {"s3": {"bucket": state["s3"]["bucket"], "prefix": key}},
-                "runtime": "PYTHON_3_12",
-                "entryPoint": ["compliance_agent.py"]}}
+            artifact = {
+                "codeConfiguration": {
+                    "code": {"s3": {"bucket": state["s3"]["bucket"], "prefix": key}},
+                    "runtime": "PYTHON_3_12",
+                    "entryPoint": ["compliance_agent.py"],
+                }
+            }
         version = update_runtime(region, runtime["id"], artifact)
         log(f"{agent} runtime is now version {version}")
 
@@ -204,20 +253,24 @@ def main() -> None:
             for name in agents:
                 try:
                     data.stop_runtime_session(
-                        agentRuntimeArn=state["runtimes"][name]["arn"],
-                        runtimeSessionId=session_id)
+                        agentRuntimeArn=state["runtimes"][name]["arn"], runtimeSessionId=session_id
+                    )
                     log(f"stopped {name} in {session_id}")
                 except ClientError as exc:
                     code = exc.response["Error"]["Code"]
                     if code != "ResourceNotFoundException":
                         warn(f"stop {name}: {code}")
-        print("\nSessions stopped. The next invoke provisions fresh compute on the same "
-              "session and picks up the new version. Volumes are retained, so a prepared "
-              "model stack survives.")
+        print(
+            "\nSessions stopped. The next invoke provisions fresh compute on the same "
+            "session and picks up the new version. Volumes are retained, so a prepared "
+            "model stack survives."
+        )
     else:
-        print("\nUpdated. NOTE: a session that is already running keeps serving the "
-              "previous version with no error. Re-run with --restart-session, or use a "
-              "new session id, to actually exercise the new code.")
+        print(
+            "\nUpdated. NOTE: a session that is already running keeps serving the "
+            "previous version with no error. Re-run with --restart-session, or use a "
+            "new session id, to actually exercise the new code."
+        )
 
 
 if __name__ == "__main__":

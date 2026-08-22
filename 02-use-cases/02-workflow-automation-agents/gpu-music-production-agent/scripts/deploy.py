@@ -34,7 +34,7 @@ STATE_FILE = PROJECT / "deployment_state.json"
 
 # us-east-2 by default: measured GPU capacity there when us-west-2 had none in
 # any Availability Zone for g6.xlarge.
-REGION = (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION"))
+REGION = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
 
 # Every AgentCore-supported accelerator family (g4dn, g5, g6, g6e, gr6, g6f,
 # gr6f, g7e, inf2) is x86_64, so a GPU capacity provider must be LINUX_X86_64
@@ -111,8 +111,7 @@ MODELS = {
 
 OPERATOR_ROLE_NAME = "MusicProductionCapacityProviderOperatorRole"
 EXECUTION_ROLE_NAME = "MusicProductionRuntimeExecutionRole"
-OPERATOR_MANAGED_POLICY = (
-    "arn:aws:iam::aws:policy/BedrockAgentCoreRuntimeInstancesOperatorRolePolicy")
+OPERATOR_MANAGED_POLICY = "arn:aws:iam::aws:policy/BedrockAgentCoreRuntimeInstancesOperatorRolePolicy"
 
 
 def log(msg: str) -> None:
@@ -138,24 +137,32 @@ def preflight() -> tuple[str, str]:
     # record of a session id, and a session's EBS volumes keep billing after its
     # instance is gone -- deleting the session is what deprovisions them.
     if STATE_FILE.exists():
-        die(f"{STATE_FILE.name} already exists, so a deployment is still recorded.\n"
+        die(
+            f"{STATE_FILE.name} already exists, so a deployment is still recorded.\n"
             "    Tear it down first:        python scripts/cleanup.py\n"
-            f"    Or, if it is already gone: mv {STATE_FILE.name} {STATE_FILE.name}.old")
+            f"    Or, if it is already gone: mv {STATE_FILE.name} {STATE_FILE.name}.old"
+        )
 
     if not REGION:
-        die("Set AWS_REGION (or AWS_DEFAULT_REGION). Nothing is defaulted, so that "
-            "GPU instances are never launched in a Region you did not choose.")
+        die(
+            "Set AWS_REGION (or AWS_DEFAULT_REGION). Nothing is defaulted, so that "
+            "GPU instances are never launched in a Region you did not choose."
+        )
 
     if MAX_LIFETIME < max(IDLE_INSTANCE_TIMEOUT, IDLE_SESSION_TIMEOUT):
-        die(f"MAX_LIFETIME ({MAX_LIFETIME}) must be >= IDLE_INSTANCE_TIMEOUT "
-            f"({IDLE_INSTANCE_TIMEOUT}) and IDLE_SESSION_TIMEOUT ({IDLE_SESSION_TIMEOUT}).")
+        die(
+            f"MAX_LIFETIME ({MAX_LIFETIME}) must be >= IDLE_INSTANCE_TIMEOUT "
+            f"({IDLE_INSTANCE_TIMEOUT}) and IDLE_SESSION_TIMEOUT ({IDLE_SESSION_TIMEOUT})."
+        )
     if not 60 <= MAX_LIFETIME <= 1209600:
         die(f"MAX_LIFETIME ({MAX_LIFETIME}) must be between 60 and 1209600 seconds.")
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
     if not hasattr(control, "create_capacity_provider"):
-        die("This boto3 has no capacity provider APIs. Upgrade:\n"
-            "    pip install --upgrade 'boto3>=1.43.72' 'botocore>=1.43.72'")
+        die(
+            "This boto3 has no capacity provider APIs. Upgrade:\n"
+            "    pip install --upgrade 'boto3>=1.43.72' 'botocore>=1.43.72'"
+        )
 
     requested = os.environ.get("CONTAINER_CLI")
     if requested:
@@ -163,41 +170,43 @@ def preflight() -> tuple[str, str]:
             die(f"CONTAINER_CLI={requested} is not on PATH.")
         cli = requested
     else:
-        cli = next((c for c in ("finch", "docker", "nerdctl", "podman")
-                    if shutil.which(c)), None)
+        cli = next((c for c in ("finch", "docker", "nerdctl", "podman") if shutil.which(c)), None)
     if not cli:
         die("No container CLI found. Install Finch, Docker, nerdctl or Podman.")
 
     # Prove the engine can build BEFORE creating any AWS resource. Being on PATH
     # is not the same as being usable.
-    probe = subprocess.run([cli, "info"], capture_output=True, text=True)
+    probe = subprocess.run([cli, "info"], capture_output=True, text=True, check=False)
     if probe.returncode != 0:
-        hint = {"finch": "Finch runs containers in a Linux VM. Create it once:\n"
-                         "        finch vm init      # then: finch vm start",
-                "docker": "Start Docker Desktop (or the docker daemon) and retry.",
-                "podman": "podman machine init && podman machine start",
-                "nerdctl": "Ensure containerd is running and reachable."}.get(
-                    cli, "Start the container engine and retry.")
+        hint = {
+            "finch": "Finch runs containers in a Linux VM. Create it once:\n"
+            "        finch vm init      # then: finch vm start",
+            "docker": "Start Docker Desktop (or the docker daemon) and retry.",
+            "podman": "podman machine init && podman machine start",
+            "nerdctl": "Ensure containerd is running and reachable.",
+        }.get(cli, "Start the container engine and retry.")
         detail = (probe.stderr or probe.stdout or "").strip().splitlines()
-        die(f"{cli} is installed but not usable yet.\n    {hint}\n"
+        die(
+            f"{cli} is installed but not usable yet.\n    {hint}\n"
             f"    Or select another engine: CONTAINER_CLI=docker python scripts/deploy.py\n"
-            + (f"    {cli} said: {detail[-1][:160]}" if detail else ""))
+            + (f"    {cli} said: {detail[-1][:160]}" if detail else "")
+        )
 
     if not shutil.which("uv"):
-        die("uv is required to vendor Linux wheels for the agent artifacts.\n"
-            "    Install: https://docs.astral.sh/uv/getting-started/installation/")
+        die(
+            "uv is required to vendor Linux wheels for the agent artifacts.\n"
+            "    Install: https://docs.astral.sh/uv/getting-started/installation/"
+        )
 
     # A GPU type that the Region does not offer will fail only at first invoke,
     # minutes later, so check now.
     ec2 = boto3.client("ec2", region_name=REGION)
     offered = ec2.describe_instance_type_offerings(
-        LocationType="availability-zone",
-        Filters=[{"Name": "instance-type", "Values": [CP_INSTANCE_TYPE]}]
+        LocationType="availability-zone", Filters=[{"Name": "instance-type", "Values": [CP_INSTANCE_TYPE]}]
     )["InstanceTypeOfferings"]
     if not offered:
         die(f"{CP_INSTANCE_TYPE} is not offered in {REGION}. Set CP_INSTANCE_TYPE.")
-    log(f"{CP_INSTANCE_TYPE} offered in {len(offered)} AZ(s): "
-        f"{', '.join(sorted(o['Location'] for o in offered))}")
+    log(f"{CP_INSTANCE_TYPE} offered in {len(offered)} AZ(s): {', '.join(sorted(o['Location'] for o in offered))}")
 
     account = boto3.client("sts", region_name=REGION).get_caller_identity()["Account"]
     log(f"region={REGION} account={account} os={CP_OS} instance={CP_INSTANCE_TYPE}")
@@ -219,19 +228,24 @@ def ensure_roles(account: str) -> tuple[str, str]:
     policy wrong produces a message that reads as if the role does not exist.
     """
     iam = boto3.client("iam")
-    trust = {"Version": "2012-10-17", "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-        "Action": "sts:AssumeRole",
-        # Confused-deputy guard.
-        "Condition": {"StringEquals": {"aws:SourceAccount": account}},
-    }]}
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                # Confused-deputy guard.
+                "Condition": {"StringEquals": {"aws:SourceAccount": account}},
+            }
+        ],
+    }
 
     def upsert(name: str, description: str) -> str:
         try:
-            arn = iam.create_role(RoleName=name,
-                                  AssumeRolePolicyDocument=json.dumps(trust),
-                                  Description=description)["Role"]["Arn"]
+            arn = iam.create_role(RoleName=name, AssumeRolePolicyDocument=json.dumps(trust), Description=description)[
+                "Role"
+            ]["Arn"]
             log(f"created role {name}")
             return arn
         except iam.exceptions.EntityAlreadyExistsException:
@@ -239,8 +253,7 @@ def ensure_roles(account: str) -> tuple[str, str]:
             log(f"reusing role {name}")
             return iam.get_role(RoleName=name)["Role"]["Arn"]
 
-    operator_arn = upsert(OPERATOR_ROLE_NAME,
-                          "AgentCore provisions EC2 for music production capacity providers")
+    operator_arn = upsert(OPERATOR_ROLE_NAME, "AgentCore provisions EC2 for music production capacity providers")
     iam.attach_role_policy(RoleName=OPERATOR_ROLE_NAME, PolicyArn=OPERATOR_MANAGED_POLICY)
     if MODELS_SNAPSHOT_ID:
         grant_snapshot_restore(MODELS_SNAPSHOT_ID)
@@ -264,12 +277,20 @@ def grant_snapshot_restore(snapshot_id: str) -> None:
     boto3.client("iam").put_role_policy(
         RoleName=OPERATOR_ROLE_NAME,
         PolicyName="music-production-snapshot-restore",
-        PolicyDocument=json.dumps({"Version": "2012-10-17", "Statement": [{
-            "Sid": "CreateVolumeFromModelSnapshot",
-            "Effect": "Allow",
-            "Action": "ec2:CreateVolume",
-            "Resource": f"arn:aws:ec2:{REGION}::snapshot/{snapshot_id}",
-        }]}))
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "CreateVolumeFromModelSnapshot",
+                        "Effect": "Allow",
+                        "Action": "ec2:CreateVolume",
+                        "Resource": f"arn:aws:ec2:{REGION}::snapshot/{snapshot_id}",
+                    }
+                ],
+            }
+        ),
+    )
     log(f"granted the operator role CreateVolume on {snapshot_id}")
 
 
@@ -288,46 +309,59 @@ def put_execution_policy(account: str, composition_arn: str | None) -> None:
             # An inference profile ARN is not sufficient on its own: the
             # foundation model in every Region the profile routes to must also be
             # allowed, and `global.` profiles route to a Region-less ARN.
-            "Sid": "InvokeModels", "Effect": "Allow",
+            "Sid": "InvokeModels",
+            "Effect": "Allow",
             "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-            "Resource": ["arn:aws:bedrock:*::foundation-model/*",
-                         f"arn:aws:bedrock:*:{account}:inference-profile/*"],
+            "Resource": ["arn:aws:bedrock:*::foundation-model/*", f"arn:aws:bedrock:*:{account}:inference-profile/*"],
         },
         {
-            "Sid": "PullImages", "Effect": "Allow",
-            "Action": ["ecr:GetAuthorizationToken", "ecr:BatchGetImage",
-                       "ecr:GetDownloadUrlForLayer"],
+            "Sid": "PullImages",
+            "Effect": "Allow",
+            "Action": ["ecr:GetAuthorizationToken", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
             "Resource": "*",
         },
         {
             # Read the zip artifact, and write rendered audio. The volume is
             # inside a managed instance with no shell and dies with the session,
             # so S3 is the only way a WAV reaches the caller.
-            "Sid": "Artifacts", "Effect": "Allow",
+            "Sid": "Artifacts",
+            "Effect": "Allow",
             "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
             "Resource": [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"],
         },
         {
-            "Sid": "Telemetry", "Effect": "Allow",
-            "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents",
-                       "logs:DescribeLogStreams", "logs:DescribeLogGroups",
-                       "cloudwatch:PutMetricData", "xray:PutTraceSegments",
-                       "xray:PutTelemetryRecords"],
+            "Sid": "Telemetry",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogStreams",
+                "logs:DescribeLogGroups",
+                "cloudwatch:PutMetricData",
+                "xray:PutTraceSegments",
+                "xray:PutTelemetryRecords",
+            ],
             "Resource": "*",
         },
     ]
     if composition_arn:
         # Only the compliance agent uses this, and only to reach one runtime.
         # The second resource covers the qualifier (endpoint) sub-resource.
-        statements.append({
-            "Sid": "CrossAgentInvoke", "Effect": "Allow",
-            "Action": "bedrock-agentcore:InvokeAgentRuntime",
-            "Resource": [composition_arn, f"{composition_arn}/*"],
-        })
+        statements.append(
+            {
+                "Sid": "CrossAgentInvoke",
+                "Effect": "Allow",
+                "Action": "bedrock-agentcore:InvokeAgentRuntime",
+                "Resource": [composition_arn, f"{composition_arn}/*"],
+            }
+        )
 
     boto3.client("iam").put_role_policy(
-        RoleName=EXECUTION_ROLE_NAME, PolicyName="music-production-runtime-access",
-        PolicyDocument=json.dumps({"Version": "2012-10-17", "Statement": statements}))
+        RoleName=EXECUTION_ROLE_NAME,
+        PolicyName="music-production-runtime-access",
+        PolicyDocument=json.dumps({"Version": "2012-10-17", "Statement": statements}),
+    )
 
 
 # ------------------------------------------------------------------- artifacts
@@ -344,9 +378,23 @@ def vendor_agent_deps() -> Path:
         shutil.rmtree(target)
     target.mkdir(parents=True)
     log(f"vendoring agent dependencies for {WHEEL_PLATFORM} / cp{PYTHON_VERSION}")
-    run(["uv", "pip", "install", "--python-platform", WHEEL_PLATFORM,
-         "--python-version", PYTHON_VERSION, "--target", str(target),
-         "--only-binary", ":all:", "-r", str(PROJECT / "requirements.txt")])
+    run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            WHEEL_PLATFORM,
+            "--python-version",
+            PYTHON_VERSION,
+            "--target",
+            str(target),
+            "--only-binary",
+            ":all:",
+            "-r",
+            str(PROJECT / "requirements.txt"),
+        ]
+    )
     size = sum(f.stat().st_size for f in target.rglob("*") if f.is_file())
     log(f"agent dependencies: {size / 1e6:.0f} MB unpacked")
     return target
@@ -362,8 +410,7 @@ def ensure_bucket(account: str) -> str:
         s3.create_bucket(**kwargs)
         log(f"created bucket {bucket}")
     except ClientError as exc:
-        if exc.response["Error"]["Code"] not in ("BucketAlreadyOwnedByYou",
-                                                 "BucketAlreadyExists"):
+        if exc.response["Error"]["Code"] not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
             raise
         log(f"reusing bucket {bucket}")
     return bucket
@@ -383,16 +430,32 @@ def build_and_push_image(agent: str, account: str, cli: str, tag: str) -> str:
 
     token = ecr.get_authorization_token()["authorizationData"][0]["authorizationToken"]
     password = base64.b64decode(token).decode().split(":", 1)[1]
-    subprocess.run([cli, "login", "--username", "AWS", "--password-stdin", registry],
-                   input=password.encode(), check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(
+        [cli, "login", "--username", "AWS", "--password-stdin", registry],
+        input=password.encode(),
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
 
     log(f"building {agent} image for {BUILD_PLATFORM}")
-    run([cli, "build", "--platform", BUILD_PLATFORM, "-f",
-         str(PROJECT / f"Dockerfile.{agent}"), "-t", uri, str(PROJECT)])
+    run(
+        [
+            cli,
+            "build",
+            "--platform",
+            BUILD_PLATFORM,
+            "-f",
+            str(PROJECT / f"Dockerfile.{agent}"),
+            "-t",
+            uri,
+            str(PROJECT),
+        ]
+    )
     log(f"pushing {uri}")
     run([cli, "push", uri])
-    size = subprocess.run([cli, "images", "--format", "{{.Size}}", uri],
-                          capture_output=True, text=True).stdout.strip()
+    size = subprocess.run(
+        [cli, "images", "--format", "{{.Size}}", uri], capture_output=True, text=True, check=False
+    ).stdout.strip()
     # The hard cap on an AgentCore Runtime image is 2 GB.
     log(f"{agent} image size: {size or '<unknown>'} (limit 2 GB)")
     return uri
@@ -412,9 +475,23 @@ def build_and_upload_zip(account: str, bucket: str, key: str) -> tuple[str, str]
     build_dir.mkdir(parents=True)
 
     log(f"vendoring compliance dependencies for {WHEEL_PLATFORM}")
-    run(["uv", "pip", "install", "--python-platform", WHEEL_PLATFORM,
-         "--python-version", PYTHON_VERSION, "--target", str(build_dir),
-         "--only-binary", ":all:", "-r", str(PROJECT / "requirements.txt")])
+    run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            WHEEL_PLATFORM,
+            "--python-version",
+            PYTHON_VERSION,
+            "--target",
+            str(build_dir),
+            "--only-binary",
+            ":all:",
+            "-r",
+            str(PROJECT / "requirements.txt"),
+        ]
+    )
     shutil.copy(PROJECT / "compliance_agent.py", build_dir)
     shutil.copy(PROJECT / "audio_dsp.py", build_dir)
 
@@ -425,13 +502,13 @@ def build_and_upload_zip(account: str, bucket: str, key: str) -> tuple[str, str]
                 zf.write(path, path.relative_to(build_dir))
     size_mb = archive.stat().st_size / 1e6
     raw_mb = sum(p.stat().st_size for p in build_dir.rglob("*") if p.is_file()) / 1e6
-    log(f"zip built: {size_mb:.1f} MB compressed, {raw_mb:.1f} MB uncompressed "
-        "(limits 250 MB / 750 MB)")
+    log(f"zip built: {size_mb:.1f} MB compressed, {raw_mb:.1f} MB uncompressed (limits 250 MB / 750 MB)")
     if size_mb > 250 or raw_mb > 750:
         die("compliance zip exceeds the direct-code-deploy limits")
 
     boto3.client("s3", region_name=REGION).upload_file(
-        str(archive), bucket, key, ExtraArgs={"ExpectedBucketOwner": account})
+        str(archive), bucket, key, ExtraArgs={"ExpectedBucketOwner": account}
+    )
     log(f"uploaded s3://{bucket}/{key}")
     return bucket, key
 
@@ -459,8 +536,7 @@ def vpc_configuration() -> dict:
     if subnet and group:
         chosen = [s.strip() for s in subnet.split(",") if s.strip()][:16]
         if len(chosen) == 1:
-            warn("one subnet means one AZ; pass several to survive an "
-                 "Insufficient EC2 capacity error in that AZ")
+            warn("one subnet means one AZ; pass several to survive an Insufficient EC2 capacity error in that AZ")
         return {"subnets": chosen, "securityGroups": [group]}
     if subnet or group:
         die("Set CP_SUBNET_ID and CP_SECURITY_GROUP_ID together, or neither.")
@@ -470,33 +546,37 @@ def vpc_configuration() -> dict:
     if not vpcs:
         die("No default VPC. Set CP_SUBNET_ID and CP_SECURITY_GROUP_ID.")
     vpc_id = vpcs[0]["VpcId"]
-    subnets = ec2.describe_subnets(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]
-    groups = ec2.describe_security_groups(Filters=[
-        {"Name": "vpc-id", "Values": [vpc_id]},
-        {"Name": "group-name", "Values": ["default"]}])["SecurityGroups"]
+    subnets = ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["Subnets"]
+    groups = ec2.describe_security_groups(
+        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}, {"Name": "group-name", "Values": ["default"]}]
+    )["SecurityGroups"]
     if not subnets or not groups:
         die(f"Default VPC {vpc_id} has no subnet or no default security group.")
 
-    offered = {o["Location"] for o in ec2.describe_instance_type_offerings(
-        LocationType="availability-zone",
-        Filters=[{"Name": "instance-type", "Values": [CP_INSTANCE_TYPE]}]
-    )["InstanceTypeOfferings"]}
+    offered = {
+        o["Location"]
+        for o in ec2.describe_instance_type_offerings(
+            LocationType="availability-zone", Filters=[{"Name": "instance-type", "Values": [CP_INSTANCE_TYPE]}]
+        )["InstanceTypeOfferings"]
+    }
     usable = [s for s in subnets if s["AvailabilityZone"] in offered][:16]
     if not usable:
         die(f"No default-VPC subnet is in an AZ offering {CP_INSTANCE_TYPE}.")
     zones = sorted({s["AvailabilityZone"] for s in usable})
     log(f"using default VPC {vpc_id}: {len(usable)} subnet(s) across {', '.join(zones)}")
-    return {"subnets": [s["SubnetId"] for s in usable],
-            "securityGroups": [groups[0]["GroupId"]]}
+    return {"subnets": [s["SubnetId"] for s in usable], "securityGroups": [groups[0]["GroupId"]]}
 
 
 def create_capacity_provider(control, name: str, operator_arn: str) -> tuple[str, str]:
-    models_ebs: dict = {"name": MODELS_VOLUME, "sizeGiB": MODELS_SIZE_GIB,
-                        "volumeType": "gp3", "encrypted": True,
-                        # The model stack is read-heavy on first load; the gp3
-                        # default of 125 MiB/s makes a cold start noticeably slower.
-                        "throughput": 500}
+    models_ebs: dict = {
+        "name": MODELS_VOLUME,
+        "sizeGiB": MODELS_SIZE_GIB,
+        "volumeType": "gp3",
+        "encrypted": True,
+        # The model stack is read-heavy on first load; the gp3
+        # default of 125 MiB/s makes a cold start noticeably slower.
+        "throughput": 500,
+    }
     if MODELS_SNAPSHOT_ID:
         # Verified: a snapshot-backed volume is NOT reformatted, so a prepared
         # stack survives into every new session and mode=prepare is unnecessary.
@@ -508,23 +588,32 @@ def create_capacity_provider(control, name: str, operator_arn: str) -> tuple[str
         name=name,
         description="Music production agent fleet (GPU)",
         permissionsConfiguration={"capacityProviderOperatorRoleArn": operator_arn},
-        computeConfiguration={"ec2Configuration": {
-            "launchTemplateSource": {"launchParameters": {
-                "operatingSystem": CP_OS,
-                "instanceRequirements": {"allowedInstanceTypes": [CP_INSTANCE_TYPE]},
-            }},
-            "vpcConfiguration": vpc_configuration(),
-            "volumes": [
-                # The shared workspace, mounted by all three agents.
-                {"ebsConfiguration": {"name": TRACKS_VOLUME, "sizeGiB": TRACKS_SIZE_GIB,
-                                      "volumeType": "gp3", "encrypted": True}},
-                # The generative stack, mounted only by the composition agent.
-                {"ebsConfiguration": models_ebs},
-            ],
-            "rootVolume": {"freeSpaceGiB": ROOT_FREE_GIB, "volumeType": "gp3"},
-            "lifecycleConfiguration": {"idleInstanceTimeout": IDLE_INSTANCE_TIMEOUT,
-                                       "maxLifetime": MAX_LIFETIME},
-        }},
+        computeConfiguration={
+            "ec2Configuration": {
+                "launchTemplateSource": {
+                    "launchParameters": {
+                        "operatingSystem": CP_OS,
+                        "instanceRequirements": {"allowedInstanceTypes": [CP_INSTANCE_TYPE]},
+                    }
+                },
+                "vpcConfiguration": vpc_configuration(),
+                "volumes": [
+                    # The shared workspace, mounted by all three agents.
+                    {
+                        "ebsConfiguration": {
+                            "name": TRACKS_VOLUME,
+                            "sizeGiB": TRACKS_SIZE_GIB,
+                            "volumeType": "gp3",
+                            "encrypted": True,
+                        }
+                    },
+                    # The generative stack, mounted only by the composition agent.
+                    {"ebsConfiguration": models_ebs},
+                ],
+                "rootVolume": {"freeSpaceGiB": ROOT_FREE_GIB, "volumeType": "gp3"},
+                "lifecycleConfiguration": {"idleInstanceTimeout": IDLE_INSTANCE_TIMEOUT, "maxLifetime": MAX_LIFETIME},
+            }
+        },
     )
     cp_id, cp_arn = resp["capacityProviderId"], resp["capacityProviderArn"]
 
@@ -544,8 +633,9 @@ def create_capacity_provider(control, name: str, operator_arn: str) -> tuple[str
     return cp_id, cp_arn
 
 
-def create_runtime(control, name: str, artifact: dict, execution_arn: str,
-                   cp_arn: str, env: dict, volumes: list[tuple[str, str]]) -> dict:
+def create_runtime(
+    control, name: str, artifact: dict, execution_arn: str, cp_arn: str, env: dict, volumes: list[tuple[str, str]]
+) -> dict:
     log(f"creating runtime {name} (mounts {', '.join(m for _, m in volumes)})")
     resp = control.create_agent_runtime(
         agentRuntimeName=name,
@@ -557,11 +647,8 @@ def create_runtime(control, name: str, artifact: dict, execution_arn: str,
         capacityProviderConfiguration={"capacityProviderArn": cp_arn},
         # Only the volumes a runtime declares are mounted for it, so the mastering
         # and compliance agents never see the model stack.
-        filesystemConfigurations=[
-            {"capacityProviderVolume": {"volumeName": v, "mountPath": m}}
-            for v, m in volumes],
-        lifecycleConfiguration={"idleRuntimeSessionTimeout": IDLE_SESSION_TIMEOUT,
-                                "maxLifetime": MAX_LIFETIME},
+        filesystemConfigurations=[{"capacityProviderVolume": {"volumeName": v, "mountPath": m}} for v, m in volumes],
+        lifecycleConfiguration={"idleRuntimeSessionTimeout": IDLE_SESSION_TIMEOUT, "maxLifetime": MAX_LIFETIME},
         environmentVariables=env,
     )
     runtime_id, arn = resp["agentRuntimeId"], resp["agentRuntimeArn"]
@@ -589,20 +676,21 @@ def main() -> None:
     mastering_image = build_and_push_image("mastering", account, cli, f"v1-{suffix}")
     _, key = build_and_upload_zip(account, bucket, f"compliance/{suffix}/compliance_agent.zip")
 
-    cp_id, cp_arn = create_capacity_provider(
-        control, f"music_production_capacity_{suffix}", operator_arn)
+    cp_id, cp_arn = create_capacity_provider(control, f"music_production_capacity_{suffix}", operator_arn)
 
-    base_env = {"AWS_REGION": REGION, "WORKSPACE_DIR": TRACKS_MOUNT,
-                "ARTIFACT_BUCKET": bucket}
+    base_env = {"AWS_REGION": REGION, "WORKSPACE_DIR": TRACKS_MOUNT, "ARTIFACT_BUCKET": bucket}
 
     # Composition first: the compliance agent needs its ARN, which cannot be
     # constructed by hand because of the random 10-character suffix.
     composition = create_runtime(
-        control, f"music_production_composition_{suffix}",
+        control,
+        f"music_production_composition_{suffix}",
         {"containerConfiguration": {"containerUri": composition_image}},
-        execution_arn, cp_arn,
+        execution_arn,
+        cp_arn,
         {**base_env, "MODEL_ID": MODELS["composition"], "MODELS_DIR": MODELS_MOUNT},
-        [(TRACKS_VOLUME, TRACKS_MOUNT), (MODELS_VOLUME, MODELS_MOUNT)])
+        [(TRACKS_VOLUME, TRACKS_MOUNT), (MODELS_VOLUME, MODELS_MOUNT)],
+    )
 
     # Now that the composition runtime exists, scope the cross-agent grant to
     # that one ARN instead of leaving it open to every runtime in the account.
@@ -610,28 +698,43 @@ def main() -> None:
     log(f"scoped CrossAgentInvoke to {composition['arn']}")
 
     mastering = create_runtime(
-        control, f"music_production_mastering_{suffix}",
+        control,
+        f"music_production_mastering_{suffix}",
         {"containerConfiguration": {"containerUri": mastering_image}},
-        execution_arn, cp_arn, {**base_env, "MODEL_ID": MODELS["mastering"]},
-        [(TRACKS_VOLUME, TRACKS_MOUNT)])
+        execution_arn,
+        cp_arn,
+        {**base_env, "MODEL_ID": MODELS["mastering"]},
+        [(TRACKS_VOLUME, TRACKS_MOUNT)],
+    )
 
     compliance = create_runtime(
-        control, f"music_production_compliance_{suffix}",
-        {"codeConfiguration": {"code": {"s3": {"bucket": bucket, "prefix": key}},
-                               "runtime": PYTHON_RUNTIME,
-                               "entryPoint": ["compliance_agent.py"]}},
-        execution_arn, cp_arn,
-        {**base_env, "MODEL_ID": MODELS["compliance"],
-         "COMPOSITION_RUNTIME_ARN": composition["arn"],
-         "COMPOSITION_QUALIFIER": "DEFAULT"},
-        [(TRACKS_VOLUME, TRACKS_MOUNT)])
+        control,
+        f"music_production_compliance_{suffix}",
+        {
+            "codeConfiguration": {
+                "code": {"s3": {"bucket": bucket, "prefix": key}},
+                "runtime": PYTHON_RUNTIME,
+                "entryPoint": ["compliance_agent.py"],
+            }
+        },
+        execution_arn,
+        cp_arn,
+        {
+            **base_env,
+            "MODEL_ID": MODELS["compliance"],
+            "COMPOSITION_RUNTIME_ARN": composition["arn"],
+            "COMPOSITION_QUALIFIER": "DEFAULT",
+        },
+        [(TRACKS_VOLUME, TRACKS_MOUNT)],
+    )
 
     state = {
-        "region": REGION, "account": account, "suffix": suffix,
+        "region": REGION,
+        "account": account,
+        "suffix": suffix,
         "instance_type": CP_INSTANCE_TYPE,
         "capacity_provider": {"id": cp_id, "arn": cp_arn},
-        "runtimes": {"composition": composition, "mastering": mastering,
-                     "compliance": compliance},
+        "runtimes": {"composition": composition, "mastering": mastering, "compliance": compliance},
         "ecr_repositories": ["music-production/composition-agent", "music-production/mastering-agent"],
         "s3": {"bucket": bucket, "key": key},
         "iam_roles": [OPERATOR_ROLE_NAME, EXECUTION_ROLE_NAME],
@@ -642,11 +745,12 @@ def main() -> None:
     STATE_FILE.write_text(json.dumps(state, indent=2))
     log(f"wrote {STATE_FILE}")
     print("\nDeployed. Next: python scripts/invoke.py   (then scripts/cleanup.py)")
-    print(f"Note: no EC2 instance exists yet - the first invoke provisions a "
-          f"{CP_INSTANCE_TYPE}.")
+    print(f"Note: no EC2 instance exists yet - the first invoke provisions a {CP_INSTANCE_TYPE}.")
     if not MODELS_SNAPSHOT_ID:
-        print("The first invoke also builds the generative stack onto the models "
-              "volume (a few minutes, once per session).")
+        print(
+            "The first invoke also builds the generative stack onto the models "
+            "volume (a few minutes, once per session)."
+        )
 
 
 if __name__ == "__main__":

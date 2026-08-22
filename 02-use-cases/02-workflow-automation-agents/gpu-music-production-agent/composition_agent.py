@@ -36,19 +36,18 @@ import os
 import platform
 import re
 import subprocess
-import time
 import sys
+import time
 import uuid
 from pathlib import Path
 
+import audio_dsp as audio
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from pydantic import BaseModel, Field, field_validator
 from strands import Agent
 from strands.models import BedrockModel
 from strands.session import FileSessionManager
-
-import audio_dsp as audio
 
 AGENT_NAME = "composition"
 PROCESS_ID = uuid.uuid4().hex[:8]
@@ -110,10 +109,8 @@ class CompositionBrief(BaseModel):
     chord_progression: str = Field(default="")
     instrumentation: list[str] = Field(default_factory=list)
     structure: list[Section] = Field(default_factory=list)
-    style_tags: str = Field(
-        description="Comma-separated concrete descriptors for the audio model.")
-    lyrics: str = Field(default="[inst]",
-                        description="'[inst]' for an instrumental.")
+    style_tags: str = Field(description="Comma-separated concrete descriptors for the audio model.")
+    lyrics: str = Field(default="[inst]", description="'[inst]' for an instrumental.")
 
     @field_validator("tempo_bpm")
     @classmethod
@@ -141,28 +138,37 @@ class CompositionBrief(BaseModel):
         return v
 
     def to_markdown(self, render: dict | None = None) -> str:
-        lines = [f"# {self.title}", "",
-                 f"**Key:** {self.key}  |  **Tempo:** {self.tempo_bpm} BPM  |  "
-                 f"**Time signature:** {self.time_signature}", ""]
+        lines = [
+            f"# {self.title}",
+            "",
+            (f"**Key:** {self.key}  |  **Tempo:** {self.tempo_bpm} BPM  |  **Time signature:** {self.time_signature}"),
+            "",
+        ]
         if self.chord_progression:
             lines += [f"**Chord progression:** {self.chord_progression}", ""]
         if self.instrumentation:
             lines += ["**Instrumentation:** " + ", ".join(self.instrumentation), ""]
         if self.structure:
             lines += ["## Arrangement", ""]
-            lines += [f"- **{s.name}** ({s.bars} bars) — {s.description}".rstrip(" —")
-                      for s in self.structure]
+            lines += [f"- **{s.name}** ({s.bars} bars) — {s.description}".rstrip(" —") for s in self.structure]
             lines.append("")
-        lines += ["## Style tags given to the audio model", "",
-                  f"`{self.style_tags}`", ""]
+        lines += ["## Style tags given to the audio model", "", f"`{self.style_tags}`", ""]
         if render:
             a = render.get("audio", {})
             t = render.get("timings", {})
-            lines += ["## Render", "",
-                      f"- {a.get('duration_s')} s, {a.get('sample_rate')} Hz, "
-                      f"{a.get('channels')} ch, peak {a.get('peak_dbfs')} dBFS",
-                      f"- generated in {t.get('generate_s')} s on {render.get('device')} "
-                      f"(peak VRAM {t.get('peak_vram_gib')} GiB)", ""]
+            lines += [
+                "## Render",
+                "",
+                (
+                    f"- {a.get('duration_s')} s, {a.get('sample_rate')} Hz, "
+                    f"{a.get('channels')} ch, peak {a.get('peak_dbfs')} dBFS"
+                ),
+                (
+                    f"- generated in {t.get('generate_s')} s on {render.get('device')} "
+                    f"(peak VRAM {t.get('peak_vram_gib')} GiB)"
+                ),
+                "",
+            ]
         return "\n".join(lines)
 
 
@@ -221,8 +227,11 @@ def publish(track_id: str, path: Path) -> dict:
     with the session, so S3 is the only route by which rendered audio reaches
     whoever invoked us.
     """
-    info: dict = {"name": path.name, "bytes": path.stat().st_size,
-                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16]}
+    info: dict = {
+        "name": path.name,
+        "bytes": path.stat().st_size,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16],
+    }
     if not ARTIFACT_BUCKET:
         return info
     key = f"tracks/{track_id}/{path.name}"
@@ -230,12 +239,12 @@ def publish(track_id: str, path: Path) -> dict:
     # presigned against the global host (bucket.s3.amazonaws.com) while scoping
     # the signature to us-east-2, and every URL came back 403
     # SignatureDoesNotMatch. Measured on a live run.
-    s3 = boto3.client("s3", region_name=REGION,
-                      endpoint_url=f"https://s3.{REGION}.amazonaws.com")
+    s3 = boto3.client("s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com")
     s3.upload_file(str(path), ARTIFACT_BUCKET, key)
     info["s3_uri"] = f"s3://{ARTIFACT_BUCKET}/{key}"
     info["url"] = s3.generate_presigned_url(
-        "get_object", Params={"Bucket": ARTIFACT_BUCKET, "Key": key}, ExpiresIn=86400)
+        "get_object", Params={"Bucket": ARTIFACT_BUCKET, "Key": key}, ExpiresIn=86400
+    )
     logger.info("published %s", info["s3_uri"])
     return info
 
@@ -243,8 +252,7 @@ def publish(track_id: str, path: Path) -> dict:
 def host_info() -> dict:
     """Facts that make collocation observable from the response."""
     u = platform.uname()
-    return {"process_id": PROCESS_ID, "hostname": u.node,
-            "architecture": u.machine, "cpus": os.cpu_count()}
+    return {"process_id": PROCESS_ID, "hostname": u.node, "architecture": u.machine, "cpus": os.cpu_count()}
 
 
 # ------------------------------------------------------------------ model stack
@@ -272,7 +280,7 @@ def gpu_env() -> dict[str, str]:
 
 def model_stack_status() -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent / "model_stack"))
-    import prepare as prep  # noqa: PLC0415
+    import prepare as prep
 
     return prep.status(MODEL_VOLUME)
 
@@ -288,7 +296,8 @@ def prepare_model_stack() -> dict:
     if not MODEL_VOLUME.is_dir():
         raise WorkflowError(
             f"{MODEL_VOLUME} is not mounted. The composition runtime needs a "
-            "capacityProviderVolume named 'models' in its filesystemConfigurations.")
+            "capacityProviderVolume named 'models' in its filesystemConfigurations."
+        )
     script = Path(__file__).resolve().parent / "model_stack" / "prepare.py"
     logger.info("preparing model stack at %s (several minutes on a cold volume)", MODEL_VOLUME)
 
@@ -300,8 +309,12 @@ def prepare_model_stack() -> dict:
     lines: list[str] = []
     proc = subprocess.Popen(
         [sys.executable, "-u", str(script), "prepare", str(MODEL_VOLUME)],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-        bufsize=1, env=gpu_env())
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        env=gpu_env(),
+    )
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -311,8 +324,7 @@ def prepare_model_stack() -> dict:
                 lines.append(line)
             if time.monotonic() > deadline:
                 proc.kill()
-                raise WorkflowError(
-                    f"model stack preparation exceeded {PREPARE_TIMEOUT_S}s")
+                raise WorkflowError(f"model stack preparation exceeded {PREPARE_TIMEOUT_S}s")
         returncode = proc.wait(timeout=60)
     finally:
         if proc.poll() is None:
@@ -325,39 +337,51 @@ def prepare_model_stack() -> dict:
     return {**model_stack_status(), "log_tail": tail}
 
 
-def render_audio(out_path: Path, brief: CompositionBrief, seed: int | None = None,
-                 duration_s: float = 30.0, steps: int = 27,
-                 reference_audio: Path | None = None,
-                 reference_strength: float = 0.5) -> dict:
+def render_audio(
+    out_path: Path,
+    brief: CompositionBrief,
+    seed: int | None = None,
+    duration_s: float = 30.0,
+    steps: int = 27,
+    reference_audio: Path | None = None,
+    reference_strength: float = 0.5,
+) -> dict:
     """Run the generator in its own interpreter on the models volume."""
     status = model_stack_status()
     if not status.get("ready"):
         raise WorkflowError(
             "The model stack on the shared volume is not ready "
             f"(status: {json.dumps(status)}). Invoke this runtime with "
-            '{"mode": "prepare"} once per session before composing.')
+            '{"mode": "prepare"} once per session before composing.'
+        )
 
-    cmd = [status["python"], status["runner"],
-           "--checkpoint-dir", status["weights_dir"],
-           "--out", str(out_path),
-           "--prompt", brief.style_tags,
-           "--lyrics", brief.lyrics or "[inst]",
-           "--duration", str(duration_s),
-           "--steps", str(steps)]
+    cmd = [
+        status["python"],
+        status["runner"],
+        "--checkpoint-dir",
+        status["weights_dir"],
+        "--out",
+        str(out_path),
+        "--prompt",
+        brief.style_tags,
+        "--lyrics",
+        brief.lyrics or "[inst]",
+        "--duration",
+        str(duration_s),
+        "--steps",
+        str(steps),
+    ]
     if seed is not None:
         cmd += ["--seed", str(seed)]
     if reference_audio is not None:
-        cmd += ["--reference-audio", str(reference_audio),
-                "--reference-strength", str(reference_strength)]
+        cmd += ["--reference-audio", str(reference_audio), "--reference-strength", str(reference_strength)]
 
     logger.info("rendering: %s", " ".join(cmd[2:]))
-    proc = subprocess.run(cmd, capture_output=True, text=True,
-                          timeout=RENDER_TIMEOUT_S, env=gpu_env())
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=RENDER_TIMEOUT_S, env=gpu_env())
     combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
     match = re.search(r"__RENDER_RESULT__ (\{.*\})", combined)
     if proc.returncode != 0 or not match:
-        raise WorkflowError(
-            f"render failed (rc={proc.returncode}). Tail of output:\n{combined[-3000:]}")
+        raise WorkflowError(f"render failed (rc={proc.returncode}). Tail of output:\n{combined[-3000:]}")
     result = json.loads(match.group(1))
     if result.get("audio", {}).get("silent"):
         raise WorkflowError("the generator produced a silent file")
@@ -419,27 +443,35 @@ def invoke(payload, context):
     if not isinstance(prompt, str):
         # The payload is arbitrary JSON, and a non-string here can carry toolUse
         # content blocks straight into the framework's event loop.
-        return {"status": "error", "agent": AGENT_NAME,
-                "error": "'prompt' must be a string", "host": host_info()}
+        return {"status": "error", "agent": AGENT_NAME, "error": "'prompt' must be a string", "host": host_info()}
 
     duration_s = float(payload.get("duration_s", 30.0))
     steps = int(payload.get("steps", 27))
     seed = payload.get("seed")
 
-    logger.info("invoke: mode=%s track=%s session=%s model=%s",
-                mode, track_id, session_id, MODEL_ID)
+    logger.info("invoke: mode=%s track=%s session=%s model=%s", mode, track_id, session_id, MODEL_ID)
 
     try:
         if mode == "status":
-            return {"status": "ok", "agent": AGENT_NAME, "mode": mode,
-                    "model_stack": model_stack_status(), "host": host_info()}
+            return {
+                "status": "ok",
+                "agent": AGENT_NAME,
+                "mode": mode,
+                "model_stack": model_stack_status(),
+                "host": host_info(),
+            }
 
         if mode == "prepare":
             # Preparation is per-session because the volume is per-session.
             stack = prepare_model_stack()
-            return {"status": "ok", "agent": AGENT_NAME, "mode": mode,
-                    "session_id": session_id, "model_stack": stack,
-                    "host": host_info()}
+            return {
+                "status": "ok",
+                "agent": AGENT_NAME,
+                "mode": mode,
+                "session_id": session_id,
+                "model_stack": stack,
+                "host": host_info(),
+            }
 
         # This agent owns creation of the track directory; the others require it.
         ensure_track_dir(track_id)
@@ -456,39 +488,53 @@ def invoke(payload, context):
                 pass
             agent = build_agent(session_id, track_id)
             entries = []
-            for i, style in enumerate(payload.get("styles") or [
+            for i, style in enumerate(
+                payload.get("styles")
+                or [
                     "melodic techno, analog bass, warm pads, 124 bpm",
-                    "lo-fi hip hop, dusty piano, vinyl crackle, 82 bpm"]):
+                    "lo-fi hip hop, dusty piano, vinyl crackle, 82 bpm",
+                ]
+            ):
                 brief = compose_brief(
-                    agent, f"Write a brief for a catalogue reference track in this "
-                           f"style: {style}. Keep style_tags close to that description.")
+                    agent,
+                    f"Write a brief for a catalogue reference track in this "
+                    f"style: {style}. Keep style_tags close to that description.",
+                )
                 out = cat_dir / f"catalogue_{i:02d}.wav"
-                render = render_audio(out, brief, seed=1000 + i,
-                                      duration_s=float(payload.get("duration_s", 20.0)),
-                                      steps=steps)
-                entries.append({"file": out.name, "title": brief.title,
-                                "style_tags": brief.style_tags, "render": render})
+                render = render_audio(
+                    out, brief, seed=1000 + i, duration_s=float(payload.get("duration_s", 20.0)), steps=steps
+                )
+                entries.append(
+                    {"file": out.name, "title": brief.title, "style_tags": brief.style_tags, "render": render}
+                )
             write_text(track_id, "catalogue.json", json.dumps(entries, indent=2))
-            return {"status": "ok", "agent": AGENT_NAME, "mode": mode,
-                    "track_id": track_id, "session_id": session_id,
-                    "catalogue": entries, "host": host_info()}
+            return {
+                "status": "ok",
+                "agent": AGENT_NAME,
+                "mode": mode,
+                "track_id": track_id,
+                "session_id": session_id,
+                "catalogue": entries,
+                "host": host_info(),
+            }
 
         agent = build_agent(session_id, track_id)
 
         if mode == "remediate":
             # The most recent attempt, not the original: a second remediation round
             # should diverge from what was last rejected, not from where it started.
-            flagged = (read_text(track_id, "composition_remediated.md")
-                       or read_text(track_id, "composition.md"))
+            flagged = read_text(track_id, "composition_remediated.md") or read_text(track_id, "composition.md")
             if flagged is None:
                 raise WorkflowError(
                     "No composition brief in the shared workspace - run the "
-                    "composition step before requesting remediation.")
+                    "composition step before requesting remediation."
+                )
             issue = payload.get("issue") or prompt
             avoid = payload.get("avoid") or {}
             task = (
                 f"A compliance screen flagged this issue:\n\n{issue}\n\n"
-                f"Here is the brief it applies to:\n\n{flagged}\n\n")
+                f"Here is the brief it applies to:\n\n{flagged}\n\n"
+            )
             if avoid.get("style_tags"):
                 # This is the difference between a blind rewrite and an informed
                 # one. Measured: without these descriptors the replacement moved
@@ -497,12 +543,15 @@ def invoke(payload, context):
                     "The material it resembles was generated from these descriptors, "
                     f"so move decisively away from them:\n\n"
                     f"  flagged reference: {avoid.get('title') or avoid['reference']}\n"
-                    f"  its style tags:    {avoid['style_tags']}\n\n")
+                    f"  its style tags:    {avoid['style_tags']}\n\n"
+                )
                 others = [o for o in (avoid.get("other_references") or []) if o.get("style_tags")]
                 if others:
-                    task += ("Also stay away from the rest of the catalogue:\n" +
-                             "".join(f"  - {o['style_tags']} (distance {o['distance']})\n"
-                                     for o in others) + "\n")
+                    task += (
+                        "Also stay away from the rest of the catalogue:\n"
+                        + "".join(f"  - {o['style_tags']} (distance {o['distance']})\n" for o in others)
+                        + "\n"
+                    )
             task += (
                 "Write a complete standalone replacement brief. Change the key, change "
                 "the tempo by at least 15 BPM, and choose a different genre lineage, "
@@ -510,10 +559,11 @@ def invoke(payload, context):
                 "style_tags must not reuse the flagged descriptors above -- pick "
                 "different genre words, different instruments and a different mood. "
                 "Do not name, quote or describe the flagged work, and do not narrate "
-                "the changes: downstream agents read your output as the composition.")
+                "the changes: downstream agents read your output as the composition."
+            )
             md_name, wav_name = "composition_remediated.md", "composition_remediated.wav"
         else:
-            task = (f"{prompt}\n\nTarget length: about {duration_s:.0f} seconds.")
+            task = f"{prompt}\n\nTarget length: about {duration_s:.0f} seconds."
             md_name, wav_name = "composition.md", "composition.wav"
 
         brief = compose_brief(agent, task)
@@ -529,9 +579,15 @@ def invoke(payload, context):
             if not reference.exists():
                 raise WorkflowError(f"reference {reference.name} not found; run mode=catalogue first")
 
-        render = render_audio(wav, brief, seed=seed, duration_s=duration_s, steps=steps,
-                              reference_audio=reference,
-                              reference_strength=float(payload.get("reference_strength", 0.75)))
+        render = render_audio(
+            wav,
+            brief,
+            seed=seed,
+            duration_s=duration_s,
+            steps=steps,
+            reference_audio=reference,
+            reference_strength=float(payload.get("reference_strength", 0.75)),
+        )
         measured = audio.measure(str(wav)).to_dict()
         markdown = brief.to_markdown(render)
         write_text(track_id, md_name, markdown)
@@ -559,14 +615,27 @@ def invoke(payload, context):
         # as data. Unexpected exceptions are deliberately left to propagate so
         # the service surfaces a 424 and the traceback reaches CloudWatch.
         logger.warning("workflow error: %s", exc)
-        return {"status": "error", "agent": AGENT_NAME, "mode": mode,
-                "track_id": track_id, "session_id": session_id, "error": str(exc),
-                "workspace_files": list_artifacts(track_id), "host": host_info()}
+        return {
+            "status": "error",
+            "agent": AGENT_NAME,
+            "mode": mode,
+            "track_id": track_id,
+            "session_id": session_id,
+            "error": str(exc),
+            "workspace_files": list_artifacts(track_id),
+            "host": host_info(),
+        }
     except subprocess.TimeoutExpired as exc:
         logger.warning("subprocess timeout: %s", exc)
-        return {"status": "error", "agent": AGENT_NAME, "mode": mode,
-                "track_id": track_id, "session_id": session_id,
-                "error": f"timed out after {exc.timeout}s", "host": host_info()}
+        return {
+            "status": "error",
+            "agent": AGENT_NAME,
+            "mode": mode,
+            "track_id": track_id,
+            "session_id": session_id,
+            "error": f"timed out after {exc.timeout}s",
+            "host": host_info(),
+        }
 
 
 if __name__ == "__main__":
@@ -574,4 +643,4 @@ if __name__ == "__main__":
     # /.dockerenv or DOCKER_CONTAINER, neither of which exists under Finch or
     # containerd - it would otherwise bind 127.0.0.1 and the runtime could never
     # reach port 8080. AgentCore sets PORT, which run() does not consult.
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))  # noqa: S104
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))

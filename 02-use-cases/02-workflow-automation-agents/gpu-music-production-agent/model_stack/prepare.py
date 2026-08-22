@@ -85,7 +85,7 @@ def fetch_source(root: Path, stamps: Stamps) -> Path:
     archive = root / "acestep-src.tar.gz"
     log(f"downloading {ACESTEP_TARBALL}")
     t0 = time.time()
-    with urllib.request.urlopen(ACESTEP_TARBALL, timeout=180) as r, open(archive, "wb") as fh:  # noqa: S310
+    with urllib.request.urlopen(ACESTEP_TARBALL, timeout=180) as r, open(archive, "wb") as fh:
         shutil.copyfileobj(r, fh)
     log(f"downloaded {archive.stat().st_size / 1e6:.1f} MB in {time.time() - t0:.0f}s")
 
@@ -95,7 +95,7 @@ def fetch_source(root: Path, stamps: Stamps) -> Path:
             target = (src_root / member.name).resolve()
             if not str(target).startswith(str(src_root.resolve())):
                 raise RuntimeError(f"unsafe tar member {member.name!r}")
-        tf.extractall(src_root)  # noqa: S202
+        tf.extractall(src_root)
     archive.unlink(missing_ok=True)
 
     if not (expected / "setup.py").exists():
@@ -115,8 +115,7 @@ def make_venv(root: Path, stamps: Stamps) -> Path:
         return python
     log(f"creating venv at {venv} from {sys.executable}")
     run([sys.executable, "-m", "venv", str(venv)])
-    run([str(python), "-m", "pip", "install", "--quiet", "--upgrade",
-         "pip", "wheel", "setuptools"])
+    run([str(python), "-m", "pip", "install", "--quiet", "--upgrade", "pip", "wheel", "setuptools"])
     stamps.mark("venv", {"python": str(python)})
     return python
 
@@ -148,8 +147,7 @@ def fetch_weights(python: Path, root: Path, stamps: Stamps) -> Path:
     run([str(python), "-c", script])
     size = sum(f.stat().st_size for f in target.rglob("*") if f.is_file())
     log(f"weights downloaded in {time.time() - t0:.0f}s, {size / 1e9:.2f} GB")
-    stamps.mark("weights", {"repo": WEIGHTS_REPO, "bytes": size,
-                            "seconds": round(time.time() - t0)})
+    stamps.mark("weights", {"repo": WEIGHTS_REPO, "bytes": size, "seconds": round(time.time() - t0)})
     return target
 
 
@@ -197,12 +195,14 @@ def status(root: Path) -> dict:
         return {**json.loads(marker.read_text()), "stage": "ready"}
     stamps = Stamps(root)
     completed = [s for s in STAGES if stamps.done(s)]
-    return {"ready": False, "completed_stages": completed,
-            "next_stage": next((s for s in STAGES if s not in completed), None)}
+    return {
+        "ready": False,
+        "completed_stages": completed,
+        "next_stage": next((s for s in STAGES if s not in completed), None),
+    }
 
 
 if __name__ == "__main__":
     target_root = Path(sys.argv[2] if len(sys.argv) > 2 else "/mnt/models")
     action = sys.argv[1] if len(sys.argv) > 1 else "prepare"
-    print(json.dumps(status(target_root) if action == "status" else prepare(target_root),
-                     indent=2))
+    print(json.dumps(status(target_root) if action == "status" else prepare(target_root), indent=2))

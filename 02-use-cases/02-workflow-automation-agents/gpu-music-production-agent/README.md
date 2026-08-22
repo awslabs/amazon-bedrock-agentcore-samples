@@ -510,16 +510,22 @@ import json, boto3
 from botocore.config import Config
 
 state = json.load(open("deployment_state.json"))
-client = boto3.client("bedrock-agentcore", region_name=state["region"],
-                      config=Config(read_timeout=900))
+client = boto3.client("bedrock-agentcore", region_name=state["region"], config=Config(read_timeout=900))
 
 r = client.invoke_agent_runtime(
     agentRuntimeArn=state["runtimes"]["composition"]["arn"],
     qualifier="DEFAULT",
     runtimeSessionId="my-own-session-id-padded-to-33-chars-min",
-    payload=json.dumps({"mode": "compose", "track_id": "my-song",
-                        "prompt": "A slow, mournful piano piece in 3/4 with tape hiss.",
-                        "duration_s": 45, "seed": 7}).encode())
+    payload=json.dumps(
+        {
+            "mode": "compose",
+            "track_id": "my-song",
+            "prompt": "A slow, mournful piano piece in 3/4 with tape hiss.",
+            "duration_s": 45,
+            "seed": 7,
+        }
+    ).encode(),
+)
 
 body = json.loads(r["response"].read())
 print(body["brief"]["style_tags"], body["artifacts"][0]["s3_uri"])

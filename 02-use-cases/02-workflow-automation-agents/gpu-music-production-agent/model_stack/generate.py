@@ -49,22 +49,24 @@ def patch_torchaudio_io() -> str:
     import torch
     import torchaudio
 
-    def _save(uri, src, sample_rate, **kwargs):  # noqa: ANN001
-        arr = (src.detach().cpu().to(torch.float32).numpy()
-               if hasattr(src, "detach") else np.asarray(src))
+    def _save(uri, src, sample_rate, **kwargs):
+        arr = src.detach().cpu().to(torch.float32).numpy() if hasattr(src, "detach") else np.asarray(src)
         if arr.ndim == 1:
             arr = arr[None, :]
         # torchaudio is (channels, samples); soundfile wants (samples, channels).
         sf.write(str(uri), arr.T, int(sample_rate), subtype="PCM_24")
 
-    def _load(uri, frame_offset=0, num_frames=-1, normalize=True,  # noqa: ANN001
-              channels_first=True, **kwargs):
-        data, rate = sf.read(str(uri), always_2d=True, dtype="float32",
-                             start=int(frame_offset),
-                             frames=int(num_frames) if num_frames and num_frames > 0 else -1)
-        tensor = torch.from_numpy(data)          # (samples, channels)
+    def _load(uri, frame_offset=0, num_frames=-1, normalize=True, channels_first=True, **kwargs):
+        data, rate = sf.read(
+            str(uri),
+            always_2d=True,
+            dtype="float32",
+            start=int(frame_offset),
+            frames=int(num_frames) if num_frames and num_frames > 0 else -1,
+        )
+        tensor = torch.from_numpy(data)  # (samples, channels)
         if channels_first:
-            tensor = tensor.transpose(0, 1)     # -> (channels, samples)
+            tensor = tensor.transpose(0, 1)  # -> (channels, samples)
         return tensor.contiguous(), int(rate)
 
     torchaudio.save = _save
@@ -79,7 +81,7 @@ def describe(path: str) -> dict:
 
     data, rate = sf.read(path, always_2d=True, dtype="float64")
     peak = float(np.max(np.abs(data))) if data.size else 0.0
-    rms = float(np.sqrt(np.mean(data ** 2))) if data.size else 0.0
+    rms = float(np.sqrt(np.mean(data**2))) if data.size else 0.0
     return {
         "path": path,
         "bytes": os.path.getsize(path),
@@ -96,10 +98,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint-dir", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--prompt", required=True,
-                    help="Style tags, e.g. 'upbeat electronic, heavy bass, 128 bpm'")
-    ap.add_argument("--lyrics", default="[inst]",
-                    help="'[inst]' renders an instrumental.")
+    ap.add_argument("--prompt", required=True, help="Style tags, e.g. 'upbeat electronic, heavy bass, 128 bpm'")
+    ap.add_argument("--lyrics", default="[inst]", help="'[inst]' renders an instrumental.")
     ap.add_argument("--duration", type=float, default=30.0)
     ap.add_argument("--steps", type=int, default=27)
     ap.add_argument("--guidance", type=float, default=15.0)
@@ -116,6 +116,7 @@ def main() -> int:
     t0 = time.time()
     import torch
     from acestep.pipeline_ace_step import ACEStepPipeline
+
     timings["import_s"] = round(time.time() - t0, 2)
 
     if not torch.cuda.is_available():
@@ -127,8 +128,7 @@ def main() -> int:
     device = torch.cuda.get_device_name(0)
 
     t0 = time.time()
-    pipe = ACEStepPipeline(checkpoint_dir=args.checkpoint_dir,
-                           dtype="bfloat16", torch_compile=False)
+    pipe = ACEStepPipeline(checkpoint_dir=args.checkpoint_dir, dtype="bfloat16", torch_compile=False)
     timings["pipeline_ctor_s"] = round(time.time() - t0, 2)
 
     if args.seed is not None:
@@ -149,14 +149,16 @@ def main() -> int:
     if args.seed is not None:
         call["manual_seeds"] = [int(args.seed)]
     if args.reference_audio:
-        call.update(audio2audio_enable=True,
-                    ref_audio_input=args.reference_audio,
-                    ref_audio_strength=float(args.reference_strength))
+        call.update(
+            audio2audio_enable=True,
+            ref_audio_input=args.reference_audio,
+            ref_audio_strength=float(args.reference_strength),
+        )
 
     t0 = time.time()
     pipe(**call)
     timings["generate_s"] = round(time.time() - t0, 2)
-    timings["peak_vram_gib"] = round(torch.cuda.max_memory_allocated() / 2 ** 30, 2)
+    timings["peak_vram_gib"] = round(torch.cuda.max_memory_allocated() / 2**30, 2)
 
     if not os.path.exists(args.out):
         print(json.dumps({"error": f"pipeline did not write {args.out}"}), file=sys.stderr)

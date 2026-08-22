@@ -48,15 +48,14 @@ import platform
 import uuid
 from pathlib import Path
 
+import audio_dsp as audio
 import boto3
-from botocore.config import Config
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from botocore.config import Config
 from pydantic import BaseModel, Field, field_validator
 from strands import Agent
 from strands.models import BedrockModel
 from strands.session import FileSessionManager
-
-import audio_dsp as audio
 
 AGENT_NAME = "compliance"
 PROCESS_ID = uuid.uuid4().hex[:8]
@@ -127,8 +126,8 @@ class Review(BaseModel):
     summary: str = Field(description="Two sentences on release readiness.")
     explanation: str = Field(default="", description="What the measurements mean.")
     remediation_instruction: str = Field(
-        default="",
-        description="If a flag was raised, precisely what a replacement must change.")
+        default="", description="If a flag was raised, precisely what a replacement must change."
+    )
 
     @field_validator("summary", "explanation", "remediation_instruction", mode="before")
     @classmethod
@@ -159,8 +158,8 @@ def require_track_dir(track_id: str) -> Path:
     p = track_path(track_id)
     if not p.is_dir():
         raise WorkflowError(
-            f"No workspace for track '{track_id}'. Invoke the composition agent "
-            "first, with the same runtimeSessionId.")
+            f"No workspace for track '{track_id}'. Invoke the composition agent first, with the same runtimeSessionId."
+        )
     return p
 
 
@@ -198,9 +197,11 @@ def subject_audio(track_id: str) -> tuple[str, Path, bool]:
     Returns (name, path, master_is_stale).
     """
     directory = track_path(track_id)
-    renders = [p for p in (directory / "composition_remediated.wav",
-                           directory / "composition.wav")
-               if p.exists() and p.stat().st_size > 0]
+    renders = [
+        p
+        for p in (directory / "composition_remediated.wav", directory / "composition.wav")
+        if p.exists() and p.stat().st_size > 0
+    ]
     master = directory / "master.wav"
     has_master = master.exists() and master.stat().st_size > 0
 
@@ -217,7 +218,8 @@ def subject_audio(track_id: str) -> tuple[str, Path, bool]:
         return newest.name, newest, False
     raise WorkflowError(
         "No audio to review in the shared workspace. Invoke the composition and "
-        "mastering agents first, with the same runtimeSessionId.")
+        "mastering agents first, with the same runtimeSessionId."
+    )
 
 
 def publish(track_id: str, path: Path) -> dict:
@@ -227,8 +229,11 @@ def publish(track_id: str, path: Path) -> dict:
     with the session, so S3 is the only route by which a report reaches whoever
     invoked us.
     """
-    info: dict = {"name": path.name, "bytes": path.stat().st_size,
-                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16]}
+    info: dict = {
+        "name": path.name,
+        "bytes": path.stat().st_size,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16],
+    }
     if not ARTIFACT_BUCKET:
         return info
     key = f"tracks/{track_id}/{path.name}"
@@ -236,12 +241,12 @@ def publish(track_id: str, path: Path) -> dict:
     # presigned against the global host (bucket.s3.amazonaws.com) while scoping
     # the signature to us-east-2, and every URL came back 403
     # SignatureDoesNotMatch. Measured on a live run.
-    s3 = boto3.client("s3", region_name=REGION,
-                      endpoint_url=f"https://s3.{REGION}.amazonaws.com")
+    s3 = boto3.client("s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com")
     s3.upload_file(str(path), ARTIFACT_BUCKET, key)
     info["s3_uri"] = f"s3://{ARTIFACT_BUCKET}/{key}"
     info["url"] = s3.generate_presigned_url(
-        "get_object", Params={"Bucket": ARTIFACT_BUCKET, "Key": key}, ExpiresIn=86400)
+        "get_object", Params={"Bucket": ARTIFACT_BUCKET, "Key": key}, ExpiresIn=86400
+    )
     logger.info("published %s", info["s3_uri"])
     return info
 
@@ -249,8 +254,7 @@ def publish(track_id: str, path: Path) -> dict:
 def host_info() -> dict:
     """Facts that make collocation observable from the response."""
     u = platform.uname()
-    return {"process_id": PROCESS_ID, "hostname": u.node,
-            "architecture": u.machine, "cpus": os.cpu_count()}
+    return {"process_id": PROCESS_ID, "hostname": u.node, "architecture": u.machine, "cpus": os.cpu_count()}
 
 
 # -------------------------------------------------------------------- the checks
@@ -290,48 +294,68 @@ def delivery_qc(path: Path, track_id: str, is_master: bool = True) -> dict:
 
     if target_lufs is not None and m["integrated_lufs"] is not None:
         err = abs(m["integrated_lufs"] - target_lufs)
-        detail = (f"{m['integrated_lufs']} LUFS against a {target_lufs} LUFS target "
-                  f"(error {err:.2f} LU, tolerance 1.0)")
+        detail = f"{m['integrated_lufs']} LUFS against a {target_lufs} LUFS target (error {err:.2f} LU, tolerance 1.0)"
         if is_master:
             check("integrated_loudness", err <= 1.0, detail)
         else:
-            checks.append({"check": "integrated_loudness", "pass": True,
-                           "detail": f"not applicable to an unmastered render: {detail}"})
+            checks.append(
+                {
+                    "check": "integrated_loudness",
+                    "pass": True,
+                    "detail": f"not applicable to an unmastered render: {detail}",
+                }
+            )
     if target_peak is not None and m["true_peak_dbtp"] is not None:
         detail = f"{m['true_peak_dbtp']} dBTP against a {target_peak} dBTP ceiling"
         if is_master:
             check("true_peak_ceiling", m["true_peak_dbtp"] <= target_peak + 0.1, detail)
         else:
-            checks.append({"check": "true_peak_ceiling", "pass": True,
-                           "detail": f"not applicable to an unmastered render: {detail}"})
-    check("no_clipping", m["clipped_runs"] == 0,
-          f"{m['clipped_runs']} run(s) of consecutive full-scale samples")
+            checks.append(
+                {
+                    "check": "true_peak_ceiling",
+                    "pass": True,
+                    "detail": f"not applicable to an unmastered render: {detail}",
+                }
+            )
+    check("no_clipping", m["clipped_runs"] == 0, f"{m['clipped_runs']} run(s) of consecutive full-scale samples")
     check("dc_offset", m["dc_offset"] < 0.005, f"DC offset {m['dc_offset']}")
     check("not_silent", not m["silent"], "audio is present")
     if m["stereo_correlation"] is not None:
-        check("mono_compatible", m["stereo_correlation"] > -0.2,
-              f"inter-channel correlation {m['stereo_correlation']}")
+        check("mono_compatible", m["stereo_correlation"] > -0.2, f"inter-channel correlation {m['stereo_correlation']}")
     # Loudness range needs enough 3-second blocks to mean anything, and this
     # agent's job is to catch a master that destroyed the mix, not to fail a mix
     # that was uniform to begin with. Measured case that got this wrong: a 24 s
     # generated loop came in at 0.47 LU and went out at 0.6 LU, and an absolute
     # 1.0 LU floor blamed mastering for the source's own uniformity.
     if m["loudness_range_lu"] is None or (m["duration_s"] or 0) < 30:
-        checks.append({"check": "dynamics_retained", "pass": True,
-                       "detail": f"not assessed: {m['duration_s']}s is too short for a "
-                                 "meaningful loudness range"})
+        checks.append(
+            {
+                "check": "dynamics_retained",
+                "pass": True,
+                "detail": f"not assessed: {m['duration_s']}s is too short for a meaningful loudness range",
+            }
+        )
     elif source_lra is not None:
         floor = max(0.0, source_lra * 0.5 - 0.1)
-        check("dynamics_retained", m["loudness_range_lu"] >= floor,
-              f"loudness range {m['loudness_range_lu']} LU against {source_lra} LU "
-              f"in the mix (at least half expected)")
+        check(
+            "dynamics_retained",
+            m["loudness_range_lu"] >= floor,
+            f"loudness range {m['loudness_range_lu']} LU against {source_lra} LU in the mix (at least half expected)",
+        )
     else:
-        check("dynamics_retained", m["loudness_range_lu"] >= 1.0,
-              f"loudness range {m['loudness_range_lu']} LU (no pre-master "
-              "measurement available to compare against)")
+        check(
+            "dynamics_retained",
+            m["loudness_range_lu"] >= 1.0,
+            f"loudness range {m['loudness_range_lu']} LU (no pre-master measurement available to compare against)",
+        )
 
-    return {"measurements": m, "claimed_targets": claimed, "source_lra": source_lra,
-            "checks": checks, "passed": all(c["pass"] for c in checks)}
+    return {
+        "measurements": m,
+        "claimed_targets": claimed,
+        "source_lra": source_lra,
+        "checks": checks,
+        "passed": all(c["pass"] for c in checks),
+    }
 
 
 def catalogue_metadata(track_id: str) -> dict[str, dict]:
@@ -361,18 +385,22 @@ def similarity_screen(subject: Path, track_id: str) -> dict:
     cat_dir = track_path(track_id) / "catalogue"
     references = sorted(cat_dir.glob("*.wav")) if cat_dir.is_dir() else []
     if not references:
-        return {"references": 0, "hits": [], "flagged": False,
-                "note": "no back-catalogue on the volume; similarity was not screened"}
+        return {
+            "references": 0,
+            "hits": [],
+            "flagged": False,
+            "note": "no back-catalogue on the volume; similarity was not screened",
+        }
 
     metadata = catalogue_metadata(track_id)
     subject_chroma = audio.chroma(str(subject))
     hits = []
     for ref in references:
         distance, shift = audio.chroma_dtw_distance(subject_chroma, audio.chroma(str(ref)))
-        hit = audio.SimilarityHit(reference=ref.name, distance=distance,
-                                  semitone_shift=shift).to_dict()
-        hit["verdict"] = ("near_duplicate" if distance < FAIL_DISTANCE
-                          else "review" if distance < REVIEW_DISTANCE else "clear")
+        hit = audio.SimilarityHit(reference=ref.name, distance=distance, semitone_shift=shift).to_dict()
+        hit["verdict"] = (
+            "near_duplicate" if distance < FAIL_DISTANCE else "review" if distance < REVIEW_DISTANCE else "clear"
+        )
         # Carried through so remediation can be told what to move away from.
         hit.update(metadata.get(ref.name, {}))
         hits.append(hit)
@@ -400,14 +428,20 @@ def similarity_screen(subject: Path, track_id: str) -> dict:
         # Either signal is enough to flag: an outright close match, or one track
         # that stands out sharply from the rest of the catalogue.
         "flagged": bool(below_fail or standout),
-        "flag_reason": ("distance below the fail threshold" if below_fail
-                        else "closest match stands out from the catalogue" if standout
-                        else None),
-        "needs_review": bool(not below_fail and not standout
-                             and closest["distance"] < REVIEW_DISTANCE),
+        "flag_reason": (
+            "distance below the fail threshold"
+            if below_fail
+            else "closest match stands out from the catalogue"
+            if standout
+            else None
+        ),
+        "needs_review": bool(not below_fail and not standout and closest["distance"] < REVIEW_DISTANCE),
         "standout_ratio": standout_ratio,
-        "thresholds": {"fail_below": FAIL_DISTANCE, "review_below": REVIEW_DISTANCE,
-                       "standout_ratio_below": STANDOUT_RATIO},
+        "thresholds": {
+            "fail_below": FAIL_DISTANCE,
+            "review_below": REVIEW_DISTANCE,
+            "standout_ratio_below": STANDOUT_RATIO,
+        },
     }
 
 
@@ -415,8 +449,7 @@ def remediation_available() -> bool:
     return bool(COMPOSITION_RUNTIME_ARN)
 
 
-def call_composition_runtime(session_id: str, track_id: str, issue: str,
-                             avoid: dict | None = None) -> tuple[bool, str]:
+def call_composition_runtime(session_id: str, track_id: str, issue: str, avoid: dict | None = None) -> tuple[bool, str]:
     """Invoke the composition agent's runtime for remediation.
 
     Uses the caller's own session id, so AgentCore routes the request to the
@@ -430,21 +463,29 @@ def call_composition_runtime(session_id: str, track_id: str, issue: str,
     if not COMPOSITION_RUNTIME_ARN:
         return False, "Remediation is unavailable: COMPOSITION_RUNTIME_ARN is not set."
     client = boto3.client(
-        "bedrock-agentcore", region_name=REGION,
+        "bedrock-agentcore",
+        region_name=REGION,
         # A nested invocation runs inside this request's 15-minute budget, so the
         # read timeout must comfortably exceed the inner render. Retries stay on
         # to absorb RetryableConflictException (409).
-        config=Config(read_timeout=600, retries={"max_attempts": 3, "mode": "standard"}))
+        config=Config(read_timeout=600, retries={"max_attempts": 3, "mode": "standard"}),
+    )
     response = client.invoke_agent_runtime(
         agentRuntimeArn=COMPOSITION_RUNTIME_ARN,
         qualifier=COMPOSITION_QUALIFIER,
         runtimeSessionId=session_id,
-        payload=json.dumps({"mode": "remediate", "track_id": track_id,
-                            "issue": issue,
-                            # The evidence, not just the complaint. Without this the
-                            # composition agent is rewriting blind: measured, a blind
-                            # rewrite moved chroma distance only 0.029 -> 0.093.
-                            "avoid": avoid or {}}).encode())
+        payload=json.dumps(
+            {
+                "mode": "remediate",
+                "track_id": track_id,
+                "issue": issue,
+                # The evidence, not just the complaint. Without this the
+                # composition agent is rewriting blind: measured, a blind
+                # rewrite moved chroma distance only 0.029 -> 0.093.
+                "avoid": avoid or {},
+            }
+        ).encode(),
+    )
     # The response body member is named "response", not "body".
     body = json.loads(response["response"].read())
     if body.get("status") != "ok":
@@ -518,13 +559,14 @@ def findings_brief(result: dict) -> str:
     qc, sim = result["delivery_qc"], result["similarity"]
     lines = [
         f"Subject file: {result['subject']}",
-        f"DECIDED OUTCOME: {result.get('outcome')} -- final, computed from the "
-        "measurements. Explain it; do not re-derive it.",
+        (
+            f"DECIDED OUTCOME: {result.get('outcome')} -- final, computed from the "
+            "measurements. Explain it; do not re-derive it."
+        ),
         "",
         f"Delivery QC: {'passed' if qc['passed'] else 'FAILED'}.",
     ]
-    lines += [f"  - {c['check']}: {'pass' if c['pass'] else 'FAIL'} -- {c['detail']}"
-              for c in qc.get("checks", [])]
+    lines += [f"  - {c['check']}: {'pass' if c['pass'] else 'FAIL'} -- {c['detail']}" for c in qc.get("checks", [])]
 
     lines += ["", "Similarity screen:"]
     if not sim.get("references"):
@@ -538,22 +580,25 @@ def findings_brief(result: dict) -> str:
         # needs_review is decided on the closest hit, but more than one can land in
         # the band -- count them rather than saying "one match" and being wrong.
         n = sum(1 for h in sim.get("hits", []) if h.get("verdict") == "review")
-        lines.append(f"  Not flagged for blocking, but {n} match(es) fall in the band "
-                     "that requires manual review before release.")
+        lines.append(
+            f"  Not flagged for blocking, but {n} match(es) fall in the band "
+            "that requires manual review before release."
+        )
     else:
         lines.append("  Nothing flagged, and nothing in the manual-review band.")
 
-    states = {"near_duplicate": "near-duplicate", "review": "needs manual review",
-              "clear": "cleared"}
+    states = {"near_duplicate": "near-duplicate", "review": "needs manual review", "clear": "cleared"}
     for h in sim.get("hits", []):
         # The transposition is musical information, not a threshold comparison, so
         # it stays. Distances and ratios do not.
         # catalogue.json may be absent, in which case there is no title to show and
         # repeating the filename in quotes reads like a bug.
-        named = f" (\"{h['title']}\")" if h.get("title") else ""
-        line = (f"  - {h['reference']}{named}: "
-                f"{states.get(h.get('verdict'), h.get('verdict'))}, "
-                f"best alignment at {int(h.get('semitone_shift', 0)):+d} semitones")
+        named = f' ("{h["title"]}")' if h.get("title") else ""
+        line = (
+            f"  - {h['reference']}{named}: "
+            f"{states.get(h.get('verdict'), h.get('verdict'))}, "
+            f"best alignment at {int(h.get('semitone_shift', 0)):+d} semitones"
+        )
         if h.get("style_tags"):
             line += f", generated from: {h['style_tags']}"
         lines.append(line)
@@ -562,45 +607,71 @@ def findings_brief(result: dict) -> str:
 
 def render_review(result: dict, review: Review, remediated: bool) -> str:
     qc, sim = result["delivery_qc"], result["similarity"]
-    label = {"cleared": "CLEARED", "review_required": "REVIEW REQUIRED",
-             "not_cleared": "NOT CLEARED"}[result.get("outcome", "not_cleared")]
-    lines = [f"# Compliance Review: `{result['subject']}`", "",
-             f"**Verdict: {label}**", "",
-             review.summary, "", "## Delivery QC", "",
-             "| check | result | detail |", "|---|---|---|"]
+    label = {"cleared": "CLEARED", "review_required": "REVIEW REQUIRED", "not_cleared": "NOT CLEARED"}[
+        result.get("outcome", "not_cleared")
+    ]
+    lines = [
+        f"# Compliance Review: `{result['subject']}`",
+        "",
+        f"**Verdict: {label}**",
+        "",
+        review.summary,
+        "",
+        "## Delivery QC",
+        "",
+        "| check | result | detail |",
+        "|---|---|---|",
+    ]
     for c in qc["checks"]:
         lines.append(f"| {c['check']} | {'pass' if c['pass'] else 'FAIL'} | {c['detail']} |")
     lines += ["", "## Similarity screen", ""]
     if not sim.get("references"):
         lines.append(f"_{sim.get('note')}_")
     else:
-        preamble = (f"Screened against {sim['references']} catalogue reference(s), "
-                    f"all 12 transpositions.")
+        preamble = f"Screened against {sim['references']} catalogue reference(s), all 12 transpositions."
         if sim.get("standout_ratio") is not None:
-            preamble += (f" Closest match is {sim['standout_ratio']}x the next-closest "
-                         f"distance (flagged below {sim['thresholds']['standout_ratio_below']}).")
+            preamble += (
+                f" Closest match is {sim['standout_ratio']}x the next-closest "
+                f"distance (flagged below {sim['thresholds']['standout_ratio_below']})."
+            )
         if sim.get("flag_reason"):
             preamble += f" **Flagged: {sim['flag_reason']}.**"
-        lines += [preamble, "",
-                  "| reference | distance | similarity | shift | verdict |",
-                  "|---|---|---|---|---|"]
+        lines += [preamble, "", "| reference | distance | similarity | shift | verdict |", "|---|---|---|---|---|"]
         for h in sim["hits"]:
-            lines.append(f"| {h['reference']} | {h['distance']} | {h['similarity']} | "
-                         f"{h['semitone_shift']:+d} st | {h['verdict']} |")
+            lines.append(
+                f"| {h['reference']} | {h['distance']} | {h['similarity']} | "
+                f"{h['semitone_shift']:+d} st | {h['verdict']} |"
+            )
     if review.explanation:
         lines += ["", "## Analysis", "", review.explanation]
     if not result["passed"] and review.remediation_instruction:
         lines += ["", "## Required changes", "", review.remediation_instruction]
     if remediated:
-        lines += ["", "_A replacement was requested from the composition agent and "
-                  "re-screened; the verdict above is for the replacement._"]
+        lines += [
+            "",
+            (
+                "_A replacement was requested from the composition agent and "
+                "re-screened; the verdict above is for the replacement._"
+            ),
+        ]
     if result.get("master_is_stale"):
-        lines += ["", "_Note: `master.wav` predates the render screened above, so it "
-                  "is stale. Re-run the mastering agent before release._"]
-    lines += ["", "---", "",
-              "_This is a screen against one local catalogue using one harmonic "
-              "feature. It is not a copyright clearance. A flag means escalate to "
-              "a human or a licensed identification service._"]
+        lines += [
+            "",
+            (
+                "_Note: `master.wav` predates the render screened above, so it "
+                "is stale. Re-run the mastering agent before release._"
+            ),
+        ]
+    lines += [
+        "",
+        "---",
+        "",
+        (
+            "_This is a screen against one local catalogue using one harmonic "
+            "feature. It is not a copyright clearance. A flag means escalate to "
+            "a human or a licensed identification service._"
+        ),
+    ]
     return "\n".join(lines)
 
 
@@ -610,22 +681,28 @@ def invoke(payload, context):
     track_id = payload.get("track_id", "demo-track")
     prompt = payload.get("prompt") or "Review this track for release."
     if not isinstance(prompt, str):
-        return {"status": "error", "agent": AGENT_NAME,
-                "error": "'prompt' must be a string", "host": host_info()}
+        return {"status": "error", "agent": AGENT_NAME, "error": "'prompt' must be a string", "host": host_info()}
 
-    logger.info("invoke: track=%s session=%s model=%s remediation=%s",
-                track_id, session_id, MODEL_ID,
-                "on" if remediation_available() else "off")
+    logger.info(
+        "invoke: track=%s session=%s model=%s remediation=%s",
+        track_id,
+        session_id,
+        MODEL_ID,
+        "on" if remediation_available() else "off",
+    )
 
     try:
         require_track_dir(track_id)
         result = screen(track_id)
-        logger.info("screen: passed=%s closest=%s", result["passed"],
-                    result["similarity"].get("closest"))
+        logger.info("screen: passed=%s closest=%s", result["passed"], result["similarity"].get("closest"))
 
         remediated = False
-        if (not result["passed"] and result["similarity"]["flagged"]
-                and remediation_available() and payload.get("auto_remediate", True)):
+        if (
+            not result["passed"]
+            and result["similarity"]["flagged"]
+            and remediation_available()
+            and payload.get("auto_remediate", True)
+        ):
             closest = result["similarity"]["closest"]
             issue = (
                 f"The rendered track is harmonically near-identical to catalogue "
@@ -633,7 +710,8 @@ def invoke(payload, context):
                 f"{closest['distance']}, transposed {closest['semitone_shift']:+d} "
                 f"semitones, similarity {closest['similarity']}). The screen fails "
                 f"anything below {FAIL_DISTANCE}; a replacement needs to score above "
-                f"{REVIEW_DISTANCE} to clear without review.")
+                f"{REVIEW_DISTANCE} to clear without review."
+            )
             # Hand over what the flagged reference actually is, so the rewrite can
             # move away from something specific instead of guessing.
             avoid = {
@@ -645,9 +723,9 @@ def invoke(payload, context):
                 "fail_below": FAIL_DISTANCE,
                 "clear_above": REVIEW_DISTANCE,
                 "other_references": [
-                    {"reference": h["reference"], "style_tags": h.get("style_tags"),
-                     "distance": h["distance"]}
-                    for h in result["similarity"]["hits"][1:]],
+                    {"reference": h["reference"], "style_tags": h.get("style_tags"), "distance": h["distance"]}
+                    for h in result["similarity"]["hits"][1:]
+                ],
             }
             remediated, _ = call_composition_runtime(session_id, track_id, issue, avoid)
             if remediated:
@@ -658,7 +736,8 @@ def invoke(payload, context):
                         "composition_remediated.wav is not on the shared volume - the "
                         "two agents are not seeing the same filesystem. Check that "
                         "both runtimes mount the same capacity provider volume and "
-                        "were invoked with the same runtimeSessionId.")
+                        "were invoked with the same runtimeSessionId."
+                    )
                 # Re-screen. The subject is now the replacement, and because the
                 # verdict is computed from measurements it cannot inherit the
                 # earlier failure.
@@ -667,28 +746,34 @@ def invoke(payload, context):
 
         agent = build_agent(session_id, track_id)
         analysis = agent(
-            "Explain these compliance results for the producer.\n\n"
-            f"{findings_brief(result)}\n\n"
-            f"Request: {prompt}",
-            structured_output_model=Review)
+            f"Explain these compliance results for the producer.\n\n{findings_brief(result)}\n\nRequest: {prompt}",
+            structured_output_model=Review,
+        )
         review = analysis.structured_output or Review(
-            summary="The model did not return an explanation; the computed verdict stands.")
+            summary="The model did not return an explanation; the computed verdict stands."
+        )
 
         markdown = render_review(result, review, remediated)
         write_text(track_id, "compliance.md", markdown)
-        report = {"verdict": {"passed": result["passed"],
-                              "outcome": result.get("outcome"),
-                              "remediation_requested": remediated},
-                  "subject": result["subject"],
-                  "master_is_stale": result.get("master_is_stale", False),
-                  "delivery_qc": result["delivery_qc"],
-                  "similarity": result["similarity"],
-                  "review": review.model_dump(),
-                  "reviewed_files": list_artifacts(track_id)}
+        report = {
+            "verdict": {
+                "passed": result["passed"],
+                "outcome": result.get("outcome"),
+                "remediation_requested": remediated,
+            },
+            "subject": result["subject"],
+            "master_is_stale": result.get("master_is_stale", False),
+            "delivery_qc": result["delivery_qc"],
+            "similarity": result["similarity"],
+            "review": review.model_dump(),
+            "reviewed_files": list_artifacts(track_id),
+        }
         write_text(track_id, "compliance.json", json.dumps(report, indent=2))
 
-        artifacts = [publish(track_id, track_path(track_id) / "compliance.md"),
-                     publish(track_id, track_path(track_id) / "compliance.json")]
+        artifacts = [
+            publish(track_id, track_path(track_id) / "compliance.md"),
+            publish(track_id, track_path(track_id) / "compliance.json"),
+        ]
 
         return {
             "status": "ok",
@@ -711,12 +796,18 @@ def invoke(payload, context):
 
     except WorkflowError as exc:
         logger.warning("workflow error: %s", exc)
-        return {"status": "error", "agent": AGENT_NAME, "track_id": track_id,
-                "session_id": session_id, "error": str(exc),
-                "validation_passed": False,
-                "workspace_files": list_artifacts(track_id), "host": host_info()}
+        return {
+            "status": "error",
+            "agent": AGENT_NAME,
+            "track_id": track_id,
+            "session_id": session_id,
+            "error": str(exc),
+            "validation_passed": False,
+            "workspace_files": list_artifacts(track_id),
+            "host": host_info(),
+        }
 
 
 if __name__ == "__main__":
     # Explicit bind and explicit port: see the note in composition_agent.py.
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))  # noqa: S104
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))

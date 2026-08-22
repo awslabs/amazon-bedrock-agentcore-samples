@@ -57,14 +57,12 @@ def main() -> None:
         if len(session_id) >= 33:
             for name, runtime in runtimes.items():
                 try:
-                    data.stop_runtime_session(agentRuntimeArn=runtime["arn"],
-                                              runtimeSessionId=session_id)
+                    data.stop_runtime_session(agentRuntimeArn=runtime["arn"], runtimeSessionId=session_id)
                 except ClientError as exc:
                     if exc.response["Error"]["Code"] != "ResourceNotFoundException":
                         warn(f"stop {name}: {exc.response['Error']['Code']}")
         try:
-            data.delete_capacity_provider_session(capacityProviderId=cp_id,
-                                                  sessionId=session_id)
+            data.delete_capacity_provider_session(capacityProviderId=cp_id, sessionId=session_id)
             log(f"deleted session {session_id} (instance + volumes deprovisioning)")
         except ClientError as exc:
             code = exc.response["Error"]["Code"]
@@ -85,8 +83,9 @@ def main() -> None:
     started = time.time()
     for _ in range(40):
         try:
-            attached = control.list_agent_runtime_versions_by_capacity_provider(
-                capacityProviderId=cp_id).get("agentRuntimes", [])
+            attached = control.list_agent_runtime_versions_by_capacity_provider(capacityProviderId=cp_id).get(
+                "agentRuntimes", []
+            )
         except ClientError as exc:
             if exc.response["Error"]["Code"] == "ResourceNotFoundException":
                 attached = []
@@ -165,13 +164,14 @@ def main() -> None:
     logs = boto3.client("logs", region_name=region)
     deleted = 0
     for runtime in runtimes.values():
-        for pattern in ("/aws/bedrock-agentcore/runtimes/{rid}-",
-                        "/aws/vendedlogs/bedrock-agentcore/runtime/APPLICATION_LOGS/{rid}",
-                        "/aws/vendedlogs/bedrock-agentcore/runtime/USAGE_LOGS/{rid}"):
+        for pattern in (
+            "/aws/bedrock-agentcore/runtimes/{rid}-",
+            "/aws/vendedlogs/bedrock-agentcore/runtime/APPLICATION_LOGS/{rid}",
+            "/aws/vendedlogs/bedrock-agentcore/runtime/USAGE_LOGS/{rid}",
+        ):
             prefix = pattern.format(rid=runtime["id"])
             try:
-                for page in logs.get_paginator("describe_log_groups").paginate(
-                        logGroupNamePrefix=prefix):
+                for page in logs.get_paginator("describe_log_groups").paginate(logGroupNamePrefix=prefix):
                     for group in page.get("logGroups", []):
                         try:
                             logs.delete_log_group(logGroupName=group["logGroupName"])
@@ -197,25 +197,28 @@ def main() -> None:
         try:
             reservations = ec2.describe_instances(
                 IncludeManagedResources=True,
-                Filters=[{"Name": "tag:bedrock-agentcore:capacity-provider-id",
-                          "Values": [cp_id]}])["Reservations"]
+                Filters=[{"Name": "tag:bedrock-agentcore:capacity-provider-id", "Values": [cp_id]}],
+            )["Reservations"]
         except ClientError:
             break
-        live = [i for r in reservations for i in r["Instances"]
-                if i["State"]["Name"] not in ("terminated", "shutting-down")]
-        pending = [i for r in reservations for i in r["Instances"]
-                   if i["State"]["Name"] == "shutting-down"]
+        live = [
+            i for r in reservations for i in r["Instances"] if i["State"]["Name"] not in ("terminated", "shutting-down")
+        ]
+        pending = [i for r in reservations for i in r["Instances"] if i["State"]["Name"] == "shutting-down"]
         if not live and not pending:
             break
         time.sleep(10)
 
     try:
-        orphans = [v for v in ec2.describe_volumes(
-            IncludeManagedResources=True,
-            Filters=[{"Name": "tag:bedrock-agentcore:capacity-provider-id",
-                      "Values": [cp_id]}])["Volumes"]
+        orphans = [
+            v
+            for v in ec2.describe_volumes(
+                IncludeManagedResources=True,
+                Filters=[{"Name": "tag:bedrock-agentcore:capacity-provider-id", "Values": [cp_id]}],
+            )["Volumes"]
             # An attached volume is still being torn down with its instance.
-            if v["State"] == "available"]
+            if v["State"] == "available"
+        ]
     except ClientError as exc:
         orphans = []
         warn(f"could not check for orphaned volumes: {exc.response['Error']['Code']}")
@@ -223,30 +226,35 @@ def main() -> None:
         total = sum(v["Size"] for v in orphans)
         warn(f"{len(orphans)} managed volume(s) totalling {total} GiB were NOT reclaimed:")
         for v in orphans:
-            session = next((t["Value"] for t in v.get("Tags", [])
-                            if t["Key"] == "bedrock-agentcore:runtime-session-id"), "?")
+            session = next(
+                (t["Value"] for t in v.get("Tags", []) if t["Key"] == "bedrock-agentcore:runtime-session-id"), "?"
+            )
             warn(f"    {v['VolumeId']}  {v['Size']} GiB  {v['State']}  session={session}")
-        warn("These are EC2 managed resources: DeleteVolume is denied by a "
-             "resource-based policy even for an administrator. They usually come "
-             "from a session whose placement failed. Raise a support case if they "
-             "persist, and watch the EBS line on your bill.")
+        warn(
+            "These are EC2 managed resources: DeleteVolume is denied by a "
+            "resource-based policy even for an administrator. They usually come "
+            "from a session whose placement failed. Raise a support case if they "
+            "persist, and watch the EBS line on your bill."
+        )
     else:
         log("no orphaned managed volumes for this capacity provider")
 
     STATE_FILE.unlink()
     log(f"removed {STATE_FILE.name}")
 
-    print("\nVerify nothing survived. --include-managed-resources is not optional:\n"
-          "AgentCore's instances and volumes are EC2 managed resources and are hidden\n"
-          "from DescribeInstances and DescribeVolumes by default, so a running fleet\n"
-          "prints as an empty table.\n\n"
-          f"  aws ec2 describe-instances --include-managed-resources --region {region} \\\n"
-          f"    --filters 'Name=tag:bedrock-agentcore:capacity-provider-id,Values={cp_id}' \\\n"
-          "    --query 'Reservations[].Instances[].[InstanceId,State.Name]' --output table\n\n"
-          f"  aws ec2 describe-volumes --include-managed-resources --region {region} \\\n"
-          f"    --filters 'Name=tag:bedrock-agentcore:capacity-provider-id,Values={cp_id}' \\\n"
-          "    --query 'Volumes[].[VolumeId,Size,State]' --output table\n"
-          f"\n  (account {account})")
+    print(
+        "\nVerify nothing survived. --include-managed-resources is not optional:\n"
+        "AgentCore's instances and volumes are EC2 managed resources and are hidden\n"
+        "from DescribeInstances and DescribeVolumes by default, so a running fleet\n"
+        "prints as an empty table.\n\n"
+        f"  aws ec2 describe-instances --include-managed-resources --region {region} \\\n"
+        f"    --filters 'Name=tag:bedrock-agentcore:capacity-provider-id,Values={cp_id}' \\\n"
+        "    --query 'Reservations[].Instances[].[InstanceId,State.Name]' --output table\n\n"
+        f"  aws ec2 describe-volumes --include-managed-resources --region {region} \\\n"
+        f"    --filters 'Name=tag:bedrock-agentcore:capacity-provider-id,Values={cp_id}' \\\n"
+        "    --query 'Volumes[].[VolumeId,Size,State]' --output table\n"
+        f"\n  (account {account})"
+    )
 
 
 if __name__ == "__main__":

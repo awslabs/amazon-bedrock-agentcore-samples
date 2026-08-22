@@ -26,14 +26,13 @@ import platform
 import uuid
 from pathlib import Path
 
+import audio_dsp as audio
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from pydantic import BaseModel, Field, field_validator
 from strands import Agent
 from strands.models import BedrockModel
 from strands.session import FileSessionManager
-
-import audio_dsp as audio
 
 AGENT_NAME = "mastering"
 PROCESS_ID = uuid.uuid4().hex[:8]
@@ -94,9 +93,14 @@ class EqBand(BaseModel):
         if not isinstance(v, str):
             return "peaking"
         t = v.strip().lower().replace("-", "").replace("_", "").replace(" ", "")
-        return {"hpf": "highpass", "lpf": "lowpass", "bell": "peaking",
-                "shelf": "highshelf", "lowshelving": "lowshelf",
-                "highshelving": "highshelf"}.get(t, t)
+        return {
+            "hpf": "highpass",
+            "lpf": "lowpass",
+            "bell": "peaking",
+            "shelf": "highshelf",
+            "lowshelving": "lowshelf",
+            "highshelving": "highshelf",
+        }.get(t, t)
 
     @field_validator("freq_hz")
     @classmethod
@@ -171,7 +175,8 @@ def require_track_dir(track_id: str) -> Path:
         raise WorkflowError(
             f"No workspace for track '{track_id}'. Invoke the composition agent "
             "first, with the same runtimeSessionId so both agents land on the "
-            "same instance and see the same volume.")
+            "same instance and see the same volume."
+        )
     return path
 
 
@@ -202,8 +207,8 @@ def latest_render(track_id: str) -> tuple[str, Path]:
         if p.exists() and p.stat().st_size > 0:
             return name, p
     raise WorkflowError(
-        "No rendered audio in the shared workspace. Invoke the composition "
-        "agent first, with the same runtimeSessionId.")
+        "No rendered audio in the shared workspace. Invoke the composition agent first, with the same runtimeSessionId."
+    )
 
 
 def list_artifacts(track_id: str) -> list[str]:
@@ -218,8 +223,11 @@ def publish(track_id: str, path: Path) -> dict:
     with the session, so S3 is the only route by which a 30 MB WAV reaches
     whoever invoked us.
     """
-    info: dict = {"name": path.name, "bytes": path.stat().st_size,
-                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16]}
+    info: dict = {
+        "name": path.name,
+        "bytes": path.stat().st_size,
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16],
+    }
     if not ARTIFACT_BUCKET:
         return info
     key = f"tracks/{track_id}/{path.name}"
@@ -227,12 +235,12 @@ def publish(track_id: str, path: Path) -> dict:
     # presigned against the global host (bucket.s3.amazonaws.com) while scoping
     # the signature to us-east-2, and every URL came back 403
     # SignatureDoesNotMatch. Measured on a live run.
-    s3 = boto3.client("s3", region_name=REGION,
-                      endpoint_url=f"https://s3.{REGION}.amazonaws.com")
+    s3 = boto3.client("s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com")
     s3.upload_file(str(path), ARTIFACT_BUCKET, key)
     info["s3_uri"] = f"s3://{ARTIFACT_BUCKET}/{key}"
     info["url"] = s3.generate_presigned_url(
-        "get_object", Params={"Bucket": ARTIFACT_BUCKET, "Key": key}, ExpiresIn=86400)
+        "get_object", Params={"Bucket": ARTIFACT_BUCKET, "Key": key}, ExpiresIn=86400
+    )
     logger.info("published %s", info["s3_uri"])
     return info
 
@@ -240,8 +248,7 @@ def publish(track_id: str, path: Path) -> dict:
 def host_info() -> dict:
     """Facts that make collocation observable from the response."""
     u = platform.uname()
-    return {"process_id": PROCESS_ID, "hostname": u.node,
-            "architecture": u.machine, "cpus": os.cpu_count()}
+    return {"process_id": PROCESS_ID, "hostname": u.node, "architecture": u.machine, "cpus": os.cpu_count()}
 
 
 # ------------------------------------------------------------------------ agent
@@ -289,36 +296,36 @@ def apply_chain(src: Path, dst: Path, plan: MasteringPlan) -> dict:
 
     if plan.compressor.enabled:
         data, comp_info = audio.compress(
-            data, rate,
+            data,
+            rate,
             threshold_db=plan.compressor.threshold_db,
             ratio=plan.compressor.ratio,
             attack_ms=plan.compressor.attack_ms,
             release_ms=plan.compressor.release_ms,
-            knee_db=plan.compressor.knee_db)
-        steps.append({"stage": "compressor",
-                      **plan.compressor.model_dump(), **comp_info})
+            knee_db=plan.compressor.knee_db,
+        )
+        steps.append({"stage": "compressor", **plan.compressor.model_dump(), **comp_info})
 
     data, norm_info = audio.normalise_loudness(data, rate, plan.target_lufs)
     steps.append({"stage": "loudness", "target_lufs": plan.target_lufs, **norm_info})
 
     data, lim_info = audio.limit(data, rate, ceiling_dbtp=plan.target_true_peak_dbtp)
-    steps.append({"stage": "limiter",
-                  "ceiling_dbtp": plan.target_true_peak_dbtp, **lim_info})
+    steps.append({"stage": "limiter", "ceiling_dbtp": plan.target_true_peak_dbtp, **lim_info})
 
     audio.write_audio(str(dst), data, rate, subtype="PCM_24")
     after = audio.measure(str(dst))
 
     # The reason this agent is worth deploying: it checks its own homework.
-    lufs_err = (abs(after.integrated_lufs - plan.target_lufs)
-                if after.integrated_lufs is not None else None)
+    lufs_err = abs(after.integrated_lufs - plan.target_lufs) if after.integrated_lufs is not None else None
     return {
         "before": before.to_dict(),
         "after": after.to_dict(),
         "steps": steps,
         "targets": {"lufs": plan.target_lufs, "true_peak_dbtp": plan.target_true_peak_dbtp},
         "hit_loudness_target": bool(lufs_err is not None and lufs_err <= 0.5),
-        "hit_peak_target": bool(after.true_peak_dbtp is not None
-                                and after.true_peak_dbtp <= plan.target_true_peak_dbtp + 0.05),
+        "hit_peak_target": bool(
+            after.true_peak_dbtp is not None and after.true_peak_dbtp <= plan.target_true_peak_dbtp + 0.05
+        ),
         "loudness_error_lu": round(lufs_err, 2) if lufs_err is not None else None,
     }
 
@@ -328,14 +335,13 @@ def render_report(plan: MasteringPlan, result: dict, source_name: str) -> str:
 
     def row(label: str, key: str, unit: str) -> str:
         bv, av = b.get(key), a.get(key)
-        fmt = lambda v: "-inf" if v is None else f"{v:g}"  # noqa: E731
+        fmt = lambda v: "-inf" if v is None else f"{v:g}"
         return f"| {label} | {fmt(bv)}{unit} | {fmt(av)}{unit} |"
 
     lines = [
-        f"# Mastering Report",
+        "# Mastering Report",
         "",
-        f"**Source:** `{source_name}`  |  **Target:** {plan.target_lufs} LUFS / "
-        f"{plan.target_true_peak_dbtp} dBTP",
+        (f"**Source:** `{source_name}`  |  **Target:** {plan.target_lufs} LUFS / {plan.target_true_peak_dbtp} dBTP"),
         "",
         "## Measured",
         "",
@@ -348,27 +354,39 @@ def render_report(plan: MasteringPlan, result: dict, source_name: str) -> str:
         row("Stereo correlation", "stereo_correlation", ""),
         row("Clipped runs", "clipped_runs", ""),
         "",
-        f"Loudness target {'met' if result['hit_loudness_target'] else 'MISSED'} "
-        f"(error {result['loudness_error_lu']} LU). "
-        f"True-peak ceiling {'held' if result['hit_peak_target'] else 'EXCEEDED'}.",
+        (
+            f"Loudness target {'met' if result['hit_loudness_target'] else 'MISSED'} "
+            f"(error {result['loudness_error_lu']} LU). "
+            f"True-peak ceiling {'held' if result['hit_peak_target'] else 'EXCEEDED'}."
+        ),
         "",
         "## Chain",
         "",
     ]
     for band in plan.eq_bands:
-        lines.append(f"- **EQ** {band.type} @ {band.freq_hz:g} Hz, "
-                     f"{band.gain_db:+g} dB, Q {band.q:g} — {band.reason}")
+        lines.append(f"- **EQ** {band.type} @ {band.freq_hz:g} Hz, {band.gain_db:+g} dB, Q {band.q:g} — {band.reason}")
     c = plan.compressor
     lines.append(
-        f"- **Compressor** {'bypassed' if not c.enabled else f'{c.ratio:g}:1 @ {c.threshold_db:g} dB, attack {c.attack_ms:g} ms, release {c.release_ms:g} ms'}")
+        f"- **Compressor** {'bypassed' if not c.enabled else f'{c.ratio:g}:1 @ {c.threshold_db:g} dB, attack {c.attack_ms:g} ms, release {c.release_ms:g} ms'}"
+    )
     for step in result["steps"]:
         if step["stage"] == "loudness":
             lines.append(f"- **Loudness** {step['applied_gain_db']:+g} dB broadband")
         if step["stage"] == "limiter":
-            lines.append(f"- **Limiter** ceiling {step['ceiling_dbtp']:g} dBTP, "
-                         f"max {step['max_gain_reduction_db']:g} dB reduction")
-    lines += ["", "## Engineer's notes", "", plan.notes or "_none_",
-              "", "## Deliberately left alone", "", plan.left_alone or "_nothing noted_"]
+            lines.append(
+                f"- **Limiter** ceiling {step['ceiling_dbtp']:g} dBTP, "
+                f"max {step['max_gain_reduction_db']:g} dB reduction"
+            )
+    lines += [
+        "",
+        "## Engineer's notes",
+        "",
+        plan.notes or "_none_",
+        "",
+        "## Deliberately left alone",
+        "",
+        plan.left_alone or "_nothing noted_",
+    ]
     return "\n".join(lines)
 
 
@@ -386,12 +404,10 @@ def invoke(payload, context):
     if not isinstance(prompt, str):
         # The payload is arbitrary JSON. A non-string here can carry toolUse
         # content blocks straight into the framework's event loop.
-        return {"status": "error", "agent": AGENT_NAME,
-                "error": "'prompt' must be a string", "host": host_info()}
+        return {"status": "error", "agent": AGENT_NAME, "error": "'prompt' must be a string", "host": host_info()}
 
     target_lufs, target_peak = PLATFORM_TARGETS.get(platform_name, PLATFORM_TARGETS["spotify"])
-    logger.info("invoke: track=%s session=%s platform=%s model=%s",
-                track_id, session_id, platform_name, MODEL_ID)
+    logger.info("invoke: track=%s session=%s platform=%s model=%s", track_id, session_id, platform_name, MODEL_ID)
 
     try:
         require_track_dir(track_id)
@@ -406,14 +422,15 @@ def invoke(payload, context):
             f"Measured properties of the mix:\n{json.dumps(source_measurements.to_dict(), indent=2)}\n\n"
             + (f"Composition brief:\n{brief}\n\n" if brief else "")
             + f"Delivery target: {platform_name} at {target_lufs} LUFS integrated, "
-              f"true peak at or below {target_peak} dBTP.\n\n"
-              f"Request: {prompt}"
+            f"true peak at or below {target_peak} dBTP.\n\n"
+            f"Request: {prompt}"
         )
 
         agent = build_agent(session_id, track_id)
         result = agent(task, structured_output_model=MasteringPlan)
         plan: MasteringPlan = result.structured_output or MasteringPlan(
-            target_lufs=target_lufs, target_true_peak_dbtp=target_peak)
+            target_lufs=target_lufs, target_true_peak_dbtp=target_peak
+        )
         # The platform target is not the model's to override.
         plan.target_lufs = target_lufs
         plan.target_true_peak_dbtp = target_peak
@@ -427,12 +444,16 @@ def invoke(payload, context):
 
         report = render_report(plan, applied, source_name)
         write_text(track_id, "mastering.md", report)
-        write_text(track_id, "mastering.json", json.dumps(
-            {"plan": plan.model_dump(), "result": applied,
-             "source": source_name, "platform": platform_name}, indent=2))
+        write_text(
+            track_id,
+            "mastering.json",
+            json.dumps(
+                {"plan": plan.model_dump(), "result": applied, "source": source_name, "platform": platform_name},
+                indent=2,
+            ),
+        )
 
-        artifacts = [publish(track_id, master),
-                     publish(track_id, track_path(track_id) / "mastering.md")]
+        artifacts = [publish(track_id, master), publish(track_id, track_path(track_id) / "mastering.md")]
 
         return {
             "status": "ok",
@@ -443,8 +464,7 @@ def invoke(payload, context):
             "read_from": source_name,
             "platform": platform_name,
             "measurements": {"before": applied["before"], "after": applied["after"]},
-            "targets_met": {"loudness": applied["hit_loudness_target"],
-                            "true_peak": applied["hit_peak_target"]},
+            "targets_met": {"loudness": applied["hit_loudness_target"], "true_peak": applied["hit_peak_target"]},
             "plan": plan.model_dump(),
             "result": report,
             "artifacts": artifacts,
@@ -457,9 +477,15 @@ def invoke(payload, context):
         # as data. Unexpected exceptions are left to propagate so the service
         # surfaces a 424 and the traceback reaches CloudWatch.
         logger.warning("workflow error: %s", exc)
-        return {"status": "error", "agent": AGENT_NAME, "track_id": track_id,
-                "session_id": session_id, "error": str(exc),
-                "workspace_files": list_artifacts(track_id), "host": host_info()}
+        return {
+            "status": "error",
+            "agent": AGENT_NAME,
+            "track_id": track_id,
+            "session_id": session_id,
+            "error": str(exc),
+            "workspace_files": list_artifacts(track_id),
+            "host": host_info(),
+        }
 
 
 if __name__ == "__main__":
@@ -467,4 +493,4 @@ if __name__ == "__main__":
     # /.dockerenv or DOCKER_CONTAINER, neither of which exists under Finch or
     # containerd, and would otherwise bind 127.0.0.1 where the runtime cannot
     # reach it. AgentCore sets PORT, which run() does not consult.
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))  # noqa: S104
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))

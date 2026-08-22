@@ -94,21 +94,20 @@ def _k_weight(data: np.ndarray) -> np.ndarray:
     return signal.lfilter(_K_STAGE2_B, _K_STAGE2_A, out, axis=0)
 
 
-def _block_mean_squares(weighted: np.ndarray, rate: int,
-                        block_s: float, overlap: float) -> np.ndarray:
+def _block_mean_squares(weighted: np.ndarray, rate: int, block_s: float, overlap: float) -> np.ndarray:
     """Mean square per block per channel -> (blocks, channels)."""
-    block = int(round(block_s * rate))
-    step = max(1, int(round(block * (1.0 - overlap))))
+    block = round(block_s * rate)
+    step = max(1, round(block * (1.0 - overlap)))
     n = weighted.shape[0]
     if n < block:
         return np.empty((0, weighted.shape[1]))
     starts = range(0, n - block + 1, step)
-    return np.stack([np.mean(weighted[s:s + block] ** 2, axis=0) for s in starts])
+    return np.stack([np.mean(weighted[s : s + block] ** 2, axis=0) for s in starts])
 
 
 def _blocks_to_loudness(mean_squares: np.ndarray) -> np.ndarray:
     """Per-block loudness in LUFS from per-channel mean squares."""
-    weights = _CHANNEL_WEIGHTS[:mean_squares.shape[1]]
+    weights = _CHANNEL_WEIGHTS[: mean_squares.shape[1]]
     summed = mean_squares @ weights
     with np.errstate(divide="ignore"):
         return _LUFS_OFFSET + 10.0 * np.log10(np.maximum(summed, 1e-30))
@@ -133,14 +132,12 @@ def integrated_loudness(data: np.ndarray, rate: int) -> float:
     if not np.any(above_absolute):
         return float("-inf")
 
-    weights = _CHANNEL_WEIGHTS[:ms.shape[1]]
-    relative_ref = _LUFS_OFFSET + 10.0 * np.log10(
-        max(float(np.mean(ms[above_absolute] @ weights)), 1e-30))
+    weights = _CHANNEL_WEIGHTS[: ms.shape[1]]
+    relative_ref = _LUFS_OFFSET + 10.0 * np.log10(max(float(np.mean(ms[above_absolute] @ weights)), 1e-30))
     keep = above_absolute & (loud > relative_ref + _RELATIVE_GATE_LU)
     if not np.any(keep):
         return float("-inf")
-    return float(_LUFS_OFFSET + 10.0 * np.log10(
-        max(float(np.mean(ms[keep] @ weights)), 1e-30)))
+    return float(_LUFS_OFFSET + 10.0 * np.log10(max(float(np.mean(ms[keep] @ weights)), 1e-30)))
 
 
 def loudness_range(data: np.ndarray, rate: int) -> float:
@@ -155,9 +152,8 @@ def loudness_range(data: np.ndarray, rate: int) -> float:
     above_absolute = loud > _ABSOLUTE_GATE_LUFS
     if not np.any(above_absolute):
         return 0.0
-    weights = _CHANNEL_WEIGHTS[:ms.shape[1]]
-    ref = _LUFS_OFFSET + 10.0 * np.log10(
-        max(float(np.mean(ms[above_absolute] @ weights)), 1e-30))
+    weights = _CHANNEL_WEIGHTS[: ms.shape[1]]
+    ref = _LUFS_OFFSET + 10.0 * np.log10(max(float(np.mean(ms[above_absolute] @ weights)), 1e-30))
     kept = loud[above_absolute & (loud > ref - 20.0)]
     if kept.size < 2:
         return 0.0
@@ -181,8 +177,7 @@ def sample_peak_dbfs(data: np.ndarray) -> float:
     return 20.0 * math.log10(peak) if peak > 0 else float("-inf")
 
 
-def clipped_runs(data: np.ndarray, threshold: float = 0.9995,
-                 min_run: int = 3) -> int:
+def clipped_runs(data: np.ndarray, threshold: float = 0.9995, min_run: int = 3) -> int:
     """Count runs of consecutive samples pinned at full scale.
 
     A single sample at full scale is unremarkable; three or more in a row is the
@@ -260,8 +255,7 @@ def measure(path: str) -> Measurements:
 # ---------------------------------------------------------------------------
 
 
-def _biquad(kind: str, freq: float, rate: float, q: float = 0.707,
-            gain_db: float = 0.0) -> np.ndarray:
+def _biquad(kind: str, freq: float, rate: float, q: float = 0.707, gain_db: float = 0.0) -> np.ndarray:
     w0 = 2.0 * math.pi * max(min(freq, rate * 0.49), 1.0) / rate
     cos_w0, sin_w0 = math.cos(w0), math.sin(w0)
     alpha = sin_w0 / (2.0 * max(q, 1e-3))
@@ -279,19 +273,19 @@ def _biquad(kind: str, freq: float, rate: float, q: float = 0.707,
     elif kind in ("lowshelf", "highshelf"):
         sq = 2.0 * math.sqrt(A) * alpha
         if kind == "lowshelf":
-            b = [A * ((A + 1) - (A - 1) * cos_w0 + sq),
-                 2 * A * ((A - 1) - (A + 1) * cos_w0),
-                 A * ((A + 1) - (A - 1) * cos_w0 - sq)]
-            a = [(A + 1) + (A - 1) * cos_w0 + sq,
-                 -2 * ((A - 1) + (A + 1) * cos_w0),
-                 (A + 1) + (A - 1) * cos_w0 - sq]
+            b = [
+                A * ((A + 1) - (A - 1) * cos_w0 + sq),
+                2 * A * ((A - 1) - (A + 1) * cos_w0),
+                A * ((A + 1) - (A - 1) * cos_w0 - sq),
+            ]
+            a = [(A + 1) + (A - 1) * cos_w0 + sq, -2 * ((A - 1) + (A + 1) * cos_w0), (A + 1) + (A - 1) * cos_w0 - sq]
         else:
-            b = [A * ((A + 1) + (A - 1) * cos_w0 + sq),
-                 -2 * A * ((A - 1) + (A + 1) * cos_w0),
-                 A * ((A + 1) + (A - 1) * cos_w0 - sq)]
-            a = [(A + 1) - (A - 1) * cos_w0 + sq,
-                 2 * ((A - 1) - (A + 1) * cos_w0),
-                 (A + 1) - (A - 1) * cos_w0 - sq]
+            b = [
+                A * ((A + 1) + (A - 1) * cos_w0 + sq),
+                -2 * A * ((A - 1) + (A + 1) * cos_w0),
+                A * ((A + 1) + (A - 1) * cos_w0 - sq),
+            ]
+            a = [(A + 1) - (A - 1) * cos_w0 + sq, 2 * ((A - 1) - (A + 1) * cos_w0), (A + 1) - (A - 1) * cos_w0 - sq]
     else:
         raise ValueError(f"unknown filter kind {kind!r}")
 
@@ -308,11 +302,18 @@ def apply_filters(data: np.ndarray, rate: int, bands: list[dict]) -> np.ndarray:
     """
     if not bands:
         return data
-    sos = np.vstack([
-        _biquad(b.get("type", "peaking"), float(b.get("freq_hz", 1000.0)), rate,
-                float(b.get("q", 0.707)), float(b.get("gain_db", 0.0)))
-        for b in bands
-    ])
+    sos = np.vstack(
+        [
+            _biquad(
+                b.get("type", "peaking"),
+                float(b.get("freq_hz", 1000.0)),
+                rate,
+                float(b.get("q", 0.707)),
+                float(b.get("gain_db", 0.0)),
+            )
+            for b in bands
+        ]
+    )
     return signal.sosfilt(sos, data, axis=0)
 
 
@@ -321,8 +322,7 @@ def apply_filters(data: np.ndarray, rate: int, bands: list[dict]) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def _smooth_envelope(level_db: np.ndarray, rate: int,
-                     attack_ms: float, release_ms: float) -> np.ndarray:
+def _smooth_envelope(level_db: np.ndarray, rate: int, attack_ms: float, release_ms: float) -> np.ndarray:
     """One-pole attack/release follower over a dB-domain level signal."""
     att = math.exp(-1.0 / max(attack_ms * 1e-3 * rate, 1.0))
     rel = math.exp(-1.0 / max(release_ms * 1e-3 * rate, 1.0))
@@ -335,10 +335,16 @@ def _smooth_envelope(level_db: np.ndarray, rate: int,
     return out
 
 
-def compress(data: np.ndarray, rate: int, threshold_db: float = -18.0,
-             ratio: float = 2.0, attack_ms: float = 20.0,
-             release_ms: float = 200.0, knee_db: float = 6.0,
-             makeup_db: float | None = None) -> tuple[np.ndarray, dict]:
+def compress(
+    data: np.ndarray,
+    rate: int,
+    threshold_db: float = -18.0,
+    ratio: float = 2.0,
+    attack_ms: float = 20.0,
+    release_ms: float = 200.0,
+    knee_db: float = 6.0,
+    makeup_db: float | None = None,
+) -> tuple[np.ndarray, dict]:
     """Feed-forward peak compressor with a soft knee.
 
     Gain reduction is computed from the linked maximum across channels so the
@@ -355,8 +361,7 @@ def compress(data: np.ndarray, rate: int, threshold_db: float = -18.0,
     if knee_db > 0:
         in_knee = (over > -knee_db / 2) & (over <= knee_db / 2)
         above = over > knee_db / 2
-        target_reduction[in_knee] = (
-            (1.0 / ratio - 1.0) * (over[in_knee] + knee_db / 2) ** 2 / (2.0 * knee_db))
+        target_reduction[in_knee] = (1.0 / ratio - 1.0) * (over[in_knee] + knee_db / 2) ** 2 / (2.0 * knee_db)
         target_reduction[above] = (1.0 / ratio - 1.0) * over[above]
     else:
         above = over > 0
@@ -370,9 +375,14 @@ def compress(data: np.ndarray, rate: int, threshold_db: float = -18.0,
     return out, {"max_gain_reduction_db": round(float(np.max(smoothed)), 2)}
 
 
-def limit(data: np.ndarray, rate: int, ceiling_dbtp: float = -1.0,
-          lookahead_ms: float = 5.0, release_ms: float = 50.0,
-          oversample: int = 4) -> tuple[np.ndarray, dict]:
+def limit(
+    data: np.ndarray,
+    rate: int,
+    ceiling_dbtp: float = -1.0,
+    lookahead_ms: float = 5.0,
+    release_ms: float = 50.0,
+    oversample: int = 4,
+) -> tuple[np.ndarray, dict]:
     """Look-ahead true-peak limiter.
 
     The gain envelope is derived from the 4x oversampled signal, because the
@@ -392,14 +402,14 @@ def limit(data: np.ndarray, rate: int, ceiling_dbtp: float = -1.0,
     peak = peak_up[:usable].reshape(-1, oversample).max(axis=1)
     if peak.size < data.shape[0]:
         peak = np.concatenate([peak, np.repeat(peak[-1:], data.shape[0] - peak.size)])
-    peak = peak[:data.shape[0]]
+    peak = peak[: data.shape[0]]
 
     needed = np.minimum(1.0, ceiling / np.maximum(peak, 1e-12))
-    look = max(1, int(round(lookahead_ms * 1e-3 * rate)))
+    look = max(1, round(lookahead_ms * 1e-3 * rate))
     # Running minimum over the look-ahead window: pull gain down early.
     padded = np.concatenate([needed, np.repeat(needed[-1:], look)])
     strides = np.lib.stride_tricks.sliding_window_view(padded, look + 1)
-    target = strides.min(axis=1)[:needed.size]
+    target = strides.min(axis=1)[: needed.size]
 
     rel = math.exp(-1.0 / max(release_ms * 1e-3 * rate, 1.0))
     gain = np.empty_like(target)
@@ -414,8 +424,9 @@ def limit(data: np.ndarray, rate: int, ceiling_dbtp: float = -1.0,
     return out, {"max_gain_reduction_db": round(float(reduction), 2)}
 
 
-def normalise_loudness(data: np.ndarray, rate: int, target_lufs: float,
-                       max_gain_db: float = 24.0) -> tuple[np.ndarray, dict]:
+def normalise_loudness(
+    data: np.ndarray, rate: int, target_lufs: float, max_gain_db: float = 24.0
+) -> tuple[np.ndarray, dict]:
     """Apply a single broadband gain so integrated loudness hits the target."""
     current = integrated_loudness(data, rate)
     if not math.isfinite(current):
@@ -458,7 +469,7 @@ def chroma(path: str, hop_s: float = 0.1, n_fft: int = 4096) -> np.ndarray:
     """
     data, rate = read_audio(path)
     mono = np.mean(data, axis=1)
-    hop = max(1, int(round(hop_s * rate)))
+    hop = max(1, round(hop_s * rate))
     if mono.size < n_fft:
         mono = np.pad(mono, (0, n_fft - mono.size))
     window = np.hanning(n_fft)
@@ -466,7 +477,7 @@ def chroma(path: str, hop_s: float = 0.1, n_fft: int = 4096) -> np.ndarray:
     bank = _chroma_filterbank(n_fft, rate)
     out = np.empty((frames, 12))
     for i in range(frames):
-        seg = mono[i * hop: i * hop + n_fft] * window
+        seg = mono[i * hop : i * hop + n_fft] * window
         mag = np.abs(np.fft.rfft(seg))
         v = bank @ mag
         norm = np.linalg.norm(v)
@@ -474,8 +485,7 @@ def chroma(path: str, hop_s: float = 0.1, n_fft: int = 4096) -> np.ndarray:
     return out
 
 
-def chroma_dtw_distance(a: np.ndarray, b: np.ndarray,
-                        transpositions: bool = True) -> tuple[float, int]:
+def chroma_dtw_distance(a: np.ndarray, b: np.ndarray, transpositions: bool = True) -> tuple[float, int]:
     """Normalised DTW distance between two chromagrams, and the best rotation.
 
     Trying all twelve rotations of the pitch-class axis is what catches material
@@ -485,7 +495,7 @@ def chroma_dtw_distance(a: np.ndarray, b: np.ndarray,
     if a.size == 0 or b.size == 0:
         return 1.0, 0
     best = (1.0, 0)
-    for shift in (range(12) if transpositions else (0,)):
+    for shift in range(12) if transpositions else (0,):
         rolled = np.roll(b, shift, axis=1)
         # Cosine distance matrix; both inputs are already L2-normalised.
         cost = 1.0 - (a @ rolled.T)
@@ -515,5 +525,9 @@ class SimilarityHit:
         self.similarity = round(max(0.0, 1.0 - self.distance), 4)
 
     def to_dict(self) -> dict:
-        return {"reference": self.reference, "distance": round(self.distance, 4),
-                "semitone_shift": self.semitone_shift, "similarity": self.similarity}
+        return {
+            "reference": self.reference,
+            "distance": round(self.distance, 4),
+            "semitone_shift": self.semitone_shift,
+            "similarity": self.similarity,
+        }
