@@ -720,7 +720,7 @@ gpu-music-production-agent/
 | `scripts/deploy.py` | IAM roles → S3 bucket → vendor wheels → build and push both images → build and upload the zip → capacity provider → three runtimes. Writes `deployment_state.json`. Creates **no instances** |
 | `scripts/invoke.py` | Generates one session id, drives all seven steps through it, retries capacity failures on a fresh id, prints the collocation proof, downloads artifacts |
 | `scripts/update.py` | Rebuilds and ships one agent. `--restart-session` matters: a live session keeps serving its old code silently |
-| `scripts/cleanup.py` | Deletes the **session first** (the only thing that stops EC2 and EBS billing), then runtimes, capacity provider, ECR, bucket, roles, log groups. Reports volumes that failed placements leaked |
+| `scripts/cleanup.py` | Deletes the **session first** (the fastest way to stop EC2 and EBS billing), then runtimes, capacity provider, ECR, bucket, roles, log groups. Reports volumes that failed placements leaked |
 
 Written at run time: `runs/<track>/` (yours, survives teardown), `build/` (vendored
 wheels and the zip), and `deployment_state.json` — **do not lose that one**, it holds
