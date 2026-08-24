@@ -48,6 +48,7 @@ Agents that run without a user in the loop. They are triggered by events such as
 | [enterprise-web-intelligence-agent](./02-workflow-automation-agents/enterprise-web-intelligence-agent/) | Market Intelligence | Runtime, Browser |
 | [intelligent-event-agent](./02-workflow-automation-agents/intelligent-event-agent/) | General / Events | Runtime, Memory, Gateway *(in development)* |
 | [multi-isv-orchestration](./02-workflow-automation-agents/multi-isv-orchestration/) | Enterprise CRM + ERP | Gateway (multi-target), Identity (Cognito + CustomOauth2) |
+| [gpu-music-production-agent](./02-workflow-automation-agents/gpu-music-production-agent/) | Media & Entertainment | Runtime (EC2 capacity provider, GPU), Memory; local model inference, collocated agents on a shared volume |
 
 ### [03-coding-assistants](./03-coding-assistants/) 
 
