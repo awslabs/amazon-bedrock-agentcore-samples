@@ -124,7 +124,7 @@ LAMBDA_TARGETS = {
 # ── AWS Session Setup ─────────────────────────────────────────────────────────
 
 
-def get_aws_context(region: str = None) -> tuple:
+def get_aws_context(region: str | None = None) -> tuple:
     """Return (session, REGION, ACCOUNT_ID) — never hardcodes either."""
     session = boto3.Session()
     resolved_region = (

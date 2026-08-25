@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from deploy import main  # noqa: E402
+from deploy import main
 
 if __name__ == "__main__":
     main()
