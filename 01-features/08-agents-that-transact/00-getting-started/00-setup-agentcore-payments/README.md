@@ -108,6 +108,10 @@ python providers/coinbase_cdp_account_setup.py     # Coinbase CDP
 python providers/stripe_privy_account_setup.py     # Stripe (Privy)
 ```
 
+> **Using Coinbase Quick create?** You can skip `coinbase_cdp_account_setup.py` — Quick create provisions
+> the CDP API key and Wallet secret for you in Step 2, so there are no keys to generate or paste. Still set
+> the `.env` values below.
+
 Then set `AWS_REGION`, `CREDENTIAL_PROVIDER_TYPE` (`CoinbaseCDP` or `StripePrivy`), `USER_ID`,
 `LINKED_EMAIL` (a real inbox — used for the wallet and provider OTP), and `NETWORK`
 (`ETHEREUM` or `SOLANA`) in `../.env`.
@@ -130,7 +134,16 @@ agentcore add payment-manager --name MyPaymentManager --auto-payment true --defa
 Add a payment connector for the provider you chose in Step 1 — run **one** of these:
 
 ```bash
-# Coinbase CDP:
+# Coinbase CDP — Quick create (recommended): no keys, you authorize through Coinbase at deploy time
+agentcore add payment-connector \
+  --manager MyPaymentManager \
+  --name MyCoinbaseConnector \
+  --provider CoinbaseCDP \
+  --provision-mode QUICK_CREATE
+```
+
+```bash
+# Coinbase CDP — existing credentials: paste the keys captured in Step 1
 agentcore add payment-connector \
   --manager MyPaymentManager \
   --name MyCoinbaseConnector \
@@ -164,6 +177,13 @@ agentcore deploy -y
 # 4. Read back the created resource ARNs/IDs
 agentcore status --type payment
 ```
+
+> **Using Coinbase Quick create?** `agentcore deploy` creates the connector in `PENDING_AUTHENTICATION`
+> and prints an `authorizationUrl`. Open it, sign in to Coinbase, and grant access — the connector then
+> moves to `READY`. The link is single-use and short-lived; if it expires before you finish, re-run
+> `agentcore deploy` to issue a fresh one. Re-run `agentcore status --type payment` and confirm `READY` before continuing to Step 3.
+> Quick create requires an active [Coinbase Wallets for AgentCore Payments Marketplace subscription](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-marketplace-subscription.html);
+> without it, deploy fails with `SubscriptionRequiredException` (HTTP 403) and the error message includes the listing URL to subscribe.
 
 From the `agentcore status --type payment` output, copy the **Payment Manager ARN** and **Payment
 Connector ID** and export them (you'll pass them to the commands in Step 3):
