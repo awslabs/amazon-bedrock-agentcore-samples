@@ -134,7 +134,7 @@ print(next(r['identifier'] for r in data['resources'] if r['name'] == 'client-cr
 
 export GATEWAY_URL=$(aws bedrock-agentcore-control get-gateway \
   --gateway-identifier $GATEWAY_ID \
-  --query 'gatewayUrl' --output text)
+  --query 'gatewayUrl' --output text)/mcp
 
 echo "MCP Server URL: $MCP_SERVER_URL"
 echo "gateway ID:     $GATEWAY_ID"

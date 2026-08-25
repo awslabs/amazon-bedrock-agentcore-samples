@@ -9,6 +9,9 @@
 | Components          | AgentCore CLI (`create` / `add payment-manager` / `add payment-connector` / `deploy`) + AgentCore SDK (`PaymentManager.create_payment_instrument` / `create_payment_session`) |
 | Example complexity  | Beginner                                                                         |
 
+
+To learn more about AgentCore CLI Commands, see [this link] (https://github.com/aws/agentcore-cli/blob/main/docs/payments.md)
+
 > **Complementary tools.** The AgentCore CLI provisions your shared payment infrastructure
 > (credential provider, payment manager, connector, IAM roles) in one `agentcore deploy`. The AgentCore
 > SDK (`PaymentManager`) then creates the per-user wallet (instrument) and spending session,
@@ -35,7 +38,8 @@ written to the shared `../.env` so downstream tutorials pick them up unchanged.
 > **Testnet only.** Base Sepolia (`NETWORK=ETHEREUM`) or Solana Devnet (`NETWORK=SOLANA`), with free
 > USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
 
-> **Supported regions:** `us-east-1`, `us-west-2`, `eu-central-1`, `ap-southeast-2`. Set `AWS_REGION`
+> **Supported regions:** 
+Set `AWS_REGION`
 > in `../.env` to one of these.
 
 ## Architecture
@@ -69,8 +73,7 @@ Management / ProcessPayment / ResourceRetrieval **4-role separation**, see the b
 
 ## Prerequisites
 
-- **AWS account + region** where AgentCore payments is available (`us-east-1`, `us-west-2`,
-  `eu-central-1`, `ap-southeast-2`), and AWS CLI configured (`aws sts get-caller-identity`).
+- **AWS account + region** where AgentCore payments is available, and AWS CLI configured (`aws sts get-caller-identity`).
 - **Python 3.10+** and dependencies:
   ```bash
   pip install -r requirements.txt

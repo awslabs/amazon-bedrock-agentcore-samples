@@ -131,3 +131,5 @@
 - Chris Wajule (ggChris2)
 - Anil Nadiminti (aniloncloud)
 - ach1ntya
+- Shruthi Rajoli (rajolishruthi)
+- ratnopam

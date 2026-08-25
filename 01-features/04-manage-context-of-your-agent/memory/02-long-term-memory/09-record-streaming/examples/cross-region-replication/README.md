@@ -140,11 +140,12 @@ Enable Kinesis streaming when adding memory to a runtime project with the CLI:
 
 ```bash
 npm install -g @aws/agentcore
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 agentcore add memory \
   --name mymemory \
   --strategies SEMANTIC \
   --delivery-type kinesis \
-  --data-stream-arn arn:aws:kinesis:<region>:<account>:stream/<stream-name>
+  --data-stream-arn "arn:aws:kinesis:$AWS_REGION:$ACCOUNT_ID:stream/<your-stream-name>"
 agentcore deploy
 ```
 
