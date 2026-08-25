@@ -49,7 +49,7 @@ from botocore.exceptions import ClientError
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 NAMESPACE = f"/users/{ACTOR_ID}/notes/"
-PROPAGATION_WAIT_SECONDS = 180  # polling budget; records became listable ~87s after the delete
+PROPAGATION_WAIT_SECONDS = 120  # polling budget; records became listable ~87s after the delete
 EXPECTED_REMAINING = 2  # each surface below creates 3 records and deletes 1
 
 
