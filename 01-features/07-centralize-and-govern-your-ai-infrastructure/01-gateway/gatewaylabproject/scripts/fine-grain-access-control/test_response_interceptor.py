@@ -33,7 +33,8 @@ REPO_YAML = os.path.join(
 def _extract_zipfile_blocks(path):
     """Pull each ``ZipFile: |`` literal block out of the CFN template by
     indentation (avoids a hard PyYAML dependency)."""
-    lines = open(path).read().splitlines()
+    with open(path) as f:
+        lines = f.read().splitlines()
     blocks, i = [], 0
     while i < len(lines):
         if lines[i].strip() == "ZipFile: |":
@@ -61,7 +62,10 @@ def _load_response_interceptor():
     assert len(blocks) == 2, f"expected 2 inline Lambdas, found {len(blocks)}"
     os.environ["GATEWAY_TARGET_NAME"] = "fgac-mcp-target"
     mod = types.ModuleType("fgac_response_interceptor")
-    exec(compile(blocks[1], "response_interceptor.py", "exec"), mod.__dict__)
+    # Intentional: execute the interceptor Lambda source extracted from our own
+    # CloudFormation template into a throwaway module so we can unit-test its
+    # handler offline (no AWS). The input is repo-controlled, not user data.
+    exec(compile(blocks[1], "response_interceptor.py", "exec"), mod.__dict__)  # noqa: S102
     return mod
 
 
