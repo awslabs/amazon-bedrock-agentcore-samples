@@ -7,7 +7,6 @@ Costs nothing -- uses free test pathUSD, merchant covers gas.
 Usage: python strands_mpp_agent_testnet.py
 """
 
-
 import os
 import sys
 import uuid as _uuid
@@ -18,8 +17,6 @@ from dotenv import load_dotenv
 # -- Config ------------------------------------------------------------------
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
-
-
 
 
 # -- Verify credentials ------------------------------------------------------
@@ -82,7 +79,6 @@ agent = Agent(
 )
 
 
-
 # -- Run ---------------------------------------------------------------------
 print("\n" + "=" * 60)
 print("TESTNET -- mpp.dev/api/ping/paid (chain 42431, free)")
@@ -94,7 +90,6 @@ result = agent(
 )
 
 if getattr(result, "stop_reason", None) == "interrupt" or getattr(result, "interrupts", None):
-
     print("\n[!] Payment did not settle.")
     print("    Check: Stripe/Privy instrument, funded wallet, delegated signing.")
     sys.exit(1)

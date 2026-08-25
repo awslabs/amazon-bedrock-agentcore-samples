@@ -9,7 +9,6 @@ to gather competitive intelligence, then summarizes findings.
 Usage: python strands_mpp_agent_mainnet.py
 """
 
-
 import os
 import sys
 import uuid as _uuid
@@ -20,8 +19,6 @@ from dotenv import load_dotenv
 # -- Config ------------------------------------------------------------------
 ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
-
-
 
 
 # -- Verify credentials ------------------------------------------------------
@@ -98,7 +95,6 @@ agent = Agent(
 )
 
 
-
 # -- Run ---------------------------------------------------------------------
 print("\n" + "=" * 60)
 print("COMPETITIVE INTELLIGENCE (mainnet, real funds)")
@@ -109,7 +105,6 @@ print(f"\nResearching: {target}\n")
 
 result = agent(
     f"Research '{target}' using Browserbase. Make 2-3 searches from different angles "
-
     "(competitors, news, features). Synthesize a competitive intelligence briefing. "
     "Report total cost."
 )
