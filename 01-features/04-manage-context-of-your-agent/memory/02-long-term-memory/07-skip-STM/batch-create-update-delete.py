@@ -12,11 +12,19 @@ back-fills, migrations, and admin tooling.
 Each call accepts up to 100 records and reports per-record success/failure.
 
 Eventual consistency: a record returned as SUCCEEDED by BatchCreate is NOT
-immediately readable/updatable — BatchUpdate/Delete/List against it can raise
-ResourceNotFoundException for a while (observed from a few seconds to >50s, and
-the window varies run to run). This is expected for directly-written records.
-The real-world pattern — shown below — is to RETRY the dependent operation until
-the record has propagated, rather than assume it is available right after create.
+immediately readable/updatable. This is expected for directly-written records, and
+it shows up in two different ways, so this script handles it in two different ways:
+
+  - BatchUpdate/BatchDelete can raise ResourceNotFoundException until the record
+    propagates. Retry on that error (`_retry_until_propagated`).
+  - ListMemoryRecords does NOT raise — it succeeds and returns an empty page, and
+    it lags the furthest behind. Measured against a live account, update and delete
+    both succeeded on the first attempt while the surviving records took ~87s to
+    become listable. Retrying on an exception cannot help here, so poll until the
+    expected record count appears (`_list_until_visible`).
+
+The real-world pattern — shown below — is to wait for the dependent operation to
+reflect the write, rather than assume it is available right after create.
 
 Two ways to run it:
     python batch-create-update-delete.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
@@ -41,6 +49,32 @@ from botocore.exceptions import ClientError
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 NAMESPACE = f"/users/{ACTOR_ID}/notes/"
+PROPAGATION_WAIT_SECONDS = 120  # polling budget; records became listable ~87s after the delete
+EXPECTED_REMAINING = 2  # each surface below creates 3 records and deletes 1
+
+
+def _list_until_visible(
+    op, expected: int = EXPECTED_REMAINING, *, max_wait: int = PROPAGATION_WAIT_SECONDS, poll: int = 10
+) -> list:
+    """Call `op()` until it returns `expected` records, or the deadline passes.
+
+    List lags further behind BatchCreate than update/delete do: measured against a
+    live account, the update and delete below both succeeded on the first attempt
+    while the surviving records took ~87s to become listable. A bare List straight
+    after the delete therefore reports zero records, which contradicts the
+    create/update/delete arithmetic the script just printed.
+
+    This needs its own helper rather than `_retry_until_propagated`: there is no
+    exception to catch here, because an unpropagated List succeeds and simply
+    returns an empty page. Waiting for the expected count also rides out the
+    reverse case, where the deleted record is still visible.
+    """
+    deadline = time.time() + max_wait
+    while True:
+        records = op()
+        if len(records) == expected or time.time() >= deadline:
+            return records
+        time.sleep(poll)
 
 
 def _retry_until_propagated(op, *, max_wait: int = 150, poll: int = 10):
@@ -141,10 +175,18 @@ def run_with_boto3(cleanup: bool = False) -> None:
     )
     print(f"[boto3] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
-    remaining = data.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"]
+    # List is eventually consistent too, so poll for the expected count instead of
+    # listing once and reporting whatever happens to be visible (which right after
+    # the delete is nothing).
+    print(f"\n[boto3] Polling up to {PROPAGATION_WAIT_SECONDS}s for records to become listable...")
+    remaining = _list_until_visible(
+        lambda: data.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"]
+    )
     print(f"\n[boto3] Remaining ({len(remaining)}):")
     for r in remaining:
         print(f"  - {r['content']['text']}")
+    if len(remaining) != EXPECTED_REMAINING:
+        print(f"[boto3] Expected {EXPECTED_REMAINING} records after {PROPAGATION_WAIT_SECONDS}s — still propagating.")
 
     if cleanup:
         control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
@@ -233,10 +275,14 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     # list_long_term_memory_records is a first-class MemorySessionManager method
     # (returns a list of MemoryRecord directly, not a {"memoryRecordSummaries": ...} dict).
-    remaining = manager.list_long_term_memory_records(namespace=NAMESPACE)
+    # Same eventual-consistency poll as the boto3 path above.
+    print(f"\n[sdk] Polling up to {PROPAGATION_WAIT_SECONDS}s for records to become listable...")
+    remaining = _list_until_visible(lambda: manager.list_long_term_memory_records(namespace=NAMESPACE))
     print(f"\n[sdk] Remaining ({len(remaining)}):")
     for r in remaining:
         print(f"  - {r['content']['text']}")
+    if len(remaining) != EXPECTED_REMAINING:
+        print(f"[sdk] Expected {EXPECTED_REMAINING} records after {PROPAGATION_WAIT_SECONDS}s — still propagating.")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
