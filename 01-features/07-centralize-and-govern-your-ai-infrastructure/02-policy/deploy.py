@@ -25,6 +25,7 @@ import os
 import time
 import uuid
 import zipfile
+from pathlib import Path
 
 import boto3
 from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
@@ -126,10 +127,16 @@ LAMBDA_TARGETS = {
 def get_aws_context(region: str = None) -> tuple:
     """Return (session, REGION, ACCOUNT_ID) — never hardcodes either."""
     session = boto3.Session()
-    resolved_region = region or session.region_name or os.environ.get("AWS_DEFAULT_REGION")
+    resolved_region = (
+        region or session.region_name or os.environ.get("AWS_DEFAULT_REGION")
+    )
     if not resolved_region:
-        raise ValueError("AWS region not configured. Pass --region or run: aws configure")
-    account_id = session.client("sts", region_name=resolved_region).get_caller_identity()["Account"]
+        raise ValueError(
+            "AWS region not configured. Pass --region or run: aws configure"
+        )
+    account_id = session.client(
+        "sts", region_name=resolved_region
+    ).get_caller_identity()["Account"]
     return session, resolved_region, account_id
 
 
@@ -170,7 +177,9 @@ def get_or_create_lambda_role(iam_client, account_id: str) -> str:
     return resp["Role"]["Arn"]
 
 
-def deploy_lambda(lambda_client, function_name: str, js_path: str, role_arn: str) -> str:
+def deploy_lambda(
+    lambda_client, function_name: str, js_path: str, role_arn: str
+) -> str:
     """Deploy a Node.js Lambda function from a .js file. Returns the function ARN."""
     print(f"  Deploying Lambda: {function_name}...")
     with open(js_path, "r", encoding="utf-8") as f:
@@ -198,18 +207,24 @@ def deploy_lambda(lambda_client, function_name: str, js_path: str, role_arn: str
         waiter.wait(FunctionName=function_name)
         return resp["FunctionArn"]
     except lambda_client.exceptions.ResourceConflictException:
-        resp = lambda_client.update_function_code(FunctionName=function_name, ZipFile=zip_bytes)
+        resp = lambda_client.update_function_code(
+            FunctionName=function_name, ZipFile=zip_bytes
+        )
         print(f"    Updated: {resp['FunctionArn']}")
         waiter = lambda_client.get_waiter("function_updated_v2")
         waiter.wait(FunctionName=function_name)
         return resp["FunctionArn"]
 
 
-def add_lambda_gateway_permission(lambda_client, function_name: str, gateway_arn: str) -> None:
+def add_lambda_gateway_permission(
+    lambda_client, function_name: str, gateway_arn: str
+) -> None:
     """Add resource policy allowing bedrock-agentcore.amazonaws.com to invoke the Lambda."""
     statement_id = "AllowAgentCoreGateway"
     try:
-        lambda_client.remove_permission(FunctionName=function_name, StatementId=statement_id)
+        lambda_client.remove_permission(
+            FunctionName=function_name, StatementId=statement_id
+        )
     except Exception:
         pass
     lambda_client.add_permission(
@@ -219,7 +234,9 @@ def add_lambda_gateway_permission(lambda_client, function_name: str, gateway_arn
         Principal="bedrock-agentcore.amazonaws.com",
         SourceArn=gateway_arn,
     )
-    print(f"    Permission added: {function_name} → bedrock-agentcore (source: gateway)")
+    print(
+        f"    Permission added: {function_name} → bedrock-agentcore (source: gateway)"
+    )
 
 
 def deploy_all_lambdas(lambda_client, iam_client, account_id: str) -> dict:
@@ -233,20 +250,153 @@ def deploy_all_lambdas(lambda_client, iam_client, account_id: str) -> dict:
     return arns
 
 
+# ── Gateway Role Permissions ─────────────────────────────────────────────────
+
+
+CONFIG_FILE = "policy_config.json"
+
+GATEWAY_ROLE_NAME = "AgentCoreGatewayExecutionRole"
+
+
+def _build_gateway_trust_policy(region: str, account_id: str) -> dict:
+    """Build the trust policy the toolkit expects (must match its Jinja2 template exactly)."""
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AssumeRolePolicy",
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                    "StringEquals": {"aws:SourceAccount": account_id},
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
+                    },
+                },
+            }
+        ],
+    }
+
+
+def normalize_gateway_role_trust_policy(region: str, account_id: str) -> None:
+    """
+    If the shared gateway role exists, update its trust policy to match what
+    the toolkit expects. This prevents the toolkit from refusing to reuse the
+    role when a prior exercise left it with a different trust policy.
+    """
+    iam_client = boto3.client("iam")
+    try:
+        iam_client.get_role(RoleName=GATEWAY_ROLE_NAME)
+    except iam_client.exceptions.NoSuchEntityException:
+        return
+
+    trust_policy = _build_gateway_trust_policy(region, account_id)
+    iam_client.update_assume_role_policy(
+        RoleName=GATEWAY_ROLE_NAME,
+        PolicyDocument=json.dumps(trust_policy),
+    )
+    print(f"  ✓ Normalized trust policy on existing role: {GATEWAY_ROLE_NAME}")
+
+
+def ensure_gateway_role_permissions(
+    region: str, account_id: str, gateway_role_arn: str, lambda_arns: dict
+) -> None:
+    """
+    Ensure the gateway execution role has the correct trust policy and
+    permissions for this demo.
+
+    Fixes three issues that arise when the shared AgentCoreGatewayExecutionRole
+    was left by a prior exercise:
+      1. Inline policy scoped only to AgentCoreLambdaTestFunction
+      2. Trust policy doesn't match what the toolkit expects
+      3. Missing bedrock-agentcore:GetPolicyEngine permission
+    """
+    iam_client = boto3.client("iam")
+    role_name = gateway_role_arn.split("/")[-1]
+
+    trust_policy = _build_gateway_trust_policy(region, account_id)
+    iam_client.update_assume_role_policy(
+        RoleName=role_name,
+        PolicyDocument=json.dumps(trust_policy),
+    )
+
+    lambda_resources = list(lambda_arns.values())
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "InvokePolicyDemoLambdas",
+                "Effect": "Allow",
+                "Action": ["lambda:InvokeFunction"],
+                "Resource": lambda_resources,
+            },
+            {
+                "Sid": "AgentCorePolicyAccess",
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock-agentcore:GetPolicyEngine",
+                    "bedrock-agentcore:GetGateway",
+                ],
+                "Resource": "*",
+            },
+        ],
+    }
+    iam_client.put_role_policy(
+        RoleName=role_name,
+        PolicyName="PolicyDemoPermissions",
+        PolicyDocument=json.dumps(policy_document),
+    )
+    print(f"  ✓ Gateway role permissions ensured: {role_name}")
+
+
+def save_partial_config(region: str, account_id: str, **kwargs) -> None:
+    """Merge kwargs into existing config file (or create it) for incremental resume."""
+    path = Path(CONFIG_FILE)
+    config = {}
+    if path.exists():
+        config = json.loads(path.read_text())
+    config["region"] = region
+    config["account_id"] = account_id
+    config.update(kwargs)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+
 # ── Step 2: Cognito + Gateway Setup ──────────────────────────────────────────
 
 
-def setup_gateway(region: str, lambda_arns: dict) -> dict:
+def setup_gateway(region: str, lambda_arns: dict, account_id: str) -> dict:
     """
     Create the Cognito OAuth server, AgentCore MCP Gateway, and Lambda targets.
+
+    Idempotent: if a prior run left a gateway and saved config, resumes from
+    that state instead of failing with "already exists".
 
     Returns a dict with gateway info and client_info for the JWT flow.
     """
     print("\n[Step 2] Setting up Cognito OAuth + AgentCore Gateway...")
-    gw_client = GatewayClient(region_name=region)
-    gw_client.logger.setLevel(logging.WARNING)  # suppress verbose toolkit logs
 
-    # Check if gateway already exists
+    # Resume path: check for saved config with gateway info
+    config_path = Path(CONFIG_FILE)
+    if config_path.exists():
+        existing = json.loads(config_path.read_text())
+        if "gateway" in existing and existing["gateway"].get("gateway_id"):
+            boto_ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
+            try:
+                gw = boto_ctrl.get_gateway(
+                    gatewayIdentifier=existing["gateway"]["gateway_id"]
+                )
+                if gw.get("status") in ("READY", "ACTIVE"):
+                    print(f"  Resuming with existing gateway: {gw['gatewayId']}")
+                    ensure_gateway_role_permissions(
+                        region, account_id, gw["roleArn"], lambda_arns
+                    )
+                    return existing["gateway"]
+            except Exception:
+                pass  # gateway gone, fall through to create
+
+    # Check if gateway exists by name but we have no saved credentials
     boto_ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
     try:
         resp = boto_ctrl.list_gateways()
@@ -255,34 +405,39 @@ def setup_gateway(region: str, lambda_arns: dict) -> dict:
                 "READY",
                 "ACTIVE",
             ):
-                print(f"  Existing gateway found: {gw['gatewayId']}")
-                raise RuntimeError("EXISTING_GATEWAY")  # handled below
-    except RuntimeError as e:
-        if "EXISTING_GATEWAY" in str(e):
-            print(f"  Gateway '{GATEWAY_NAME}' already exists.\n  To redeploy, run cleanup.py first.")
-            raise
+                print(f"  Gateway '{GATEWAY_NAME}' exists but no saved credentials.")
+                print("  Run cleanup.py first, then re-run deploy.py.")
+                raise RuntimeError(
+                    "Gateway exists without saved credentials. Run cleanup.py first."
+                )
+    except RuntimeError:
+        raise
 
-    # Create Cognito OAuth authorizer
+    # Fresh deploy path
+    normalize_gateway_role_trust_policy(region, account_id)
+
+    gw_client = GatewayClient(region_name=region)
+    gw_client.logger.setLevel(logging.WARNING)
+
     print("  Creating Cognito User Pool (Essentials tier for V3_0 trigger support)...")
     cognito_resp = gw_client.create_oauth_authorizer_with_cognito("PolicyDemoGateway")
     print("  ✓ OAuth authorizer ready")
 
-    # Create Gateway
     print(f"  Creating MCP Gateway: {GATEWAY_NAME}...")
     gateway = gw_client.create_mcp_gateway(
         name=GATEWAY_NAME,
-        role_arn=None,  # auto-created by toolkit
+        role_arn=None,
         authorizer_config=cognito_resp["authorizer_config"],
         enable_semantic_search=True,
     )
     print(f"  ✓ Gateway created: {gateway['gatewayUrl']}")
 
-    # Fix IAM permissions (adds lambda:InvokeFunction to gateway role)
     gw_client.fix_iam_permissions(gateway)
+    ensure_gateway_role_permissions(region, account_id, gateway["roleArn"], lambda_arns)
+
     print("  Waiting 30s for IAM propagation...")
     time.sleep(30)
 
-    # Add Lambda targets
     print("  Adding Lambda targets to Gateway...")
     gateway_arn = gateway.get("gatewayArn")
     for name, cfg in LAMBDA_TARGETS.items():
@@ -298,7 +453,6 @@ def setup_gateway(region: str, lambda_arns: dict) -> dict:
         )
         print(f"    Added target: {name}Target")
 
-    # Add Lambda resource policies for gateway invocation
     lambda_client = boto3.client("lambda", region_name=region)
     for name in LAMBDA_TARGETS:
         add_lambda_gateway_permission(lambda_client, name, gateway_arn)
@@ -315,9 +469,25 @@ def setup_gateway(region: str, lambda_arns: dict) -> dict:
 
 
 def create_policy_engine(region: str) -> dict:
-    """Create a new Cedar policy engine. Returns {policyEngineId, policyEngineArn}."""
+    """Find or create a Cedar policy engine. Returns {policyEngineId, policyEngineArn}."""
     print("\n[Step 3] Creating Policy Engine...")
     client = boto3.client("bedrock-agentcore-control", region_name=region)
+
+    # Check for existing ACTIVE engine from a prior run
+    try:
+        resp = client.list_policy_engines()
+        for eng in resp.get("policyEngines", []):
+            if (
+                eng.get("name", "").startswith("PolicyDemoEngine")
+                and eng.get("status") == "ACTIVE"
+            ):
+                print(f"  Reusing existing Policy Engine: {eng['policyEngineId']}")
+                return {
+                    "policyEngineId": eng["policyEngineId"],
+                    "policyEngineArn": eng["policyEngineArn"],
+                }
+    except Exception:
+        pass
 
     engine_name = f"PolicyDemoEngine_{int(time.time()) % 100000}"
     resp = client.create_policy_engine(
@@ -342,7 +512,9 @@ def create_policy_engine(region: str) -> dict:
     return {"policyEngineId": engine_id, "policyEngineArn": engine_arn}
 
 
-def attach_policy_engine_to_gateway(region: str, gateway_info: dict, engine_arn: str) -> None:
+def attach_policy_engine_to_gateway(
+    region: str, gateway_info: dict, engine_arn: str
+) -> None:
     """Attach the Policy Engine to the Gateway in ENFORCE mode."""
     print("\n[Step 4] Attaching Policy Engine to Gateway (ENFORCE mode)...")
     client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -360,7 +532,9 @@ def attach_policy_engine_to_gateway(region: str, gateway_info: dict, engine_arn:
 
     print("  Waiting for Gateway READY...")
     for _ in range(60):
-        status = client.get_gateway(gatewayIdentifier=gateway_info["gateway_id"]).get("status")
+        status = client.get_gateway(gatewayIdentifier=gateway_info["gateway_id"]).get(
+            "status"
+        )
         if status == "READY":
             break
         if status in ("FAILED", "UPDATE_UNSUCCESSFUL"):
@@ -373,7 +547,9 @@ def attach_policy_engine_to_gateway(region: str, gateway_info: dict, engine_arn:
 # ── Step 4: Cognito Lambda Trigger (for Custom JWT Claims) ───────────────────
 
 
-def create_or_update_claims_lambda(lambda_client, iam_client, region: str, account_id: str, claims: dict) -> str:
+def create_or_update_claims_lambda(
+    lambda_client, iam_client, region: str, account_id: str, claims: dict
+) -> str:
     """
     Create/update the Cognito Pre-Token-Generation Lambda that injects custom
     claims into every JWT token. Returns the Lambda ARN.
@@ -426,7 +602,9 @@ def lambda_handler(event, context):
         waiter.wait(FunctionName=CLAIMS_LAMBDA_NAME)
         return resp["FunctionArn"]
     except lambda_client.exceptions.ResourceConflictException:
-        resp = lambda_client.update_function_code(FunctionName=CLAIMS_LAMBDA_NAME, ZipFile=zip_bytes)
+        resp = lambda_client.update_function_code(
+            FunctionName=CLAIMS_LAMBDA_NAME, ZipFile=zip_bytes
+        )
         waiter = lambda_client.get_waiter("function_updated_v2")
         waiter.wait(FunctionName=CLAIMS_LAMBDA_NAME)
         return resp["FunctionArn"]
@@ -473,8 +651,12 @@ def configure_cognito_trigger(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Deploy AgentCore Policy demo resources")
-    parser.add_argument("--region", default=None, help="AWS region (defaults to configured default)")
+    parser = argparse.ArgumentParser(
+        description="Deploy AgentCore Policy demo resources"
+    )
+    parser.add_argument(
+        "--region", default=None, help="AWS region (defaults to configured default)"
+    )
     args = parser.parse_args()
 
     _, REGION, ACCOUNT_ID = get_aws_context(args.region)
@@ -491,12 +673,23 @@ def main():
 
     # Step 1: Deploy Lambda tools
     lambda_arns = deploy_all_lambdas(lambda_client, iam_client, ACCOUNT_ID)
+    save_partial_config(REGION, ACCOUNT_ID, lambda_arns=lambda_arns)
 
     # Step 2: Create Cognito + Gateway + Lambda targets
-    gateway_info = setup_gateway(REGION, lambda_arns)
+    gateway_info = setup_gateway(REGION, lambda_arns, ACCOUNT_ID)
+    save_partial_config(
+        REGION, ACCOUNT_ID, lambda_arns=lambda_arns, gateway=gateway_info
+    )
 
     # Step 3: Create Policy Engine
     engine = create_policy_engine(REGION)
+    save_partial_config(
+        REGION,
+        ACCOUNT_ID,
+        lambda_arns=lambda_arns,
+        gateway=gateway_info,
+        policy_engine=engine,
+    )
 
     # Step 4: Attach Policy Engine → Gateway (ENFORCE)
     attach_policy_engine_to_gateway(REGION, gateway_info, engine["policyEngineArn"])
@@ -504,7 +697,9 @@ def main():
     # Step 5: Create Cognito Lambda trigger for custom claims
     print("\n[Step 5] Configuring Cognito Lambda trigger for custom JWT claims...")
     user_pool_id = gateway_info["client_info"]["user_pool_id"]
-    claims_lambda_arn = create_or_update_claims_lambda(lambda_client, iam_client, REGION, ACCOUNT_ID, DEFAULT_CLAIMS)
+    claims_lambda_arn = create_or_update_claims_lambda(
+        lambda_client, iam_client, REGION, ACCOUNT_ID, DEFAULT_CLAIMS
+    )
     configure_cognito_trigger(
         cognito_client,
         lambda_client,
@@ -516,17 +711,15 @@ def main():
     print(f"  ✓ Trigger configured (V3_0): {CLAIMS_LAMBDA_NAME}")
     print(f"  Initial claims: {list(DEFAULT_CLAIMS.keys())}")
 
-    # Save configuration
-    config = {
-        "region": REGION,
-        "account_id": ACCOUNT_ID,
-        "lambda_arns": lambda_arns,
-        "claims_lambda_arn": claims_lambda_arn,
-        "gateway": gateway_info,
-        "policy_engine": engine,
-    }
-    with open("policy_config.json", "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
+    # Final save with all configuration
+    save_partial_config(
+        REGION,
+        ACCOUNT_ID,
+        lambda_arns=lambda_arns,
+        claims_lambda_arn=claims_lambda_arn,
+        gateway=gateway_info,
+        policy_engine=engine,
+    )
 
     print("\n" + "=" * 65)
     print("✓ Deployment complete!")

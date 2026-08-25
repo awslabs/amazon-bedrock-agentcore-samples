@@ -28,7 +28,9 @@ CONFIG_FILE = "policy_config.json"
 def load_config() -> dict:
     path = Path(CONFIG_FILE)
     if not path.exists():
-        raise FileNotFoundError(f"{CONFIG_FILE} not found. Nothing to clean up (or already cleaned).")
+        raise FileNotFoundError(
+            f"{CONFIG_FILE} not found. Nothing to clean up (or already cleaned)."
+        )
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -100,13 +102,19 @@ def delete_policy_engine(ctrl, engine_id: str) -> None:
 def delete_gateway_targets(ctrl, gateway_id: str) -> None:
     """Delete all targets on the gateway."""
     try:
-        targets = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
+        targets = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+            "items", []
+        )
         print(f"  Deleting {len(targets)} gateway target(s)...")
         for t in targets:
-            ctrl.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=t["targetId"])
+            ctrl.delete_gateway_target(
+                gatewayIdentifier=gateway_id, targetId=t["targetId"]
+            )
             print(f"    Deleted target: {t.get('name', t['targetId'])}")
         for _ in range(30):
-            remaining = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
+            remaining = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+                "items", []
+            )
             if not remaining:
                 break
             time.sleep(3)
@@ -153,6 +161,20 @@ def delete_lambda(lc, function_name: str) -> None:
         print(f"    ⚠  Could not delete {function_name}: {e}")
 
 
+def remove_gateway_role_inline_policy(
+    role_name: str = "AgentCoreGatewayExecutionRole",
+) -> None:
+    """Remove the PolicyDemoPermissions inline policy added by deploy.py."""
+    iam = boto3.client("iam")
+    try:
+        iam.delete_role_policy(RoleName=role_name, PolicyName="PolicyDemoPermissions")
+        print(f"  ✓ Removed inline policy 'PolicyDemoPermissions' from {role_name}")
+    except iam.exceptions.NoSuchEntityException:
+        pass
+    except ClientError as e:
+        print(f"  ⚠  Could not remove inline policy: {e}")
+
+
 def main():
     print("=" * 65)
     print("AgentCore Policy Demo — Cleanup")
@@ -165,21 +187,34 @@ def main():
     lc = boto3.client("lambda", region_name=region)
     cognito = boto3.client("cognito-idp", region_name=region)
 
-    gateway_id = config["gateway"]["gateway_id"]
-    engine_id = config["policy_engine"]["policyEngineId"]
-    user_pool_id = config["gateway"]["client_info"]["user_pool_id"]
+    gateway_id = config.get("gateway", {}).get("gateway_id")
+    engine_id = config.get("policy_engine", {}).get("policyEngineId")
+    user_pool_id = config.get("gateway", {}).get("client_info", {}).get("user_pool_id")
 
-    print("\n[1] Policy Engine cleanup")
-    detach_policy_engine(ctrl, gateway_id)
-    delete_policies(ctrl, engine_id)
-    delete_policy_engine(ctrl, engine_id)
+    if engine_id and gateway_id:
+        print("\n[1] Policy Engine cleanup")
+        detach_policy_engine(ctrl, gateway_id)
+        delete_policies(ctrl, engine_id)
+        delete_policy_engine(ctrl, engine_id)
+    elif engine_id:
+        print("\n[1] Policy Engine cleanup (no gateway to detach from)")
+        delete_policies(ctrl, engine_id)
+        delete_policy_engine(ctrl, engine_id)
+    else:
+        print("\n[1] Policy Engine cleanup — skipped (not in config)")
 
-    print("\n[2] Gateway cleanup")
-    delete_gateway_targets(ctrl, gateway_id)
-    delete_gateway(ctrl, gateway_id)
+    if gateway_id:
+        print("\n[2] Gateway cleanup")
+        delete_gateway_targets(ctrl, gateway_id)
+        delete_gateway(ctrl, gateway_id)
+    else:
+        print("\n[2] Gateway cleanup — skipped (not in config)")
 
-    print("\n[3] Cognito cleanup")
-    delete_cognito(cognito, user_pool_id, region)
+    if user_pool_id:
+        print("\n[3] Cognito cleanup")
+        delete_cognito(cognito, user_pool_id, region)
+    else:
+        print("\n[3] Cognito cleanup — skipped (not in config)")
 
     print("\n[4] Lambda cleanup")
     for name in [
@@ -189,6 +224,9 @@ def main():
         "PolicyDemo_CustomClaimsLambda",
     ]:
         delete_lambda(lc, name)
+
+    print("\n[5] IAM inline policy cleanup")
+    remove_gateway_role_inline_policy()
 
     Path(CONFIG_FILE).unlink(missing_ok=True)
     print(f"\n  Removed {CONFIG_FILE}")
