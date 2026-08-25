@@ -29,6 +29,7 @@ from pathlib import Path
 
 import boto3
 from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
+from botocore.exceptions import ClientError
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -225,7 +226,7 @@ def add_lambda_gateway_permission(
         lambda_client.remove_permission(
             FunctionName=function_name, StatementId=statement_id
         )
-    except Exception:
+    except ClientError:
         pass
     lambda_client.add_permission(
         FunctionName=function_name,
@@ -393,25 +394,22 @@ def setup_gateway(region: str, lambda_arns: dict, account_id: str) -> dict:
                         region, account_id, gw["roleArn"], lambda_arns
                     )
                     return existing["gateway"]
-            except Exception:
+            except ClientError:
                 pass  # gateway gone, fall through to create
 
     # Check if gateway exists by name but we have no saved credentials
     boto_ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
-    try:
-        resp = boto_ctrl.list_gateways()
-        for gw in resp.get("items", []):
-            if gw.get("name") == GATEWAY_NAME and gw.get("status") in (
-                "READY",
-                "ACTIVE",
-            ):
-                print(f"  Gateway '{GATEWAY_NAME}' exists but no saved credentials.")
-                print("  Run cleanup.py first, then re-run deploy.py.")
-                raise RuntimeError(
-                    "Gateway exists without saved credentials. Run cleanup.py first."
-                )
-    except RuntimeError:
-        raise
+    resp = boto_ctrl.list_gateways()
+    for gw in resp.get("items", []):
+        if gw.get("name") == GATEWAY_NAME and gw.get("status") in (
+            "READY",
+            "ACTIVE",
+        ):
+            print(f"  Gateway '{GATEWAY_NAME}' exists but no saved credentials.")
+            print("  Run cleanup.py first, then re-run deploy.py.")
+            raise RuntimeError(
+                "Gateway exists without saved credentials. Run cleanup.py first."
+            )
 
     # Fresh deploy path
     normalize_gateway_role_trust_policy(region, account_id)
@@ -486,7 +484,7 @@ def create_policy_engine(region: str) -> dict:
                     "policyEngineId": eng["policyEngineId"],
                     "policyEngineArn": eng["policyEngineArn"],
                 }
-    except Exception:
+    except ClientError:
         pass
 
     engine_name = f"PolicyDemoEngine_{int(time.time()) % 100000}"
