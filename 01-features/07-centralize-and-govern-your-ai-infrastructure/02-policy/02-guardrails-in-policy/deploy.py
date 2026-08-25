@@ -120,7 +120,7 @@ LAMBDA_TARGETS = {
 # ── AWS Session Setup ─────────────────────────────────────────────────────────
 
 
-def get_aws_context(region: str = None, profile: str = None) -> tuple:
+def get_aws_context(region: str | None = None, profile: str | None = None) -> tuple:
     """Return (session, REGION, ACCOUNT_ID)."""
     session = boto3.Session(profile_name=profile)
     resolved_region = region or session.region_name or os.environ.get("AWS_DEFAULT_REGION")
@@ -196,7 +196,8 @@ def add_lambda_gateway_permission(lambda_client, function_name: str, gateway_arn
     statement_id = "AllowAgentCoreGateway"
     try:
         lambda_client.remove_permission(FunctionName=function_name, StatementId=statement_id)
-    except Exception:
+    except ClientError:
+        # Statement does not exist yet on first run — safe to ignore and re-add below.
         pass
     lambda_client.add_permission(
         FunctionName=function_name,
