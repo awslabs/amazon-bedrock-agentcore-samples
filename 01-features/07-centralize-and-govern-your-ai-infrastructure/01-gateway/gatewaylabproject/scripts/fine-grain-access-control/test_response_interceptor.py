@@ -15,10 +15,11 @@ Run:
 """
 
 import base64
+import importlib.util
 import json
 import os
 import sys
-import types
+import tempfile
 
 REPO_YAML = os.path.join(
     os.path.dirname(__file__),
@@ -61,11 +62,19 @@ def _load_response_interceptor():
     blocks = _extract_zipfile_blocks(REPO_YAML)
     assert len(blocks) == 2, f"expected 2 inline Lambdas, found {len(blocks)}"
     os.environ["GATEWAY_TARGET_NAME"] = "fgac-mcp-target"
-    mod = types.ModuleType("fgac_response_interceptor")
-    # Intentional: execute the interceptor Lambda source extracted from our own
-    # CloudFormation template into a throwaway module so we can unit-test its
-    # handler offline (no AWS). The input is repo-controlled, not user data.
-    exec(compile(blocks[1], "response_interceptor.py", "exec"), mod.__dict__)  # noqa: S102
+    # Write the interceptor Lambda source (extracted from our own CloudFormation
+    # template) to a temp module and import it, so we can unit-test its handler
+    # offline (no AWS). importlib avoids exec/eval entirely.
+    with tempfile.NamedTemporaryFile(
+        "w", suffix="_response_interceptor.py", delete=False
+    ) as f:
+        f.write(blocks[1])
+        module_path = f.name
+    spec = importlib.util.spec_from_file_location(
+        "fgac_response_interceptor", module_path
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
     return mod
 
 
