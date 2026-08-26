@@ -1,0 +1,28 @@
+[project]
+name = "multi-tenant-travel-evaluation"
+version = "0.1.0"
+description = "Task fixtures, code-based evaluators and the quality-plus-cost gate"
+# Matches the other packages in this sample. The runner is not a Lambda, so it carries the
+# dependencies the harness needs rather than the minimal set a bundle wants.
+requires-python = ">=3.12"
+dependencies = [
+    # Fixtures are YAML because their expectations need comments beside them — the reason a
+    # verdict is what it is does not survive a translation to JSON.
+    "pyyaml >= 6.0",
+    "boto3 >= 1.35.0",
+]
+
+[dependency-groups]
+dev = ["pytest >= 8.0"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+# So `from evaluators import ...` resolves without installing the package. The runner is a script
+# rather than a distribution, and a `src/` layout would be ceremony for two modules.
+pythonpath = ["."]

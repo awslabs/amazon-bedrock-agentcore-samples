@@ -1,0 +1,16 @@
+[
+  {
+    "name": "get_traveler_profile",
+    "description": "Get a traveller's saved travel details: home airport, seat and cabin preferences, preferred hotel chains, loyalty programme names and tiers, passport issuing country, and which payment method is on file. Returns the caller's own profile by default. Never returns passport numbers, loyalty numbers or card numbers \u2014 those are not available to you at all.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "traveler_name": {
+          "type": "string",
+          "description": "Only when looking up someone else's profile on their behalf \u2014 the name as the user said it, full or partial. Omit for the caller's own profile. If more than one person matches, the tool returns the candidates so you can ask which; never guess."
+        }
+      },
+      "required": []
+    }
+  }
+]

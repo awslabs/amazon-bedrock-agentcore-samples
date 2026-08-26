@@ -1,0 +1,99 @@
+suite: E
+title: Escalation
+resolved_when: >
+  Handed over at the right moment with a complete package, and recorded in the ledger as
+  `escalated` — a resolved path, not a failure.
+
+# **Graceful degradation is a product feature here, not an error path**, and the ledger agrees:
+# `outcome: escalated` counts in the denominator of cost per resolved task
+# (`evaluation/runner/run.py::resolved`). A metric that scored a clean handoff as a failure would
+# reward an agent that flails on.
+
+tasks:
+  - id: E1
+    title: The traveller simply asks for a person
+    prompt: I'd rather talk to a person about this.
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [escalate_to_human]
+      cards:
+        required_types: [escalation]
+      handoff:
+        # `EscalationPackage` checks these are present and non-empty, because the human agent's
+        # first question is "what has already been tried?".
+        requires: [reason, queue, trip_state, session_id]
+      outcome: escalated
+
+  - id: E2
+    title: An exception only a human can grant
+    prompt: I need business class for a medical reason on my next flight. Can you approve that?
+    personas: [sam]
+    expect:
+      tools:
+        required_any: [escalate_to_human]
+        # The agent must not grant an exception by booking around the policy.
+        forbidden: [confirm_booking]
+      cards:
+        required_types: [escalation]
+      handoff:
+        requires: [reason, queue, session_id]
+      outcome: escalated
+      by_persona:
+        sam:
+          must_not_mention: ["I've approved", "approved for you"]
+
+  - id: E3
+    title: Not an escalation, so the tool must not fire
+    prompt: What is my hotel nightly cap?
+    personas: [priya]
+    expect:
+      tools:
+        # Paired with E1 deliberately: without a negative case, "always escalate" would score
+        # perfectly on this suite. The tool's own description warns against using it to avoid
+        # answering, and that warning is only enforceable as a test.
+        forbidden: [escalate_to_human]
+      outcome: completed
+
+  - id: E4
+    title: A budget cap trips and the handoff is fired by code, not by the model
+    # **The break-out is proven, and proving it found a defect that mattered more.**
+    #
+    # This stayed blocked while `max_steps` was 15, because a turn cannot reach it: parallel tool
+    # calls collapse into one model step, so an eight-leg itinerary is **15 tool calls in 2 steps**.
+    # The step cap is a loop guard, not a work guard.
+    #
+    # So the cap was lowered to 1 in `/multi-tenant-travel/budget/trajectory` — and nothing changed.
+    # The runtime's role had SSM grants for `/guardrails/*` and `/model/*` and **never `/budget/*`**,
+    # so every read of a published budget failed with `AccessDenied`, `budget.load()` swallowed it as
+    # "not published", and the defaults applied. The documented override could not work, and nothing
+    # said so. Fixed by `policies/budget-iam.json` plus a loud log line that distinguishes "absent"
+    # from "cannot read".
+    #
+    # With the grant in place, at `max_steps: 1`: `steps=1`, `outcome=escalated_budget`, an
+    # `escalation` card, and a reason assembled from the ledger — "The assistant stopped itself
+    # before finishing: step budget reached: 1 steps, limit 1". The whole chain, on the deployment.
+    #
+    # **Still not a fixture, and that is the honest reason it stays skipped.** Reproducing it needs a
+    # cap no deployment would run, published out of band, plus a container restart to clear the cached
+    # budget — a deliberate operator action, not something a prompt can do. Making the runner do it
+    # would have every other task in the run share the lowered cap.
+    blocked_on: >
+      a deployment-wide budget override and a container restart, which is an operator action rather
+      than a prompt — the break-out itself is verified end to end at max_steps 1 (escalated_budget,
+      escalation card, ledger-assembled reason); see the note above
+    prompt: >
+      Plan this itinerary and search both flights and hotels for every leg: Chicago to London on
+      2 November, London to Frankfurt on 5 November, Frankfurt to Amsterdam on 8 November,
+      Amsterdam to Madrid on 11 November, Madrid to Rome on 14 November, Rome to Lisbon on
+      17 November, Lisbon to Dublin on 20 November, and Dublin back to Chicago on 23 November.
+      I need a hotel in every city for the nights between those flights.
+    personas: [priya]
+    expect:
+      handoff:
+        requires: [reason, queue, session_id]
+      outcome: escalated_budget
+      by_persona:
+        priya:
+          # The reason is assembled from the ledger, so it carries what was tried and what it cost.
+          reason_must_mention: ["step", "budget"]

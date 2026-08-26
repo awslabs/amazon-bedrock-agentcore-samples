@@ -1,0 +1,16 @@
+{
+  "cancel_reservation": "Checking cancellation terms",
+  "check_entry_requirements": "Checking entry requirements",
+  "check_policy_eligibility": "Checking what your policy allows",
+  "confirm_booking": "Confirming your booking",
+  "escalate_to_human": "Connecting you to a human agent",
+  "find_nearby": "Finding places nearby",
+  "get_route": "Working out the journey",
+  "get_travel_policy": "Checking your travel policy",
+  "get_traveler_profile": "Looking up traveller details",
+  "get_trips": "Looking up your trips",
+  "prepare_booking": "Preparing your booking",
+  "search_flights": "Searching flights",
+  "search_hotels": "Searching hotels",
+  "search_policy_knowledge": "Searching your policy documents"
+}

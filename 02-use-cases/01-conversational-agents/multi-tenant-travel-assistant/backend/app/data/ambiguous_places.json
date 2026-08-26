@@ -1,0 +1,10 @@
+[
+  {
+    "query": "manchester",
+    "note": "Manchester, England (MAN) and Manchester, New Hampshire (MHT) are both real cities with their own international airports.",
+    "candidates": [
+      { "label": "Manchester, England", "resolves_to": "MAN" },
+      { "label": "Manchester, New Hampshire, United States", "resolves_to": "MHT" }
+    ]
+  }
+]

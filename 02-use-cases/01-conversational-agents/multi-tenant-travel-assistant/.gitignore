@@ -1,0 +1,48 @@
+.docs/
+CLAUDE.md
+AUDIT.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.next/
+
+# CDK
+cdk.out/
+*.d.ts.map
+
+# Every key is account-scoped, so committing it ships one account's lookups to readers who cannot
+# use them. CDK re-resolves on first synth.
+cdk.context.json
+
+# Local state & secrets — never commit
+# Deployed state: live ARNs. A rule here does not untrack an already-tracked file — these needed
+# `git rm --cached` as well.
+.env
+.env.*
+!.env.example
+*state.json
+agent/*/agentcore/.cli/
+*.pem
+seed/**/local-*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Browser-session artifacts: they carry live hostnames and ids.
+.playwright-mcp/
+
+# Verification screenshots: evidence for a session, not repo content.
+*.png
+!frontend/public/**/*.png
+!docs/**/*.png

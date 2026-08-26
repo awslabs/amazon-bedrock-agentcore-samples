@@ -35,6 +35,7 @@ Agents that interact with users in real time through a chat or query interface. 
 | [healthcare-appointment-agent](./healthcare-appointment-agent/) | Healthcare | Intermediate | Runtime, Gateway, Policy, Observability; FHIR R4 via HealthLake |
 | [lakehouse-agent](./lakehouse-agent/) | Data and Analytics | Advanced | Runtime, Gateway, Memory, Policy; OAuth row-level security over S3 Tables and Athena |
 | [market-trends-agent](./market-trends-agent/) | Financial Services | Advanced | Runtime, Memory, Browser, Evaluations, Optimization; personalized broker investment assistant |
+| [multi-tenant-travel-assistant](./multi-tenant-travel-assistant/) | Travel and Hospitality | Advanced | Runtime, Gateway, Identity, Policy, Memory, Observability, Evaluations, Guardrails; one shared agent serving many corporate tenants, isolation enforced in Cedar and IAM |
 | [SRE-agent](./SRE-agent/) | Site Reliability | Advanced | Runtime, Gateway, Memory, Observability; multi-agent system with MCP-based tools and runbooks |
 | [video-games-sales-assistant](./video-games-sales-assistant/) | Retail / Gaming | Intermediate | Runtime, Gateway, Memory; Next.js frontend with Amplify Gen 2 |
 

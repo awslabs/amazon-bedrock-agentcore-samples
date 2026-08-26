@@ -1,0 +1,27 @@
+{
+  "name": "multi-tenant-travel-infra",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "infra": "dist/bin/infra.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "cdk": "npm run build && cdk",
+    "deploy": "npm run build && cdk deploy --require-approval never",
+    "diff": "npm run build && cdk diff",
+    "destroy": "npm run build && cdk destroy --force",
+    "clean": "rm -rf dist cdk.out"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.260.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "aws-cdk": "2.1134.0",
+    "cdk-nag": "^2.38.2",
+    "prettier": "3.6.2",
+    "typescript": "~5.9.3"
+  }
+}

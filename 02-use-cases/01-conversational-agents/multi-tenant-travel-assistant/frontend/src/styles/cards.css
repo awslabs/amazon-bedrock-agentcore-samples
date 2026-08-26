@@ -1,0 +1,179 @@
+/* Structured result cards — flights, hotels, trips, verdicts, bookings.
+ *
+ * Every card shares the `Tile` frame (icon, title, badge, body), so the components stay about content
+ * and the shape stays consistent. Colour carries meaning in exactly one place — the in/out-of-policy
+ * badge — and stays legible without it via the badge text. */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+.card > header {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin-bottom: 13px;
+}
+
+.card-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.card-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.card h3 {
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.card .subtitle {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 2px;
+}
+
+.card > header .badge {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* fact grid — a small spec sheet */
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 14px;
+  font-size: 0.86rem;
+  margin-bottom: 12px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* segment / item lists */
+.segments {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.86rem;
+  margin-bottom: 12px;
+}
+
+.segments li {
+  position: relative;
+  padding-left: 16px;
+  color: var(--ink-2);
+}
+
+.segments li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* amenity / category chips */
+.chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chips li {
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  text-transform: capitalize;
+}
+
+/* quoted policy rule */
+.card blockquote {
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  padding: 9px 13px;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  margin-bottom: 9px;
+}
+
+.reason {
+  color: var(--faint);
+  font-size: 0.77rem;
+  text-transform: capitalize;
+  margin-bottom: 9px;
+}
+
+.card .note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-bottom: 9px;
+}
+
+/* The unfilled remainder of a star rating, which is what supplies the denominator. Faint rather than
+   hidden: `★★★` alone cannot be read as "3 of 5". */
+.stars {
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.stars .empty {
+  color: var(--faint);
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.card-actions .btn {
+  font-size: 0.85rem;
+  padding: 0.45rem 0.85rem;
+}

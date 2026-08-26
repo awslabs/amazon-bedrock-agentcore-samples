@@ -1,0 +1,22 @@
+[
+  {
+    "name": "escalate_to_human",
+    "description": "Hand the conversation to a human agent, with everything discussed so far attached. Use it when the traveller asks for a person, when a booking needs an exception you cannot grant, or when you have tried and cannot resolve what they need. Do not use it as a way to avoid answering a question you can answer. Say you are connecting them *before* calling this, because the handoff is immediate.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Why a human is needed, in one sentence and in your own words \u2014 the human agent reads this first. Describe the problem, not the traveller: 'needs a business-class exception for a medical reason' rather than 'difficult request'."
+        },
+        "trip_id": {
+          "type": "string",
+          "description": "The trip this is about, if there is one \u2014 from the trips tool. It lets the human agent open the right record before they say hello."
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    }
+  }
+]

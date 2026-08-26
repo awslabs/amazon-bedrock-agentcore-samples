@@ -1,0 +1,19 @@
+[
+  { "code": "EI", "name": "Aer Lingus", "hubs": ["DUB"], "long_haul": true },
+  { "code": "BA", "name": "British Airways", "hubs": ["LHR", "LGW"], "long_haul": true },
+  { "code": "AF", "name": "Air France", "hubs": ["CDG", "ORY"], "long_haul": true },
+  { "code": "KL", "name": "KLM", "hubs": ["AMS"], "long_haul": true },
+  { "code": "LH", "name": "Lufthansa", "hubs": ["FRA", "MUC"], "long_haul": true },
+  { "code": "LX", "name": "Swiss", "hubs": ["ZRH"], "long_haul": true },
+  { "code": "IB", "name": "Iberia", "hubs": ["MAD", "BCN"], "long_haul": true },
+  { "code": "AZ", "name": "ITA Airways", "hubs": ["FCO", "MXP"], "long_haul": true },
+  { "code": "SK", "name": "SAS", "hubs": ["CPH", "ARN", "OSL"], "long_haul": false },
+  { "code": "AY", "name": "Finnair", "hubs": ["HEL"], "long_haul": true },
+  { "code": "DL", "name": "Delta Air Lines", "hubs": ["ATL", "JFK", "SEA"], "long_haul": true },
+  { "code": "AA", "name": "American Airlines", "hubs": ["DFW", "ORD", "MIA"], "long_haul": true },
+  { "code": "UA", "name": "United Airlines", "hubs": ["ORD", "EWR", "SFO", "DEN"], "long_haul": true },
+  { "code": "AC", "name": "Air Canada", "hubs": ["YYZ", "YUL"], "long_haul": true },
+  { "code": "SQ", "name": "Singapore Airlines", "hubs": ["SIN"], "long_haul": true },
+  { "code": "EK", "name": "Emirates", "hubs": ["DXB"], "long_haul": true },
+  { "code": "AI", "name": "Air India", "hubs": ["DEL", "BOM"], "long_haul": true }
+]

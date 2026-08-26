@@ -1,0 +1,20 @@
+[
+  {
+    "name": "get_trips",
+    "description": "Get a traveller's trips \u2014 past, upcoming, or the one currently in progress \u2014 with destination, dates, flights and hotels. Use this for any question that depends on where someone is or has been: 'which hotel am I in?', 'when do I fly home?', 'how many international trips have I taken?'. Also call it first when a request refers to somewhere the traveller already is or is going, because it returns the addresses the nearby-places and directions tools need.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "type": "string",
+          "description": "Which trips to return. One of: 'past' (completed), 'upcoming' (not started), 'in_progress' (happening now). Omit for all of them \u2014 do that when the question is open-ended, and prefer 'in_progress' for 'where am I staying?' style questions. **Omit it when the traveller names a particular trip, city or hotel**: a trip that is happening right now is neither upcoming nor past, so filtering makes an existing trip look missing. Never conclude a trip does not exist from a filtered result \u2014 call again with no window before saying you cannot find it."
+        },
+        "traveler_name": {
+          "type": "string",
+          "description": "Only when looking up someone else's trips on their behalf \u2014 the name as the user said it, full or partial. Omit for the caller's own trips. If more than one person matches, the tool returns the candidates so you can ask which; never guess."
+        }
+      },
+      "required": []
+    }
+  }
+]

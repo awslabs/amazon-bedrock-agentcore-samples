@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multi-tenant-travel-agent"
+version = "0.1.0"
+description = "AgentCore Runtime Application using Strands SDK"
+readme = "README.md"
+# **3.12, raised from the generated 3.10 — the old floor let `uv` build a venv that could not import
+# the code this package ships with.** `shared/cards.py` uses `StrEnum` (3.11+), so `agent/tests/`
+# failed on import while every dependency resolved cleanly, which reads as a broken test rather than a
+# broken environment. The deployed runtime is `PYTHON_3_14` (`agentcore.json`), so the floor was also
+# below the only interpreter that actually runs this code.
+#
+# One version of headroom above what the code needs. This also keeps local development aligned with
+# the modern interpreter used by the deployed runtime instead of preserving compatibility the code
+# cannot exercise.
+requires-python = ">=3.12"
+dependencies = [
+    "aws-opentelemetry-distro",
+    "bedrock-agentcore >= 1.9.1",
+    "botocore[crt] >= 1.35.0",
+    "mcp >= 1.19.0",
+    "strands-agents >= 1.50.2",
+    # Prompt templates. Composable partials keep the cache
+    # prefix stable by construction rather than by remembering.
+    "jinja2 >= 3.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+# **This package was the only one nothing linted**, which is how an unsorted import block and a
+# deprecated `datetime.utc` alias sat here unnoticed. `test.sh` now checks it alongside the services.
+#
+# Same `line-length` as the service packages, so the formatter lays this code out the same way and
+# adding the check caused no reformatting.
+#
+# **`E501` is ignored here, and only here.** The prose in this module was written to about 108 columns,
+# and `ruff format` will not reflow a comment — so enforcing the limit would mean rewrapping roughly
+# ninety lines of explanation by hand to satisfy a rule the formatter already enforces everywhere it
+# can. Raising the limit instead was tried and rejected: it makes the formatter refill *code* to the
+# wider column, which churns six files and leaves this package looking unlike the others.
+#
+# What is worth having here is `F` and `B` — undefined names, real bug patterns — plus `I` and `UP`,
+# which is what caught the unsorted imports and the deprecated `datetime.utc` alias that had gone
+# unnoticed while nothing checked this directory at all.
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+# **pytest as a dev group, not `uv run --with pytest`.** The rule it protects is unchanged: pytest must
+# never reach the deployed zip, because `codeLocation` ships this directory. A group satisfies that —
+# `uv sync` without `--group dev` omits it, and the bundle never asks for it — while `--with` resolved
+# from the network on every run, so `./test.sh` needed connectivity on a suite documented as needing
+# no AWS account and nothing else.
+[dependency-groups]
+dev = ["pytest >= 8.0"]

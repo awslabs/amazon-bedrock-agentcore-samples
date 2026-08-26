@@ -1,0 +1,44 @@
+[project]
+name = "multi-tenant-travel-backend"
+version = "0.1.0"
+description = "Mock TMC backend — stands in for the customer's existing travel platform"
+readme = "README.md"
+requires-python = ">=3.13"
+
+dependencies = [
+    # Capped deliberately: fastapi 0.141.x resolves starlette 1.x, where
+    # `include_router` silently registers no routes (verified — a three-line
+    # control case returns an empty route table). 0.128 + starlette 0.50 is the
+    # newest pairing that works. Revisit when fastapi supports starlette 1.x.
+    "fastapi>=0.115,<0.130",
+    "starlette<1.0",
+    "pydantic>=2.9",
+    "boto3>=1.35",
+    "mangum>=0.19",           # ASGI -> Lambda adapter
+    # Structured logging + EMF metrics + tracing. EMF matters because it turns a
+    # log line into a dimensioned CloudWatch metric with no PutMetricData call —
+    # which is how cost-per-tenant becomes queryable rather than grep-able.
+    "aws-lambda-powertools>=3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",            # FastAPI TestClient transport
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# FastAPI's dependency injection is expressed through call-in-default
+# (`Query(...)`, `Depends(...)`); B008 exists for mutable defaults, not this.
+extend-ignore = ["B008"]

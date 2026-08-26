@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ApplyContentGuardrail",
+      "Effect": "Allow",
+      "Action": "bedrock:ApplyGuardrail",
+      "Resource": "arn:aws:bedrock:us-east-1:000000000000:guardrail/*"
+    },
+    {
+      "Sid": "ResolveGuardrailVersion",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameters",
+      "Resource": "arn:aws:ssm:us-east-1:000000000000:parameter/multi-tenant-travel/guardrails/*"
+    }
+  ]
+}

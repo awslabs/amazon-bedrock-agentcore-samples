@@ -1,0 +1,60 @@
+[
+  {
+    "name": "find_nearby",
+    "description": "Find places near a location: coffee, restaurants, pharmacies, EV chargers, parking, train stations, gyms. Use when the traveller asks what is near somewhere \u2014 'coffee near my hotel', 'a pharmacy close to the office'. Give the location as a **place name or address**, never coordinates: if they mean their hotel, get the trip first and pass the hotel's address from it, which resolves far more reliably than a property name.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "near": {
+          "type": "string",
+          "description": "The place to search around \u2014 an address is best, a place name works. For 'near my hotel', pass the hotel address from the trips tool."
+        },
+        "what": {
+          "type": "string",
+          "description": "What to look for. Known categories, which give the most precise results: ev_charger, restaurant, coffee, pharmacy, atm, hospital, train_station, parking, supermarket, gym. Anything else is searched as free text."
+        },
+        "radius_m": {
+          "type": "number",
+          "description": "Search radius in metres. Defaults to 3000 (about a 35-minute walk)."
+        },
+        "limit": {
+          "type": "number",
+          "description": "How many results to return. Defaults to 5."
+        }
+      },
+      "required": [
+        "near",
+        "what"
+      ]
+    }
+  },
+  {
+    "name": "get_route",
+    "description": "Travel time and distance between two places \u2014 traffic-aware when a departure time is given. Use for 'how do I get from the airport to the hotel', 'how long will that take'. Give places as names or addresses, never coordinates. If two places resolve implausibly far apart the tool says so rather than returning a nonsense route, so relay that as a request to be more specific.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "Starting place name or address."
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination place name or address."
+        },
+        "mode": {
+          "type": "string",
+          "description": "How they are travelling: 'car' (default), 'walk', or 'truck'."
+        },
+        "departure_time": {
+          "type": "string",
+          "description": "Optional ISO-8601 departure time for a traffic-aware estimate, e.g. '2026-11-10T13:00:00Z'. Supply it whenever the traveller mentions a time \u2014 without it the estimate ignores traffic. If they give a time of day with no date, use the date of the trip in question, or today's date for a trip already under way. Never ask for a date instead of answering: a route without traffic is a useful answer, and a question in its place is not."
+        }
+      },
+      "required": [
+        "origin",
+        "destination"
+      ]
+    }
+  }
+]

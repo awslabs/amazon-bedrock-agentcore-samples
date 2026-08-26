@@ -1,0 +1,8 @@
+[
+  {
+    "name": "default",
+    "description": "Dev deployment target",
+    "account": "000000000000",
+    "region": "us-east-1"
+  }
+]

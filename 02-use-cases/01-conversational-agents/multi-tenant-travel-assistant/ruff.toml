@@ -1,0 +1,18 @@
+# Ruff settings for this sample, declared at its root so that every file under it resolves here.
+#
+# **Why this file exists rather than relying on the repository root.** Ruff resolves configuration by
+# walking up from each file and taking the first config it finds. `backend/`, `conversation-api/`,
+# `tools/` and the agent app each carry their own `[tool.ruff]`, but `scripts/`, `shared/` and
+# `agent/tests/` do not — so without this they would walk past the sample entirely and pick up the
+# repository root's `line-length = 120`. `ruff format --check` then wants to rejoin lines that were
+# written to 100, and CI fails on 17 files that are correctly formatted for this sample. Measured
+# against the real root config, not assumed.
+#
+# 100 rather than 120 to match the packages inside the sample, so one file does not reformat
+# differently from the one beside it. A `ruff.toml` rather than a `pyproject.toml` because the sample
+# root is not a Python package and should not look like one to `uv` or a build backend.
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]

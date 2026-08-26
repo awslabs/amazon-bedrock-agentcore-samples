@@ -1,0 +1,265 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "MultiTenantTravel",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:created-by": "agentcore-cli",
+    "agentcore:project-name": "MultiTenantTravel",
+    "project": "multi-tenant-travel",
+    "sample": "multi-tenant-travel-assistant",
+    "environment": "dev"
+  },
+  "runtimes": [
+    {
+      "name": "Assistant",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/MultiTenantTravel/",
+      "runtimeVersion": "PYTHON_3_14",
+      "envVars": [
+        {
+          "name": "GATEWAY_MCP_URL",
+          "value": "https://pending-first-deploy.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp"
+        }
+      ],
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP",
+      "requestHeaderAllowlist": [
+        "Authorization"
+      ],
+      "additionalPolicies": [
+        "policies/guardrail-iam.json",
+        "policies/model-iam.json",
+        "policies/budget-iam.json"
+      ],
+      "authorizerType": "CUSTOM_JWT",
+      "authorizerConfiguration": {
+        "customJwtAuthorizer": {
+          "discoveryUrl": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_Pending00/.well-known/openid-configuration",
+          "allowedClients": [
+            "pendingfirstdeploy-web-cli",
+            "pendingfirstdeploy-spa-cl"
+          ]
+        }
+      },
+      "tags": {
+        "project": "multi-tenant-travel",
+        "sample": "multi-tenant-travel-assistant",
+        "environment": "dev",
+        "component": "agent"
+      }
+    }
+  ],
+  "memories": [
+    {
+      "name": "Conversations",
+      "eventExpiryDuration": 30,
+      "strategies": [
+        {
+          "type": "USER_PREFERENCE",
+          "name": "TravelPreferences",
+          "description": "Observed travel preferences the profile record does not hold",
+          "namespaceTemplates": [
+            "/travel/preferences/{actorId}/"
+          ]
+        }
+      ],
+      "tags": {
+        "project": "multi-tenant-travel",
+        "sample": "multi-tenant-travel-assistant",
+        "environment": "dev",
+        "component": "memory"
+      }
+    }
+  ],
+  "knowledgeBases": [],
+  "credentials": [],
+  "evaluators": [
+    {
+      "name": "GroundedNarration",
+      "level": "TRACE",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "instructions": "You are auditing whether a corporate travel assistant's prose asserted only what its tools returned.\n\nThe trace, including every tool call and its response: {context}\n\nPASS only if every checkable claim in the assistant's prose traces to a tool result in this trace.\n\nFAIL if any of the following is true:\n- A figure appears in the prose that no tool returned: a nightly cap, a fare, a star rating, a duration, an advance-purchase window, a confirmation number, a booking reference.\n- The prose states a policy rule the policy tool did not return, or contradicts a verdict the eligibility tool did return.\n- The prose describes a booking, hold or cancellation as having happened when no tool confirmed it.\n- The prose attributes a fact to the company's policy documents when the knowledge tool returned nothing.\n\nDo not penalise: arithmetic the assistant shows its working for using tool-returned numbers; a refusal; saying a figure is unknown; asking a clarifying question; or restating a number the traveller supplied in their own message while declining to act on it.\n\nJudge grounding only. Tone, length, helpfulness and whether the answer was the one the traveller wanted are all out of scope \u2014 a curt, correct, fully grounded answer PASSES.",
+          "ratingScale": {
+            "categorical": [
+              {
+                "label": "Pass",
+                "definition": "Meets the evaluation criteria"
+              },
+              {
+                "label": "Fail",
+                "definition": "Does not meet the evaluation criteria"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "EscalationTiming",
+      "level": "SESSION",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "instructions": "You are judging *when* a corporate travel assistant handed a conversation to a human \u2014 not whether the handoff itself was well formed.\n\nThe session, including every tool call, its response, and any escalation: {context}\n\nRate GOOD when the timing was right:\n- It escalated on the first turn where a human was genuinely required: an approval or exception only a person can grant, an explicit request for a human, or a tenant rule the tools cannot decide.\n- It escalated after a bounded number of attempts at something that kept failing \u2014 one or two retries, not more.\n- It did NOT escalate, and did not need to, because the tools answered the question.\n\nRate BAD when the timing was wrong in either direction:\n- Premature: it escalated while an available tool would have answered, or without attempting the obvious tool at all. Handing a person a question the system could answer is the failure that makes a handoff worthless.\n- Too late: it retried a failing tool repeatedly, or restated the same refusal several times, before escalating.\n- Never: a human was required and it did not escalate \u2014 including the case where it explained a process, or offered to connect the traveller, and then stopped. Offering is not escalating; the traveller is still waiting.\n\nRate NEUTRAL when the timing is defensible either way \u2014 for example escalating on the first turn for something a tool might have partially answered, where a reasonable agent could have gone either way.\n\nIgnore the contents of the handoff package; a separate check asserts that. Judge only the moment it was fired.",
+          "ratingScale": {
+            "categorical": [
+              {
+                "label": "Good",
+                "definition": "Positive outcome, meets or exceeds criteria"
+              },
+              {
+                "label": "Neutral",
+                "definition": "Acceptable but unremarkable outcome"
+              },
+              {
+                "label": "Bad",
+                "definition": "Negative outcome, fails to meet criteria"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [
+    {
+      "name": "Tools",
+      "description": "Capability layer: tenant-scoped travel tools behind a verified JWT",
+      "targets": [
+        {
+          "name": "policy",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-policy",
+            "toolSchemaFile": "../../tools/policy/tool-schema.json"
+          }
+        },
+        {
+          "name": "profile",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-profile",
+            "toolSchemaFile": "../../tools/profile/tool-schema.json"
+          }
+        },
+        {
+          "name": "knowledge",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-knowledge",
+            "toolSchemaFile": "../../tools/knowledge/tool-schema.json"
+          }
+        },
+        {
+          "name": "trips",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-trips",
+            "toolSchemaFile": "../../tools/trips/tool-schema.json"
+          }
+        },
+        {
+          "name": "search",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-search",
+            "toolSchemaFile": "../../tools/search/tool-schema.json"
+          }
+        },
+        {
+          "name": "booking",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-booking",
+            "toolSchemaFile": "../../tools/booking/tool-schema.json"
+          }
+        },
+        {
+          "name": "entry",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-entry",
+            "toolSchemaFile": "../../tools/entry/tool-schema.json"
+          }
+        },
+        {
+          "name": "location",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-location",
+            "toolSchemaFile": "../../tools/location/tool-schema.json"
+          }
+        },
+        {
+          "name": "escalation",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-1:000000000000:function:multi-tenant-travel-tool-escalation",
+            "toolSchemaFile": "../../tools/escalation/tool-schema.json"
+          }
+        }
+      ],
+      "authorizerType": "CUSTOM_JWT",
+      "authorizerConfiguration": {
+        "customJwtAuthorizer": {
+          "discoveryUrl": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_Pending00/.well-known/openid-configuration",
+          "allowedClients": [
+            "pendingfirstdeploy-web-cli",
+            "pendingfirstdeploy-spa-cl"
+          ],
+          "allowedScopes": [
+            "travel/read",
+            "travel/book"
+          ]
+        }
+      },
+      "enableSemanticSearch": false,
+      "exceptionLevel": "NONE",
+      "policyEngineConfiguration": {
+        "policyEngineName": "Policy",
+        "mode": "ENFORCE"
+      },
+      "tags": {
+        "project": "multi-tenant-travel",
+        "sample": "multi-tenant-travel-assistant",
+        "environment": "dev",
+        "component": "gateway"
+      }
+    }
+  ],
+  "policyEngines": [
+    {
+      "name": "Policy",
+      "description": "Cedar authorisation for the travel tools \u2014 evaluated at the Gateway",
+      "policies": [
+        {
+          "name": "booking_write_tools_require_a_verified_tenant",
+          "description": "Write tools require a verified tenant",
+          "statement": "// --- Write tools require a verified tenant ------------------------------------\n//\n// The same fail-closed control the read tools have, extended to the write path. A token minted\n// without the pre-token-generation trigger carries no `custom:tenant_id`, matches no permit, and\n// is denied by default.\n//\n// Separate from the read permit rather than appended to it, because the write surface is the one a\n// reviewer will audit line by line \u2014 and \"which tools can charge money?\" should be answerable by\n// reading one rule.\npermit(\n  principal is AgentCore::OAuthUser,\n  action in [\n    AgentCore::Action::\"booking___prepare_booking\",\n    AgentCore::Action::\"booking___confirm_booking\",\n    AgentCore::Action::\"booking___cancel_reservation\"\n  ],\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:000000000000:gateway/pending-first-deploy\"\n)\nwhen {\n  principal.hasTag(\"custom:tenant_id\")\n};\n\n// Why there is no \"arranger only\" rule on the write path\n// ------------------------------------------------------\n//\n// An earlier plan for this file was `forbid confirm_booking unless role == arranger`. **That would\n// have been wrong, and stating why is more useful than the rule would have been.**\n//\n// A traveller booking their *own* trip is the primary use case \u2014 the tool catalogue's gate is\n// \"self / arranger\", not \"arranger only\". A role check would have denied the commonest legitimate\n// action in the product, and it would have looked principled while doing it: \"only arrangers may\n// transact\" reads like sound governance right up until a traveller cannot book their own flight.\n//\n// The real constraint on the write path is **whose booking is it**, and that is not a claim\n// question. Two controls already answer it, both at the right layer:\n//\n//   * `tools/common/authz.py` resolves any named traveller within the caller's authorised scope, so\n//     a plain traveller naming someone else resolves to nobody. A traveller cannot prepare a\n//     booking for a colleague because the name does not resolve, not because a role forbids it.\n//   * `confirm_booking` re-derives ownership from the offer handle server-side. A handle belonging\n//     to another traveller is indistinguishable from one that never existed.\n//\n// And the *tenant-level* gate \u2014 whether an agent may transact in chat at all \u2014 is enforced in the\n// tool by reading the tenant's `booking_mode`, because it depends on a record rather than a claim.\n// Cedar cannot query the tenant table, and an authorisation engine that reached into the\n// application database on every call would be a latency and coupling problem.\n//\n// So the honest division on this path: **Cedar answers \"is this a verified caller invoking a write\n// tool?\", the tool answers \"is this their booking, and may this customer transact?\"** Knowing which\n// half Cedar can carry is the skill; adding a rule it cannot carry correctly is the failure mode.",
+          "sourceFile": "policies/booking.cedar",
+          "validationMode": "FAIL_ON_ANY_FINDINGS",
+          "enforcementMode": "ACTIVE",
+          "authorizationPhase": "INITIATE"
+        },
+        {
+          "name": "common_read_tools_require_a_verified_tenant",
+          "description": "Read tools require a verified tenant",
+          "statement": "// --- Read tools require a verified tenant ------------------------------------\n//\n// The `when` clause **is** the fail-closed control: a token minted without the\n// pre-token-generation trigger carries no `custom:tenant_id`, matches no permit, and is\n// denied by default.\n//\n// One place to see the entire read surface, which is the audit trail a reviewer wants \u2014\n// adding a read tool means adding it here. Specific actions, so a specific gateway ARN.\npermit(\n  principal is AgentCore::OAuthUser,\n  action in [\n    AgentCore::Action::\"policy___get_travel_policy\",\n    AgentCore::Action::\"policy___check_policy_eligibility\",\n    AgentCore::Action::\"profile___get_traveler_profile\",\n    AgentCore::Action::\"knowledge___search_policy_knowledge\",\n    AgentCore::Action::\"trips___get_trips\",\n    AgentCore::Action::\"search___search_flights\",\n    AgentCore::Action::\"search___search_hotels\",\n    AgentCore::Action::\"entry___check_entry_requirements\",\n    AgentCore::Action::\"location___find_nearby\",\n    AgentCore::Action::\"location___get_route\",\n    AgentCore::Action::\"escalation___escalate_to_human\"\n  ],\n  resource == AgentCore::Gateway::\"arn:aws:bedrock-agentcore:us-east-1:000000000000:gateway/pending-first-deploy\"\n)\nwhen {\n  principal.hasTag(\"custom:tenant_id\")\n};",
+          "sourceFile": "policies/common.cedar",
+          "validationMode": "FAIL_ON_ANY_FINDINGS",
+          "enforcementMode": "ACTIVE",
+          "authorizationPhase": "INITIATE"
+        }
+      ]
+    }
+  ],
+  "configBundles": [],
+  "abTests": [],
+  "harnesses": [],
+  "httpGateways": []
+}

@@ -1,0 +1,29 @@
+{# The assembled system prompt.
+
+   TENANT-INVARIANT BY CONSTRUCTION. Nothing *here* interpolates a tenant, a traveller,
+   a timestamp or a policy value — because everything in this file sits BEFORE the cache
+   breakpoint, and anything varying before a breakpoint means no two requests share a
+   cache entry. A tenant-specific value here would give every customer a private prefix:
+   the exact opposite of the cost lesson this sample teaches.
+
+   That is a rule about *placement*, not about variables. Per-session context — who the
+   traveller is, what today's date is — is legitimate and lives after the breakpoint or in
+   the message; see `prompts/manager.py:system_blocks`. Measured: three travellers across
+   two tenants each read the same 1042 cached tokens.
+
+   Ordering is most-stable-first so a cache point captures the largest possible prefix.
+#}
+You are the travel assistant built into your company's travel
+platform. You help employees plan, book and manage business travel.
+
+{% include "_partials/identity.j2" %}
+
+{% include "_partials/determinism.j2" %}
+
+{% include "_partials/tool_etiquette.j2" %}
+
+{% include "_partials/writes.j2" %}
+
+{% include "_partials/refusal.j2" %}
+
+{% include "_partials/cards.j2" %}

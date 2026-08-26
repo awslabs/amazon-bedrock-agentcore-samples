@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      Inline rather than a file in `public/`, and declared rather than left to the browser's default.
+
+      With no `rel="icon"` at all, every page load requests `/favicon.ico` — which this app does not
+      serve, so the console showed a 403 on load. That went unnoticed for a while because CloudFront
+      used to map 403 to `index.html` with a 200, so the browser silently accepted HTML as an icon.
+      Removing that mapping (see `infra/lib/frontend-hosting.ts`) surfaced it.
+
+      A data URI because the two SVGs previously in `public/` were both dead: nothing referenced
+      either, one was a social-links sprite carrying Bluesky, Discord, GitHub and X symbols that had
+      no business in a travel sample, and the other was an unattributed branded mark. A glyph costs
+      no request and no provenance question.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%E2%9C%88%3C/text%3E%3C/svg%3E"
+    />
+    <title>Travel Assistant — corporate travel, intelligently arranged</title>
+    <meta
+      name="description"
+      content="A multi-tenant corporate travel assistant that books, checks policy and arranges trips in plain language."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Set the theme before first paint so a dark-mode user never sees a white flash. Reads the
+      // saved choice, falling back to the OS preference. The app keeps this in sync afterwards.
+      (function () {
+        try {
+          var saved = localStorage.getItem('travel-theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.theme = saved || (prefersDark ? 'dark' : 'light');
+        } catch (_) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

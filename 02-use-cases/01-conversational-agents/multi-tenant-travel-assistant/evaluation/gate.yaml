@@ -1,0 +1,102 @@
+# The merge decision: quality and cost in one place.
+#
+# **Why they share a file.** A change that improves accuracy two points and triples spend should not
+# merge silently, and it will if quality is gated in CI while cost is reviewed on a dashboard once a
+# month. Putting them together makes the trade explicit at the moment it is being made.
+#
+# Two kinds of threshold, and the difference matters:
+#
+#   * **Absolute from day one** — isolation, safety, verdicts, schemas, confirm-before-write. These
+#     are correctness, not quality. `1.00` because 0.9 on cross-tenant probes means one in ten
+#     leaked, and there is no version of that which is acceptable at any maturity.
+#   * **Calibrated, then ratcheted** — the cost rows. A threshold guessed before a baseline exists
+#     is either so loose it never fires or so tight it fires on the first green run and gets
+#     disabled. Each carries the measurement it came from.
+
+quality:
+  # Code-based, so these run for free and gate every commit.
+  verdict_exact_match: { min: 1.00 } # computed in Python; a near miss has no excuse
+  card_schema_valid: { min: 1.00 } # a missing key renders as a blank line
+  tenant_isolation: { min: 1.00 } # the property the whole sample exists to show
+  confirm_before_write: { min: 1.00 } # money moves only after an explicit request
+  tool_sequence: { min: 0.85 } # more than one chain can be correct, so not absolute
+
+  # **There were four LLM-judged rows here — `correctness`, `grounded_narration`, `safety` and
+  # `escalation_timing` — behind a `tier: full` flag. They are gone, and so is the flag.**
+  #
+  # Nothing computed them. `evaluation/evaluators/` registers exactly the six code-based evaluators
+  # above, so on a full `--tier full` run all four had `observed is None`, and `Row.passed` correctly
+  # treats unmeasured as failure. The consequence: `./run-evals.sh --tier full` could **never exit
+  # zero**, on any agent, however healthy. An advertised flag that always fails is worse than an
+  # absent one — a reader tries it, sees four FAILs, and has no way to know that is the expected
+  # output.
+  #
+  # The argument for keeping the rows was real and is worth recording: delete a row and a green full
+  # run becomes indistinguishable from a green free one. That holds only if a green full run is
+  # reachable. It was not, so the rows were not protecting a distinction, they were guaranteeing red.
+  #
+  # **What it would take, corrected — because the note that used to be here sent the reader to the
+  # wrong place.** It said scoring needs `sessionSpans`, and that `sessionSpans` means the agent's own
+  # OTel spans read back from CloudWatch, so the gap was upstream of the gate. The first half is
+  # right; the second is not. `Evaluate` takes `sessionSpans` as a **document passed inline in the
+  # request** — the getting-started walkthrough happens to select spans out of CloudWatch, which is
+  # not the same as the API requiring it. So the real blocker is narrow: **nothing here emits spans in
+  # OTel format**, and the runner's `Trace` already holds the prompt, every tool call and result, the
+  # final answer and per-step tokens.
+  #
+  # Two more things found while checking, for whoever picks this up:
+  #
+  #   * There are **13 built-in evaluators**, including `Builtin.Correctness` and
+  #     `Builtin.Harmfulness`. `correctness` and `safety` never needed a custom evaluator at all.
+  #   * `evaluationReferenceInputs` accepts ground truth as `expectedResponse.text`,
+  #     `assertions[].text` and `expectedTrajectory.toolNames` — which is exactly what the task
+  #     fixtures in `tasks/*.yaml` already carry, so that side is a mapping, not new data.
+  #
+  # The remaining unknown is the span *shape*: the API documents support for "frameworks like Strands
+  # (AgentCore Runtime)", so the attribute names have to match what that instrumentation emits. Prove
+  # one `Builtin.Correctness` call scores before adding rows back.
+  #
+  # `MultiTenantTravel_GroundedNarration` and `MultiTenantTravel_EscalationTiming` still exist as
+  # deployed evaluator resources declared in `agentcore.json`. They are left in place deliberately:
+  # they cost nothing idle, and they are the half of this that is already done.
+
+escalation:
+  escalation_package: { min: 1.00 }
+
+cost:
+  # **Calibrated from measurement, not from taste.** A warm one-tool answer on this deployment costs
+  # $0.008581 (input $0.003255, output $0.001785, cache read $0.0035406 — cache read is the largest
+  # component at 41%). A cold two-tool answer with a knowledge-base call costs $0.031651.
+  #
+  # So `usd_per_resolved` at 0.30 is roughly ten times the most expensive measured turn: loose
+  # enough not to fire on a slow day, tight enough that a change which starts re-sending context
+  # uncached trips it. Ratchet down once a run-to-run spread is known — one baseline is a point, not
+  # a distribution.
+  usd_per_resolved: { max: 0.30 }
+  p95_usd_trajectory: { max: 0.60 }
+
+  # Steps are what a person perceives as "it's stuck". A clean answer is 2 steps measured.
+  p50_steps: { max: 5 }
+  p95_steps: { max: 10 }
+
+  # Observed from the SDK's own counters rather than inferred. Measured warm: 11,802 cache-read
+  # tokens against 1,085 fresh input, so the achievable rate is far above this floor — it is set to
+  # catch the prefix being broken, which is the failure that silently trebles cost.
+  cache_hit_rate: { min: 0.70 }
+
+  # **The threshold that was unmeetable until the metric was fixed.** Every turn ends with the model
+  # writing its reply, which calls no tool, so the old "no tool means reflection" rule scored a
+  # clean 2-step answer at 50% and this row could never pass. A reflection now requires being
+  # followed by more work. See `agent/.../ledger.py`.
+  reflection_step_rate: { max: 0.15 }
+
+# Runs are not free, so the harness stops rather than discovers the bill afterwards. One team
+# reports a $3,900 overnight bill from an eval suite with no ceiling: a bot opened 41 pull requests
+# and the merge queue re-ran the full suite on every push and rebase, ~270 runs. The per-run cost was
+# never the problem.
+#
+# ~$1.13 for 58 agent runs at the measured mix, plus ~$2.83 once five judges score each trace. The
+# ceiling sits above that with room for a slow day, and a breach stops the run rather than failing
+# the gate — an aborted run has proven nothing about quality and must not read as a quality verdict.
+limits:
+  max_usd_per_run: 8.00

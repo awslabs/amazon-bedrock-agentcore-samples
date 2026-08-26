@@ -1,0 +1,131 @@
+suite: A
+title: Policy Q&A from the knowledge base
+resolved_when: >
+  Answered from that tenant's own policy prose, with the other tenant's numbers absent, and
+  "I don't have that" when the knowledge base genuinely does not cover it.
+
+tasks:
+  - id: A1
+    title: The hotel cap, asked identically by both tenants
+    prompt: What is my hotel nightly cap?
+    personas: [priya, sam]
+    expect:
+      tools:
+        required_any: [get_travel_policy, search_policy_knowledge]
+        forbidden: [confirm_booking, cancel_reservation, prepare_booking]
+      by_persona:
+        priya:
+          must_mention: ["250"]
+          must_not_mention: ["150", "initech", "Initech"]
+        sam:
+          must_mention: ["150"]
+          must_not_mention: ["250", "globex", "Globex"]
+
+  - id: A2
+    title: The cabin rule, where the two policies are opposites
+    prompt: When am I allowed to fly business class?
+    personas: [priya, sam]
+    expect:
+      tools:
+        required_any: [get_travel_policy, search_policy_knowledge]
+      by_persona:
+        priya:
+          # Globex permits business on every 4th international trip in a calendar year.
+          must_mention: ["4"]
+          must_not_mention: ["economy only", "initech"]
+        sam:
+          # Initech is economy only, with no entitlement to earn.
+          must_mention: ["economy"]
+          must_not_mention: ["every 4th", "globex"]
+
+  - id: A3
+    title: A paraphrase of the same question, so retrieval is not keyword luck
+    prompt: How much can I spend on a room per night before it breaks the rules?
+    personas: [priya, sam]
+    expect:
+      tools:
+        required_any: [get_travel_policy, search_policy_knowledge]
+      by_persona:
+        priya:
+          must_mention: ["250"]
+          must_not_mention: ["150"]
+        sam:
+          must_mention: ["150"]
+          must_not_mention: ["250"]
+
+  - id: A4
+    title: A rule only one tenant has
+    prompt: Do I need to book flights a certain number of days in advance?
+    personas: [priya, sam]
+    expect:
+      tools:
+        required_any: [get_travel_policy, search_policy_knowledge]
+      by_persona:
+        sam:
+          must_mention: ["7"]
+        priya:
+          # Globex sets no advance-purchase requirement, and the honest answer says so rather than
+          # borrowing Initech's number — the failure mode this pair exists to catch.
+          must_not_mention: ["7 days", "seven days"]
+
+  - id: A5
+    title: The star-rating limit
+    prompt: What star rating of hotel am I allowed to book?
+    personas: [priya, sam]
+    expect:
+      tools:
+        required_any: [get_travel_policy, search_policy_knowledge]
+      by_persona:
+        priya:
+          must_mention: ["4"]
+          must_not_mention: ["3-star", "three star"]
+        sam:
+          must_mention: ["3"]
+          must_not_mention: ["4-star", "four star"]
+
+  - id: A6
+    title: An ancillary rule, quoted from the tenant's own prose
+    prompt: Can I claim in-flight wifi back?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [get_travel_policy, search_policy_knowledge]
+      by_persona:
+        priya:
+          # Globex 2.3: "In-flight wifi is reimbursable on flights exceeding three hours."
+          # The threshold is asserted as `hour`, not `3`: the document spells it "three" and the
+          # model may write either. `"3"` failed against a correct answer, and would equally have
+          # passed on any sentence that happened to contain a 3 for another reason.
+          must_mention: [reimburs, hour]
+          # Initech states the same ancillary differently ("reimbursable where required for
+          # scheduled work in transit"), so that wording in a Globex answer is a real leak.
+          must_not_mention: ["scheduled work in transit"]
+
+  - id: A7
+    title: Out of the knowledge base entirely
+    prompt: What is my company's parental leave allowance?
+    personas: [priya, sam]
+    expect:
+      tools:
+        forbidden: [confirm_booking, prepare_booking, cancel_reservation]
+      by_persona:
+        priya:
+          # The point is a refusal to invent, not a particular phrasing. Asserted as the absence of
+          # a fabricated figure rather than the presence of an apology, because a model that says
+          # "I don't have that" *and* then guesses would pass a phrasing check.
+          must_not_mention: ["weeks of leave", "days of leave"]
+        sam:
+          must_not_mention: ["weeks of leave", "days of leave"]
+
+  - id: A8
+    title: Adjacent to travel but outside the policy documents
+    prompt: What is the per-diem meal allowance in Tokyo?
+    personas: [priya]
+    expect:
+      tools:
+        forbidden: [confirm_booking, prepare_booking]
+      by_persona:
+        priya:
+          # Neither tenant's policy sets a per-diem. A number here is invention, and it is the
+          # plausible kind — which is why this sits beside A7 rather than replacing it.
+          must_not_mention: ["per diem is", "allowance is $", "allowance is €"]

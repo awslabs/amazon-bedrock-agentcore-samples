@@ -1,0 +1,480 @@
+/* The conversation surface: transcript, turns, tool pills, the welcome hero, and the composer. */
+
+.transcript {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.column {
+  max-width: var(--column);
+  margin: 0 auto;
+  padding: 8px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ---- turns ------------------------------------------------------------------------------------ */
+
+.turn {
+  animation: rise 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.turn.traveller {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 82%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 10px 15px;
+  border-radius: var(--r-lg);
+  border-bottom-right-radius: 6px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+.turn.assistant {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.turn-avatar {
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: inline-flex;
+  filter: drop-shadow(0 2px 6px rgba(14, 122, 107, 0.25));
+}
+
+.turn-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prose {
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.prose.failed {
+  color: var(--warn);
+}
+
+/* markdown output — assistant replies are Markdown, rendered to a React tree (see Markdown.tsx) */
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+.prose p {
+  margin: 0 0 0.7em;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  color: var(--accent-strong);
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 0.7em;
+  padding-left: 1.35em;
+}
+
+.prose li {
+  margin: 0.15em 0;
+}
+
+.prose li::marker {
+  color: var(--muted);
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 1em 0 0.4em;
+}
+
+.prose h1 {
+  font-size: 1.2rem;
+}
+.prose h2 {
+  font-size: 1.1rem;
+}
+.prose h3 {
+  font-size: 1rem;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.08em 0.35em;
+}
+
+.prose pre {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0 0 0.7em;
+}
+
+.prose pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.prose blockquote {
+  border-left: 3px solid var(--border-strong);
+  margin: 0 0 0.7em;
+  padding-left: 0.9em;
+  color: var(--muted);
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 0.7em;
+  font-size: 0.9em;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.prose th {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+/* the guardrail explanation — a soft callout, not a stack trace */
+.turn-body > .note {
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 0.86rem;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+}
+
+/* ---- tool pills ------------------------------------------------------------------------------- */
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* typing indicator — three bouncing dots (Typing.tsx) */
+.typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* Matches the avatar's height so the centred dots line up with the middle of the logomark, rather
+     than sitting at the top of the turn body. */
+  height: 30px;
+}
+
+.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typing-bounce 1.3s ease-in-out infinite;
+}
+
+.typing span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.typing span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  35% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 6px 13px;
+}
+
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.65);
+  }
+}
+
+/* ---- welcome hero ----------------------------------------------------------------------------- */
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 7vh 0 0;
+  gap: 10px;
+}
+
+.welcome-mark {
+  margin-bottom: 4px;
+  filter: drop-shadow(0 6px 18px rgba(14, 122, 107, 0.28));
+}
+
+.welcome-title {
+  font-size: 1.95rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.welcome-sub {
+  color: var(--muted);
+  max-width: 34rem;
+  line-height: 1.6;
+}
+
+.suggestions {
+  margin-top: 26px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.suggestion:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.suggestion-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.suggestion-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.suggestion-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.suggestion-prompt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- composer --------------------------------------------------------------------------------- */
+
+.composer-wrap {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: calc(var(--column) + 48px);
+  margin: 0 auto;
+  padding: 4px 24px 16px;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xl);
+  padding: 10px 10px 10px 18px;
+  box-shadow: var(--shadow);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.composer:focus-within {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 4px var(--ring),
+    var(--shadow);
+}
+
+.composer-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  resize: none;
+  font: inherit;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--ink);
+  padding: 4px 0;
+  /* A tall resting box (~double a single-line bar), so it reads as a place to write. The textarea's
+     own text stays top-aligned; the send button sits at the bottom via the row's flex-end. */
+  min-height: 92px;
+  max-height: 240px;
+  outline: none;
+}
+
+.composer-input::placeholder {
+  color: var(--faint);
+}
+
+/* The wrapper already shows focus (its ring + border), so suppress the global focus-visible ring on
+   the textarea itself — otherwise a second rectangle draws inside the composer on click. */
+.composer-input:focus,
+.composer-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.composer-send {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.composer-send:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.composer-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.composer-send:disabled {
+  background: var(--surface-3);
+  color: var(--faint);
+  cursor: default;
+}
+
+.composer-hint {
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--faint);
+  margin-top: 9px;
+}
+
+@media (max-width: 40rem) {
+  .column {
+    padding: 8px 16px 24px;
+  }
+  .suggestions {
+    grid-template-columns: 1fr;
+  }
+  .composer-wrap {
+    padding: 4px 16px 14px;
+  }
+  .bubble {
+    max-width: 88%;
+  }
+}

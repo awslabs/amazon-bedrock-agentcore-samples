@@ -1,0 +1,86 @@
+/* Design tokens — the whole palette, type scale and depth in one place.
+ *
+ * Two themes that are genuinely different surfaces, not one inverted: a warm daylight canvas and a
+ * deep evening one. Everything downstream references these variables, so a brand change is an edit
+ * here, never a hunt through components. */
+
+:root,
+[data-theme='light'] {
+  /* surfaces — warm neutral, not the default clinical white */
+  --bg: #f6f5f1;
+  --surface: #fffefb;
+  --surface-2: #f0efe9;
+  --surface-3: #e8e6dd;
+  --border: #e3e0d6;
+  --border-strong: #d3cfc1;
+
+  /* ink */
+  --ink: #16191c;
+  --ink-2: #3b4147;
+  --muted: #6c7278;
+  --faint: #99a0a3;
+
+  /* brand — deep teal, an ocean/evergreen read that says travel without the default AI blue */
+  --accent: #0e7a6b;
+  --accent-strong: #0a5f53;
+  --accent-soft: #dcefeb;
+  --on-accent: #ffffff;
+
+  /* meaning */
+  --ok: #0e7a6b;
+  --ok-bg: #dff0eb;
+  --warn: #a5580f;
+  --warn-bg: #f8ecdb;
+
+  --ring: #0e7a6b40;
+  --shadow-sm: 0 1px 2px rgba(20, 24, 28, 0.04), 0 1px 3px rgba(20, 24, 28, 0.06);
+  --shadow: 0 8px 24px -10px rgba(20, 24, 28, 0.16);
+  --shadow-lg: 0 20px 48px -16px rgba(20, 24, 28, 0.24);
+}
+
+[data-theme='dark'] {
+  --bg: #0c0f0e;
+  --surface: #141917;
+  --surface-2: #1a201d;
+  --surface-3: #222a26;
+  --border: #27302d;
+  --border-strong: #33403b;
+
+  --ink: #eaeeec;
+  --ink-2: #c3ccc8;
+  --muted: #8b9793;
+  --faint: #5f6a66;
+
+  --accent: #2dbba3;
+  --accent-strong: #38c9b0;
+  --accent-soft: #102b26;
+  --on-accent: #062019;
+
+  --ok: #2dbba3;
+  --ok-bg: #102b26;
+  --warn: #e0a24e;
+  --warn-bg: #2c2411;
+
+  --ring: #2dbba355;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 24px 56px -18px rgba(0, 0, 0, 0.7);
+}
+
+:root {
+  /* type */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* radii */
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* spacing rhythm */
+  --gap: 16px;
+  --sidebar-w: 280px;
+  --column: 48rem;
+}

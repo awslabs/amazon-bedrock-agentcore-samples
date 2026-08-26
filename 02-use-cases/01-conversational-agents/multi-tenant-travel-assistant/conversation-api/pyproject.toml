@@ -1,0 +1,28 @@
+[project]
+name = "multi-tenant-travel-conversation-api"
+version = "0.1.0"
+description = "The BFF: browser sessions, action clicks, citation links, SSE relay"
+requires-python = ">=3.13"
+# **Pure Python only, and this is a hard constraint rather than a preference.** This ships as a zip
+# Lambda, and a native wheel built on macOS raises on import inside Lambda — which is why there is
+# no FastAPI here despite the backend using it. uvicorn and h11 have no compiled extensions.
+#
+# boto3 is deliberately absent: it is ambient in the Lambda runtime, so bundling it would add
+# megabytes of cold start for nothing.
+dependencies = [
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    # Needed locally because the smoke test exercises the same modules outside Lambda.
+    "boto3>=1.35",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

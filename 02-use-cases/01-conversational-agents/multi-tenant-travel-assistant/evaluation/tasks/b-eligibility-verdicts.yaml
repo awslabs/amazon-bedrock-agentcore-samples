@@ -1,0 +1,166 @@
+suite: B
+title: Eligibility verdicts
+resolved_when: >
+  The verdict matches exactly — it is computed in Python, so there is no excuse for a near miss —
+  and the narration agrees with it rather than softening or contradicting it.
+
+# Every `reason_code` and `eligible` value below was produced by calling
+# `backend/app/service/policy_check.py` and recording what it returned. The boundary cases are the
+# reason: $250 exactly at the cap and departure exactly 7 days out are both *inside* policy, which
+# a fixture written from reading the policy prose could easily have got the wrong way round.
+
+tasks:
+  - id: B1
+    title: A hotel comfortably inside the cap
+    prompt: Is a 4-star hotel at 240 dollars a night within my policy?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: true
+        reason_code: hotel_in_policy
+      cards:
+        required_types: [policy_verdict]
+      by_persona:
+        priya:
+          must_not_mention: ["out of policy", "not permitted"]
+
+  - id: B2
+    title: Exactly at the cap, which is inside it
+    prompt: Is a 4-star hotel at exactly 250 dollars a night within my policy?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: true
+        reason_code: hotel_in_policy
+      cards:
+        required_types: [policy_verdict]
+
+  - id: B3
+    title: Over the cap by ten dollars
+    prompt: Is a 4-star hotel at 260 dollars a night within my policy?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: false
+        reason_code: hotel_out_of_policy
+      cards:
+        required_types: [policy_verdict]
+
+  - id: B4
+    title: Under the cap but above the star limit
+    prompt: Is a 5-star hotel at 240 dollars a night within my policy?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: false
+        reason_code: hotel_out_of_policy
+      cards:
+        required_types: [policy_verdict]
+      by_persona:
+        priya:
+          # Cheap *and* refused, so the narration has to explain which rule bit. A model that
+          # reports the price and stops has technically relayed the verdict and still misinformed.
+          must_mention: ["star"]
+
+  - id: B5
+    title: The same question against the stricter tenant, at its own boundary
+    prompt: Is a 3-star hotel at exactly 150 euros a night within my policy?
+    personas: [sam]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: true
+        reason_code: hotel_in_policy
+      cards:
+        required_types: [policy_verdict]
+      by_persona:
+        sam:
+          must_not_mention: ["250", "globex"]
+
+  - id: B6
+    title: Departure exactly on the advance-purchase boundary
+    prompt: I want to fly to Berlin in exactly 7 days. Does that meet the booking rules?
+    personas: [sam]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: true
+        reason_code: advance_purchase_met
+      by_persona:
+        sam:
+          must_mention: ["7"]
+
+  - id: B7
+    title: One day inside the advance-purchase boundary
+    prompt: I want to fly to Berlin in 6 days. Does that meet the booking rules?
+    personas: [sam]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: false
+        reason_code: advance_purchase_short
+      by_persona:
+        sam:
+          must_mention: ["7"]
+
+  - id: B8
+    title: Business class where the entitlement has to be earned
+    prompt: Can I fly business class to Singapore on this trip?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        # Globex permits business on every 4th international trip, so the answer depends on travel
+        # history rather than on the flight — the case this policy shape exists to exercise.
+        #
+        # **Permitted, and the reason is "on this trip" rather than a bare trip count.** Priya has
+        # 3 international trips already taken this year, plus this Singapore trip itself — 4 in
+        # total once it exists, because `CabinRule.count_upcoming` defaults to `True` (see
+        # `app/eligibility.py`). Asked *about* Singapore, the tool passes `trip_id` and
+        # `exclude_trip_id` drops it from its own history count, leaving 3 prior trips — so Singapore
+        # is the 4th and earns the upgrade. Asked about a *different* future trip instead (Tokyo, in
+        # the README's example), nothing gets excluded: Singapore already counts, so that trip would
+        # be the 5th and denied. Same seed, same rule, opposite verdict — the trip named is what
+        # decides it, and `backend/seed/travelers.py` explains the arithmetic in full.
+        eligible: true
+        reason_code: cabin_permitted
+      cards:
+        required_types: [policy_verdict]
+      by_persona:
+        priya:
+          must_mention: ["4"]
+          must_not_mention: ["economy only"]
+
+  - id: B9
+    title: Business class where no entitlement exists at all
+    # **"on this trip" named a trip this persona does not have.** Sam's itinerary is a past
+    # Barcelona trip and an in-progress Amsterdam one — Singapore is Priya's. So the agent
+    # correctly called `get_trips` looking for it, found nothing, and never reached the verdict:
+    # the fixture failed on its own premise rather than on the behaviour it meant to test.
+    # Stating the flight length instead gives `check_policy_eligibility` what it needs without a
+    # trip lookup, and Initech's cabin rule is `never`, so the hours do not change the verdict.
+    prompt: Can I fly business class on a 13-hour flight?
+    personas: [sam]
+    expect:
+      tools:
+        required_any: [check_policy_eligibility]
+      verdict:
+        eligible: false
+        reason_code: cabin_above_policy
+      by_persona:
+        sam:
+          # "Not yet" and "never" are different answers, and telling a traveller to wait for an
+          # entitlement their employer does not offer is the specific error here.
+          must_not_mention: ["4th trip", "every 4th", "not yet"]

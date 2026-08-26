@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ResolveTrajectoryBudget",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:{{REGION}}:{{ACCOUNT}}:parameter/multi-tenant-travel/budget/*"
+    }
+  ]
+}

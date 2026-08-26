@@ -1,0 +1,22 @@
+[
+  { "passport_country": "IE", "destination_country": "US", "requirement": "evisa", "note": "ESTA required; apply online at least 72 hours before departure." },
+  { "passport_country": "IE", "destination_country": "IN", "requirement": "evisa", "note": "e-Visa available; apply online 4-7 days before travel." },
+  { "passport_country": "IE", "destination_country": "GB", "requirement": "none", "note": "No visa required for short business visits." },
+  { "passport_country": "IE", "destination_country": "AE", "requirement": "none", "note": "Visa on arrival for short stays." },
+  { "passport_country": "IE", "destination_country": "AU", "requirement": "evisa", "note": "ETA required before boarding." },
+  { "passport_country": "US", "destination_country": "IN", "requirement": "evisa", "note": "e-Visa available; apply online 4-7 days before travel." },
+  { "passport_country": "US", "destination_country": "GB", "requirement": "none", "note": "No visa required for short business visits." },
+  { "passport_country": "US", "destination_country": "DE", "requirement": "none", "note": "Schengen: no visa for stays under 90 days." },
+  { "passport_country": "US", "destination_country": "NG", "requirement": "visa", "note": "Business visa required; apply at the embassy well in advance." },
+  { "passport_country": "US", "destination_country": "JP", "requirement": "none", "note": "No visa required for short business visits." },
+  { "passport_country": "NG", "destination_country": "US", "requirement": "visa", "note": "B-1 business visa required; embassy interview typically needed." },
+  { "passport_country": "NG", "destination_country": "GB", "requirement": "visa", "note": "Standard Visitor visa required; apply online in advance." },
+  { "passport_country": "NG", "destination_country": "IE", "requirement": "visa", "note": "Short-stay visa required; apply before travel." },
+  { "passport_country": "NG", "destination_country": "AE", "requirement": "evisa", "note": "e-Visa available through the airline or a UAE sponsor." },
+  { "passport_country": "NG", "destination_country": "ZA", "requirement": "visa", "note": "Business visa required." },
+  { "passport_country": "GB", "destination_country": "US", "requirement": "evisa", "note": "ESTA required; apply online at least 72 hours before departure." },
+  { "passport_country": "GB", "destination_country": "IN", "requirement": "evisa", "note": "e-Visa available; apply online 4-7 days before travel." },
+  { "passport_country": "GB", "destination_country": "DE", "requirement": "none", "note": "Schengen: no visa for stays under 90 days." },
+  { "passport_country": "DE", "destination_country": "US", "requirement": "evisa", "note": "ESTA required; apply online at least 72 hours before departure." },
+  { "passport_country": "DE", "destination_country": "SG", "requirement": "none", "note": "No visa required for short business visits." }
+]

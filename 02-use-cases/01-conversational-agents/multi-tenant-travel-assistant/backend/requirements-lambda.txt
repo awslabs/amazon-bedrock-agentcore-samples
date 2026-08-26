@@ -1,0 +1,28 @@
+# Runtime dependencies for the mock TMC Lambda bundle, pinned to exactly what
+# `backend/uv.lock` resolved — so the artifact deployed is the artifact the 203
+# backend tests ran against.
+#
+# **These were ranges, and a range here means the deploy is dated.** `pip` picks
+# the newest match at bundling time, so the same commit produces a different
+# Lambda next month, and a reader cloning this a year from now deploys a
+# dependency set nobody exercised. That is a worse failure for a sample than for
+# a product: there is no pipeline to catch it, and the person it breaks is
+# reading this repo to learn something else.
+#
+# **Keep in step with `uv.lock`.** `./test.sh` asserts these pins match the lock
+# (`scripts/check_lambda_pins.py`), so `uv lock` followed by a stale file fails
+# the gate rather than shipping. The constraint the cap protects lives in
+# `pyproject.toml`, which is what `uv` resolves against: fastapi is held below
+# 0.130 because 0.141.x pulls starlette 1.x, where `include_router` silently
+# registers no routes.
+fastapi==0.129.2
+starlette==0.52.1
+pydantic==2.13.4
+mangum==0.21.0
+aws-lambda-powertools==3.31.1
+
+# boto3 is provided by the Lambda runtime, so it is deliberately absent here —
+# shipping it would add ~15MB to the package for no gain. Transitive
+# dependencies (pydantic-core, anyio, h11, jmespath, …) are resolved by pip from
+# these pins; pinning them too would mean regenerating this file by hand on
+# every lock change, and the direct pins are what determine behaviour.

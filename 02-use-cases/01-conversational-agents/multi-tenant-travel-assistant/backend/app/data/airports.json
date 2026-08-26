@@ -1,0 +1,370 @@
+[
+  {
+    "code": "DUB",
+    "name": "Dublin Airport",
+    "city": "Dublin",
+    "country": "IE",
+    "latitude": 53.4213,
+    "longitude": -6.2701
+  },
+  {
+    "code": "LHR",
+    "name": "London Heathrow",
+    "city": "London",
+    "country": "GB",
+    "latitude": 51.47,
+    "longitude": -0.4543
+  },
+  {
+    "code": "LGW",
+    "name": "London Gatwick",
+    "city": "London",
+    "country": "GB",
+    "latitude": 51.1537,
+    "longitude": -0.1821
+  },
+  {
+    "code": "MAN",
+    "name": "Manchester Airport",
+    "city": "Manchester",
+    "country": "GB",
+    "latitude": 53.3537,
+    "longitude": -2.275
+  },
+  {
+    "code": "EDI",
+    "name": "Edinburgh Airport",
+    "city": "Edinburgh",
+    "country": "GB",
+    "latitude": 55.95,
+    "longitude": -3.3725
+  },
+  {
+    "code": "CDG",
+    "name": "Paris Charles de Gaulle",
+    "city": "Paris",
+    "country": "FR",
+    "latitude": 49.0097,
+    "longitude": 2.5479
+  },
+  {
+    "code": "ORY",
+    "name": "Paris Orly",
+    "city": "Paris",
+    "country": "FR",
+    "latitude": 48.7233,
+    "longitude": 2.3794
+  },
+  {
+    "code": "AMS",
+    "name": "Amsterdam Schiphol",
+    "city": "Amsterdam",
+    "country": "NL",
+    "latitude": 52.3105,
+    "longitude": 4.7683
+  },
+  {
+    "code": "FRA",
+    "name": "Frankfurt Airport",
+    "city": "Frankfurt",
+    "country": "DE",
+    "latitude": 50.0379,
+    "longitude": 8.5622
+  },
+  {
+    "code": "MUC",
+    "name": "Munich Airport",
+    "city": "Munich",
+    "country": "DE",
+    "latitude": 48.3537,
+    "longitude": 11.775
+  },
+  {
+    "code": "BER",
+    "name": "Berlin Brandenburg",
+    "city": "Berlin",
+    "country": "DE",
+    "latitude": 52.3667,
+    "longitude": 13.5033
+  },
+  {
+    "code": "ZRH",
+    "name": "Zurich Airport",
+    "city": "Zurich",
+    "country": "CH",
+    "latitude": 47.4647,
+    "longitude": 8.5492
+  },
+  {
+    "code": "VIE",
+    "name": "Vienna International",
+    "city": "Vienna",
+    "country": "AT",
+    "latitude": 48.1103,
+    "longitude": 16.5697
+  },
+  {
+    "code": "MAD",
+    "name": "Madrid Barajas",
+    "city": "Madrid",
+    "country": "ES",
+    "latitude": 40.4719,
+    "longitude": -3.5626
+  },
+  {
+    "code": "BCN",
+    "name": "Barcelona El Prat",
+    "city": "Barcelona",
+    "country": "ES",
+    "latitude": 41.2971,
+    "longitude": 2.0785
+  },
+  {
+    "code": "LIS",
+    "name": "Lisbon Portela",
+    "city": "Lisbon",
+    "country": "PT",
+    "latitude": 38.7742,
+    "longitude": -9.1342
+  },
+  {
+    "code": "FCO",
+    "name": "Rome Fiumicino",
+    "city": "Rome",
+    "country": "IT",
+    "latitude": 41.8003,
+    "longitude": 12.2389
+  },
+  {
+    "code": "MXP",
+    "name": "Milan Malpensa",
+    "city": "Milan",
+    "country": "IT",
+    "latitude": 45.6306,
+    "longitude": 8.7281
+  },
+  {
+    "code": "CPH",
+    "name": "Copenhagen Kastrup",
+    "city": "Copenhagen",
+    "country": "DK",
+    "latitude": 55.618,
+    "longitude": 12.656
+  },
+  {
+    "code": "ARN",
+    "name": "Stockholm Arlanda",
+    "city": "Stockholm",
+    "country": "SE",
+    "latitude": 59.6519,
+    "longitude": 17.9186
+  },
+  {
+    "code": "OSL",
+    "name": "Oslo Gardermoen",
+    "city": "Oslo",
+    "country": "NO",
+    "latitude": 60.1939,
+    "longitude": 11.1004
+  },
+  {
+    "code": "HEL",
+    "name": "Helsinki Vantaa",
+    "city": "Helsinki",
+    "country": "FI",
+    "latitude": 60.3172,
+    "longitude": 24.9633
+  },
+  {
+    "code": "WAW",
+    "name": "Warsaw Chopin",
+    "city": "Warsaw",
+    "country": "PL",
+    "latitude": 52.1657,
+    "longitude": 20.9671
+  },
+  {
+    "code": "ATL",
+    "name": "Hartsfield-Jackson Atlanta",
+    "city": "Atlanta",
+    "country": "US",
+    "latitude": 33.6407,
+    "longitude": -84.4277
+  },
+  {
+    "code": "JFK",
+    "name": "New York JFK",
+    "city": "New York",
+    "country": "US",
+    "latitude": 40.6413,
+    "longitude": -73.7781
+  },
+  {
+    "code": "EWR",
+    "name": "Newark Liberty",
+    "city": "New York",
+    "country": "US",
+    "latitude": 40.6895,
+    "longitude": -74.1745
+  },
+  {
+    "code": "ORD",
+    "name": "Chicago O'Hare",
+    "city": "Chicago",
+    "country": "US",
+    "latitude": 41.9742,
+    "longitude": -87.9073
+  },
+  {
+    "code": "DFW",
+    "name": "Dallas/Fort Worth",
+    "city": "Dallas",
+    "country": "US",
+    "latitude": 32.8998,
+    "longitude": -97.0403
+  },
+  {
+    "code": "DEN",
+    "name": "Denver International",
+    "city": "Denver",
+    "country": "US",
+    "latitude": 39.8561,
+    "longitude": -104.6737
+  },
+  {
+    "code": "LAX",
+    "name": "Los Angeles International",
+    "city": "Los Angeles",
+    "country": "US",
+    "latitude": 33.9416,
+    "longitude": -118.4085
+  },
+  {
+    "code": "SFO",
+    "name": "San Francisco International",
+    "city": "San Francisco",
+    "country": "US",
+    "latitude": 37.6213,
+    "longitude": -122.379
+  },
+  {
+    "code": "SEA",
+    "name": "Seattle-Tacoma",
+    "city": "Seattle",
+    "country": "US",
+    "latitude": 47.4502,
+    "longitude": -122.3088
+  },
+  {
+    "code": "BOS",
+    "name": "Boston Logan",
+    "city": "Boston",
+    "country": "US",
+    "latitude": 42.3656,
+    "longitude": -71.0096
+  },
+  {
+    "code": "MIA",
+    "name": "Miami International",
+    "city": "Miami",
+    "country": "US",
+    "latitude": 25.7959,
+    "longitude": -80.2871
+  },
+  {
+    "code": "IAD",
+    "name": "Washington Dulles",
+    "city": "Washington",
+    "country": "US",
+    "latitude": 38.9531,
+    "longitude": -77.4565
+  },
+  {
+    "code": "YYZ",
+    "name": "Toronto Pearson",
+    "city": "Toronto",
+    "country": "CA",
+    "latitude": 43.6777,
+    "longitude": -79.6248
+  },
+  {
+    "code": "YUL",
+    "name": "Montreal Trudeau",
+    "city": "Montreal",
+    "country": "CA",
+    "latitude": 45.4706,
+    "longitude": -73.7408
+  },
+  {
+    "code": "SIN",
+    "name": "Singapore Changi",
+    "city": "Singapore",
+    "country": "SG",
+    "latitude": 1.3644,
+    "longitude": 103.9915
+  },
+  {
+    "code": "DXB",
+    "name": "Dubai International",
+    "city": "Dubai",
+    "country": "AE",
+    "latitude": 25.2532,
+    "longitude": 55.3657
+  },
+  {
+    "code": "BOM",
+    "name": "Mumbai Chhatrapati Shivaji",
+    "city": "Mumbai",
+    "country": "IN",
+    "latitude": 19.0896,
+    "longitude": 72.8656
+  },
+  {
+    "code": "DEL",
+    "name": "Delhi Indira Gandhi",
+    "city": "Delhi",
+    "country": "IN",
+    "latitude": 28.5562,
+    "longitude": 77.1
+  },
+  {
+    "code": "NRT",
+    "name": "Tokyo Narita",
+    "city": "Tokyo",
+    "country": "JP",
+    "latitude": 35.772,
+    "longitude": 140.3929
+  },
+  {
+    "code": "SYD",
+    "name": "Sydney Kingsford Smith",
+    "city": "Sydney",
+    "country": "AU",
+    "latitude": -33.9399,
+    "longitude": 151.1753
+  },
+  {
+    "code": "JNB",
+    "name": "Johannesburg O.R. Tambo",
+    "city": "Johannesburg",
+    "country": "ZA",
+    "latitude": -26.1392,
+    "longitude": 28.246
+  },
+  {
+    "code": "LOS",
+    "name": "Lagos Murtala Muhammed",
+    "city": "Lagos",
+    "country": "NG",
+    "latitude": 6.5774,
+    "longitude": 3.3212
+  },
+  {
+    "code": "MHT",
+    "name": "Manchester-Boston Regional",
+    "city": "Manchester",
+    "country": "US",
+    "latitude": 42.9326,
+    "longitude": -71.4357
+  }
+]

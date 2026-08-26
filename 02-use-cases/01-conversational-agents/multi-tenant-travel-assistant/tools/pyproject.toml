@@ -1,0 +1,37 @@
+[project]
+name = "multi-tenant-travel-tools"
+version = "0.1.0"
+description = "Gateway target tools — the agent-facing capability layer"
+requires-python = ">=3.13"
+# Deliberately minimal. These run in zip-packaged Lambdas on the conversational
+# path, so every dependency is cold-start latency the user feels. The backend is
+# reached with `urllib` rather than a HTTP library for exactly this reason;
+# Powertools earns its place because EMF and structured logging are the whole
+# premise of the observability and tokenomics work.
+dependencies = [
+    "aws-lambda-powertools>=3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+    # **Dev only, deliberately.** boto3 is ambient in the Lambda runtime, so shipping it in the
+    # bundle would add megabytes of cold start for nothing. Local smoke tests need it because they
+    # exercise the same handlers outside Lambda.
+    "boto3>=1.35",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+# Run from `tools/`, so `tools.common` resolves the way it does in a deployed
+# Lambda where the package root is on the path.
+pythonpath = [".."]
+testpaths = ["."]
+python_files = ["test_*.py"]

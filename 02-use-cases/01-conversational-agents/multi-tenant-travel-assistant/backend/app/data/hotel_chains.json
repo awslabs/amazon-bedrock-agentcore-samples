@@ -1,0 +1,9 @@
+[
+  { "chain": "Marriott", "brands": ["Marriott", "Courtyard", "Moxy"], "star_band": [3, 5], "rate_band": [140, 340] },
+  { "chain": "Hilton", "brands": ["Hilton", "Hampton Inn", "DoubleTree"], "star_band": [3, 5], "rate_band": [130, 320] },
+  { "chain": "IHG", "brands": ["Holiday Inn", "Crowne Plaza", "Kimpton"], "star_band": [3, 5], "rate_band": [110, 300] },
+  { "chain": "Accor", "brands": ["Novotel", "Ibis", "Pullman"], "star_band": [2, 5], "rate_band": [90, 280] },
+  { "chain": "Hyatt", "brands": ["Hyatt Regency", "Hyatt Place"], "star_band": [3, 5], "rate_band": [150, 360] },
+  { "chain": "Radisson", "brands": ["Radisson Blu", "Park Inn"], "star_band": [3, 4], "rate_band": [100, 240] },
+  { "chain": "Wyndham", "brands": ["Wyndham", "Days Inn"], "star_band": [2, 4], "rate_band": [80, 200] }
+]

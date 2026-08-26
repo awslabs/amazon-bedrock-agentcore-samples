@@ -1,0 +1,93 @@
+suite: D
+title: Context and location chaining
+resolved_when: >
+  The right chain of tools ran, an address was preferred over a place name where one existed, and an
+  ambiguous place was asked about rather than guessed.
+
+# These are the tasks that fail when a tool is too small. Answering "chargers near my hotel" from
+# separate lookup, search and annotate calls puts the joining logic in the model, which is where it
+# is least reliable and most expensive. `tools/location/handler.py` is the counter-example: it joins
+# hotel, search and annotation in one call, so the model asks once instead of orchestrating three.
+
+tasks:
+  - id: D1
+    title: Somewhere near a hotel the traveller has not named
+    prompt: Find somewhere to eat near my hotel.
+    personas: [priya]
+    expect:
+      tools:
+        # The hotel comes from the trip, not from the traveller repeating it.
+        required_any: [get_trips, find_nearby]
+        forbidden: [confirm_booking]
+      cards:
+        required_types: [place]
+
+  - id: D2
+    title: A route with a meeting to be on time for
+    # **"my hotel" was genuinely ambiguous across this persona's itineraries.** Priya's *upcoming*
+    # trip is a Singapore flight with no hotel; the trip that has a hotel is the in-progress Dallas
+    # one. So the agent read "my hotel" as the upcoming trip, found none, and correctly asked which
+    # trip was meant — failing a fixture that wanted a route. Naming the city removes the ambiguity
+    # without weakening what this task tests, which is the arrival-buffer reasoning.
+    prompt: How long from the airport to my Dallas hotel if I need to be there by 2pm?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [get_route]
+      cards:
+        required_types: [route]
+
+  - id: D3
+    title: Trips chained into a profile lookup
+    prompt: What seat do I usually pick, and which trip is next?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [get_traveler_profile, get_trips]
+      cards:
+        required_types: [profile]
+
+  - id: D4
+    title: An ambiguous place name is asked about, not guessed
+    # **Manchester rather than Dublin, and the swap is not cosmetic.** Dublin is this sample's
+    # canonical resolvable city — `AIR_SEARCH`, `HOTEL_SEARCH` and the seeded option ids all run
+    # through it, and making it ambiguous broke 43 backend tests. Manchester, England and
+    # Manchester, New Hampshire are equally genuinely two places, and neither the fixtures nor the
+    # seed depend on the name.
+    # Dates given, because "next week" is a second ambiguity and the agent reasonably asks about it
+    # first — which ends the turn before the place is ever resolved. One ambiguity per task, or the
+    # task measures whichever one the model happened to notice.
+    prompt: Find me a hotel in Manchester for 5 to 8 December.
+    personas: [priya]
+    expect:
+      tools:
+        forbidden: [confirm_booking, prepare_booking]
+      by_persona:
+        priya:
+          # Both are real cities with their own international airports, and a silent choice is
+          # wrong roughly half the time — in a way that succeeds all the way through booking
+          # before the traveller discovers it.
+          must_mention: ["England", "New Hampshire"]
+
+  - id: D5
+    title: Charging, which is a preference and not a policy
+    prompt: Is there anywhere to charge an electric car near my hotel?
+    personas: [priya]
+    expect:
+      tools:
+        required_any: [find_nearby]
+      cards:
+        required_types: [place]
+
+  - id: D6
+    title: A question that needs the trip and the policy together
+    prompt: Is the hotel on my next trip within my policy?
+    personas: [priya, sam]
+    expect:
+      tools:
+        required_any: [get_trips]
+      by_persona:
+        priya:
+          must_not_mention: ["150", "initech"]
+        sam:
+          must_not_mention: ["250", "globex"]
