@@ -548,7 +548,7 @@ def main() -> int:
     # AgentCore built-ins below. Fail fast with an install hint if its package is
     # missing rather than surfacing a bare ImportError mid-session.
     try:
-        import strands_evals  # noqa: F401
+        import strands_evals
     except ImportError:
         print(
             "ERROR: the SkillInvoked evaluator needs the strands-agents-evals package. "
@@ -617,9 +617,7 @@ def main() -> int:
 
         # Strands SkillInvoked (deterministic, client-side) — scores every session,
         # including the no-skill control, which the two LLM built-ins skip.
-        skill_invoked = _evaluate_skill_invoked(
-            session, skill_signals, config.get("skills", []), failures
-        )
+        skill_invoked = _evaluate_skill_invoked(session, skill_signals, config.get("skills", []), failures)
 
         all_ec_results[session["name"]] = {
             "session_id": session["session_id"],
