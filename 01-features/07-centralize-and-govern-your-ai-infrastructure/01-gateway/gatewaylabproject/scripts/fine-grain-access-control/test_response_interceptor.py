@@ -118,43 +118,80 @@ def main():
     def check(label, got, expect):
         nonlocal passed, failed
         ok = sorted(got) == sorted(expect)
-        print(("  PASS " if ok else "  FAIL ") + label + f" -> {got}"
-              + ("" if ok else f"  (expected {expect})"))
+        print(
+            ("  PASS " if ok else "  FAIL ")
+            + label
+            + f" -> {got}"
+            + ("" if ok else f"  (expected {expect})")
+        )
         passed += int(ok)
         failed += int(not ok)
 
     # Shape 1: result.tools, limited scope -> only getOrder
     r = handler(_event({"tools": [dict(t) for t in TOOLS]}, LIMITED), None)
-    check("result.tools (limited)",
-          _short(t["name"] for t in _out(r)["tools"]), ["getOrder"])
+    check(
+        "result.tools (limited)",
+        _short(t["name"] for t in _out(r)["tools"]),
+        ["getOrder"],
+    )
 
     # Shape 2: structuredContent.tools, limited scope -> only getOrder
-    r = handler(_event({"structuredContent": {"tools": [dict(t) for t in TOOLS]}}, LIMITED), None)
-    check("structuredContent.tools (limited)",
-          _short(t["name"] for t in _out(r)["structuredContent"]["tools"]), ["getOrder"])
+    r = handler(
+        _event({"structuredContent": {"tools": [dict(t) for t in TOOLS]}}, LIMITED),
+        None,
+    )
+    check(
+        "structuredContent.tools (limited)",
+        _short(t["name"] for t in _out(r)["structuredContent"]["tools"]),
+        ["getOrder"],
+    )
 
     # Shape 3: semantic-search content[0].text JSON, limited scope -> only getOrder
     search_payload = json.dumps({"tools": [dict(t) for t in TOOLS]})
-    r = handler(_event({"content": [{"type": "text", "text": search_payload}]}, LIMITED), None)
+    r = handler(
+        _event({"content": [{"type": "text", "text": search_payload}]}, LIMITED), None
+    )
     parsed = json.loads(_out(r)["content"][0]["text"])
-    check("search content.text (limited)",
-          _short(t["name"] for t in parsed["tools"]), ["getOrder"])
+    check(
+        "search content.text (limited)",
+        _short(t["name"] for t in parsed["tools"]),
+        ["getOrder"],
+    )
 
     # Shape 3 with full scope -> all four survive (no over-filtering)
-    r = handler(_event({"content": [{"type": "text", "text": search_payload}]}, FULL), None)
+    r = handler(
+        _event({"content": [{"type": "text", "text": search_payload}]}, FULL), None
+    )
     parsed = json.loads(_out(r)["content"][0]["text"])
-    check("search content.text (full)",
-          _short(t["name"] for t in parsed["tools"]),
-          ["getOrder", "updateOrder", "cancelOrder", "deleteOrder"])
+    check(
+        "search content.text (full)",
+        _short(t["name"] for t in parsed["tools"]),
+        ["getOrder", "updateOrder", "cancelOrder", "deleteOrder"],
+    )
 
     # Non-JSON text content is left untouched
-    r = handler(_event({"content": [{"type": "text", "text": "human readable, not json"}]}, LIMITED), None)
-    check("non-JSON text untouched",
-          [_out(r)["content"][0]["text"]], ["human readable, not json"])
+    r = handler(
+        _event(
+            {"content": [{"type": "text", "text": "human readable, not json"}]}, LIMITED
+        ),
+        None,
+    )
+    check(
+        "non-JSON text untouched",
+        [_out(r)["content"][0]["text"]],
+        ["human readable, not json"],
+    )
 
     # Missing token fails safe (no crash, no filtering exception surfaced)
-    handler({"mcp": {"gatewayRequest": {"headers": {}},
-                     "gatewayResponse": {"headers": {}, "body": {"result": {"tools": []}}}}}, None)
+    handler(
+        {
+            "mcp": {
+                "gatewayRequest": {"headers": {}},
+                "gatewayResponse": {"headers": {}, "body": {"result": {"tools": []}}},
+            }
+        },
+        None,
+    )
 
     print(f"\nRESULT: {passed} passed, {failed} failed")
     return 1 if failed else 0
