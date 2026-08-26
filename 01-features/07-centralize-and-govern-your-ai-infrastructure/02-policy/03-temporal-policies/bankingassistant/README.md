@@ -277,7 +277,7 @@ when { context.input.amount <= 10000 };
 | :--- | :--- | :--- | :--- |
 | 1 | Check the balance of ACC-2002 | - | ALLOW |
 | 2 | , then transfer $500 from ACC-1001 to ACC-2002 | ACC-2002 | ALLOW |
-| 3 | Transfer $500 from ACC-1001 to ACC-2003 | ACC-9999 | DENY (destination does not match the looked-up account) |
+| 3 | Transfer $500 from ACC-1001 to ACC-9999 | ACC-9999 | DENY (destination does not match the looked-up account ACC-2002) |
 
 </details>
 
