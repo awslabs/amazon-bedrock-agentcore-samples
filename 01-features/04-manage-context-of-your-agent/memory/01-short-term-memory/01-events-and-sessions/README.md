@@ -9,6 +9,18 @@ Events are the atomic unit of short-term memory. Each event is **immutable**, **
 - `GetEvent` fetches one event in full
 - `ListSessions` discovers prior sessions for an actor
 
+## Event payload types
+
+The events here are all conversation turns, but `payload` is a list of items and an event is not limited to speech:
+
+| Type             | Content                                                         | Extracted into long-term memory? |
+| ---------------- | --------------------------------------------------------------- | -------------------------------- |
+| `conversational` | A turn with a role and text                                     | Yes                              |
+| `json`           | Structured content under `json.content` (up to 100 KB per item) | Yes                              |
+| `blob`           | Arbitrary data (agent state, session relevant document etc)     | No — short-term only             |
+
+Full treatment, including mixed payloads and the extraction differences, in [`../02-payload-types/`](../02-payload-types/).
+
 ## Run
 
 ```bash
