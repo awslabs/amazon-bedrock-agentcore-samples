@@ -51,19 +51,20 @@ This tutorial attaches semantic and user-preference strategies even though it si
 ```python
 from bedrock_agentcore.memory.constants import BlobMessage, ConversationalMessage, MessageRole
 
-session.add_turns(messages=[ConversationalMessage("Automatic sedan please.", MessageRole.USER)])
-session.add_turns(messages=[BlobMessage({"document": "appraisal.pdf", "bytes": "..."})])
+# One add_turns call = one event, so mixing message types gives you a mixed payload.
+session.add_turns(messages=[
+    ConversationalMessage("Automatic sedan please.", MessageRole.USER),
+    BlobMessage({"document": "appraisal.pdf", "bytes": "..."}),
+])
 # json: no SDK type — use data.create_event(payload=[{"json": {"content": {...}}}])
 ```
-
-`MemoryClient.create_blob_event(...)` is the older single-purpose helper for the blob case.
 
 ## Best practices
 
 - **Field names are prompt input.** Extraction reasons over your JSON structure, so `view_duration_sec` earns its keep where `d2` tells the model nothing. Name fields as you would for a human reader.
 - **Send the event that happened, not a sentence about it.** Don't synthesise `"The user viewed a Honda Civic"` as a fake conversational turn — write the `json` item. You keep the real structure, and the transcript stays an honest record of what was said.
 - **Mix types in one event when they describe one moment.** Speech plus the behaviour that accompanied it gives extraction corroborating signal; the doc's own output shows preferences justified by both at once ("explicitly stated 'Automatic sedan please' *and* applied search filters").
-- **Check the 100 KB limit before you send.** It is per `json` item, not per event — split a large document across items, or store it as a `blob` if nothing needs extracting from it.
+- **Check the 100 KB limit before you send.** It is per `json` item, not per event — split a large document across items (up to 100 per payload), or store it as a `blob` if nothing needs extracting from it.
 - **Use `blob` only for data you never want extracted.** Binary content, large documents, agent-internal state. If you want it to influence retrieval, it needs to be `json`.
 - **Don't rehydrate prompts with `get_last_k_turns` if JSON payloads carry real context.** It returns conversational items only, so structured context silently never reaches the model. Use `list_events(include_payload=True)` and handle each item type yourself.
 - **`json` is not a metadata substitute.** JSON payloads are extracted but not filterable; event metadata is filterable but never extracted. See [`../03-event-metadata/`](../03-event-metadata/).
@@ -115,8 +116,8 @@ aws bedrock-agentcore create-event \
   --payload '[
     {"conversational":{"role":"USER",
       "content":{"text":"Automatic sedan please. I really liked the Corolla."}}},
-    {"json":{"content":{"event":"VEHICLE_VIEWED",
-      "vehicle":{"make":"Toyota","model":"Corolla","year":2023},"viewTimeSeconds":185}}},
+    {"json":{"content":{"event":"car_viewed","car_id":"VH-3310",
+      "make":"Toyota","model":"Corolla","year":2023,"view_duration_sec":185}}},
     {"conversational":{"role":"ASSISTANT",
       "content":{"text":"Good choice. You are pre-approved at 5.9% APR."}}}
   ]'

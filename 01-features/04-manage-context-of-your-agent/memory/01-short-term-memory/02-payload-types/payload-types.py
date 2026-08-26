@@ -22,13 +22,12 @@ Two ways to run it:
 
 The `sdk` path is partial by necessity: `add_turns` accepts `ConversationalMessage`
 and `BlobMessage`, but the SDK has no JSON message type (checked through
-bedrock-agentcore 1.22), so the JSON events go through boto3 `create_event` even in
-that path. The `sdk` run also demonstrates that `get_last_k_turns` skips
-non-conversational payload items entirely.
+bedrock-agentcore 1.22), so JSON events go through boto3 `create_event` even there.
+That path also shows `get_last_k_turns` skipping every non-conversational item.
 
-This tutorial attaches extraction strategies even though it lives under
-short-term memory — the difference between the three payload types *is* what
-extraction does with them, and that can't be shown without a strategy.
+This tutorial attaches extraction strategies even though it lives under short-term
+memory — the difference between the three payload types *is* what extraction does
+with them, and that can't be shown without a strategy.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -89,31 +88,27 @@ JSON_EVENTS = [
     },
 ]
 
+USER_TEXT = "Automatic sedan please. I really liked the Corolla."
+ASSISTANT_TEXT = "Good choice. You're pre-approved at 5.9% APR — want me to hold it?"
+
 # One event, three payload items: what the shopper said, what they did, what the
 # agent replied. Extraction sees the speech and the behaviour together and can
 # corroborate one with the other.
 MIXED_PAYLOAD = [
-    {
-        "conversational": {
-            "role": "USER",
-            "content": {"text": "Automatic sedan please. I really liked the Corolla."},
-        }
-    },
+    {"conversational": {"role": "USER", "content": {"text": USER_TEXT}}},
     {
         "json": {
             "content": {
-                "event": "VEHICLE_VIEWED",
-                "vehicle": {"make": "Toyota", "model": "Corolla", "year": 2023},
-                "viewTimeSeconds": 185,
+                "event": "car_viewed",
+                "car_id": "VH-3310",
+                "make": "Toyota",
+                "model": "Corolla",
+                "year": 2023,
+                "view_duration_sec": 185,
             }
         }
     },
-    {
-        "conversational": {
-            "role": "ASSISTANT",
-            "content": {"text": "Good choice. You're pre-approved at 5.9% APR — want me to hold it?"},
-        }
-    },
+    {"conversational": {"role": "ASSISTANT", "content": {"text": ASSISTANT_TEXT}}},
 ]
 
 # Blob content. Short-term memory only: it round-trips through ListEvents/GetEvent
