@@ -1,11 +1,15 @@
 # AgentCore payments — Getting Started Tutorials
 
 Step-by-step Python tutorials for building payment-enabled AI agents with **Amazon Bedrock
-AgentCore payments** — x402 protocol orchestration, configurable spend limits, and third-party
+AgentCore payments** — payment protocol orchestration, configurable spend limits, and third-party
 wallet integration (Coinbase CDP, Stripe/Privy).
 
-> **Testnet only.** All tutorials use Base Sepolia (Ethereum) or Solana Devnet with free USDC from
-> [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
+> **Testnet by default.** Tutorials 00–07 use Base Sepolia (Ethereum) or Solana Devnet with free USDC
+> from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
+>
+> **Tutorial 09 is the exception.** It runs on Base mainnet and transfers **real USDC** from your
+> wallet. It refuses to run until you opt in explicitly — read
+> [its README](09-pay-per-use-with-upto/) first.
 
 ## How the pieces fit together  <a name="cli-vs-sdk"></a>
 
@@ -29,7 +33,7 @@ the SDK to build paying agents on top of it.**
 
 ## Start here
 
-Start with Tutorial 00; then work through 01–08 (in order, or dip into any that interests you — each
+Start with Tutorial 00; then work through 01–07 (in order, or dip into any that interests you — each
 stands alone). Each folder's `README.md` is a self-contained walkthrough — you run the `agentcore`
 commands and Python snippets yourself and learn each piece as you go.
 
@@ -53,8 +57,8 @@ numbered walkthrough, an inspect step, troubleshooting, and clean-up — so once
 
 ## Tutorials
 
-Run Tutorial 00 first; then 01–08 in any order. Each folder's README opens with a **Reads / Does**
-strip so you can see its inputs and outputs at a glance.
+Run Tutorial 00 first; then 01–07 and 09 in any order. Each folder's README opens with a
+**Reads / Does** strip so you can see its inputs and outputs at a glance.
 
 | # | Folder | What you build | Provisioning |
 |---|--------|----------------|:------------:|
@@ -66,7 +70,9 @@ strip so you can see its inputs and outputs at a glance.
 | 05 | [`05-agent-with-browser-tool-pay-for-content/`](05-agent-with-browser-tool-pay-for-content/) | Pay 402 paywalls inside a browser session | SDK |
 | 06 | [`06-research-agent-with-payment-memory/`](06-research-agent-with-payment-memory/) | Add AgentCore Memory to skip redundant paid calls | SDK |
 | 07 | [`07-multi-agent-payment-orchestrator/`](07-multi-agent-payment-orchestrator/) | Multiple agents, separate wallets, per-agent budgets | CLI + SDK |
-| 08 | [`08-openai-paid-research-agent/`](08-openai-paid-research-agent/) | OpenAI Agents SDK financial research with approved x402 merchants and bounded budgets | SDK |
+| 09 | [`09-pay-per-use-with-upto/`](09-pay-per-use-with-upto/) | Pay a metered seller with the x402 `upto` scheme (real USDC on Base mainnet) | SDK |
+
+MPP Tutorial is coming soon !
 
 ## Which tutorial do I need?
 
@@ -76,7 +82,7 @@ strip so you can see its inputs and outputs at a glance.
 - **Paying for web/article content?** → 05 (Browser).
 - **Personalized agentic payments with memory?** → 06 (Memory).
 - **Several agents with independent budgets?** → 07 (needs multi-provider setup).
-- **OpenAI model buying approved premium research?** → 08.
+- **Price not known until the work is done?** → 09 (`upto`, real funds on mainnet).
 
 ## Shared files
 

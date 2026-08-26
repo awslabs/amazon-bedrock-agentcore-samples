@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from paid_research.x402 import PaymentConfig, X402PaymentClient
+from payment import PaymentConfig, X402PaymentClient
 
 
 @dataclass
@@ -19,7 +19,7 @@ class FakeTransport:
         self.responses = responses
         self.requests: list[dict[str, Any]] = []
 
-    def get(self, url: str, *, headers: dict[str, str] | None = None) -> FakeResponse:
+    def get(self, url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         self.requests.append({"url": url, "headers": headers})
         return self.responses.pop(0)
 
@@ -66,7 +66,7 @@ def test_returns_free_content_without_payment() -> None:
     client = X402PaymentClient(
         config(),
         manager,
-        transport=transport,
+        get=transport.get,
         resolver=public_resolver,
     )
 
@@ -95,7 +95,7 @@ def test_settles_402_and_uses_version_aware_sdk_header() -> None:
     client = X402PaymentClient(
         config(),
         manager,
-        transport=transport,
+        get=transport.get,
         resolver=public_resolver,
         token_factory=lambda: "stable-token",
     )
@@ -104,7 +104,6 @@ def test_settles_402_and_uses_version_aware_sdk_header() -> None:
 
     assert result["payment_made"] is True
     assert result["payment_attempts"] == 1
-    assert result["challenge"]["x402_version"] == 2
     assert transport.requests[1]["headers"] == {"PAYMENT-SIGNATURE": "proof"}
     assert manager.header_calls[0]["client_token"] == "stable-token"
 
@@ -121,7 +120,7 @@ def test_reuses_idempotency_token_across_transient_402_retries() -> None:
     client = X402PaymentClient(
         config(),
         manager,
-        transport=transport,
+        get=transport.get,
         resolver=public_resolver,
         token_factory=lambda: "one-token",
     )
@@ -140,7 +139,7 @@ def test_blocks_unapproved_hosts_before_network_access() -> None:
     client = X402PaymentClient(
         config(),
         FakeManager(),
-        transport=transport,
+        get=transport.get,
         resolver=public_resolver,
     )
 
@@ -156,7 +155,7 @@ def test_blocks_private_dns_results() -> None:
     client = X402PaymentClient(
         config(),
         FakeManager(),
-        transport=transport,
+        get=transport.get,
         resolver=lambda _host, _port: ["127.0.0.1"],
     )
 

@@ -9,10 +9,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from agents import Agent, ModelSettings, Runner, WebSearchTool, function_tool, trace
+from bedrock_openai import configure_bedrock_openai
 from dotenv import load_dotenv
-
-from .model_runtime import configure_model_runtime
-from .x402 import X402PaymentClient
+from payment import X402PaymentClient
 
 LEAD_INSTRUCTIONS = """Role: Research lead.
 
@@ -92,7 +91,7 @@ def build_agent_team(
     include_web_search: bool = True,
 ) -> ResearchAgentTeam:
     """Build a manager-style team with payment authority isolated to one specialist."""
-    resolved_model = model or os.getenv("OPENAI_MODEL", "gpt-5.6-sol")
+    resolved_model = model or os.getenv("BEDROCK_OPENAI_MODEL", "openai.gpt-5.5")
     public_tools = [WebSearchTool(search_context_size="medium")] if include_web_search else []
     public_evidence = Agent(
         name="Public evidence analyst",
@@ -205,7 +204,7 @@ async def run_research(
     approve_interactively: bool = True,
 ) -> str:
     payment_client = X402PaymentClient.from_env() if paid_url else None
-    runtime = configure_model_runtime()
+    runtime = configure_bedrock_openai()
     agent = build_agent(
         payment_client,
         approved_paid_url=paid_url,
@@ -238,9 +237,7 @@ async def run_research(
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run a budget-bounded OpenAI multi-agent financial research team"
-    )
+    parser = argparse.ArgumentParser(description="Run a budget-bounded OpenAI multi-agent financial research team")
     parser.add_argument("query", help="Research question, company, or market topic")
     parser.add_argument(
         "--paid-url",

@@ -11,11 +11,10 @@ from typing import NoReturn
 
 import httpx
 from agents import Runner, ToolCallItem
+from bedrock_openai import configure_bedrock_openai
 from dotenv import load_dotenv
-
-from paid_research.agent import build_agent
-from paid_research.model_runtime import configure_model_runtime
-from paid_research.x402 import X402PaymentClient
+from pay_for_research import build_agent
+from payment import X402PaymentClient
 
 
 class DisabledPaymentClient:
@@ -27,7 +26,7 @@ class DisabledPaymentClient:
 
 
 async def model_smoke() -> dict[str, str | bool | None]:
-    runtime = configure_model_runtime()
+    runtime = configure_bedrock_openai()
     agent = build_agent(
         DisabledPaymentClient(),
         approved_paid_url=os.getenv(
@@ -47,14 +46,12 @@ After the public specialist returns, reply with exactly PAID_RESEARCH_MODEL_OK."
     if output != "PAID_RESEARCH_MODEL_OK":
         raise RuntimeError(f"Unexpected model smoke-test output: {output!r}")
     delegated_tools = [
-        item.tool_name
-        for item in result.new_items
-        if isinstance(item, ToolCallItem) and item.tool_name is not None
+        item.tool_name for item in result.new_items if isinstance(item, ToolCallItem) and item.tool_name is not None
     ]
     if delegated_tools != ["research_public_evidence"]:
         raise RuntimeError(f"Unexpected specialist delegation: {delegated_tools!r}")
     return {
-        "provider": runtime.provider,
+        "provider": "bedrock",
         "model": runtime.model,
         "region": runtime.region,
         "web_search_enabled": runtime.include_web_search,

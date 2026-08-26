@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Create a short-lived AgentCore payment session for one research run."""
 
 from __future__ import annotations
@@ -22,11 +21,21 @@ def parse_budget(raw: str) -> str:
     return format(value.quantize(Decimal("0.01")), "f")
 
 
+def parse_expiry_minutes(raw: str) -> int:
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expiry must be a whole number of minutes") from exc
+    if not 15 <= value <= 480:
+        raise argparse.ArgumentTypeError("expiry must be between 15 and 480 minutes")
+    return value
+
+
 def main() -> None:
     load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--budget", type=parse_budget, default="0.25")
-    parser.add_argument("--expiry-minutes", type=int, default=60, choices=range(15, 481))
+    parser.add_argument("--expiry-minutes", type=parse_expiry_minutes, default=60)
     args = parser.parse_args()
 
     manager_arn = os.environ["PAYMENT_MANAGER_ARN"]

@@ -174,15 +174,16 @@ You can also inspect
 
 ## 7. Run the Paid Smoke Test
 
-With a fresh payment session and the paid-research sample installed:
+With a fresh payment session and the paid-research sample dependencies installed:
 
 ```bash
-AWS_PROFILE=<your-profile> paid-research-e2e --payment
+cd ../../../02-use-cases/pay-for-research-with-openai-agent
+AWS_PROFILE=<your-profile> python e2e.py --payment
 ```
 
 A successful run shows:
 
-- Bedrock-hosted OpenAI model delegation passed
+- OpenAI models on Amazon Bedrock delegation passed
 - HTTP 402 with an x402 v2 challenge
 - Payment generated on the first attempt
 - Paid retry returned HTTP 200

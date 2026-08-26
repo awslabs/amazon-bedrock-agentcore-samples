@@ -1,6 +1,5 @@
 import pytest
-
-from paid_research.agent import build_agent, build_agent_team, build_prompt
+from pay_for_research import build_agent, build_agent_team, build_prompt
 
 
 class FakePaymentClient:
