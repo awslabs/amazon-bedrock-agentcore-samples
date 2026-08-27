@@ -182,7 +182,7 @@ memory_id = memory["id"]
 # - **Custom Strategy**: Extracts nutrition preferences from conversations
 # - **Namespaces**: Organizes memories by user (`{actorId}/preferences/`)
 # - **Custom Prompts**: Specialized extraction and consolidation logic for food preferences
-# - **Model Integration**: Uses Claude 3.7 Sonnet for memory processing
+# - **Model Integration**: uses `MODEL_ID` (Claude Haiku 4.5) for extraction and consolidation
 #
 # The memory system will automatically process conversations to extract lasting user preferences while filtering out temporary or irrelevant information.
 #

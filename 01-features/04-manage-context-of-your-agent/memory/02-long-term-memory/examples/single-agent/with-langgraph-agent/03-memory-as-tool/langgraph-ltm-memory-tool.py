@@ -307,7 +307,7 @@ def run_turn(graph, messages: list, user_text: str) -> str:
     # create_agent returns the full message list (including any tool calls/results and the
     # final AI message). Sync our local history to it and return the last message's text.
     messages[:] = result["messages"]
-    return messages[-1].text()
+    return messages[-1].text
 
 
 # ## Step 5: Run the demo

@@ -174,7 +174,7 @@ for chunk in graph.stream(inputs, stream_mode="updates", config=config):
 
 
 for message in graph.get_state(config).values.get("messages"):
-    print(f"{message.type}: {message.text()}")
+    print(f"{message.type}: {message.text}")
     print("=========================================")
 
 

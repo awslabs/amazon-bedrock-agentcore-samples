@@ -43,10 +43,15 @@ Namespaces are the primary axis for IAM scoping, tenant isolation, and targeted 
 | | Short-term | Long-term |
 |---|---|---|
 | Unit | Event | Memory record |
-| Created by | You (`CreateEvent`) | A strategy (built-in or self-managed) |
+| Created by | You (`CreateEvent`) — or your framework's adapter, on your behalf | A strategy (built-in or self-managed) |
 | Organized by | Session + actor | Namespace |
 | Retrieved via | `ListEvents`, `GetEvent`, `get_last_k_turns` | `RetrieveMemoryRecords` (semantic search), `ListMemoryRecords` |
 | Typical retention | Days to a year (`event_expiry_days`) | As long as the memory resource lives |
+
+> **In agent code you usually don't call these APIs yourself.** Every major framework has an
+> AgentCore adapter — one per column above — that writes the events and retrieves the records
+> for you. Same primitives underneath; you just don't hand-roll the plumbing. See
+> [06-usage-patterns.md](./06-usage-patterns.md).
 
 ## Next
 
