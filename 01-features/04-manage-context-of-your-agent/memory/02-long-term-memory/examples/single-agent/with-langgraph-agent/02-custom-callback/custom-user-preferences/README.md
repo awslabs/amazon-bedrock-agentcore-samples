@@ -1,30 +1,97 @@
-# Long-term memory — LangGraph custom user-preference callback
+# Long-term memory — LangGraph agent with AgentCore Memory middlewares
 
-A nutrition assistant built with **LangGraph** that uses a **custom-override UserPreference strategy** plus pre/post model hooks to automatically extract, store, and recall user preferences across sessions. Custom prompts steer how preferences are extracted and consolidated.
+A nutrition assistant built with **LangGraph** that uses **agent middlewares** to automatically extract,
+store, and recall user preferences across conversation sessions.
 
 | Information | Details |
 |---|---|
 | Tutorial type | Long-term conversational |
 | Agent type | Nutrition Assistant |
-| Framework | LangGraph |
+| Framework | LangGraph (with middlewares) |
 | LLM model | Anthropic Claude Haiku 4.5 |
-| Strategies | UserPreference — **custom override** (requires IAM execution role) |
-| Memory components | Custom extraction/consolidation prompts, pre/post model hooks, semantic retrieval |
+| Strategies | UserPreference + Semantic (built-in, **no IAM execution role required**) |
+| Memory components | `@before_agent`/`@after_agent` middlewares, semantic retrieval, `MemoryManager` |
 | Complexity | Intermediate |
+
+## Architecture
+
+![Architecture](architecture.png)
+
+## Key features
+
+- **`@before_agent` middleware**: retrieves relevant user preferences from AgentCore Memory once per agent call
+- **`@after_agent` middleware**: saves the conversation to AgentCore Memory for long-term extraction
+- **Built-in memory strategies**: uses `USER_PREFERENCE` and `SEMANTIC` (no IAM role required)
+- **MemoryManager**: simplified memory creation from the starter toolkit
 
 ## What it does
 
 [`nutrition-assistant-with-user-preference-saving.py`](./nutrition-assistant-with-user-preference-saving.py):
 
-1. Creates memory with a UserPreference custom-override strategy, using the prompts in [`custom_memory_prompts.py`](./custom_memory_prompts.py).
-2. A **pre-model hook** retrieves relevant preferences and injects them into context.
-3. A **post-model hook** stores new turns for asynchronous extraction.
+1. Creates memory with built-in `USER_PREFERENCE` and `SEMANTIC` strategies via `MemoryManager`.
+2. A **`@before_agent` middleware** retrieves relevant preferences and facts, then injects them into the system prompt.
+3. An **`@after_agent` middleware** stores each new turn for asynchronous extraction.
 4. Across sessions, the agent recalls dietary restrictions, favorite foods, and health goals to personalize advice.
+
+## Memory strategies
+
+This example uses two built-in strategies:
+
+1. **USER_PREFERENCE** — automatically extracts user preferences from conversations
+2. **SEMANTIC** — stores factual information mentioned in conversations
+
+```python
+memory = memory_manager.get_or_create_memory(
+    name="Nutrition_Assistant",
+    strategies=[
+        {StrategyType.USER_PREFERENCE.value: {...}},
+        {StrategyType.SEMANTIC.value: {...}},
+    ],
+)
+```
+
+Namespaces:
+
+- `nutrition/{actorId}/preferences` — user food preferences
+- `nutrition/{actorId}/facts` — factual information
+
+> **Tip**: for custom extraction/consolidation prompts, use `StrategyType.CUSTOM` with `MemoryClient`
+> (which does require a `memory_execution_role_arn`).
+
+## Middleware pattern
+
+This example uses LangGraph's agent middlewares with `create_agent`:
+
+```python
+from langchain.agents import create_agent
+from langchain.agents.middleware import before_agent, after_agent, AgentState
+from langgraph.runtime import Runtime
+
+@before_agent
+def retrieve_from_memory(state: AgentState, runtime: Runtime):
+    # Retrieve memories and inject into context
+    ...
+
+@after_agent
+def save_to_memory(state: AgentState, runtime: Runtime):
+    # Save conversation to AgentCore Memory
+    ...
+
+graph = create_agent(
+    llm,
+    tools=[],
+    middleware=[retrieve_from_memory, save_to_memory],
+    checkpointer=InMemorySaver(),
+)
+```
+
+Agent-level middlewares run once per agent invocation, so memory is retrieved and saved a single time
+per turn regardless of how many times the model is called.
 
 ## Prerequisites
 
 - Python 3.10+
-- AWS account with AgentCore Memory permissions and an IAM execution role
+- AWS account with AgentCore Memory permissions
 - Access to Amazon Bedrock models
 
 ## How to run

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-# # LangGraph with AgentCore Memory Hooks (Long-term Memory)
+# # LangGraph with AgentCore Memory Middlewares (Long-term Memory)
 #
 # ## Introduction
 #
-# This notebook demonstrates how to integrate Amazon Bedrock AgentCore Memory capabilities with a conversational AI agent using LangGraph framework. We'll focus on **long-term memory** retention across multiple conversation sessions - allowing an agent to extract and recall user preferences, dietary restrictions, and contextual information from past interactions.
+# This example demonstrates how to integrate Amazon Bedrock AgentCore Memory capabilities with a conversational AI agent using **LangGraph** framework with the **middleware system**. We'll focus on **long-term memory** retention across multiple conversation sessions - allowing an agent to extract and recall user preferences, dietary restrictions, and contextual information from past interactions.
 #
 # ## Tutorial Details
 #
@@ -12,294 +12,312 @@
 # |:--------------------|:---------------------------------------------------------------------------------|
 # | Tutorial type       | Long-term Conversational                                                        |
 # | Agent usecase       | Nutrition Assistant                                                              |
-# | Agentic Framework   | LangGraph                                                                        |
+# | Agentic Framework   | LangGraph (with Middlewares)                                                    |
 # | LLM model           | Anthropic Claude Haiku 4.5                                                     |
-# | Tutorial components | AgentCore Long-term Memory, Custom Memory Strategies, Pre/Post Model Hooks     |
+# | Tutorial components | AgentCore Long-term Memory, Memory Strategies, `@before_agent`/`@after_agent` Middlewares |
 # | Example complexity  | Intermediate                                                                     |
 #
 # You'll learn to:
-# - Create AgentCore Memory with UserPreference custom-override strategy
-# - Implement pre/post model hooks for automatic memory storage and retrieval
+# - Create AgentCore Memory with UserPreference and Semantic strategies
+# - Implement `@before_agent` and `@after_agent` middlewares for automatic memory storage and retrieval
 # - Build a nutrition assistant that remembers user preferences across sessions
 # - Use semantic search to retrieve relevant user context
-# - Configure custom memory extraction and consolidation prompts
+#
+# ## Architecture
+#
+# <div style="text-align:left">
+#     <img src="architecture.png" width="55%" />
+# </div>
 #
 # ### Scenario Context
 #
 # In this example, we'll create a **Nutrition Assistant** that can remember user context across multiple conversations, including dietary restrictions, favorite foods, cooking preferences, and health goals. The agent will automatically extract and store user preferences from conversations, then retrieve relevant context for future interactions to provide personalized nutrition advice.
 #
-# ## Architecture
-#
-# <div style="text-align:left">
-#     <img src="architecture.png" width="65%" />
-# </div>
-#
 # ## Prerequisites
 #
 # - Python 3.10+
 # - AWS account with appropriate permissions
-# - AWS IAM role with appropriate permissions for AgentCore Memory
 # - Access to Amazon Bedrock models
 #
 # Let's get started by setting up our environment!
 
 
-# Install necessary libraries from https://github.com/langchain-ai/langchain-aws
-
-
 import os
 import logging
-import json as json_module
-import boto3
-from botocore.exceptions import ClientError
+from typing import Any
 
-# Import LangGraph and LangChain components
+# Import LangGraph components
 from langchain.chat_models import init_chat_model
-from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain.agents import create_agent
+from langchain.agents.middleware import before_agent, after_agent, AgentState
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.store.base import BaseStore
-import uuid
+from langgraph.runtime import Runtime
 
 
 region = os.getenv("AWS_REGION", "us-east-1")
-logging.getLogger("math-agent").setLevel(logging.DEBUG)
+logging.getLogger("nutrition-agent").setLevel(logging.DEBUG)
+logging.getLogger("bedrock_agentcore_starter_toolkit").setLevel(logging.WARNING)
 
 
-# Import the AgentCoreMemoryStore that we will use as a store
-from langgraph_checkpoint_aws import AgentCoreMemoryStore  # noqa: E402
-
-# For this example, we will just use an InMemorySaver to save context.
-# In production, we highly recommend the AgentCoreMemorySaver as a checkpointer which works seamlessly alongside the memory store
-# from langgraph_checkpoint_aws import AgentCoreMemorySaver
+# Import Memory components
 from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
 from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
 
-from custom_memory_prompts import consolidation_prompt, extraction_prompt  # noqa: E402
+# Using MemoryManager from starter toolkit (simpler API)
+from bedrock_agentcore_starter_toolkit.operations.memory.manager import (  # noqa: E402
+    MemoryManager,
+)
 
 
-memory_name = "NutritionAssistant"
-client = MemoryClient(region_name=region)
+# ## Step 1: Create the Memory Resource
+#
+# Memory configuration using **built-in strategies**, which do not require an IAM execution role.
+
+
+memory_name = "Nutrition_Assistant"
 MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
+# Using MemoryManager for simpler memory creation (no IAM role required for built-in strategies)
+memory_manager = MemoryManager(region_name=region)
 
-def create_memory_execution_role():
-    """Create IAM role for AgentCore Memory custom strategies with required permissions."""
-    iam_client = boto3.client("iam", region_name=region)
-    sts_client = boto3.client("sts", region_name=region)
-    account_id = sts_client.get_caller_identity()["Account"]
-    role_name = "AgentCoreMemoryExecutionRole"
-    role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
-    trust_policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Sid": "",
-                "Effect": "Allow",
-                "Principal": {"Service": ["bedrock-agentcore.amazonaws.com"]},
-                "Action": "sts:AssumeRole",
-                "Condition": {
-                    "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
-                },
-            }
-        ],
-    }
-    permissions_policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "bedrock:InvokeModel",
-                    "bedrock:InvokeModelWithResponseStream",
-                ],
-                "Resource": [
-                    "arn:aws:bedrock:*::foundation-model/*",
-                    "arn:aws:bedrock:*:*:inference-profile/*",
-                ],
-                "Condition": {"StringEquals": {"aws:ResourceAccount": account_id}},
-            }
-        ],
-    }
-    try:
-        iam_client.get_role(RoleName=role_name)
-        logging.info(f"IAM role already exists: {role_arn}")
-        return role_arn
-    except ClientError as e:
-        if e.response["Error"]["Code"] != "NoSuchEntity":
-            raise
-    iam_client.create_role(
-        RoleName=role_name,
-        AssumeRolePolicyDocument=json_module.dumps(trust_policy),
-        Description="Execution role for AgentCore Memory custom strategies",
-    )
-    iam_client.put_role_policy(
-        RoleName=role_name,
-        PolicyName="AgentCoreMemoryBedrockAccess",
-        PolicyDocument=json_module.dumps(permissions_policy),
-    )
-    logging.info(f"Created IAM role: {role_arn}")
-    return role_arn
-
-
-MEMORY_EXECUTION_ROLE_ARN = create_memory_execution_role()
-
-memory = client.create_or_get_memory(
+memory = memory_manager.get_or_create_memory(
     name=memory_name,
-    description="Nutrition assistant",
-    memory_execution_role_arn=MEMORY_EXECUTION_ROLE_ARN,
     strategies=[
+        # Strategy 1: User Preferences (food preferences, dietary restrictions)
         {
-            StrategyType.CUSTOM.value: {
+            StrategyType.USER_PREFERENCE.value: {
                 "name": "NutritionPreferences",
-                "description": "Captures customer food preferences and behavior",
-                "namespaces": ["/{actorId}/preferences/"],
-                "configuration": {
-                    "userPreferenceOverride": {
-                        "extraction": {
-                            "appendToPrompt": extraction_prompt,
-                            "modelId": MODEL_ID,
-                        },
-                        "consolidation": {
-                            "appendToPrompt": consolidation_prompt,
-                            "modelId": MODEL_ID,
-                        },
-                    }
-                },
+                "description": "Captures user food preferences and dietary behavior",
+                "namespaces": ["nutrition/{actorId}/preferences"],
+            }
+        },
+        # Strategy 2: Semantic Memory (factual information from conversations)
+        {
+            StrategyType.SEMANTIC.value: {
+                "name": "NutritionFacts",
+                "description": "Stores factual information from conversations",
+                "namespaces": ["nutrition/{actorId}/facts"],
             }
         },
     ],
 )
-memory_id = memory["id"]
+
+memory_id = memory.get("id")
+print(f"✅ Memory resource is ACTIVE with ID: {memory_id}")
 
 
 # ### Memory Configuration Overview
 #
-# Our AgentCore Memory setup includes:
+# Our AgentCore Memory setup uses **built-in strategies** (no IAM role required):
 #
-# - **Custom Strategy**: Extracts nutrition preferences from conversations
-# - **Namespaces**: Organizes memories by user (`{actorId}/preferences/`)
-# - **Custom Prompts**: Specialized extraction and consolidation logic for food preferences
-# - **Model Integration**: Uses Claude 3.7 Sonnet for memory processing
+# - **USER_PREFERENCE Strategy**: Automatically extracts user preferences from conversations
+# - **SEMANTIC Strategy**: Stores factual information mentioned in conversations
+# - **Namespaces**:
+#   - `nutrition/{actorId}/preferences` - User food preferences
+#   - `nutrition/{actorId}/facts` - Factual information
 #
 # The memory system will automatically process conversations to extract lasting user preferences while filtering out temporary or irrelevant information.
 #
-# ## Step 3: Initialize Memory Store and LLM
+# > 💡 **Tip**: For custom extraction/consolidation prompts, use `StrategyType.CUSTOM` with `MemoryClient` (requires `memory_execution_role_arn`).
 #
-# Now we'll initialize the AgentCore Memory Store and our language model.
+# ## Step 2: Initialize Memory Client and LLM
+#
+# Now we'll initialize the AgentCore Memory client and our language model.
 
-
-# Initialize the store to enable long term memory saving and retrieval
-store = AgentCoreMemoryStore(memory_id=memory_id, region_name=region)
 
 # Initialize Bedrock LLM
 llm = init_chat_model(MODEL_ID, model_provider="bedrock_converse", region_name=region)
 
+# Optional: Initialize checkpointer for short-term memory (conversation continuity within session)
+# from langgraph_checkpoint_aws import AgentCoreMemorySaver
+# checkpointer = AgentCoreMemorySaver(memory_id=memory_id, region_name=region)
 
-# ## Step 4: Implement Memory Hooks
+print(f"✅ LLM initialized: {MODEL_ID}")
+
+
+# ## Step 3: Implement Memory Middlewares
 #
-# We'll create pre and post model hooks to automatically handle memory storage and retrieval:
+# We'll create middlewares to automatically handle memory storage and retrieval:
 #
-# - **Pre-model hook**: Retrieves relevant user preferences (based on semantic search) and adds context before LLM invocation
-# - **Post-model hook**: Saves the conversation messages for long-term memory extraction
+# - **`@before_agent`**: Retrieves relevant user preferences (based on semantic search) and adds context once per agent call
+# - **`@after_agent`**: Saves the conversation messages for long-term memory extraction once per agent call
 #
 # ### How Memory Processing Works
 #
 # 1. Messages are saved to AgentCore Memory with actor_id and session_id
-# 2. The custom strategy processes conversations to extract nutrition preferences
-# 3. Extracted preferences are stored in the `{actorId}/preferences/` namespace
+# 2. The strategies process conversations to extract nutrition preferences and facts
+# 3. Extracted preferences are stored in the `{actorId}/preferences` namespace
 # 4. Future conversations can search and retrieve relevant preferences for context
 #
 # **Note**: LangChain message types are converted under the hood by the store to AgentCore Memory message types so that they can be properly extracted to long term memories.
 
 
-def pre_model_hook(state, config: RunnableConfig, *, store: BaseStore):
-    """Hook that runs pre-LLM invocation to save the latest human message"""
-    actor_id = config["configurable"]["actor_id"]
-    thread_id = config["configurable"]["thread_id"]
-    # Saving the message to the actor and session combination that we get at runtime
-    namespace = (actor_id, thread_id)
+# Initialize MemoryClient for direct memory operations
+memory_client = MemoryClient(region_name=region)
 
+# Global variables for memory context (set before agent invocation)
+ACTOR_ID = "default_user"
+SESSION_ID = "default_session"
+
+BASE_PROMPT = """You are a helpful nutrition assistant. You remember user preferences and provide personalized advice."""
+
+
+def configure_memory_context(actor_id: str, session_id: str):
+    """Configure the memory context for middlewares."""
+    global ACTOR_ID, SESSION_ID
+    ACTOR_ID = actor_id
+    SESSION_ID = session_id
+
+
+@before_agent
+def retrieve_from_memory(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    """
+    BEFORE agent middleware: Retrieve memories and inject into context (runs once per agent call).
+    """
     messages = state.get("messages", [])
-    # Save the last human message we see before LLM invocation
+
+    # Get last user message for semantic search
+    last_user_msg = ""
     for msg in reversed(messages):
         if isinstance(msg, HumanMessage):
-            store.put(namespace, str(uuid.uuid4()), {"message": msg})
+            last_user_msg = msg.content
             break
-    # Retrieve user preferences based on the last message and append to state
-    user_preferences_namespace = (actor_id, "preferences/")
-    preferences = store.search(user_preferences_namespace, query=msg.content, limit=5)
 
-    # Construct another AI message to add context before the current message
-    if preferences:
-        context_items = [pref.value for pref in preferences]
-        context_message = AIMessage(content=f"[User Context: {', '.join(str(item) for item in context_items)}]")
-        # Insert the context message before the last human message
-        return {"messages": messages[:-1] + [context_message, messages[-1]]}
+    if not last_user_msg:
+        return None
 
-    return {"llm_input_messages": messages}
+    # Search memories using MemoryClient
+    memory_context = []
+
+    # Search preferences namespace
+    try:
+        prefs = memory_client.retrieve_memories(
+            memory_id=memory_id,
+            namespace=f"nutrition/{ACTOR_ID}/preferences",
+            query=last_user_msg,
+        )
+        for p in prefs[:3]:
+            if isinstance(p, dict):
+                content = p.get("content", {})
+                text = content.get("text", str(content)) if isinstance(content, dict) else str(content)
+                memory_context.append(f"Preference: {text}")
+    except Exception as e:
+        logging.debug(f"Preference retrieval error: {e}")
+
+    # Search facts namespace
+    try:
+        facts = memory_client.retrieve_memories(
+            memory_id=memory_id,
+            namespace=f"nutrition/{ACTOR_ID}/facts",
+            query=last_user_msg,
+        )
+        for f in facts[:3]:
+            if isinstance(f, dict):
+                content = f.get("content", {})
+                text = content.get("text", str(content)) if isinstance(content, dict) else str(content)
+                memory_context.append(f"Fact: {text}")
+    except Exception as e:
+        logging.debug(f"Fact retrieval error: {e}")
+
+    # Inject memories into system prompt
+    if memory_context:
+        logging.info(f"📚 Found {len(memory_context)} memories for {ACTOR_ID}")
+        enhanced_prompt = BASE_PROMPT + "\n\nWhat you know about this user:\n" + "\n".join(memory_context)
+        new_msgs = [SystemMessage(content=enhanced_prompt)] + [
+            m for m in messages if not isinstance(m, SystemMessage)
+        ]
+        return {"messages": new_msgs}
+    else:
+        logging.info(f"📭 No memories found for {ACTOR_ID}")
+
+    return None
 
 
-def post_model_hook(state, config: RunnableConfig, *, store: BaseStore):
-    """Hook that runs post-LLM invocation to save the latest human message"""
-    actor_id = config["configurable"]["actor_id"]
-    thread_id = config["configurable"]["thread_id"]
-
-    # Saving the message to the actor and session combination that we get at runtime
-    namespace = (actor_id, thread_id)
-
+@after_agent
+def save_to_memory(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    """
+    AFTER agent middleware: Save conversation to memory (runs once per agent call).
+    """
     messages = state.get("messages", [])
-    # Save the LLMs response to AgentCore Memory
+
+    # Extract latest conversation turn
+    human_msg, ai_msg = None, None
     for msg in reversed(messages):
-        if isinstance(msg, AIMessage):
-            store.put(namespace, str(uuid.uuid4()), {"message": msg})
+        if isinstance(msg, AIMessage) and ai_msg is None:
+            ai_msg = msg.content
+        elif isinstance(msg, HumanMessage) and human_msg is None:
+            human_msg = msg.content
+        if human_msg and ai_msg:
             break
 
-    return {"messages": messages}
+    # Save to AgentCore Memory
+    if human_msg and ai_msg:
+        try:
+            memory_client.create_event(
+                memory_id=memory_id,
+                actor_id=ACTOR_ID,
+                session_id=SESSION_ID,
+                messages=[
+                    (human_msg, "USER"),
+                    (ai_msg, "ASSISTANT"),
+                ],
+            )
+            logging.info(f"💾 Saved conversation to memory for {ACTOR_ID}")
+        except Exception as e:
+            logging.error(f"Memory save error: {e}")
+
+    return None
 
 
-# ## Step 5: Create the LangGraph Agent
+print("✅ Middlewares created: retrieve_from_memory, save_to_memory")
+
+
+# ## Step 4: Create the LangGraph Agent
 #
-# Now we'll create our nutrition assistant agent using LangGraph's `create_react_agent` with our memory hooks integrated. The tool node will contain just our long term memory retrieval tool and the pre and post model hooks are specified as arguments.
+# Now we'll create our nutrition assistant agent using **LangGraph's `create_agent`** with our memory middlewares integrated.
 #
-# **Note**: for custom agent implementations the Store and tools can be configured to run as needed for any workflow following this pattern. Pre/post model hooks can be used, the whole conversation could be saved at the end, etc.
+# **Note**: For custom agent implementations, the middlewares can be composed and extended as needed for any workflow following this pattern.
 
 
-graph = create_react_agent(
+# Create agent with LangGraph create_agent and middlewares
+graph = create_agent(
     llm,
-    store=store,
     tools=[],  # No additional tools needed for this example
+    middleware=[retrieve_from_memory, save_to_memory],  # Middleware pattern
     checkpointer=InMemorySaver(),  # For conversation state management
-    pre_model_hook=pre_model_hook,  # Retrieves user preferences before LLM call
-    post_model_hook=post_model_hook,  # Saves conversation after LLM response
 )
 
 
-# ## Step 6: Configure Agent Runtime
+# ## Step 5: Configure Agent Runtime
 #
 # We need to configure the agent with unique identifiers for the user and session. These IDs are crucial for memory organization and retrieval.
 #
 # ### Graph Invoke Input
-# We only need to pass the newest user message in as an argument `inputs`. This could include other state variables as well but for the simple `create_react_agent`, we only need messages.
+# We only need to pass the newest user message in as an argument `inputs`. This could include other state variables as well but for the simple `create_agent`, we only need messages.
 #
 # ### LangGraph RuntimeConfig
 # In LangGraph, config is a `RuntimeConfig` that contains attributes that are necessary at invocation time, for example user IDs or session IDs. For the `AgentCoreMemorySaver`, `thread_id` and `actor_id` must be set in the config. For instance, your AgentCore invocation endpoint could assign this based on the identity or user ID of the caller. You can read additional [documentation here](https://langchain-ai.github.io/langgraphjs/how-tos/configuration/)
-#
-#
 
 
-actor_id = "user-1"
+actor_id = "test-user"
+session_id = "test-session"
+
+# Configure memory context for middlewares
+configure_memory_context(actor_id, session_id)
+
 config = {
     "configurable": {
-        "thread_id": "session-1",  # REQUIRED: This maps to Bedrock AgentCore session_id under the hood
+        "thread_id": session_id,  # REQUIRED: This maps to Bedrock AgentCore session_id under the hood
         "actor_id": actor_id,  # REQUIRED: This maps to Bedrock AgentCore actor_id under the hood
     }
 }
 
+print(f"✅ Configured for actor={actor_id}, session={session_id}")
 
-# ## Step 7: Test the Agent
+
+# ## Step 6: Test the Agent
 #
 # Let's test our nutrition assistant by having a conversation about food preferences. The agent will automatically extract and store user preferences for future use.
 
@@ -333,15 +351,38 @@ run_agent(prompt, config)
 # ### What was stored?
 # As you can see, the model does not yet have any insight into our preferences or dietary restrictions.
 #
-# For this implementation with pre/post model hooks, two messages were stored here. The first message from the user and the response from the AI model were both stored as conversational events in AgentCore Memory. It may take a few moments for the long term memories to be extracted, so retry after a few seconds if nothing is found the first try.
+# For this implementation with `@before_agent` and `@after_agent` middlewares, two messages were stored here. The first message from the user and the response from the AI model were both stored as conversational events in AgentCore Memory. It may take a few moments for the long term memories to be extracted, so retry after a few seconds if nothing is found the first try.
 #
 # These messages were then extracted to AgentCore long term memory in our fact and user preferences namespaces. In fact, we can check the store ourselves to verify what has been stored there so far:
 
 
-# Search our user preferences namespace
-search_namespace = (actor_id, "preferences/")
-result = store.search(search_namespace, query="food", limit=3)
-print(f"Preferences namespace result: {result}")
+# Check what's been stored in memory
+print(f"🔍 Checking memories for: {actor_id}")
+print("=" * 60)
+
+print("\n📋 PREFERENCES:")
+prefs = memory_client.retrieve_memories(
+    memory_id=memory_id,
+    namespace=f"nutrition/{actor_id}/preferences",
+    query="food preferences",
+)
+for p in prefs[:5]:
+    text = p.get("content", {}).get("text", str(p)) if isinstance(p, dict) else str(p)
+    print(f"  • {text}")
+if not prefs:
+    print("  (none yet - memories take ~30s to extract)")
+
+print("\n📚 FACTS:")
+facts = memory_client.retrieve_memories(
+    memory_id=memory_id,
+    namespace=f"nutrition/{actor_id}/facts",
+    query="user facts",
+)
+for f in facts[:5]:
+    text = f.get("content", {}).get("text", str(f)) if isinstance(f, dict) else str(f)
+    print(f"  • {text}")
+if not facts:
+    print("  (none yet - memories take ~30s to extract)")
 
 
 # ### Agent access to the store
@@ -353,18 +394,25 @@ print(f"Preferences namespace result: {result}")
 # Now, let's start a new session and ask about recommendations for what to cook for dinner. The agent can use the store to access the long term memories that were extracted to make a recommendation that the user will be sure to like.
 
 
+# New session with same user
+session_id = "session-2"
+
+# Update memory context for new session
+configure_memory_context(actor_id, session_id)
+
 config = {
     "configurable": {
-        "thread_id": "session-2",  # New session ID
+        "thread_id": session_id,  # New session ID
         "actor_id": actor_id,  # Same actor ID
     }
 }
 
+print(f"✅ New session: {session_id}")
 run_agent("Today's a new day, what should I make for dinner tonight?", config)
 
 
 # ### Wrapping up
 #
-# As you can see, the agent received both pre-model hook context from the user preferences namespace search and was able to search on its own for long term memories in the fact namespace to create a comprehensive answer for the user.
+# As you can see, the agent received context from the `@before_agent` middleware (user preferences namespace search) and was able to search on its own for long term memories in the fact namespace to create a comprehensive answer for the user.
 #
-# The AgentCoreMemoryStore is very flexible and can be implemented in a variety of ways, including pre/post model hooks or just tools themselves with store operations. Used alongside the AgentCoreMemorySaver for checkpointing, both full conversational state and long term insights can be combined to form a complex and intelligent agent system.
+# The AgentCoreMemoryStore is very flexible and can be implemented in a variety of ways, including `@before_agent`/`@after_agent` middlewares or just tools themselves with store operations. Used alongside the AgentCoreMemorySaver for checkpointing, both full conversational state and long term insights can be combined to form a complex and intelligent agent system.
