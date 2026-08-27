@@ -220,7 +220,7 @@ def inject_recalled_facts(request) -> str:
     # keeps its trailing "/" so it matches the strategy's namespace prefix.
     namespace = ("users", ctx.actor_id, "facts/")
     try:
-        hits = store.search(namespace, query=last_human.text(), limit=5)
+        hits = store.search(namespace, query=last_human.text, limit=5)
     except Exception as e:  # never let recall failure break the turn
         logger.warning(f"recall failed (continuing without memory): {e}")
         return base_prompt
@@ -260,7 +260,7 @@ def persist_turn(state, runtime):
     # Persist the most recent human turn and the most recent AI turn (if any).
     for msg_type in (HumanMessage, AIMessage):
         msg = next((m for m in reversed(messages) if isinstance(m, msg_type)), None)
-        if msg is not None and msg.text().strip():
+        if msg is not None and msg.text.strip():
             try:
                 store.put(namespace, str(uuid.uuid4()), {"message": msg})
             except Exception as e:  # don't crash the turn on a save failure
@@ -358,7 +358,7 @@ def run_turn(graph, actor_id: str, session_id: str, user_text: str) -> str:
         config=config,
         context=context,
     )
-    return result["messages"][-1].text()
+    return result["messages"][-1].text
 
 
 def main() -> None:

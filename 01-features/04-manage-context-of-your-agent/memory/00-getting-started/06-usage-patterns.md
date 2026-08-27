@@ -234,9 +234,12 @@ Three things that trip people up:
 - **`InMemorySaver` is not a drop-in swap.** `AgentCoreMemorySaver` requires **both**
   `thread_id` _and_ `actor_id` in `configurable` and raises `InvalidConfigError` without them;
   `InMemorySaver` only needs `thread_id`.
-- **Namespaces differ per call.** `store.put` takes exactly `(actor_id, session_id)`.
-  `store.search` takes the _strategy's_ namespace — `("users", actor_id, "facts/")` →
-  `/users/<actor_id>/facts/`. The trailing slash matters.
+- **Namespaces differ per call, and the strategy sets the recall scope.** `store.put` takes
+  exactly `(actor_id, session_id)` — so the store *writes* one conversation at a time, same as
+  the checkpointer. What makes recall cross-conversation is the strategy's namespace template:
+  `/{actorId}/facts/` is keyed on the actor, so `store.search(("users", actor_id, "facts/"))` →
+  `/users/<actor_id>/facts/` spans every session. Put `{sessionId}` in that template and the
+  same store class becomes session-scoped. The trailing slash matters.
 
 Source: [`langgraph-checkpoint-aws`](https://github.com/langchain-ai/langchain-aws/tree/main/libs/langgraph-checkpoint-aws)
 in the [`langchain-aws`](https://github.com/langchain-ai/langchain-aws) repo.
