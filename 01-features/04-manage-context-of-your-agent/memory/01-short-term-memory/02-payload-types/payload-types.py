@@ -107,7 +107,8 @@ MIXED_PAYLOAD = [
 BLOB_DATA = {
     "document": "trade-in-appraisal.pdf",
     "encoding": "base64",
-    "bytes": "JVBERi0xLjQKJcfsj6IKNSAwIG9iago8PAo=",
+    # Truncated base64 of a PDF header, standing in for a real document.
+    "bytes": "JVBERi0xLjQKJcfsj6IKNSAwIG9iago8PAo=",  # pragma: allowlist secret
 }
 
 

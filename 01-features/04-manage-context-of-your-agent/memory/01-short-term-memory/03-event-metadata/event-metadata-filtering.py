@@ -61,13 +61,13 @@ def run_with_boto3(cleanup: bool = False) -> None:
         ("USER", "Just checking in, no specific topic today.", {}),
     ]
     for role, text, meta in tagged_turns:
-        kwargs = dict(
-            memoryId=memory_id,
-            actorId=ACTOR_ID,
-            sessionId=SESSION_ID,
-            eventTimestamp=datetime.now(timezone.utc),
-            payload=[{"conversational": {"role": role, "content": {"text": text}}}],
-        )
+        kwargs = {
+            "memoryId": memory_id,
+            "actorId": ACTOR_ID,
+            "sessionId": SESSION_ID,
+            "eventTimestamp": datetime.now(timezone.utc),
+            "payload": [{"conversational": {"role": role, "content": {"text": text}}}],
+        }
         if meta:
             kwargs["metadata"] = {k: {"stringValue": v} for k, v in meta.items()}
         data.create_event(**kwargs)
