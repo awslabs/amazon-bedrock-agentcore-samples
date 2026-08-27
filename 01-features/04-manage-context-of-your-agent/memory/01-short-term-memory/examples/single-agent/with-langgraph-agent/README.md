@@ -31,8 +31,8 @@ All three use Claude Haiku 4.5 on Amazon Bedrock and require no IAM execution ro
 (short-term memory uses no long-term extraction strategy).
 
 > **Not the same thing as `AgentCoreMemoryStore`.** The same package ships a second class for
-> **long-term** memory, and the names are close enough to confuse: the checkpointer remembers
-> *this conversation*, the store remembers *this user*. They are separate arguments, not
+> **long-term** memory, and the names are close enough to confuse: the checkpointer resumes
+> *this conversation*, the store recalls facts about *this user*. They are separate arguments, not
 > alternatives, and both can point at one memory resource. This folder isolates the
 > checkpointer; for the comparison and for both wired together, see
 > [checkpointer vs. store](../../../../00-getting-started/06-usage-patterns.md#langgraph-specifically-checkpointer-vs-store)

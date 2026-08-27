@@ -29,6 +29,10 @@ A nutrition assistant built with **LangGraph** that uses a **custom-override Use
 4. Across sessions (same `actor_id`, new `thread_id`), the agent recalls dietary restrictions, favorite foods, and health goals to personalize advice — that proves the `store`.
 5. Sends one more turn on that same second `thread_id` and asks *"what did I just ask you?"* — that proves the `checkpointer`, since only the saved graph state can answer it.
 
+Session ids are suffixed with a per-run `uuid` so each run starts a genuinely new conversation.
+With a durable checkpointer and a hardcoded session id, re-running would *resume* the previous
+run instead, and the "the model doesn't know your preferences yet" narrative would break.
+
 ## Prerequisites
 
 - Python 3.10+

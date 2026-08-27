@@ -203,7 +203,7 @@ agent = create_agent(model, tools=[recall_memory], checkpointer=checkpointer)
 `langgraph-checkpoint-aws` gives you **two** classes and the names are close enough to be
 confusing. The one thing to remember:
 
-> **The checkpointer remembers _this conversation_. The store remembers _this user_.**
+> **The checkpointer resumes _this conversation_. The store recalls facts about _this user_.**
 
 They are not alternatives — they fill two different arguments and can point at the same memory
 resource:
@@ -234,12 +234,23 @@ Three things that trip people up:
 - **`InMemorySaver` is not a drop-in swap.** `AgentCoreMemorySaver` requires **both**
   `thread_id` _and_ `actor_id` in `configurable` and raises `InvalidConfigError` without them;
   `InMemorySaver` only needs `thread_id`.
-- **Namespaces differ per call, and the strategy sets the recall scope.** `store.put` takes
-  exactly `(actor_id, session_id)` — so the store *writes* one conversation at a time, same as
-  the checkpointer. What makes recall cross-conversation is the strategy's namespace template:
-  `/{actorId}/facts/` is keyed on the actor, so `store.search(("users", actor_id, "facts/"))` →
-  `/users/<actor_id>/facts/` spans every session. Put `{sessionId}` in that template and the
-  same store class becomes session-scoped. The trailing slash matters.
+- **Namespaces differ per call, and the strategy sets the recall scope.**
+  `store.put` takes exactly `(actor_id, session_id)` — so the store *writes* one conversation
+  at a time, same as the checkpointer. `store.search` instead takes the _strategy's_ namespace,
+  and because `AgentCoreMemoryStore` defaults to `hierarchical_search=True` it sends that path
+  as `namespacePath`, which matches every record whose namespace **starts with** it. So a
+  session-scoped template is not the same as session-scoped memory — the search decides:
+
+  ```python
+  # strategy namespace: /nutrition/{actorId}/{sessionId}/
+  store.search(("nutrition", actor_id, ""),         query=q)  # /nutrition/u-1/      → all sessions
+  store.search(("nutrition", actor_id, sess + "/"), query=q)  # /nutrition/u-1/s-3/  → one session
+  ```
+
+  Keep the trailing slash: matching is on the string, so `/nutrition/user-1` also matches actor
+  `user-10`. Pass `hierarchical_search=False` for exact-path matching instead. The same split
+  exists one layer down on `MemoryClient.retrieve_memories`: `namespace=` is exact,
+  `namespace_path=` is the prefix.
 
 Source: [`langgraph-checkpoint-aws`](https://github.com/langchain-ai/langchain-aws/tree/main/libs/langgraph-checkpoint-aws)
 in the [`langchain-aws`](https://github.com/langchain-ai/langchain-aws) repo.
