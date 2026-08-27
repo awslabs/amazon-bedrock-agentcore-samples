@@ -9,11 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agents import Agent, OpenAIResponsesModel, Runner, function_tool, set_tracing_disabled
-from openai_x402_tool import build_x402_fetch
 from aws_bedrock_token_generator import provide_token
 from bedrock_agentcore.payments import PaymentManager
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from openai_x402_tool import build_x402_fetch
 
 SOURCE_DIR = Path(__file__).resolve().parent
 SHARED_ENV = SOURCE_DIR.parent / ".env"
@@ -161,10 +161,7 @@ def run_local() -> None:
         build_model(config.model_region, config.model_id),
         x402_fetch,
     )
-    prompt = (
-        f"Access this paid endpoint and summarize the result: "
-        f"{config.paid_url}. Report whether payment succeeded."
-    )
+    prompt = f"Access this paid endpoint and summarize the result: {config.paid_url}. Report whether payment succeeded."
     print(run_agent(agent, prompt))
 
 

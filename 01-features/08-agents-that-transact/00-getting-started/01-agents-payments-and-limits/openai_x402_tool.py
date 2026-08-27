@@ -129,10 +129,7 @@ def build_x402_fetch(
         return json.dumps(
             {
                 "status_code": 402,
-                "error": (
-                    "Merchant still returned 402 after "
-                    f"{MAX_PAYMENT_ATTEMPTS} payment attempts."
-                ),
+                "error": (f"Merchant still returned 402 after {MAX_PAYMENT_ATTEMPTS} payment attempts."),
                 "body": response.text,
                 "payment_made": False,
                 "payment_attempts": MAX_PAYMENT_ATTEMPTS,
