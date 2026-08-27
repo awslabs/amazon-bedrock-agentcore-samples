@@ -69,7 +69,7 @@ def create_execution_role(
                 "logs:CreateLogStream",
                 "logs:PutLogEvents",
             ],
-            "Resource": "arn:aws:logs:*:*:*",
+            "Resource": f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/*",
         },
     ]
 
@@ -142,6 +142,16 @@ def zip_and_upload_code(
         print(f"S3 bucket exists: {bucket_name}")
     except s3.exceptions.BucketAlreadyExists:
         print(f"S3 bucket exists: {bucket_name}")
+
+    s3.put_public_access_block(
+        Bucket=bucket_name,
+        PublicAccessBlockConfiguration={
+            "BlockPublicAcls": True,
+            "IgnorePublicAcls": True,
+            "BlockPublicPolicy": True,
+            "RestrictPublicBuckets": True,
+        },
+    )
 
     # Create zip in memory
     zip_buffer = io.BytesIO()

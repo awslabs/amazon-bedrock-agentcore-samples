@@ -250,8 +250,6 @@ def ensure_roles() -> tuple[str, str]:
     #      exists and its trust policy allows assumption by this service"
     # which reads like the role is missing rather than mis-trusted.
     #
-    # No aws:SourceAccount condition here, to keep the sample minimal. Add one in
-    # a real deployment — it is the standard confused-deputy guard.
     runtime_trust = {
         "Version": "2012-10-17",
         "Statement": [
@@ -259,6 +257,7 @@ def ensure_roles() -> tuple[str, str]:
                 "Effect": "Allow",
                 "Principal": {"Service": SERVICE_PRINCIPAL},
                 "Action": "sts:AssumeRole",
+                "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT}},
             }
         ],
     }
@@ -273,7 +272,7 @@ def ensure_roles() -> tuple[str, str]:
                     "logs:PutLogEvents",
                     "logs:DescribeLogStreams",
                 ],
-                "Resource": "arn:aws:logs:*:*:*",
+                "Resource": f"arn:aws:logs:{REGION}:{ACCOUNT}:log-group:/aws/bedrock-agentcore/*",
             },
         ],
     }
@@ -436,6 +435,16 @@ def build_and_upload_zip() -> None:
         log(f"✓ Created bucket {BUCKET}")
     except (s3.exceptions.BucketAlreadyOwnedByYou, s3.exceptions.BucketAlreadyExists):
         log(f"✓ Bucket exists  {BUCKET}")
+
+    s3.put_public_access_block(
+        Bucket=BUCKET,
+        PublicAccessBlockConfiguration={
+            "BlockPublicAcls": True,
+            "IgnorePublicAcls": True,
+            "BlockPublicPolicy": True,
+            "RestrictPublicBuckets": True,
+        },
+    )
 
     build = HERE / ".build"
     if build.exists():
