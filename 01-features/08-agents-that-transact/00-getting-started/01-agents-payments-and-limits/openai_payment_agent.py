@@ -9,12 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agents import Agent, OpenAIResponsesModel, Runner, function_tool, set_tracing_disabled
+from openai_x402_tool import build_x402_fetch
 from aws_bedrock_token_generator import provide_token
 from bedrock_agentcore.payments import PaymentManager
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-SHARED_ENV = Path(__file__).resolve().parent.parent / ".env"
+SOURCE_DIR = Path(__file__).resolve().parent
+SHARED_ENV = SOURCE_DIR.parent / ".env"
 
 AGENT_INSTRUCTIONS = """You are a payment-enabled research assistant.
 
@@ -47,7 +49,7 @@ def _required_env(name: str) -> str:
     return value
 
 
-def _payment_region(payment_manager_arn: str) -> str:
+def payment_region(payment_manager_arn: str) -> str:
     """Return the AWS region encoded in a payment manager ARN."""
     arn_parts = payment_manager_arn.split(":")
     if len(arn_parts) < 6 or arn_parts[0] != "arn" or not arn_parts[3]:
@@ -63,7 +65,7 @@ def load_config() -> TutorialConfig:
         payment_manager_arn=payment_manager_arn,
         instrument_id=_required_env("INSTRUMENT_ID"),
         user_id=_required_env("USER_ID"),
-        region=_payment_region(payment_manager_arn),
+        region=payment_region(payment_manager_arn),
         model_region=os.getenv("BEDROCK_OPENAI_MODEL_REGION", "us-east-1"),
         model_id=os.getenv("BEDROCK_OPENAI_MODEL_ID", "openai.gpt-5.5"),
         paid_url=os.getenv(
@@ -74,14 +76,17 @@ def load_config() -> TutorialConfig:
     )
 
 
-def build_model(config: TutorialConfig) -> OpenAIResponsesModel:
+def build_model(
+    model_region: str = "us-east-1",
+    model_id: str = "openai.gpt-5.5",
+) -> OpenAIResponsesModel:
     """Configure the OpenAI Agents SDK for GPT-5.5 on Amazon Bedrock."""
     set_tracing_disabled(False)
     client = AsyncOpenAI(
-        base_url=(f"https://bedrock-mantle.{config.model_region}.api.aws/openai/v1"),
-        api_key=provide_token(region=config.model_region),
+        base_url=f"https://bedrock-mantle.{model_region}.api.aws/openai/v1",
+        api_key=provide_token(region=model_region),
     )
-    return OpenAIResponsesModel(model=config.model_id, openai_client=client)
+    return OpenAIResponsesModel(model=model_id, openai_client=client)
 
 
 def create_payment_session(
@@ -111,18 +116,13 @@ def load_x402_fetch(
     payment_session_id: str,
 ) -> Callable[..., str]:
     """Load the generic x402 tool after supplying its payment configuration."""
-    os.environ.update(
-        {
-            "PAYMENT_MANAGER_ARN": config.payment_manager_arn,
-            "PAYMENT_INSTRUMENT_ID": config.instrument_id,
-            "PAYMENT_SESSION_ID": payment_session_id,
-            "PAYMENT_USER_ID": config.user_id,
-            "AWS_REGION": config.region,
-        }
+    return build_x402_fetch(
+        payment_manager_arn=config.payment_manager_arn,
+        payment_instrument_id=config.instrument_id,
+        payment_session_id=payment_session_id,
+        user_id=config.user_id,
+        region=config.region,
     )
-    from agentcore_x402_tool import x402_fetch
-
-    return x402_fetch
 
 
 def build_agent(
@@ -131,7 +131,6 @@ def build_agent(
 ) -> Agent:
     """Build one payment-enabled OpenAI agent."""
 
-    # Create an OAI
     payment_tool = function_tool(x402_fetch)
 
     openai_agent = Agent(
@@ -150,14 +149,28 @@ def run_agent(agent: Agent, prompt: str) -> str:
     return str(Runner.run_sync(agent, prompt))
 
 
-def main() -> None:
-    """Create a payment session, build the agent, and run one paid request."""
+def run_local() -> None:
+    """Run one paid request directly on the local machine."""
     config = load_config()
     _manager, payment_session_id = create_payment_session(config)
-    x402_fetch = load_x402_fetch(config, payment_session_id)
-    agent = build_agent(build_model(config), x402_fetch)
-    prompt = f"Access this paid endpoint and summarize the result: {config.paid_url}. Report whether payment succeeded."
+    x402_fetch = load_x402_fetch(
+        config,
+        payment_session_id,
+    )
+    agent = build_agent(
+        build_model(config.model_region, config.model_id),
+        x402_fetch,
+    )
+    prompt = (
+        f"Access this paid endpoint and summarize the result: "
+        f"{config.paid_url}. Report whether payment succeeded."
+    )
     print(run_agent(agent, prompt))
+
+
+def main() -> None:
+    """Run one paid request directly on the local machine."""
+    run_local()
 
 
 if __name__ == "__main__":

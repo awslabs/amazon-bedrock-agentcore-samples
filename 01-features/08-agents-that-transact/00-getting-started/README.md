@@ -29,7 +29,7 @@ the SDK to build paying agents on top of it.**
 
 ## Start here
 
-Start with Tutorial 00; then work through 01–08 (in order, or dip into any that interests you — each
+Start with Tutorial 00; then work through 01–07 (in order, or dip into any that interests you — each
 stands alone). Each folder's `README.md` is a self-contained walkthrough — you run the `agentcore`
 commands and Python snippets yourself and learn each piece as you go.
 
@@ -53,20 +53,19 @@ numbered walkthrough, an inspect step, troubleshooting, and clean-up — so once
 
 ## Tutorials
 
-Run Tutorial 00 first; then 01–08 in any order. Each folder's README opens with a **Reads / Does**
+Run Tutorial 00 first; then 01–07 in any order. Each folder's README opens with a **Reads / Does**
 strip so you can see its inputs and outputs at a glance.
 
 | # | Folder | What you build | Provisioning |
 |---|--------|----------------|:------------:|
 | 00 | [`00-setup-agentcore-payments/`](00-setup-agentcore-payments/) | Payment manager, connector, IAM roles (CLI) + wallet & session (SDK) | CLI + SDK |
-| 01 | [`01-agents-payments-and-limits/`](01-agents-payments-and-limits/) | Strands & LangGraph agents that pay x402 endpoints with budget limits | SDK |
-| 02 | [`02-deploy-to-agentcore-runtime/`](02-deploy-to-agentcore-runtime/) | Deploy a payment agent to AgentCore Runtime | CLI |
+| 01 | [`01-agents-payments-and-limits/`](01-agents-payments-and-limits/) | Strands, LangGraph, and OpenAI agents that pay x402 endpoints with budget limits | SDK |
+| 02 | [`02-deploy-to-agentcore-runtime/`](02-deploy-to-agentcore-runtime/) | Deploy Strands or OpenAI payment agents to AgentCore Runtime | CLI |
 | 03 | [`03-user-onboarding-wallet-funding/`](03-user-onboarding-wallet-funding/) | Per-user wallet onboarding, funding, delegation, balances | SDK |
 | 04 | [`04-agent-with-coinbase-bazaar-via-gateway/`](04-agent-with-coinbase-bazaar-via-gateway/) | Discover 10,000+ paid MCP tools via AgentCore Gateway | CLI + SDK |
 | 05 | [`05-agent-with-browser-tool-pay-for-content/`](05-agent-with-browser-tool-pay-for-content/) | Pay 402 paywalls inside a browser session | SDK |
 | 06 | [`06-research-agent-with-payment-memory/`](06-research-agent-with-payment-memory/) | Add AgentCore Memory to skip redundant paid calls | SDK |
 | 07 | [`07-multi-agent-payment-orchestrator/`](07-multi-agent-payment-orchestrator/) | Multiple agents, separate wallets, per-agent budgets | CLI + SDK |
-| 08 | [`08-openai-payment-agent/`](08-openai-payment-agent/) | OpenAI Agents SDK agent that pays an x402 endpoint | SDK |
 
 ## Which tutorial do I need?
 
@@ -76,7 +75,7 @@ strip so you can see its inputs and outputs at a glance.
 - **Paying for web/article content?** → 05 (Browser).
 - **Personalized agentic payments with memory?** → 06 (Memory).
 - **Several agents with independent budgets?** → 07 (needs multi-provider setup).
-- **Using the OpenAI Agents SDK?** → 08.
+- **Using the OpenAI Agents SDK?** → 01 locally, then 02 to deploy.
 
 ## Shared files
 
