@@ -60,19 +60,21 @@ Framework integrations live under [`examples/`](./examples/). They wire short-te
 The same flow expressed with the AWS CLI:
 
 ```bash
-# 1. Create a memory resource
-aws bedrock-agentcore-control create-memory \
+# 1. Create a memory resource and capture its id. `--name` accepts letters, digits
+#    and underscores only (pattern [a-zA-Z][a-zA-Z0-9_]{0,47}), so no hyphens.
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
   --region "$AWS_REGION" \
-  --name "StmStandardCli-$(date +%s)" \
+  --name "StmStandardCli_$(date +%s)" \
   --event-expiry-duration 30 \
-  --client-token "$(uuidgen)"
-# Capture memory.id from the response → export MEMORY_ID=...
+  --client-token "$(uuidgen)" \
+  --query 'memory.id' --output text)
 
-# 2. Poll until ACTIVE
-aws bedrock-agentcore-control get-memory \
-  --region "$AWS_REGION" \
-  --memory-id "$MEMORY_ID" \
-  --query 'memory.status'
+# 2. Wait until ACTIVE. CreateEvent is rejected while the memory is still CREATING,
+#    and creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 3. Append three events
 for i in 1 2 3; do
@@ -93,13 +95,22 @@ aws bedrock-agentcore list-events \
   --session-id sess-cli \
   --include-payloads
 
-# 5. Fetch a single event by id
+# 5. Fetch a single event by id. Take the first id from step 4 rather than pasting
+#    one by hand. --no-paginate keeps --query on one page, so the result is just the
+#    id (--max-items would append the null NextToken as "None").
+EVENT_ID=$(aws bedrock-agentcore list-events \
+  --region "$AWS_REGION" \
+  --memory-id "$MEMORY_ID" \
+  --actor-id user-42 \
+  --session-id sess-cli \
+  --no-paginate \
+  --query 'events[0].eventId' --output text)
 aws bedrock-agentcore get-event \
   --region "$AWS_REGION" \
   --memory-id "$MEMORY_ID" \
   --actor-id user-42 \
   --session-id sess-cli \
-  --event-id <event-id-from-step-4>
+  --event-id "$EVENT_ID"
 
 # 6. Teardown
 aws bedrock-agentcore-control delete-memory \

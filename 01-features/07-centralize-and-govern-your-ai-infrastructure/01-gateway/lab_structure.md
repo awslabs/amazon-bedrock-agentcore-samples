@@ -408,7 +408,7 @@ print(next(r['invocationUrl'] for r in data['resources'] if r['name'] == '<agent
 
 export GATEWAY_URL=$(aws bedrock-agentcore-control get-gateway \
   --gateway-identifier agentcore-gateway \
-  --query 'gatewayUrl' --output text)
+  --query 'gatewayUrl' --output text)/mcp
 
 echo "MCP Server URL: $MCP_SERVER_URL"
 echo "Gateway URL:    $GATEWAY_URL"

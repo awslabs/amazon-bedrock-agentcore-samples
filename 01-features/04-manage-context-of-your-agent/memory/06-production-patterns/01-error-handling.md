@@ -135,7 +135,7 @@ if failed:
     # Decide per errorCode whether the failed subset is worth re-submitting.
 ```
 
-Cap each batch at **100 records** (the documented maximum for `records`); split larger workloads into chunks. See [`../02-long-term-memory/07-batch-apis/`](../02-long-term-memory/07-batch-apis/).
+Cap each batch at **100 records** (the documented maximum for `records`); split larger workloads into chunks. See [`../02-long-term-memory/07-skip-STM/`](../02-long-term-memory/07-skip-STM/).
 
 ## try / finally cleanup
 

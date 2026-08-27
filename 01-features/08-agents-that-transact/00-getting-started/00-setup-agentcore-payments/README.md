@@ -9,6 +9,9 @@
 | Components          | AgentCore CLI (`create` / `add payment-manager` / `add payment-connector` / `deploy`) + AgentCore SDK (`PaymentManager.create_payment_instrument` / `create_payment_session`) |
 | Example complexity  | Beginner                                                                         |
 
+
+To learn more about AgentCore CLI Commands, see [this link] (https://github.com/aws/agentcore-cli/blob/main/docs/payments.md)
+
 > **Complementary tools.** The AgentCore CLI provisions your shared payment infrastructure
 > (credential provider, payment manager, connector, IAM roles) in one `agentcore deploy`. The AgentCore
 > SDK (`PaymentManager`) then creates the per-user wallet (instrument) and spending session,
@@ -35,8 +38,9 @@ written to the shared `../.env` so downstream tutorials pick them up unchanged.
 > **Testnet only.** Base Sepolia (`NETWORK=ETHEREUM`) or Solana Devnet (`NETWORK=SOLANA`), with free
 > USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no monetary value.
 
-> **Supported regions:** `us-east-1`, `us-west-2`, `eu-central-1`, `ap-southeast-2`. Set `AWS_REGION`
-> in `../.env` to one of these.
+> **Supported regions.** Run this in a region where AgentCore payments is available—see
+> [AgentCore supported regions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html).
+> Set `AWS_REGION` in `../.env` to one of these regions.
 
 ## Architecture
 
@@ -69,8 +73,7 @@ Management / ProcessPayment / ResourceRetrieval **4-role separation**, see the b
 
 ## Prerequisites
 
-- **AWS account + region** where AgentCore payments is available (`us-east-1`, `us-west-2`,
-  `eu-central-1`, `ap-southeast-2`), and AWS CLI configured (`aws sts get-caller-identity`).
+- **AWS account + region** where AgentCore payments is available, and AWS CLI configured (`aws sts get-caller-identity`).
 - **Python 3.10+** and dependencies:
   ```bash
   pip install -r requirements.txt
@@ -107,12 +110,16 @@ python providers/coinbase_cdp_account_setup.py --open-portal  # Coinbase CDP
 python providers/stripe_privy_account_setup.py     # Stripe (Privy)
 ```
 
-Coinbase requires two manual portal credentials plus separate project-level and
-wallet-level delegated-signing steps. Follow the dedicated
+> **Using Coinbase Quick create?** You can skip `coinbase_cdp_account_setup.py` — Quick create provisions
+> the CDP API key and Wallet secret for you in Step 2, so there are no keys to generate or paste. Still set
+> the `.env` values below.
+
+If you use an existing Coinbase configuration, follow the dedicated
 [Coinbase CDP setup guide](coinbase-cdp-setup/) for every portal setting,
 screenshot, Base Sepolia funding step, balance check, and troubleshooting
-message. The helper then imports the downloaded files locally and never handles
-your Coinbase password or MFA code.
+message. This path requires separate project-level and wallet-level
+delegated-signing steps. The helper imports the downloaded files locally and
+never handles your Coinbase password or MFA code.
 
 Then set `AWS_REGION`, `CREDENTIAL_PROVIDER_TYPE` (`CoinbaseCDP` or `StripePrivy`), `USER_ID`,
 `LINKED_EMAIL` (a real inbox — used for the wallet and provider OTP), and `NETWORK`
@@ -136,7 +143,16 @@ agentcore add payment-manager --name MyPaymentManager --auto-payment true --defa
 Add a payment connector for the provider you chose in Step 1 — run **one** of these:
 
 ```bash
-# Coinbase CDP:
+# Coinbase CDP — Quick create (recommended): no keys, you authorize through Coinbase at deploy time
+agentcore add payment-connector \
+  --manager MyPaymentManager \
+  --name MyCoinbaseConnector \
+  --provider CoinbaseCDP \
+  --provision-mode QUICK_CREATE
+```
+
+```bash
+# Coinbase CDP — existing credentials: paste the keys captured in Step 1
 agentcore add payment-connector \
   --manager MyPaymentManager \
   --name MyCoinbaseConnector \
@@ -170,6 +186,13 @@ agentcore deploy -y
 # 4. Read back the created resource ARNs/IDs
 agentcore status --type payment
 ```
+
+> **Using Coinbase Quick create?** `agentcore deploy` creates the connector in `PENDING_AUTHENTICATION`
+> and prints an `authorizationUrl`. Open it, sign in to Coinbase, and grant access — the connector then
+> moves to `READY`. The link is single-use and short-lived; if it expires before you finish, re-run
+> `agentcore deploy` to issue a fresh one. Re-run `agentcore status --type payment` and confirm `READY` before continuing to Step 3.
+> Quick create requires an active [Coinbase Wallets for AgentCore Payments Marketplace subscription](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-marketplace-subscription.html);
+> without it, deploy fails with `SubscriptionRequiredException` (HTTP 403) and the error message includes the listing URL to subscribe.
 
 From the `agentcore status --type payment` output, copy the **Payment Manager ARN** and **Payment
 Connector ID** and export them (you'll pass them to the commands in Step 3):

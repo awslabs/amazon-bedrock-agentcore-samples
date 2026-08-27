@@ -127,8 +127,13 @@
 - Guruprasad Seeryada (svguru)
 - Fabio Balancin (balancin)
 - Varun Gunda (vvargu)
+- tsubasakong
+- Chris Wajule (ggChris2)
 - Anil Nadiminti (aniloncloud)
 - Deepak Singh (deepaxs)
 - rmncardoso
 - Bryan Conklin (thor4)
 - mccartnick
+- ach1ntya
+- Shruthi Rajoli (rajolishruthi)
+- ratnopam
