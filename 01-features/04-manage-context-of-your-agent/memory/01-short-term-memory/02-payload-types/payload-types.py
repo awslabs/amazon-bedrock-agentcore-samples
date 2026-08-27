@@ -1,33 +1,25 @@
 """Event payload types — conversational, JSON, and blob.
 
-An event's `payload` is a *list* of payload items, and not every item has to be a
-conversation turn. This script writes all three types and shows which ones reach
-long-term memory:
-
 What you learn:
-    - `conversational` — a turn with a role and text
-    - `json` — non-conversational structured content (behavioural events, telemetry,
-      app state), up to 100 KB per payload item
-    - `blob` — arbitrary data, stored in short-term memory only
-    - Mixed payloads: several items of different types in a single event
-    - Conversational and JSON items are extracted into long-term memory; blob is not
+    - An event's `payload` is a list of items, each a union of one of three types
+    - `conversational` (role + text) and `json` (structured content under
+      `json.content`, max 100 KB per item) are both extracted into long-term memory
+    - `blob` (arbitrary data) is stored but never extracted
+    - Mixed payloads: several items of different types in one event
 
 The scenario is a car dealership. Most of what a shopper reveals is never said out
-loud — cars viewed, filters applied, a financing approval. Those are `json` events,
-and extraction reads them the same way it reads speech.
+loud — cars viewed, filters applied, a financing approval — so those are `json`
+events. Extraction strategies are attached even though this sits under short-term
+memory, because what extraction does with each type is the whole point.
 
 Two ways to run it:
     python payload-types.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
     python payload-types.py sdk      # the AgentCore SDK (MemorySessionManager).
 
-The `sdk` path is partial by necessity: `add_turns` accepts `ConversationalMessage`
-and `BlobMessage`, but the SDK has no JSON message type (checked through
-bedrock-agentcore 1.22), so JSON events go through boto3 `create_event` even there.
-That path also shows `get_last_k_turns` skipping every non-conversational item.
-
-This tutorial attaches extraction strategies even though it lives under short-term
-memory — the difference between the three payload types *is* what extraction does
-with them, and that can't be shown without a strategy.
+The `sdk` path is partial by necessity: `add_turns` takes `ConversationalMessage`
+and `BlobMessage`, but there is no JSON message type (checked through
+bedrock-agentcore 1.22), so JSON events use boto3 `create_event` even there. It also
+needs bedrock-agentcore 1.14+ for `search_long_term_memories(namespace=...)`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -50,9 +42,11 @@ SESSION_ID = f"shopping-{int(time.time())}"
 FACTS_NAMESPACE = "/customers/{actorId}/facts/"
 PREFS_NAMESPACE = "/customers/{actorId}/preferences/"
 EXTRACTION_WAIT_SECONDS = 150  # JSON extraction runs the same pipeline as speech; allow margin
+JSON_PAYLOAD_LIMIT_BYTES = 100 * 1024
 
-# Four JSON-only events. Field names are part of the input to extraction — call it
-# `view_duration_sec`, not `d2`, or the model has nothing to reason about.
+# Field names are part of the input to extraction — call it `view_duration_sec`, not
+# `d2`, or the model has nothing to reason about. Keep values locale-neutral too: a
+# place name that implies a language can flip the whole record set into that language.
 JSON_EVENTS = [
     {
         "event": "car_viewed",
@@ -83,7 +77,7 @@ JSON_EVENTS = [
     {
         "event": "test_drive_scheduled",
         "car_id": "VH-2093",
-        "location": "CDMX-Polanco",
+        "location": "westside-showroom",
         "date": "2026-09-12",
     },
 ]
@@ -91,9 +85,8 @@ JSON_EVENTS = [
 USER_TEXT = "Automatic sedan please. I really liked the Corolla."
 ASSISTANT_TEXT = "Good choice. You're pre-approved at 5.9% APR — want me to hold it?"
 
-# One event, three payload items: what the shopper said, what they did, what the
-# agent replied. Extraction sees the speech and the behaviour together and can
-# corroborate one with the other.
+# What the shopper said, what they did, and what the agent replied — one event, so
+# extraction sees speech and behaviour together and can corroborate one with the other.
 MIXED_PAYLOAD = [
     {"conversational": {"role": "USER", "content": {"text": USER_TEXT}}},
     {
@@ -111,8 +104,6 @@ MIXED_PAYLOAD = [
     {"conversational": {"role": "ASSISTANT", "content": {"text": ASSISTANT_TEXT}}},
 ]
 
-# Blob content. Short-term memory only: it round-trips through ListEvents/GetEvent
-# but no strategy ever reads it, so nothing derived from it appears in retrieval.
 BLOB_DATA = {
     "document": "trade-in-appraisal.pdf",
     "encoding": "base64",
@@ -120,12 +111,9 @@ BLOB_DATA = {
 }
 
 
-def describe_payload(payload) -> str:
-    """Summarise an event payload as its item types, e.g. 'conversational + json'."""
-    if not isinstance(payload, list):
-        return type(payload).__name__
-    # Each item is a single-key dict: {"conversational": ...} / {"json": ...} / {"blob": ...}
-    return " + ".join(next(iter(item), "?") if isinstance(item, dict) else "?" for item in payload)
+def payload_types(payload) -> str:
+    """Summarise a payload as its item types, e.g. 'conversational + json'."""
+    return " + ".join(key for item in payload or [] for key in item)
 
 
 def create_dealership_memory(control) -> str:
@@ -159,14 +147,10 @@ def create_dealership_memory(control) -> str:
     return memory_id
 
 
-JSON_PAYLOAD_LIMIT_BYTES = 100 * 1024  # 100 KB per json payload item
-
-
 def write_json_events(data, memory_id: str) -> None:
     """Write the four JSON-only events. Structured content goes under json.content."""
     for content in JSON_EVENTS:
-        # A json payload item is capped at 100 KB. Check locally rather than
-        # discovering it as a ValidationException on a large document.
+        # Check the size limit locally rather than as a ValidationException later.
         size = len(json.dumps(content).encode("utf-8"))
         if size > JSON_PAYLOAD_LIMIT_BYTES:
             raise ValueError(f"json payload is {size} bytes, over the {JSON_PAYLOAD_LIMIT_BYTES}-byte limit")
@@ -180,18 +164,14 @@ def write_json_events(data, memory_id: str) -> None:
     print(f"  wrote {len(JSON_EVENTS)} json-only events")
 
 
-def show_retrieved_records(data, memory_id: str, prefix: str) -> None:
-    """Poll both namespaces until records appear, then print them."""
+def show_records(retrieve, prefix: str) -> None:
+    """Poll both namespaces until records appear, then print them.
+
+    `retrieve(namespace, query)` is the surface-specific search call.
+    """
     facts_ns = FACTS_NAMESPACE.format(actorId=ACTOR_ID)
     prefs_ns = PREFS_NAMESPACE.format(actorId=ACTOR_ID)
     print(f"{prefix} Polling up to {EXTRACTION_WAIT_SECONDS}s for extraction...")
-
-    def retrieve(namespace: str, query: str):
-        return data.retrieve_memory_records(
-            memoryId=memory_id,
-            namespace=namespace,
-            searchCriteria={"searchQuery": query, "topK": 10},
-        )["memoryRecordSummaries"]
 
     deadline = time.time() + EXTRACTION_WAIT_SECONDS
     while True:
@@ -203,16 +183,11 @@ def show_retrieved_records(data, memory_id: str, prefix: str) -> None:
     if not facts and not prefs:
         print(f"{prefix} No records after {EXTRACTION_WAIT_SECONDS}s — extraction may still be running.")
 
-    print(f"\n{prefix} Facts in {facts_ns}:")
-    for record in facts:
-        print(f"  - {record['content']['text']}")
-    print(f"\n{prefix} Preferences in {prefs_ns}:")
-    for record in prefs:
-        print(f"  - {record['content']['text']}")
-    print(
-        f"\n{prefix} Everything above came from json payloads and the mixed event.\n"
-        f"{prefix} Nothing came from the blob event — blob is never extracted."
-    )
+    for namespace, records in ((facts_ns, facts), (prefs_ns, prefs)):
+        print(f"\n{prefix} Records in {namespace}:")
+        for record in records:
+            print(f"  - {record['content']['text']}")
+    print(f"\n{prefix} All of it came from the json and conversational items; none from the blob.")
 
 
 # === boto3 ============================================================
@@ -226,26 +201,15 @@ def run_with_boto3(cleanup: bool = False) -> None:
     print(f"[boto3] Created memory {memory_id}")
 
     write_json_events(data, memory_id)
-
-    # One event carrying conversational and json items together.
-    data.create_event(
-        memoryId=memory_id,
-        actorId=ACTOR_ID,
-        sessionId=SESSION_ID,
-        eventTimestamp=datetime.now(timezone.utc),
-        payload=MIXED_PAYLOAD,
-    )
-    print("  wrote 1 mixed conversational + json event")
-
-    # Blob: accepted by CreateEvent, stored, but skipped by every strategy.
-    data.create_event(
-        memoryId=memory_id,
-        actorId=ACTOR_ID,
-        sessionId=SESSION_ID,
-        eventTimestamp=datetime.now(timezone.utc),
-        payload=[{"blob": BLOB_DATA}],
-    )
-    print("  wrote 1 blob event")
+    for label, payload in (("mixed conversational + json", MIXED_PAYLOAD), ("blob", [{"blob": BLOB_DATA}])):
+        data.create_event(
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
+            eventTimestamp=datetime.now(timezone.utc),
+            payload=payload,
+        )
+        print(f"  wrote 1 {label} event")
 
     # All three types round-trip through short-term memory unchanged.
     events = data.list_events(
@@ -256,9 +220,16 @@ def run_with_boto3(cleanup: bool = False) -> None:
     )["events"]
     print(f"\n[boto3] Session {SESSION_ID} has {len(events)} events:")
     for event in events:
-        print(f"  {event['eventId']}  payload: {describe_payload(event.get('payload'))}")
+        print(f"  {event['eventId']}  payload: {payload_types(event.get('payload'))}")
 
-    show_retrieved_records(data, memory_id, "[boto3]")
+    def retrieve(namespace: str, query: str):
+        return data.retrieve_memory_records(
+            memoryId=memory_id,
+            namespace=namespace,
+            searchCriteria={"searchQuery": query, "topK": 10},
+        )["memoryRecordSummaries"]
+
+    show_records(retrieve, "[boto3]")
 
     if cleanup:
         control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
@@ -269,7 +240,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
 # === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    # MemoryClient owns the control plane; MemorySessionManager is data-plane only.
+    # MemoryClient owns the control plane (create/delete the resource);
+    # MemorySessionManager is data-plane only, so we create the memory with
+    # MemoryClient, then drive events + retrieval through a MemorySession.
     import boto3
     from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
     from bedrock_agentcore.memory.constants import BlobMessage, ConversationalMessage, MessageRole
@@ -302,44 +275,39 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
     session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
-    data = boto3.client("bedrock-agentcore", region_name=REGION)
 
-    # SDK gap: add_turns accepts ConversationalMessage and BlobMessage only — there
-    # is no JSON message type, so json payloads need create_event directly.
     print("[sdk] add_turns has no JSON type; writing json events with boto3 create_event")
-    write_json_events(data, memory_id)
+    write_json_events(boto3.client("bedrock-agentcore", region_name=REGION), memory_id)
 
-    # Conversational and blob items do have SDK types. add_turns writes the whole
-    # list as one event, so mixing them in a single call is a single mixed payload.
+    # add_turns maps the whole message list to one create_event, so mixing types in
+    # a single call produces a single mixed payload — here conversational + blob.
     session.add_turns(
         messages=[
-            ConversationalMessage("Automatic sedan please. I really liked the Corolla.", MessageRole.USER),
-            ConversationalMessage(
-                "Good choice. You're pre-approved at 5.9% APR — want me to hold it?",
-                MessageRole.ASSISTANT,
-            ),
+            ConversationalMessage(USER_TEXT, MessageRole.USER),
+            BlobMessage(BLOB_DATA),
+            ConversationalMessage(ASSISTANT_TEXT, MessageRole.ASSISTANT),
         ]
     )
-    print("  wrote 1 conversational event via add_turns")
-    session.add_turns(messages=[BlobMessage(BLOB_DATA)])
-    print("  wrote 1 blob event via add_turns(BlobMessage(...))")
+    print("  wrote 1 mixed conversational + blob event via add_turns")
 
     events = session.list_events(include_payload=True)
     print(f"\n[sdk] Session {SESSION_ID} has {len(events)} events:")
     for event in events:
-        print(f"  {event['eventId']}  payload: {describe_payload(event.get('payload'))}")
+        print(f"  {event['eventId']}  payload: {payload_types(event.get('payload'))}")
 
-    # get_last_k_turns rebuilds logical turns from conversational items only. The
-    # json and blob events are in the session but invisible here — if you rehydrate
-    # a prompt this way, structured context silently does not reach the model.
+    # get_last_k_turns rebuilds turns from conversational items only, so rehydrating a
+    # prompt this way silently drops every json event and the blob item above.
     turns = session.get_last_k_turns(k=10)
-    conversational_texts = [msg for turn in turns for msg in turn]
     print(
         f"\n[sdk] get_last_k_turns returned {len(turns)} turn(s) / "
-        f"{len(conversational_texts)} message(s) — json and blob items are dropped"
+        f"{sum(len(turn) for turn in turns)} message(s) — json and blob items are dropped"
     )
 
-    show_retrieved_records(data, memory_id, "[sdk]")
+    def retrieve(namespace: str, query: str):
+        # namespace= is exact match; namespace_prefix= is deprecated.
+        return session.search_long_term_memories(query=query, namespace=namespace, top_k=10)
+
+    show_records(retrieve, "[sdk]")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
