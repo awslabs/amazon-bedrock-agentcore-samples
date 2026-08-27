@@ -84,21 +84,26 @@
 # Install necessary libraries from https://github.com/langchain-ai/langchain-aws
 
 
-import os
 import logging
+import os
+import uuid
 
 # Import LangGraph and LangChain components
 from langchain.chat_models import init_chat_model
-from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.prebuilt import create_react_agent
 from langgraph.store.base import BaseStore
-import uuid
-
 
 region = os.getenv("AWS_REGION", "us-east-1")
 logging.getLogger("nutrition-agent").setLevel(logging.DEBUG)
 
+
+import json
+import time
+
+import boto3
+from bedrock_agentcore.memory import MemoryClient
 
 # `langgraph-checkpoint-aws` gives you two classes, one per LangGraph argument. This script
 # wires BOTH, over a single AgentCore memory resource:
@@ -110,13 +115,7 @@ logging.getLogger("nutrition-agent").setLevel(logging.DEBUG)
 # writes `conversational` events, which the episodic strategy extracts. The saver writes
 # opaque `blob` events, which no strategy ever reads — so checkpoint data never pollutes your
 # extracted episodes.
-from langgraph_checkpoint_aws import AgentCoreMemoryStore, AgentCoreMemorySaver  # noqa: E402
-from bedrock_agentcore.memory import MemoryClient  # noqa: E402
-
-
-import boto3  # noqa: E402
-import json  # noqa: E402
-import time  # noqa: E402
+from langgraph_checkpoint_aws import AgentCoreMemorySaver, AgentCoreMemoryStore
 
 # Create IAM role for memory execution
 iam_client = boto3.client("iam")
@@ -400,7 +399,7 @@ print(f"Conversation messages result: {result}")
 
 
 # The correct way to search episodic long-term memories in LangGraph
-from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory import MemoryClient
 
 # Use the memory client directly (not the store)
 memory_client = MemoryClient(region_name=region)
@@ -423,7 +422,8 @@ try:
         content = mem.get("content", {})
         text = content.get("text", str(content))
         print(f"   - {text[:300]}...")
-except Exception as e:
+# Retrieval can fail while extraction is still in flight — report and keep going.
+except Exception as e:  # noqa: BLE001
     print(f"   Error: {e}")
 print()
 
@@ -438,7 +438,8 @@ try:
         content = mem.get("content", {})
         text = content.get("text", str(content))
         print(f"   - {text[:300]}...")
-except Exception as e:
+# Retrieval can fail while extraction is still in flight — report and keep going.
+except Exception as e:  # noqa: BLE001
     print(f"   Error: {e}")
 
 

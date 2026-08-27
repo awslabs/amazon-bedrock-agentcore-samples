@@ -45,23 +45,24 @@
 # Install necessary libraries from https://github.com/langchain-ai/langchain-aws
 
 
-import os
-import logging
 import json as json_module
+import logging
+import os
+import uuid
+
 import boto3
 from botocore.exceptions import ClientError
 
 # Import LangGraph and LangChain components
 from langchain.chat_models import init_chat_model
-from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.prebuilt import create_react_agent
 from langgraph.store.base import BaseStore
-import uuid
-
 
 region = os.getenv("AWS_REGION", "us-east-1")
-logging.getLogger("math-agent").setLevel(logging.DEBUG)
+logger = logging.getLogger("nutrition-assistant")
+logger.setLevel(logging.DEBUG)
 
 
 # `langgraph-checkpoint-aws` gives you two classes, one per LangGraph argument. This script
@@ -74,12 +75,10 @@ logging.getLogger("math-agent").setLevel(logging.DEBUG)
 # writes `conversational` events, which the user-preference strategy extracts. The saver
 # writes opaque `blob` events, which no strategy ever reads — so checkpoint data never
 # pollutes your extracted preferences.
-from langgraph_checkpoint_aws import AgentCoreMemoryStore, AgentCoreMemorySaver  # noqa: E402
-from bedrock_agentcore.memory import MemoryClient  # noqa: E402
-from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
-
-from custom_memory_prompts import consolidation_prompt, extraction_prompt  # noqa: E402
-
+from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory.constants import StrategyType
+from custom_memory_prompts import consolidation_prompt, extraction_prompt
+from langgraph_checkpoint_aws import AgentCoreMemorySaver, AgentCoreMemoryStore
 
 memory_name = "NutritionAssistant"
 client = MemoryClient(region_name=region)
@@ -127,7 +126,7 @@ def create_memory_execution_role():
     }
     try:
         iam_client.get_role(RoleName=role_name)
-        logging.info(f"IAM role already exists: {role_arn}")
+        logger.info(f"IAM role already exists: {role_arn}")
         return role_arn
     except ClientError as e:
         if e.response["Error"]["Code"] != "NoSuchEntity":
@@ -142,7 +141,7 @@ def create_memory_execution_role():
         PolicyName="AgentCoreMemoryBedrockAccess",
         PolicyDocument=json_module.dumps(permissions_policy),
     )
-    logging.info(f"Created IAM role: {role_arn}")
+    logger.info(f"Created IAM role: {role_arn}")
     return role_arn
 
 
