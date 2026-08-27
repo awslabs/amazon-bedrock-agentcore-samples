@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # # LangGraph with AgentCore Memory using Episodic Strategy
 #
 # ## Introduction

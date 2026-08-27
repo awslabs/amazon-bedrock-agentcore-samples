@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # # LangGraph with AgentCore Memory - Human in the Loop (Short term memory)
 #
 # ## Introduction
@@ -57,6 +55,12 @@
 # Run: pip install -qr requirements.txt
 
 
+import logging
+import os
+import uuid
+
+from bedrock_agentcore.memory import MemoryClient
+
 # Import LangGraph and LangChain components
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
@@ -64,12 +68,6 @@ from langgraph.prebuilt import create_react_agent
 
 # Imports that enable human-in-the-loop implementation
 from langgraph.types import Command, interrupt
-
-
-import os
-import logging
-
-from bedrock_agentcore.memory import MemoryClient
 
 # AgentCoreMemorySaver is the checkpointer: it saves the graph's state to AgentCore
 # Memory after every step, including the paused state of an `interrupt()`. On resume it
@@ -157,8 +155,6 @@ graph = create_react_agent(
     checkpointer=checkpointer,
 )
 
-graph
-
 
 # ## Step 4: Run the Support Agent
 # We can now run the agent with our AgentCore Memory checkpointer and human-in-the-loop integration. For this example we will ask explicitly for user assistance. In reality, this could be triggered by several conditions, for example a safety flag may route a conversation to a human if certain keywords are used.
@@ -175,10 +171,8 @@ graph
 #
 
 
-import uuid as _uuid  # noqa: E402
-
 user_input = "I would like to work with a customer service human agent."
-config = {"configurable": {"thread_id": str(_uuid.uuid4()), "actor_id": "demo-notebook"}}
+config = {"configurable": {"thread_id": str(uuid.uuid4()), "actor_id": "demo-notebook"}}
 
 events = graph.stream(
     {"messages": [{"role": "user", "content": user_input}]},
@@ -196,7 +190,7 @@ for event in events:
 
 
 snapshot = graph.get_state(config)
-snapshot.next
+print(f"Paused before: {snapshot.next}")
 
 
 # ### Human Supervisor intervention
