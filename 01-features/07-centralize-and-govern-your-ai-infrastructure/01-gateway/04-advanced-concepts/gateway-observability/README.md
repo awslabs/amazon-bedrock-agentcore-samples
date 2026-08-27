@@ -136,7 +136,7 @@ echo "gateway ID: $GATEWAY_ID"
 
 GATEWAY_URL=$(aws bedrock-agentcore-control get-gateway \
   --gateway-identifier $GATEWAY_ID \
-  --query 'gatewayUrl' --output text)
+  --query 'gatewayUrl' --output text)/mcp
 echo "gateway URL: $GATEWAY_URL"
 
 GATEWAY_ARN=$(aws bedrock-agentcore-control get-gateway \

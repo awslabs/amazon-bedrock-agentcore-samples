@@ -143,7 +143,8 @@ pip install -r requirements.txt
 export AWS_REGION=us-west-2
 
 # Optional: reuse an existing execution role instead of creating one
-export MEMORY_EXECUTION_ROLE_ARN=arn:aws:iam::<acct>:role/<role>
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+export MEMORY_EXECUTION_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/<your-memory-execution-role>"
 
 # Optional: use a cheaper/different model for the override steps (defaults to Sonnet 4.6)
 export OVERRIDE_MODEL_ID=global.anthropic.claude-haiku-4-5-20251001-v1:0

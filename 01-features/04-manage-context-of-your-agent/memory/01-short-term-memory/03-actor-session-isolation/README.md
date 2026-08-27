@@ -28,12 +28,21 @@ The same flow expressed with the AWS CLI:
 ```bash
 # Single memory resource serves many actors. Events are scoped by (actorId, sessionId).
 
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "ActorIsoCli-$(date +%s)" \
-  --event-expiry-duration 30 --client-token "$(uuidgen)"
-export MEMORY_ID=<id>
+# 1. Create the memory and capture its id. `--name` accepts letters, digits and
+#    underscores only (pattern [a-zA-Z][a-zA-Z0-9_]{0,47}), so no hyphens.
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "ActorIsoCli_$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --query 'memory.id' --output text)
 
-# Two actors, two sessions
+# 2. Wait until ACTIVE — CreateEvent is rejected while the memory is CREATING.
+#    Takes a couple of minutes. The loop also exits on FAILED, so it can't hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
+
+# 3. Two actors, two sessions
 for actor in alice bob; do
   aws bedrock-agentcore create-event \
     --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
@@ -42,18 +51,19 @@ for actor in alice bob; do
     --payload "[{\"conversational\":{\"role\":\"USER\",\"content\":{\"text\":\"hello from $actor\"}}}]"
 done
 
-# Each actor only sees their own events
+# 4. Each actor only sees their own events
 aws bedrock-agentcore list-events --region "$AWS_REGION" \
   --memory-id "$MEMORY_ID" --actor-id alice --session-id alice-session
 aws bedrock-agentcore list-events --region "$AWS_REGION" \
   --memory-id "$MEMORY_ID" --actor-id bob --session-id bob-session
 
-# ListSessions is also actor-scoped
+# 5. ListSessions is also actor-scoped
 aws bedrock-agentcore list-sessions --region "$AWS_REGION" \
   --memory-id "$MEMORY_ID" --actor-id alice
 aws bedrock-agentcore list-sessions --region "$AWS_REGION" \
   --memory-id "$MEMORY_ID" --actor-id bob
 
+# 6. Teardown
 aws bedrock-agentcore-control delete-memory \
   --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
 ```

@@ -45,8 +45,8 @@ The same flow expressed with the AWS CLI, one section per strategy.
 
 ```bash
 # 1. Create memory with a semantic strategy
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "SemanticCli-$(date +%s)" \
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "SemanticCli_$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
   --memory-strategies '[{
     "semanticMemoryStrategy": {
@@ -54,8 +54,16 @@ aws bedrock-agentcore-control create-memory \
       "description": "Standalone facts about the user",
       "namespaces": ["/users/{actorId}/facts/"]
     }
-  }]'
-export MEMORY_ID=<id>
+  }]' \
+  --query 'memory.id' --output text)
+
+
+# Wait until ACTIVE. CreateEvent is rejected while the memory is still CREATING,
+# and creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. Drive a short conversation
 aws bedrock-agentcore create-event \
@@ -80,8 +88,8 @@ aws bedrock-agentcore-control delete-memory \
 
 ```bash
 # 1. Create memory with a summary strategy. Summaries are typically per-session.
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "SummaryCli-$(date +%s)" \
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "SummaryCli_$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
   --memory-strategies '[{
     "summaryMemoryStrategy": {
@@ -89,8 +97,16 @@ aws bedrock-agentcore-control create-memory \
       "description": "Rolling conversation summary",
       "namespaces": ["/sessions/{sessionId}/summary/"]
     }
-  }]'
-export MEMORY_ID=<id>
+  }]' \
+  --query 'memory.id' --output text)
+
+
+# Wait until ACTIVE. CreateEvent is rejected while the memory is still CREATING,
+# and creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. Drive a multi-turn conversation (loop several create-event calls).
 aws bedrock-agentcore create-event \
@@ -116,8 +132,8 @@ aws bedrock-agentcore-control delete-memory \
 
 ```bash
 # 1. Create memory with a user-preference strategy
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "UserPrefCli-$(date +%s)" \
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "UserPrefCli_$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
   --memory-strategies '[{
     "userPreferenceMemoryStrategy": {
@@ -125,8 +141,16 @@ aws bedrock-agentcore-control create-memory \
       "description": "Stable preferences across sessions",
       "namespaces": ["/users/{actorId}/preferences/"]
     }
-  }]'
-export MEMORY_ID=<id>
+  }]' \
+  --query 'memory.id' --output text)
+
+
+# Wait until ACTIVE. CreateEvent is rejected while the memory is still CREATING,
+# and creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. Mention a few preferences
 aws bedrock-agentcore create-event \
@@ -151,8 +175,8 @@ aws bedrock-agentcore-control delete-memory \
 
 ```bash
 # 1. Create memory with an episodic strategy
-aws bedrock-agentcore-control create-memory \
-  --region "$AWS_REGION" --name "EpisodicCli-$(date +%s)" \
+MEMORY_ID=$(aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "EpisodicCli_$(date +%s)" \
   --event-expiry-duration 30 --client-token "$(uuidgen)" \
   --memory-strategies '[{
     "episodicMemoryStrategy": {
@@ -160,8 +184,16 @@ aws bedrock-agentcore-control create-memory \
       "description": "Meaningful interaction sequences",
       "namespaces": ["/episodes/{actorId}/"]
     }
-  }]'
-export MEMORY_ID=<id>
+  }]' \
+  --query 'memory.id' --output text)
+
+
+# Wait until ACTIVE. CreateEvent is rejected while the memory is still CREATING,
+# and creation takes a couple of minutes. This also exits on FAILED, so it cannot hang.
+while [ "$(aws bedrock-agentcore-control get-memory --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" --query 'memory.status' --output text)" = CREATING ]; do
+  sleep 10
+done
 
 # 2. Drive a multi-turn session that forms one episode (loop several events).
 aws bedrock-agentcore create-event \
