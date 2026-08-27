@@ -33,10 +33,17 @@ Framework integrations live under [`examples/`](./examples/). They wire short-te
 | **Custom hook** | Your own hook implementation | Conditional logic, custom retrieval, orchestration |
 | **memory-as-tool** | Memory operations exposed as tools the LLM calls | Agent decides when to recall/save |
 
+Every framework has an adapter for that first row, under a different name
+(`AgentCoreMemorySessionManager` in Strands, `AgentCoreMemorySaver` in LangGraph,
+`AgentCoreMemory` in LlamaIndex) — see
+[06-usage-patterns.md](../00-getting-started/06-usage-patterns.md). The hook and tool patterns
+are not alternatives to it; they're how **long-term** memory gets layered on top, in
+[`../02-long-term-memory/examples/`](../02-long-term-memory/examples/).
+
 | Subtree | Contents |
 |---|---|
 | [`examples/single-agent/with-strands-agent/`](./examples/single-agent/with-strands-agent/) | Built-in hook + custom hook; travel-planning branching example |
-| [`examples/single-agent/with-langgraph-agent/`](./examples/single-agent/with-langgraph-agent/) | Built-in (`math-agent-with-checkpointing`), custom (`personal-fitness-coach`), tool (`support-agent-human-in-the-loop`) |
+| [`examples/single-agent/with-langgraph-agent/`](./examples/single-agent/with-langgraph-agent/) | `AgentCoreMemorySaver` checkpointer (`math-agent-with-checkpointing`), memory-as-tool (`personal-fitness-coach`), checkpointed human-in-the-loop (`support-agent-human-in-the-loop`) |
 | [`examples/single-agent/with-llamaindex-agent/`](./examples/single-agent/with-llamaindex-agent/) | Four domain examples: academic research, investment, legal, medical |
 | [`examples/multi-agent/with-strands-agent/`](./examples/multi-agent/with-strands-agent/) | Multi-agent travel planner; `multi-agent-parallel-branches/` shows branch-per-subagent |
 
