@@ -152,4 +152,3 @@ then deletes the memory resource.
 - The Strands multi-agent example: [`../with-strands-agent/`](../with-strands-agent/)
 - The long-term memory overview (all strategies, retrieval, namespaces):
   [`../../../README.md`](../../../README.md)
-```
