@@ -102,7 +102,7 @@ def main():
             control.delete_agent_runtime(agentRuntimeId=runtime_id)
             wait_for_runtime_deletion(control, runtime_id)
             print("  Runtime deleted")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print("\n✗ Cleanup INCOMPLETE — the runtime still exists and continues to bill:")
         print(f"    {e}")
         print("\n  Left the S3 artifact, log groups and IAM role in place; re-run this script to retry.")
@@ -117,7 +117,7 @@ def main():
         s3.delete_object(Bucket=f"agentcore-code-{account_id}-{region}", Key=f"{agent_name}/code.zip")
         # DeleteObject is idempotent, so this also succeeds when the key was already gone.
         print("  Removed S3 code artifact")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         failures.append(f"S3 object {agent_name}/code.zip: {e}")
 
     # Delete the runtime's log groups. AgentCore creates these on first invocation with
@@ -127,7 +127,7 @@ def main():
         for g in groups.get("logGroups", []):
             logs.delete_log_group(logGroupName=g["logGroupName"])
             print(f"  Deleted log group: {g['logGroupName']}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         failures.append(f"log groups for {runtime_id}: {e}")
 
     role_name = f"agentcore-{agent_name}-role"
@@ -148,7 +148,7 @@ def main():
                 iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
             iam.delete_role(RoleName=role_name)
             print(f"  Deleted IAM role: {role_name}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         failures.append(f"IAM role {role_name}: {e}")
 
     if failures:

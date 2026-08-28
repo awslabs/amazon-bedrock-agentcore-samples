@@ -293,7 +293,7 @@ def smoke_test(runtime_arn: str, runtime_id: str) -> None:
         except KeyError:
             # Either an error envelope or a body that is not a tools/list result.
             last_error = body.get("error", body)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             # Throttling and a just-created runtime that is not yet invocable are both
             # transient; anything else (AccessDenied on InvokeAgentRuntime, for example)
             # will simply exhaust the attempts and be reported below.
