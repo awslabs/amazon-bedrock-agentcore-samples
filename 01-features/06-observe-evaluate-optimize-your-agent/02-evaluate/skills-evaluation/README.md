@@ -68,7 +68,7 @@ A "not found" or refused load counts as not invoked, matching the SDK.
 
 - Python 3.10+
 - AWS CLI installed and configured with credentials for the target account and Region
-- Amazon Bedrock model access for `us.amazon.nova-lite-v1:0`
+- Amazon Bedrock model access for `us.amazon.nova-lite-v1:0` (and, for `inner_loop_eval.py`, the Strands Evals default judge model `global.anthropic.claude-sonnet-4-6`)
 - Permissions for AgentCore Runtime and Evaluations, CloudWatch Logs queries, IAM role creation and
   `iam:PassRole`, S3 bucket/object operations, STS identity lookup, and Bedrock model invocation
 
@@ -133,6 +133,24 @@ python evaluate.py \
 ```
 
 The script prints the agent response, waits for its telemetry, then runs all three evaluators. Change only the quoted prompt to try other PTO wording. Use `--expected-skill benefits-advisor` for a benefits prompt or `--expected-skill none` when the prompt should not load a skill.
+
+## Inner-loop evaluation with Strands Evals
+
+`evaluate.py` is the **outer loop**: it scores a deployed runtime by reading its CloudWatch spans. `inner_loop_eval.py` is the **inner loop** for development and CI — it reruns the skill-equipped HR Assistant in process, captures the trajectory with the SDK's `TracedHandler`, and scores it directly. No deployed runtime is needed, only Bedrock model access.
+
+Use the inner loop when you control the test cases and can rerun the agent (a code change, a new skill, a CI check). Use the outer loop to evaluate traffic that already ran on a deployed runtime.
+
+It runs the same three checks, but the two judges here are the Strands-native `SkillSelectionAccuracyEvaluator` and `SkillInstructionFollowingEvaluator` (client-side LLM judges) rather than the AgentCore `Builtin.*` evaluators; `SkillInvoked` is the same deterministic check. The judges use the SDK's default judge model (`global.anthropic.claude-sonnet-4-6`) unless you pass `model=...`.
+
+```bash
+python inner_loop_eval.py
+```
+
+Before a large run, confirm the trace format is recognized — an unsupported format does not always raise a parsing error:
+
+```bash
+python inner_loop_eval.py --validate-extraction
+```
 
 ## AgentCore CLI
 
