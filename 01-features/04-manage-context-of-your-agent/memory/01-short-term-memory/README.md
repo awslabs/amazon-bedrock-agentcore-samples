@@ -1,6 +1,8 @@
 # Short-term memory
 
-Short-term memory stores raw conversation turns (events) scoped to an `actorId` and a `sessionId`. It gives the agent immediate, low-latency access to the current conversation — no extraction, no embeddings, no background pipeline.
+Short-term memory stores raw events scoped to an `actorId` and a `sessionId`. It gives the agent immediate, low-latency access to the current interaction — no extraction, no embeddings, no background pipeline.
+
+Events are usually conversation turns, but an event's payload is a list of items that can also carry structured application data (`json`) or arbitrary data (`blob`) — see [`05-payload-types/`](./05-payload-types/).
 
 ## Standard usage
 
@@ -22,6 +24,7 @@ Every sub-feature script supports the same three surfaces.
 | 02 | [`02-event-metadata/`](./02-event-metadata/) | Tagging events with metadata and filtering with `EQUALS_TO`, `EXISTS`, `NOT_EXISTS` |
 | 03 | [`03-actor-session-isolation/`](./03-actor-session-isolation/) | One memory resource, many actors, no cross-actor leakage |
 | 04 | [`04-branching/`](./04-branching/) | Forking a session for what-if flows or parallel sub-agents |
+| 05 | [`05-payload-types/`](./05-payload-types/) | `conversational`, `json`, and `blob` payload items — and which ones extraction reads |
 
 ## Examples
 
@@ -54,6 +57,8 @@ are not alternatives to it; they're how **long-term** memory gets layered on top
 - **Use `includePayloads=False`** on `ListEvents` when you only need ids/timestamps; switch to `True` only when you need the content.
 - **Cap storage cost with `eventExpiryDuration`** (3–365 days) at memory creation.
 - **Don't put sensitive data in event metadata** — metadata is not encrypted with your customer-managed KMS key.
+- **Write app events as `json` payloads, not as narrated turns.** Structured behaviour (filters applied, items viewed) extracts as well as speech does, and the transcript stays an honest record of what was actually said.
+- **Remember `blob` is short-term only.** It is stored and readable, but no strategy extracts it — use `json` for anything that should reach long-term memory.
 - **Plan branches before you need them.** Decide branch names up front so `ListEvents` filters stay clean.
 
 ## Where to go next

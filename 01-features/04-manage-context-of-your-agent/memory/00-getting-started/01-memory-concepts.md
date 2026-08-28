@@ -4,14 +4,16 @@ AgentCore Memory is built around a small set of primitives. Every tutorial in th
 
 ## The six primitives
 
-| Term | What it is | Scope |
-|---|---|---|
-| **Memory resource** | The top-level container. Holds events, strategies, and extracted records. Has an ID, IAM execution role, optional CMK, event expiry. | Account / region |
-| **Actor** | Who is producing events — typically a user, but can be an agent or any stable principal. An `actorId` is any string you choose. | Memory resource |
-| **Session** | A bounded conversation or interaction. A `sessionId` groups events that share context (e.g., a single chat). | Actor |
-| **Event** | A single turn written to short-term memory. Contains messages plus optional metadata and a `branchId`. The raw truth of what was said. | Session |
-| **Strategy** | A rule for extracting long-term memory records from events. Built-in (Semantic, Summary, User Preference, Episodic), built-in with prompt overrides, or self-managed (your Lambdas). | Memory resource |
-| **Memory record** | A structured fact, preference, summary, or episode produced by a strategy. Retrievable by semantic search. | Namespace |
+| Term                | What it is                                                                                                                                                                           | Scope            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| **Memory resource** | The top-level container. Holds events, strategies, and extracted records. Has an ID, IAM execution role, optional CMK, event expiry.                                                 | Account / region |
+| **Actor**           | Who is producing events — typically a user, but can be an agent or any stable principal. An `actorId` is any string you choose.                                                      | Memory resource  |
+| **Session**         | A bounded conversation or interaction. A `sessionId` groups events that share context (e.g., a single chat).                                                                         | Actor            |
+| **Event**           | A single write to short-term memory. Carries a `payload` list whose items are `conversational` turns, `json` documents, or `blob` data, plus optional metadata and a `branchId`.     | Session          |
+| **Strategy**        | A rule for extracting long-term memory records from events. Built-in (Semantic, Summary, User Preference, Episodic), built-in with prompt overrides, or self-managed (your Lambdas). | Memory resource  |
+| **Memory record**   | A structured fact, preference, summary, or episode produced by a strategy. Retrievable by semantic search.                                                                           | Namespace        |
+
+An event is not only for conversation. `conversational` and `json` payload items are both extracted into long-term memory; `blob` items stay in short-term memory. See [`../01-short-term-memory/05-payload-types/`](../01-short-term-memory/05-payload-types/)
 
 ## How they fit together
 

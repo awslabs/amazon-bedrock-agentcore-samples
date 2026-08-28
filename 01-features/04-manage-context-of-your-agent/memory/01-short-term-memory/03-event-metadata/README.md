@@ -8,6 +8,20 @@ Attach key-value metadata to each event so you can filter `ListEvents` later wit
 - Filtering `ListEvents` with `EQUALS_TO`, `EXISTS`, `NOT_EXISTS`
 - Composing up to 5 filter expressions per request (logical AND across them)
 
+## Metadata vs. a `json` payload
+
+Both attach structure to an event, and they are easy to conflate. They do opposite jobs:
+
+| | Event metadata | `json` payload item |
+|---|---|---|
+| Purpose | Filtering and routing | Extraction input |
+| Filterable by `ListEvents` | Yes (`EQUALS_TO`, `EXISTS`, `NOT_EXISTS`) | No |
+| Extracted into long-term memory | Never | Yes |
+| Size | 15 keys, 128-char keys, 256-char string values | Up to 100 KB per item |
+| Encrypted with your CMK | No | Yes |
+
+Tag an event `{"channel": "web"}` so you can find it later; put the behaviour itself — the filters applied, the vehicle viewed — in a `json` payload so a strategy can learn from it. See [`../02-payload-types/`](../02-payload-types/).
+
 ## Run
 
 ```bash

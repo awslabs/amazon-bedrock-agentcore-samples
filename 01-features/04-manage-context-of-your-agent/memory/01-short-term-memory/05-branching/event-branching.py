@@ -55,13 +55,13 @@ def run_with_boto3(cleanup: bool = False) -> None:
         time.sleep(5)
 
     def append(role, text, branch=None):
-        kwargs = dict(
-            memoryId=memory_id,
-            actorId=ACTOR_ID,
-            sessionId=session_id,
-            eventTimestamp=datetime.now(timezone.utc),
-            payload=[{"conversational": {"role": role, "content": {"text": text}}}],
-        )
+        kwargs = {
+            "memoryId": memory_id,
+            "actorId": ACTOR_ID,
+            "sessionId": session_id,
+            "eventTimestamp": datetime.now(timezone.utc),
+            "payload": [{"conversational": {"role": role, "content": {"text": text}}}],
+        }
         if branch is not None:
             kwargs["branch"] = branch
         return data.create_event(**kwargs)["event"]
