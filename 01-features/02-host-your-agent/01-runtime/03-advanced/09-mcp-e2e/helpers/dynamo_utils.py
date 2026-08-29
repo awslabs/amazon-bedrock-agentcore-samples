@@ -1,3 +1,5 @@
+import os
+
 import boto3
 from datetime import datetime
 from typing import Dict, List
@@ -5,7 +7,7 @@ from decimal import Decimal
 
 
 class FinanceDB:
-    def __init__(self, table_name: str = "finance_tracker", region_name: str = "us-east-1"):
+    def __init__(self, table_name: str = "finance_tracker", region_name: str = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))):
         self.dynamodb = boto3.resource("dynamodb", region_name=region_name)
         self.table_name = table_name
         self.table = self.dynamodb.Table(table_name)
