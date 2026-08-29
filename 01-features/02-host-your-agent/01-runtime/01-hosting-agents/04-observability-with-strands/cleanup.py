@@ -49,7 +49,9 @@ def cleanup(config):
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
         for ep in eps.get("runtimeEndpoints", []):
             ep_name = ep["name"]
-            control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, name=ep_name)
+            if ep_name == "DEFAULT":
+                continue  # DEFAULT endpoint is auto-deleted with the runtime
+            control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ep_name)
             print(f"  Deleted endpoint: {ep_name}")
         # Wait for deletion
         time.sleep(10)

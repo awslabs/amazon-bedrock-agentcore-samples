@@ -27,6 +27,8 @@ def main():
     print(f"Cleaning up: {agent_name}\n")
     try:
         for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
+            if ep["name"] == "DEFAULT":
+                continue  # DEFAULT endpoint is auto-deleted with the runtime
             control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ep["name"])
         time.sleep(30)
     except Exception as e:

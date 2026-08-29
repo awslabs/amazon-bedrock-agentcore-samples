@@ -51,6 +51,8 @@ def main():
         for ep in endpoints.get("runtimeEndpoints", []):
             name = ep["name"]
             print(f"  Deleting endpoint: {name}")
+            if name == "DEFAULT":
+                continue  # DEFAULT endpoint is auto-deleted with the runtime
             control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=name)
         if endpoints.get("runtimeEndpoints"):
             print("  Waiting for endpoint deletion...")

@@ -38,6 +38,8 @@ def main():
         # Delete endpoints
         try:
             for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
+                if ep["name"] == "DEFAULT":
+                    continue  # DEFAULT endpoint is auto-deleted with the runtime
                 control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ep["name"])
         except Exception as e:
             print(f"  Warning (endpoints): {e}")
