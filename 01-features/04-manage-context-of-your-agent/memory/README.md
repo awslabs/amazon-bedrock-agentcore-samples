@@ -13,7 +13,7 @@ New to AgentCore Memory? → [`00-getting-started/`](./00-getting-started/). You
 | Folder | What's inside |
 |---|---|
 | [`00-getting-started/`](./00-getting-started/) | Concepts, surface decision guide, three quickstarts (CLI, boto3, AgentCore SDK) |
-| [`01-short-term-memory/`](./01-short-term-memory/) | Events, sessions, isolation, branching — plus framework examples under `examples/` |
+| [`01-short-term-memory/`](./01-short-term-memory/) | Events, sessions, isolation, branching, payload types — plus framework examples under `examples/` |
 | [`02-long-term-memory/`](./02-long-term-memory/) | Strategies, overrides, self-managed, namespaces, retrieval, metadata, batch CRUD, redrive, streaming — plus framework examples |
 | [`03-integrations/`](./03-integrations/) | Runtime, identity, Guardrails, memory-browser |
 | [`04-observability/`](./04-observability/) | CloudWatch metrics, alarms, ingestion logs |
