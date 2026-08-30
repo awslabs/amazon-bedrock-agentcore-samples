@@ -22,7 +22,7 @@ import boto3
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent", "src"))
 
-from memory.config import load_config, get_memory_id
+from memory.config import get_memory_id, load_config
 
 ACTORS = ["PH-1001", "PH-1042", "PH-1087", "PH-2001", "PH-2050", "PH-3001", "PH-3050"]
 
@@ -86,7 +86,7 @@ def main():
                 session_pairs.add((r["actor_id"], r["session_id"]))
         n_sess, _ = _clear_table(ddb, sess_table, ["user_id", "session_id"])
         print(f"  session rows deleted: {n_sess}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best-effort cleanup; continue on error
         print(f"  (session table note: {e})")
 
     # 3. Memory records — collect record ids + derive (actor, session) from episode namespaces
@@ -109,7 +109,7 @@ def main():
             try:
                 bac.delete_event(memoryId=memory_id, actorId=actor, sessionId=session, eventId=e["eventId"])
                 n_events += 1
-            except Exception as ex:
+            except Exception as ex:  # noqa: BLE001 - best-effort cleanup; continue on error
                 print(f"    (event delete note {session}: {ex})")
     print(f"  memory events deleted: {n_events} (across {len(session_pairs)} session(s))")
 
@@ -119,7 +119,7 @@ def main():
         try:
             bac.delete_memory_record(memoryId=memory_id, memoryRecordId=rid)
             n_rec += 1
-        except Exception as ex:
+        except Exception as ex:  # noqa: BLE001 - best-effort cleanup; continue on error
             print(f"    (record delete note {rid}: {ex})")
     print(f"  memory records deleted: {n_rec}")
 

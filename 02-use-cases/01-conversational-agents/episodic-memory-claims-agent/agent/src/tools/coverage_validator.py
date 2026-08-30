@@ -11,34 +11,61 @@ Coverage rules (insurance-correct):
 """
 
 from strands import tool
-
 from tools import signals
 
 # Maps policy type → covered incident types
 _COVERAGE_MAP = {
     "Homeowner": {
         "covered": [
-            "Water damage", "Pipe burst", "Burst pipe", "Fire", "Wind damage",
-            "Hail damage", "Hailstorm", "Theft", "Burglary", "Vandalism",
-            "Lightning", "Smoke damage", "Wind", "Hail",
+            "Water damage",
+            "Pipe burst",
+            "Burst pipe",
+            "Fire",
+            "Wind damage",
+            "Hail damage",
+            "Hailstorm",
+            "Theft",
+            "Burglary",
+            "Vandalism",
+            "Lightning",
+            "Smoke damage",
+            "Wind",
+            "Hail",
         ],
         "excluded": [
-            "Flood", "Earthquake", "Mold (pre-existing)",
-            "Normal wear and tear", "Intentional damage",
+            "Flood",
+            "Earthquake",
+            "Mold (pre-existing)",
+            "Normal wear and tear",
+            "Intentional damage",
             "Nuclear hazard",
         ],
     },
     "Auto": {
         "covered": [
-            "Auto collision", "Rear-end collision", "Side impact",
-            "Hit and run", "Hit-and-run", "Comprehensive", "Theft",
-            "Vandalism", "Weather damage", "Animal collision",
-            "Collision", "Fender bender", "Parking", "Break-in",
-            "Struck", "Crash",
+            "Auto collision",
+            "Rear-end collision",
+            "Side impact",
+            "Hit and run",
+            "Hit-and-run",
+            "Comprehensive",
+            "Theft",
+            "Vandalism",
+            "Weather damage",
+            "Animal collision",
+            "Collision",
+            "Fender bender",
+            "Parking",
+            "Break-in",
+            "Struck",
+            "Crash",
         ],
         "excluded": [
-            "Racing", "Commercial use", "DUI-related",
-            "Intentional damage", "Normal wear and tear",
+            "Racing",
+            "Commercial use",
+            "DUI-related",
+            "Intentional damage",
+            "Normal wear and tear",
         ],
     },
 }
@@ -46,10 +73,24 @@ _COVERAGE_MAP = {
 # Phrases that indicate FLOOD (excluded) even if described as "water damage".
 # These are surface/external water events, distinct from sudden internal water.
 _FLOOD_INDICATORS = [
-    "flood", "storm surge", "storm drain", "sewer backup", "sewer back-up",
-    "drain backup", "drain back-up", "backed up", "backup from", "ground water",
-    "groundwater", "rising water", "surface water", "overflow of a body of water",
-    "river overflow", "water came up from", "water rose", "rose into",
+    "flood",
+    "storm surge",
+    "storm drain",
+    "sewer backup",
+    "sewer back-up",
+    "drain backup",
+    "drain back-up",
+    "backed up",
+    "backup from",
+    "ground water",
+    "groundwater",
+    "rising water",
+    "surface water",
+    "overflow of a body of water",
+    "river overflow",
+    "water came up from",
+    "water rose",
+    "rose into",
 ]
 
 
@@ -73,9 +114,7 @@ def evaluate_coverage(policy_type: str, incident_type: str) -> dict:
             "incident_type": incident_type,
             "determination": "UNKNOWN_POLICY_TYPE",
             "matched_term": None,
-            "message": (
-                f"Unknown policy type: {policy_type}. Valid types: Homeowner, Auto."
-            ),
+            "message": (f"Unknown policy type: {policy_type}. Valid types: Homeowner, Auto."),
         }
 
     text = incident_type.lower()
@@ -121,8 +160,7 @@ def evaluate_coverage(policy_type: str, incident_type: str) -> dict:
                 "determination": "COVERED",
                 "matched_term": peril,
                 "message": (
-                    f"✅ COVERED: '{incident_type}' is covered under {policy_type} policy.\n"
-                    f"Matching peril: {peril}"
+                    f"✅ COVERED: '{incident_type}' is covered under {policy_type} policy.\nMatching peril: {peril}"
                 ),
             }
 
@@ -163,9 +201,12 @@ def make_validate_coverage_tool(session_id: str | None = None):
         result = evaluate_coverage(policy_type, incident_type)
         signals.record(session_id, "coverage", result)
         formatted = format_coverage(result)
-        signals.write_subtool_trace(session_id, "validate_coverage",
+        signals.write_subtool_trace(
+            session_id,
+            "validate_coverage",
             f"{policy_type} | {incident_type}",
-            f"{result.get('determination', '?')} — {result.get('message', '')[:80]}")
+            f"{result.get('determination', '?')} — {result.get('message', '')[:80]}",
+        )
         return formatted
 
     return validate_coverage

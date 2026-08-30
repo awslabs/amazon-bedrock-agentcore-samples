@@ -31,7 +31,10 @@ def _encode(task):
 def _resp(status, body):
     return {
         "statusCode": status,
-        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": os.environ.get('ALLOWED_ORIGIN', '*')},
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN", "*"),
+        },
         "body": json.dumps(body),
     }
 
@@ -113,12 +116,13 @@ def handler(event, context):
         # Idempotency: never overwrite a resolved task.
         existing = table.get_item(Key={"task_id": body["session_id"]}).get("Item")
         if existing and existing.get("status") == "RESOLVED":
-            return _resp(200, {"task_id": body["session_id"], "status": "RESOLVED",
-                               "note": "already resolved; not overwritten"})
+            return _resp(
+                200, {"task_id": body["session_id"], "status": "RESOLVED", "note": "already resolved; not overwritten"}
+            )
 
         task = _build_task(body)
         table.put_item(Item=_encode(task))
         return _resp(201, task)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - handler boundary
         print(f"create_review error: {e}")
         return _resp(500, {"error": "Internal server error"})

@@ -20,14 +20,62 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.config import load_config
 
 DEMO_USERS = [
-    {"username": "bob-policyholder", "password": "DemoPass1!", "actor_id": "PH-1001", "name": "Bob Thompson", "group": "policyholders"},
-    {"username": "alice-policyholder", "password": "DemoPass2!", "actor_id": "PH-1042", "name": "Alice Martinez", "group": "policyholders"},
-    {"username": "charlie-policyholder", "password": "DemoPass3!", "actor_id": "PH-1087", "name": "Charlie Davis", "group": "policyholders"},
-    {"username": "david-policyholder", "password": "DemoPass4!", "actor_id": "PH-2001", "name": "David Park", "group": "policyholders"},
-    {"username": "sarah-policyholder", "password": "DemoPass5!", "actor_id": "PH-2050", "name": "Sarah Chen", "group": "policyholders"},
-    {"username": "marcus-policyholder", "password": "DemoPass6!", "actor_id": "PH-3001", "name": "Marcus Rivera", "group": "policyholders"},
-    {"username": "lisa-policyholder", "password": "DemoPass7!", "actor_id": "PH-3050", "name": "Lisa Nguyen", "group": "policyholders"},
-    {"username": "dana-adjuster", "password": "AdjustPass1!", "actor_id": "", "name": "Dana Reyes", "group": "adjusters"},
+    {
+        "username": "bob-policyholder",
+        "password": "DemoPass1!",
+        "actor_id": "PH-1001",
+        "name": "Bob Thompson",
+        "group": "policyholders",
+    },
+    {
+        "username": "alice-policyholder",
+        "password": "DemoPass2!",
+        "actor_id": "PH-1042",
+        "name": "Alice Martinez",
+        "group": "policyholders",
+    },
+    {
+        "username": "charlie-policyholder",
+        "password": "DemoPass3!",
+        "actor_id": "PH-1087",
+        "name": "Charlie Davis",
+        "group": "policyholders",
+    },
+    {
+        "username": "david-policyholder",
+        "password": "DemoPass4!",
+        "actor_id": "PH-2001",
+        "name": "David Park",
+        "group": "policyholders",
+    },
+    {
+        "username": "sarah-policyholder",
+        "password": "DemoPass5!",
+        "actor_id": "PH-2050",
+        "name": "Sarah Chen",
+        "group": "policyholders",
+    },
+    {
+        "username": "marcus-policyholder",
+        "password": "DemoPass6!",
+        "actor_id": "PH-3001",
+        "name": "Marcus Rivera",
+        "group": "policyholders",
+    },
+    {
+        "username": "lisa-policyholder",
+        "password": "DemoPass7!",
+        "actor_id": "PH-3050",
+        "name": "Lisa Nguyen",
+        "group": "policyholders",
+    },
+    {
+        "username": "dana-adjuster",
+        "password": "AdjustPass1!",
+        "actor_id": "",
+        "name": "Dana Reyes",
+        "group": "adjusters",
+    },
     {"username": "amy-admin", "password": "AdminPass1!", "actor_id": "", "name": "Amy Lin", "group": "admins"},
 ]
 
@@ -64,7 +112,7 @@ def main():
             print(f"  created: {u['username']} ({u['actor_id'] or u['group']})")
         except cognito.exceptions.UsernameExistsException:
             print(f"  exists:  {u['username']}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - log and continue creating remaining users
             print(f"  ERROR:   {u['username']} — {e}")
 
         # Ensure user is in their group (idempotent — runs even if user already existed)
@@ -77,8 +125,8 @@ def main():
                     Username=u["username"],
                     GroupName=cognito_group,
                 )
-            except Exception:
-                pass
+            except Exception as e:  # noqa: BLE001 - best-effort add-to-group; continue on error
+                print(f"  (add-to-group note: {e})")
 
     # Update config.json with all users (for hydration scripts)
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
@@ -87,7 +135,8 @@ def main():
             cfg = json.load(f)
         cfg["users"] = [
             {"username": u["username"], "password": u["password"], "actor_id": u["actor_id"]}
-            for u in DEMO_USERS if u["actor_id"]
+            for u in DEMO_USERS
+            if u["actor_id"]
         ]
         with open(config_path, "w") as f:
             json.dump(cfg, f, indent=2)

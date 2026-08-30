@@ -83,16 +83,18 @@ def format_task(t: dict) -> str:
     pol = s.get("policy", {}) or {}
     hist = s.get("claims_history", {}) or {}
     priors = [(x.get("type"), x.get("outcome")) for x in hist.get("claims", [])]
-    return "\n".join([
-        f"Claim: {c.get('incident_type')} | policy {c.get('policy_number')} ({c.get('policy_type')})",
-        f"Incident date: {c.get('incident_date')} | Filed: {c.get('filing_date')} | Amount: {c.get('claimed_amount')}",
-        f"Description: {c.get('description')}",
-        f"Coverage determination: {cov.get('determination')} (matched: {cov.get('matched_term')})",
-        f"Fraud: {fr.get('risk_level')} (score {fr.get('risk_score')}/100), reporting delay {fr.get('delay_days')} day(s)",
-        f"Fraud flags: {fr.get('flags') or 'none'}",
-        f"Policy: status {pol.get('status')}, deductible {pol.get('deductible')}, exclusions {pol.get('exclusions')}",
-        f"Prior claims ({hist.get('prior_count')}): {priors or 'none'}",
-    ])
+    return "\n".join(
+        [
+            f"Claim: {c.get('incident_type')} | policy {c.get('policy_number')} ({c.get('policy_type')})",
+            f"Incident date: {c.get('incident_date')} | Filed: {c.get('filing_date')} | Amount: {c.get('claimed_amount')}",
+            f"Description: {c.get('description')}",
+            f"Coverage determination: {cov.get('determination')} (matched: {cov.get('matched_term')})",
+            f"Fraud: {fr.get('risk_level')} (score {fr.get('risk_score')}/100), reporting delay {fr.get('delay_days')} day(s)",
+            f"Fraud flags: {fr.get('flags') or 'none'}",
+            f"Policy: status {pol.get('status')}, deductible {pol.get('deductible')}, exclusions {pol.get('exclusions')}",
+            f"Prior claims ({hist.get('prior_count')}): {priors or 'none'}",
+        ]
+    )
 
 
 def _rule_fallback(t: dict) -> dict:
@@ -101,10 +103,19 @@ def _rule_fallback(t: dict) -> dict:
     cov = (s.get("coverage", {}) or {}).get("determination")
     fraud = (s.get("fraud", {}) or {}).get("risk_level")
     if cov == "EXCLUDED":
-        return {"decision": "DENY", "notes": "Coverage determination is EXCLUDED; the loss is not covered under the policy."}
+        return {
+            "decision": "DENY",
+            "notes": "Coverage determination is EXCLUDED; the loss is not covered under the policy.",
+        }
     if fraud == "HIGH":
-        return {"decision": "DENY", "notes": "Fraud risk is HIGH (repeat-claim/delayed-reporting pattern); claim denied pending the policyholder's appeal."}
-    return {"decision": "APPROVE", "notes": "Coverage confirmed and fraud risk acceptable; documentation supports the claim."}
+        return {
+            "decision": "DENY",
+            "notes": "Fraud risk is HIGH (repeat-claim/delayed-reporting pattern); claim denied pending the policyholder's appeal.",
+        }
+    return {
+        "decision": "APPROVE",
+        "notes": "Coverage confirmed and fraud risk acceptable; documentation supports the claim.",
+    }
 
 
 def decide(task: dict) -> dict:
@@ -185,7 +196,7 @@ def main():
         if i < len(tasks) - 1:
             time.sleep(args.delay)
 
-    print(f"{'='*70}\nRESOLVE SUMMARY\n{'='*70}")
+    print(f"{'=' * 70}\nRESOLVE SUMMARY\n{'=' * 70}")
     for tid, decision, status in results:
         print(f"  {tid:30} {decision:9} {status}")
 

@@ -1,7 +1,6 @@
 """Simulated claims history check."""
 
 from strands import tool
-
 from tools import signals
 
 
@@ -117,8 +116,7 @@ def format_claims_history(result: dict) -> str:
     lines = [f"Claims history for {actor_id} ({len(claims)} prior claim(s)):"]
     for claim in claims:
         lines.append(
-            f"  - {claim['claim_id']} | {claim['date']} | {claim['type']} | "
-            f"{claim['amount']} | {claim['outcome']}"
+            f"  - {claim['claim_id']} | {claim['date']} | {claim['type']} | {claim['amount']} | {claim['outcome']}"
         )
         lines.append(f"    {claim['description']}")
     return "\n".join(lines)
@@ -140,8 +138,9 @@ def make_check_claims_history_tool(session_id: str | None = None):
         result = evaluate_claims_history(actor_id)
         signals.record(session_id, "claims_history", result)
         formatted = format_claims_history(result)
-        signals.write_subtool_trace(session_id, "check_claims_history", actor_id,
-            f"{result.get('prior_count', 0)} prior claim(s)")
+        signals.write_subtool_trace(
+            session_id, "check_claims_history", actor_id, f"{result.get('prior_count', 0)} prior claim(s)"
+        )
         return formatted
 
     return check_claims_history

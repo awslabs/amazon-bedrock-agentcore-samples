@@ -22,7 +22,10 @@ class _Dec(json.JSONEncoder):
 def _resp(status, body):
     return {
         "statusCode": status,
-        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": os.environ.get('ALLOWED_ORIGIN', '*')},
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN", "*"),
+        },
         "body": json.dumps(body, cls=_Dec),
     }
 
@@ -58,6 +61,6 @@ def handler(event, context):
         )
         tasks = [_decode(i) for i in resp.get("Items", [])]
         return _resp(200, {"tasks": tasks, "count": len(tasks), "status": status})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - handler boundary
         print(f"list_reviews error: {e}")
         return _resp(500, {"error": "Internal server error"})

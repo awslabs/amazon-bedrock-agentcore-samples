@@ -152,6 +152,7 @@ def main():
     # Load from scenario if specified
     if args.scenario:
         from scenarios import get_scenarios
+
         matches = get_scenarios([args.scenario])
         if not matches:
             print(f"ERROR: scenario '{args.scenario}' not found")
@@ -168,7 +169,9 @@ def main():
             "Hi, I need to file a claim. A pipe burst behind my bathroom wall upstairs "
             "and caused water damage to the hallway and bathroom. My policy is HO-2024-1001."
         )
-        facts = args.facts or """\
+        facts = (
+            args.facts
+            or """\
 - Incident: pipe burst behind the upstairs bathroom wall, flooding the bathroom and hallway.
 - Date: June 10, 2026. Discovered June 12 (noticed wet carpet). Filing today (~12-day delay).
 - Damage: warped hardwood in hallway, soaked drywall behind the toilet, bathroom floor tiles cracking.
@@ -179,6 +182,7 @@ def main():
 - Policy: HO-2024-1001
 - Contact: Bob Thompson, (555) 014-1001, 142 Maple Street, Springfield, IL 62704.
 """
+        )
 
     config = load_config()
     region = config["region"]

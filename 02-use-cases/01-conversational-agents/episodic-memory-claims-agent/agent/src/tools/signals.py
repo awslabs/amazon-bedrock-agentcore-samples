@@ -75,18 +75,20 @@ def write_subtool_trace(session_id: str, tool_name: str, input_summary: str, out
     if not _trace_client or not _trace_memory_id or not session_id:
         return
     try:
-        trace_text = json.dumps({
-            "tool": tool_name,
-            "query": input_summary,
-            "filter": "n/a",
-            "result_count": 1,
-            "results": [output_summary],
-        })
+        trace_text = json.dumps(
+            {
+                "tool": tool_name,
+                "query": input_summary,
+                "filter": "n/a",
+                "result_count": 1,
+                "results": [output_summary],
+            }
+        )
         _trace_client.create_event(
             memory_id=_trace_memory_id,
             actor_id="system",
             session_id=session_id,
             messages=[(trace_text, "TOOL")],
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best-effort trace; must not break agent flow
         _trace_logger.warning("Failed to write subtool trace: %s", e)

@@ -1,5 +1,5 @@
-import json
 import base64
+import json
 
 
 def handler(event, context):
@@ -14,7 +14,7 @@ def handler(event, context):
             return _build_policy(payload["sub"], "Allow", method_arn)
 
         return _build_policy(payload.get("sub", "unauthorized"), "Deny", method_arn)
-    except Exception:
+    except Exception:  # noqa: BLE001 - fail closed: deny on any token error
         return _build_policy("unauthorized", "Deny", method_arn)
 
 

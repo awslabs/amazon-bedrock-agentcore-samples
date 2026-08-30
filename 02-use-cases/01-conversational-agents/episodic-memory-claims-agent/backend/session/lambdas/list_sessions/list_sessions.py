@@ -1,11 +1,12 @@
 import json
-import boto3
 import os
-from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['TABLE_NAME'])
+import boto3
+from boto3.dynamodb.conditions import Key
+
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table(os.environ["TABLE_NAME"])
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -17,30 +18,33 @@ class DecimalEncoder(json.JSONEncoder):
 
 def handler(event, context):
     try:
-        claims = event['requestContext']['authorizer']['claims']
-        user_id = claims.get('sub')
+        claims = event["requestContext"]["authorizer"]["claims"]
+        user_id = claims.get("sub")
 
         response = table.query(
-            KeyConditionExpression=Key('user_id').eq(user_id),
+            KeyConditionExpression=Key("user_id").eq(user_id),
             ScanIndexForward=False,  # Newest first
         )
 
-        sessions = response.get('Items', [])
+        sessions = response.get("Items", [])
 
         return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*'),
-                'Access-Control-Allow-Credentials': True,
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN", "*"),
+                "Access-Control-Allow-Credentials": True,
             },
-            'body': json.dumps({'sessions': sessions, 'count': len(sessions)}, cls=DecimalEncoder),
+            "body": json.dumps({"sessions": sessions, "count": len(sessions)}, cls=DecimalEncoder),
         }
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - handler boundary
         print(f"Error: {e}")
         return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': os.environ.get('ALLOWED_ORIGIN', '*')},
-            'body': json.dumps({'error': 'Internal server error'}),
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN", "*"),
+            },
+            "body": json.dumps({"error": "Internal server error"}),
         }

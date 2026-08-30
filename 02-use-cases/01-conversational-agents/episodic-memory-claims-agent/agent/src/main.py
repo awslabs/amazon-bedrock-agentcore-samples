@@ -7,9 +7,9 @@ and are packaged together by CodeZip.
 
 import json
 
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from memory.config import load_config, get_memory_client, get_memory_id, get_decision_mode, get_reviews_api_url
 from agents.intake_agent import create_intake_agent
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from memory.config import get_decision_mode, get_memory_client, get_memory_id, get_reviews_api_url, load_config
 
 app = BedrockAgentCoreApp()
 log = app.logger

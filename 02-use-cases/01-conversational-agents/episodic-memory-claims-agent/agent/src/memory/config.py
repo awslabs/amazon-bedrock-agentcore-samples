@@ -8,8 +8,8 @@ config.json is kept as a convenience mirror / fallback for local dev.
 """
 
 import json
-import os
 import logging
+import os
 
 import boto3
 from bedrock_agentcore.memory import MemoryClient
@@ -19,6 +19,7 @@ from bedrock_agentcore.memory.models.filters import (
     MemoryRecordOperatorType,
     MemoryRecordRightExpression,
 )
+from botocore.exceptions import BotoCoreError, ClientError
 
 logger = logging.getLogger("claims-demo.memory")
 
@@ -71,6 +72,7 @@ def episode_namespace_path(actor_id: str) -> str:
     """
     return f"claims/{actor_id}/"
 
+
 # ---------------------------------------------------------------------------
 # Config file path — checked in multiple locations for flexibility.
 # On AgentCore Runtime, SSM is the source of truth (config.json is optional).
@@ -98,14 +100,14 @@ def load_config() -> dict:
     return {"region": os.environ.get("AWS_REGION", "us-east-1")}
 
 
-def get_memory_client(config: dict = None) -> MemoryClient:
+def get_memory_client(config: dict | None = None) -> MemoryClient:
     """Return a MemoryClient for the configured region."""
     if config is None:
         config = load_config()
     return MemoryClient(region_name=config["region"])
 
 
-def get_memory_id(config: dict = None) -> str:
+def get_memory_id(config: dict | None = None) -> str:
     """Return the AgentCore memory ID.
 
     Source of truth is SSM (`/insurance-claims-demo/memory_id`). Falls back to
@@ -119,15 +121,16 @@ def get_memory_id(config: dict = None) -> str:
         value = ssm.get_parameter(Name=MEMORY_ID_SSM_PARAM)["Parameter"]["Value"]
         if value:
             return value
-    except Exception as e:
+    except (ClientError, BotoCoreError) as e:
         logger.warning(
             "Could not read %s from SSM (%s); falling back to config.json",
-            MEMORY_ID_SSM_PARAM, e,
+            MEMORY_ID_SSM_PARAM,
+            e,
         )
     return config.get("memory_id", "")
 
 
-def get_decision_mode(config: dict = None) -> str:
+def get_decision_mode(config: dict | None = None) -> str:
     """Return the system-wide decision mode: "auto" or "human".
 
     Source of truth is SSM (`/insurance-claims-demo/decision_mode`). Defaults to
@@ -143,15 +146,17 @@ def get_decision_mode(config: dict = None) -> str:
         if value in ("auto", "human"):
             return value
         logger.warning("Unexpected decision_mode %r in SSM; defaulting to %s", value, DEFAULT_DECISION_MODE)
-    except Exception as e:
+    except (ClientError, BotoCoreError) as e:
         logger.warning(
             "Could not read %s from SSM (%s); defaulting to %s",
-            DECISION_MODE_SSM_PARAM, e, DEFAULT_DECISION_MODE,
+            DECISION_MODE_SSM_PARAM,
+            e,
+            DEFAULT_DECISION_MODE,
         )
     return DEFAULT_DECISION_MODE
 
 
-def set_decision_mode(mode: str, config: dict = None) -> str:
+def set_decision_mode(mode: str, config: dict | None = None) -> str:
     """Set the system-wide decision mode in SSM. Returns the normalized value."""
     mode = (mode or "").strip().lower()
     if mode not in ("auto", "human"):
@@ -163,7 +168,7 @@ def set_decision_mode(mode: str, config: dict = None) -> str:
     return mode
 
 
-def get_review_tasks_table(config: dict = None) -> str:
+def get_review_tasks_table(config: dict | None = None) -> str:
     """Return the HITL review-tasks DynamoDB table name.
 
     Source of truth is SSM (`/insurance-claims-demo/review_tasks_table`). Falls
@@ -177,15 +182,16 @@ def get_review_tasks_table(config: dict = None) -> str:
         value = ssm.get_parameter(Name=REVIEW_TASKS_TABLE_SSM_PARAM)["Parameter"]["Value"]
         if value:
             return value
-    except Exception as e:
+    except (ClientError, BotoCoreError) as e:
         logger.warning(
             "Could not read %s from SSM (%s); falling back to config.json",
-            REVIEW_TASKS_TABLE_SSM_PARAM, e,
+            REVIEW_TASKS_TABLE_SSM_PARAM,
+            e,
         )
     return config.get("review_tasks_table", "")
 
 
-def get_reviews_api_url(config: dict = None) -> str:
+def get_reviews_api_url(config: dict | None = None) -> str:
     """Return the HITL reviews API base URL (API Gateway).
 
     Source of truth is SSM (`/insurance-claims-demo/reviews_api_url`). Falls back
@@ -199,9 +205,10 @@ def get_reviews_api_url(config: dict = None) -> str:
         value = ssm.get_parameter(Name=REVIEWS_API_URL_SSM_PARAM)["Parameter"]["Value"]
         if value:
             return value
-    except Exception as e:
+    except (ClientError, BotoCoreError) as e:
         logger.warning(
             "Could not read %s from SSM (%s); falling back to config.json",
-            REVIEWS_API_URL_SSM_PARAM, e,
+            REVIEWS_API_URL_SSM_PARAM,
+            e,
         )
     return config.get("reviews_backend", {}).get("api_url", "")

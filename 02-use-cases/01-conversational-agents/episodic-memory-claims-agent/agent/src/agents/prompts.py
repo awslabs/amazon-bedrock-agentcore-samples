@@ -9,7 +9,7 @@ def with_current_date(prompt: str) -> str:
     return (
         f"{prompt}\n\n"
         f"CURRENT DATE: today is {today} (UTC). When the policyholder gives a "
-        f"relative date (\"yesterday\", \"last night\", \"two nights ago\", "
-        f"\"last week\"), resolve it against today's date and ALWAYS use the "
+        f'relative date ("yesterday", "last night", "two nights ago", '
+        f'"last week"), resolve it against today\'s date and ALWAYS use the '
         f"correct current year. Never assume a different year."
     )

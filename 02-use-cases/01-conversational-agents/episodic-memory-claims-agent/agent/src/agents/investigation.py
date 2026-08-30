@@ -5,14 +5,13 @@ coverage determination, fraud risk, and claims history. Does NOT make
 decisions — just reports facts.
 """
 
-from strands import Agent
-
 from agents.prompts import with_current_date
 from memory.config import AGENT_MODEL_ID
-from tools.policy_lookup import make_lookup_policy_tool
+from strands import Agent
 from tools.claims_history import make_check_claims_history_tool
-from tools.fraud_check import make_check_fraud_indicators_tool
 from tools.coverage_validator import make_validate_coverage_tool
+from tools.fraud_check import make_check_fraud_indicators_tool
+from tools.policy_lookup import make_lookup_policy_tool
 
 INVESTIGATION_PROMPT = """\
 You are the Claims Investigation Agent. You receive a claim summary and must

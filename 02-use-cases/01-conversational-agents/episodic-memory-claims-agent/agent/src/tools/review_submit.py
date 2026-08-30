@@ -11,14 +11,12 @@ infra; creating a review task is a privileged backend action, not a user action)
 """
 
 import logging
+from urllib.parse import urlparse
 
 import boto3
 import requests
 from aws_requests_auth.aws_auth import AWSRequestsAuth
-from urllib.parse import urlparse
-
 from strands import tool
-
 from tools import signals
 
 logger = logging.getLogger("claims-demo.review_submit")
@@ -86,7 +84,7 @@ def make_submit_for_review_tool(
                 return "Claim filed for adjuster review."
             logger.error("Create review failed: %s %s", resp.status_code, resp.text[:200])
             return f"Could not file the claim for review (status {resp.status_code})."
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error("submit_claim_for_human_review failed: %s", e)
             return "Could not file the claim for review at this time."
 

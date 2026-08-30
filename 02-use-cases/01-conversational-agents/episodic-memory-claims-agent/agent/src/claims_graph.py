@@ -31,14 +31,13 @@ Signals flow (for Adjuster Console cards):
 import json
 import logging
 
-from strands import Agent
-from strands.multiagent.graph import GraphBuilder
-from strands.multiagent.base import Status
-
+from agents.adjudication import create_adjudication_agent
 from agents.investigation import create_investigation_agent
 from agents.precedent import create_precedent_agent
-from agents.adjudication import create_adjudication_agent
 from schemas import TypedClaimSummary, TypedDecision
+from strands import Agent
+from strands.multiagent.base import Status
+from strands.multiagent.graph import GraphBuilder
 from tools import signals
 
 logger = logging.getLogger("claims-demo.graph")
@@ -65,6 +64,7 @@ def _sanitize_free_text(value, limit: int = MAX_DESCRIPTION_CHARS) -> str:
 # ---------------------------------------------------------------------------
 # Graph Construction
 # ---------------------------------------------------------------------------
+
 
 def _build_and_run_graph(
     investigation_agent: Agent,
@@ -93,11 +93,13 @@ def _build_and_run_graph(
 # Review Task Filing
 # ---------------------------------------------------------------------------
 
+
 def _file_review_task(claim, session_id, mode, collected_signals, reviews_api_url, region, memory_id):
     """POST a review task to the reviews API (SigV4 signed)."""
     try:
-        from tools.review_submit import _sigv4_auth
         import requests
+        from tools.review_submit import _sigv4_auth
+
         body = {
             "session_id": session_id,
             "actor_id": claim.actor_id,
@@ -119,9 +121,11 @@ def _file_review_task(claim, session_id, mode, collected_signals, reviews_api_ur
             return True
         logger.error(
             "Review API returned %d for session %s: %s",
-            resp.status_code, session_id, resp.text[:200],
+            resp.status_code,
+            session_id,
+            resp.text[:200],
         )
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         logger.error("Failed to file review task for session %s: %s", session_id, e)
     return False
 
@@ -129,6 +133,7 @@ def _file_review_task(claim, session_id, mode, collected_signals, reviews_api_ur
 # ---------------------------------------------------------------------------
 # Entry Point
 # ---------------------------------------------------------------------------
+
 
 def process_claim(
     claim: TypedClaimSummary,
@@ -203,7 +208,7 @@ def process_claim(
     try:
         graph_result = _build_and_run_graph(investigation_agent, precedent_agent, adjudication_agent, task)
     except Exception as e:
-        logger.error("graph: execution failed: %s", e, exc_info=True)
+        logger.exception("graph: execution failed")
         signals.record(session_id, "technical_failure", {"stage": "graph_execution", "error": str(e)})
         collected = signals.get(session_id)
         if reviews_api_url and collected:
@@ -222,9 +227,16 @@ def process_claim(
     # Extract adjudication result
     adj_node = graph_result.results.get("adjudication")
     if adj_node is None or adj_node.status != Status.COMPLETED:
-        logger.error("graph: adjudication did not complete. status=%s, nodes=%s",
-                     graph_result.status, list(graph_result.results.keys()))
-        signals.record(session_id, "technical_failure", {"stage": "adjudication_incomplete", "graph_status": str(graph_result.status)})
+        logger.error(
+            "graph: adjudication did not complete. status=%s, nodes=%s",
+            graph_result.status,
+            list(graph_result.results.keys()),
+        )
+        signals.record(
+            session_id,
+            "technical_failure",
+            {"stage": "adjudication_incomplete", "graph_status": str(graph_result.status)},
+        )
         collected = signals.get(session_id)
         if reviews_api_url and collected:
             _file_review_task(claim, session_id, mode, collected, reviews_api_url, region, memory_id)
@@ -272,34 +284,51 @@ def process_claim(
                 memory_id=memory_id,
                 actor_id="system",
                 session_id=session_id,
-                messages=[(json.dumps({
-                    "tool": "adjudication_decision",
-                    "query": f"{claim.policy_number} | {claim.incident_type}",
-                    "filter": "n/a",
-                    "result_count": 1,
-                    "results": [{
-                        "decision": decision.decision,
-                        "amount": decision.amount,
-                        "internal_reasoning": decision.internal_reasoning,
-                        "cited_patterns": decision.cited_patterns,
-                    }],
-                }), "TOOL")],
+                messages=[
+                    (
+                        json.dumps(
+                            {
+                                "tool": "adjudication_decision",
+                                "query": f"{claim.policy_number} | {claim.incident_type}",
+                                "filter": "n/a",
+                                "result_count": 1,
+                                "results": [
+                                    {
+                                        "decision": decision.decision,
+                                        "amount": decision.amount,
+                                        "internal_reasoning": decision.internal_reasoning,
+                                        "cited_patterns": decision.cited_patterns,
+                                    }
+                                ],
+                            }
+                        ),
+                        "TOOL",
+                    )
+                ],
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best-effort trace; must not break agent flow
             logger.warning("Failed to write adjudication trace: %s", e)
 
     # Record adjudication to signals
-    signals.record(session_id, "adjudication", {
-        "decision": decision.decision,
-        "amount": decision.amount,
-        "internal_reasoning": decision.internal_reasoning,
-        "cited_patterns": decision.cited_patterns,
-    })
+    signals.record(
+        session_id,
+        "adjudication",
+        {
+            "decision": decision.decision,
+            "amount": decision.amount,
+            "internal_reasoning": decision.internal_reasoning,
+            "cited_patterns": decision.cited_patterns,
+        },
+    )
 
     # Handle ESCALATE: file review task for human adjuster
     if decision.decision == "ESCALATE":
         collected = signals.get(session_id)
-        logger.info("ESCALATE: filing review for %s, signal_keys=%s", session_id, list(collected.keys()) if collected else "EMPTY")
+        logger.info(
+            "ESCALATE: filing review for %s, signal_keys=%s",
+            session_id,
+            list(collected.keys()) if collected else "EMPTY",
+        )
         if reviews_api_url and collected:
             _file_review_task(claim, session_id, mode, collected, reviews_api_url, region, memory_id)
 

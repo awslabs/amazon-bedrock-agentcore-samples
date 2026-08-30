@@ -5,13 +5,14 @@ Usage:
     python hydration/4_set_mode.py auto
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent", "src"))
 
 import boto3
 from memory.config import load_config
+
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("human", "auto"):

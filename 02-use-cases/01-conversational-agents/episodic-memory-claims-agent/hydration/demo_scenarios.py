@@ -30,7 +30,7 @@ from strands import Agent
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent", "src"))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from memory.config import load_config, get_memory_id
+from memory.config import get_memory_id, load_config
 
 MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 
@@ -82,10 +82,19 @@ DEMO_SCENARIOS = {
 }
 
 _DONE_MARKERS = (
-    "approved", "denied", "under review", "received your claim",
-    "be contacted", "will be in touch", "now under review", "decision:",
-    "not able to approve", "unable to approve", "claim has been denied",
-    "i appreciate your help", "thank you for letting me know",
+    "approved",
+    "denied",
+    "under review",
+    "received your claim",
+    "be contacted",
+    "will be in touch",
+    "now under review",
+    "decision:",
+    "not able to approve",
+    "unable to approve",
+    "claim has been denied",
+    "i appreciate your help",
+    "thank you for letting me know",
 )
 
 SIMULANT_SYSTEM = """\
@@ -237,7 +246,9 @@ def delete_session(session_id):
     print(f"  Memory: {memory_id}")
 
     # 1. Delete session row
-    sess_table = ddb.Table(config.get("session_backend", {}).get("table_name", "insurance-claims-session-backend-sessions"))
+    sess_table = ddb.Table(
+        config.get("session_backend", {}).get("table_name", "insurance-claims-session-backend-sessions")
+    )
     items = sess_table.scan().get("Items", [])
     deleted_sess = 0
     for it in items:
@@ -260,14 +271,14 @@ def delete_session(session_id):
     deleted_events = 0
     for actor in ["system", "PH-1001", "PH-1042", "PH-1087", "PH-2001", "PH-2050", "PH-3001", "PH-3050"]:
         try:
-            evs = bac.list_events(
-                memoryId=memory_id, actorId=actor, sessionId=session_id, maxResults=100
-            ).get("events", [])
+            evs = bac.list_events(memoryId=memory_id, actorId=actor, sessionId=session_id, maxResults=100).get(
+                "events", []
+            )
             for e in evs:
                 bac.delete_event(memoryId=memory_id, actorId=actor, sessionId=session_id, eventId=e["eventId"])
                 deleted_events += 1
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 - best-effort cleanup; continue on error
+            print(f"  (cleanup note: {e})")
     print(f"  Memory events deleted: {deleted_events}")
 
     # 4. Delete episode records for this session
@@ -275,12 +286,14 @@ def delete_session(session_id):
     for actor in ["PH-1001", "PH-1042", "PH-1087", "PH-2001", "PH-2050", "PH-3001", "PH-3050"]:
         ns = f"claims/{actor}/{session_id}/"
         try:
-            recs = bac.list_memory_records(memoryId=memory_id, namespace=ns, maxResults=20).get("memoryRecordSummaries", [])
+            recs = bac.list_memory_records(memoryId=memory_id, namespace=ns, maxResults=20).get(
+                "memoryRecordSummaries", []
+            )
             for r in recs:
                 bac.delete_memory_record(memoryId=memory_id, memoryRecordId=r["memoryRecordId"])
                 deleted_records += 1
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 - best-effort cleanup; continue on error
+            print(f"  (cleanup note: {e})")
     print(f"  Episode records deleted: {deleted_records}")
     print("  Done.")
 
@@ -288,9 +301,13 @@ def delete_session(session_id):
 def list_sessions():
     config = load_config()
     ddb = boto3.resource("dynamodb", region_name=config["region"])
-    sess_table = ddb.Table(config.get("session_backend", {}).get("table_name", "insurance-claims-session-backend-sessions"))
+    sess_table = ddb.Table(
+        config.get("session_backend", {}).get("table_name", "insurance-claims-session-backend-sessions")
+    )
     items = sess_table.scan().get("Items", [])
-    demo_sessions = [i for i in items if "[Auto]" in (i.get("session_title") or "") or "[Training]" in (i.get("session_title") or "")]
+    demo_sessions = [
+        i for i in items if "[Auto]" in (i.get("session_title") or "") or "[Training]" in (i.get("session_title") or "")
+    ]
     demo_sessions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
 
     if not demo_sessions:
@@ -299,7 +316,9 @@ def list_sessions():
 
     print(f"Demo sessions ({len(demo_sessions)}):")
     for s in demo_sessions:
-        print(f"  {s.get('session_id', '?'):40} {s.get('actor_id', '?'):10} {s.get('session_title', '')[:50]}  {s.get('created_at', '')[:16]}")
+        print(
+            f"  {s.get('session_id', '?'):40} {s.get('actor_id', '?'):10} {s.get('session_title', '')[:50]}  {s.get('created_at', '')[:16]}"
+        )
 
 
 def main():

@@ -10,10 +10,9 @@ Produces a structured JSON decision with:
 - Cited patterns
 """
 
-from strands import Agent
-
 from agents.prompts import with_current_date
 from memory.config import AGENT_MODEL_ID
+from strands import Agent
 
 ADJUDICATION_PROMPT = """\
 You are the Claims Adjudication Agent. You receive inputs from two previous

@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
 _bac = boto3.client("bedrock-agentcore", region_name=os.environ.get("AWS_REGION", "us-east-1"))
@@ -38,7 +39,10 @@ class _Dec(json.JSONEncoder):
 def _resp(status, body):
     return {
         "statusCode": status,
-        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": os.environ.get('ALLOWED_ORIGIN', '*')},
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN", "*"),
+        },
         "body": json.dumps(body, cls=_Dec),
     }
 
@@ -68,7 +72,7 @@ def _decode(item):
 def _memory_id():
     try:
         return _ssm.get_parameter(Name=MEMORY_ID_SSM_PARAM)["Parameter"]["Value"]
-    except Exception as e:
+    except (ClientError, BotoCoreError) as e:
         print(f"resolve_review: could not read memory_id from SSM: {e}")
         return ""
 
@@ -109,19 +113,23 @@ def _record_adjuster_decision(task, decision, notes):
 
         # Internal grounding turn (hidden from customer chat view).
         _bac.create_event(
-            memoryId=memory_id, actorId=actor_id, sessionId=session_id,
+            memoryId=memory_id,
+            actorId=actor_id,
+            sessionId=session_id,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"content": {"text": internal}, "role": "OTHER"}}],
         )
         # Customer-facing outcome (extracted + shown on next visit).
         _bac.create_event(
-            memoryId=memory_id, actorId=actor_id, sessionId=session_id,
+            memoryId=memory_id,
+            actorId=actor_id,
+            sessionId=session_id,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"content": {"text": customer}, "role": "ASSISTANT"}}],
         )
         print(f"resolve_review: recorded adjuster decision to memory for {session_id}")
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best-effort memory write; never fail the resolve
         print(f"resolve_review: memory write failed: {e}")
         return False
 
@@ -164,6 +172,6 @@ def handler(event, context):
         # Phase 5: ground the human decision into memory (best-effort).
         task["memory_recorded"] = _record_adjuster_decision(task, decision, notes)
         return _resp(200, task)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - handler boundary
         print(f"resolve_review error: {e}")
         return _resp(500, {"error": "Internal server error"})

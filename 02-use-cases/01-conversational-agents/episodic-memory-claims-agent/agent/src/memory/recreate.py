@@ -25,11 +25,10 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import boto3
-from botocore.exceptions import ClientError
-
 from bedrock_agentcore.memory import MemoryClient
-from memory.config import load_config, MEMORY_ID_SSM_PARAM
-from memory.strategy import create_claims_memory, EXTRACTION_MODEL_ID
+from botocore.exceptions import ClientError
+from memory.config import MEMORY_ID_SSM_PARAM, load_config
+from memory.strategy import EXTRACTION_MODEL_ID, create_claims_memory
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("recreate")
@@ -93,7 +92,7 @@ def main():
         try:
             client.delete_memory_and_wait(memory_id=old_mid, max_wait=300, poll_interval=10)
             logger.info("  deleted")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best-effort delete of old memory during recreate
             logger.info("  (already gone / note: %s)", str(e)[:80])
 
     logger.info("Creating memory %s with model %s ...", name, args.model)

@@ -1,7 +1,6 @@
 """Simulated policy database lookup."""
 
 from strands import tool
-
 from tools import signals
 
 # Hardcoded policy records keyed by policy number
@@ -17,8 +16,13 @@ _POLICIES = {
         "deductible": "$1,000",
         "coverage_limit": "$350,000",
         "covered_perils": [
-            "Fire", "Wind", "Hail", "Water damage (non-flood)",
-            "Theft", "Vandalism", "Liability",
+            "Fire",
+            "Wind",
+            "Hail",
+            "Water damage (non-flood)",
+            "Theft",
+            "Vandalism",
+            "Liability",
         ],
         "exclusions": ["Flood", "Earthquake", "Mold (pre-existing)"],
     },
@@ -33,7 +37,9 @@ _POLICIES = {
         "deductible": "$500",
         "coverage_limit": "$100,000",
         "covered_perils": [
-            "Collision", "Comprehensive", "Liability",
+            "Collision",
+            "Comprehensive",
+            "Liability",
             "Uninsured motorist",
         ],
         "exclusions": ["Racing", "Commercial use"],
@@ -49,8 +55,13 @@ _POLICIES = {
         "deductible": "$2,500",
         "coverage_limit": "$500,000",
         "covered_perils": [
-            "Fire", "Wind", "Hail", "Water damage (non-flood)",
-            "Theft", "Vandalism", "Liability",
+            "Fire",
+            "Wind",
+            "Hail",
+            "Water damage (non-flood)",
+            "Theft",
+            "Vandalism",
+            "Liability",
         ],
         "exclusions": ["Flood", "Earthquake"],
     },
@@ -65,7 +76,9 @@ _POLICIES = {
         "deductible": "$750",
         "coverage_limit": "$75,000",
         "covered_perils": [
-            "Collision", "Comprehensive", "Liability",
+            "Collision",
+            "Comprehensive",
+            "Liability",
             "Uninsured motorist",
         ],
         "exclusions": ["Racing", "Commercial use"],
@@ -81,8 +94,13 @@ _POLICIES = {
         "deductible": "$1,500",
         "coverage_limit": "$400,000",
         "covered_perils": [
-            "Fire", "Wind", "Hail", "Water damage (non-flood)",
-            "Theft", "Vandalism", "Liability",
+            "Fire",
+            "Wind",
+            "Hail",
+            "Water damage (non-flood)",
+            "Theft",
+            "Vandalism",
+            "Liability",
         ],
         "exclusions": ["Flood", "Earthquake", "Mold (pre-existing)"],
     },
@@ -97,8 +115,13 @@ _POLICIES = {
         "deductible": "$1,000",
         "coverage_limit": "$400,000",
         "covered_perils": [
-            "Fire", "Wind", "Hail", "Water damage (non-flood)",
-            "Theft", "Vandalism", "Liability",
+            "Fire",
+            "Wind",
+            "Hail",
+            "Water damage (non-flood)",
+            "Theft",
+            "Vandalism",
+            "Liability",
         ],
         "exclusions": ["Flood", "Earthquake", "Mold (pre-existing)"],
     },
@@ -113,7 +136,9 @@ _POLICIES = {
         "deductible": "$500",
         "coverage_limit": "$75,000",
         "covered_perils": [
-            "Collision", "Comprehensive", "Liability",
+            "Collision",
+            "Comprehensive",
+            "Liability",
             "Uninsured motorist",
         ],
         "exclusions": ["Racing", "Commercial use"],
@@ -129,7 +154,9 @@ _POLICIES = {
         "deductible": "$500",
         "coverage_limit": "$100,000",
         "covered_perils": [
-            "Collision", "Comprehensive", "Liability",
+            "Collision",
+            "Comprehensive",
+            "Liability",
             "Uninsured motorist",
         ],
         "exclusions": ["Racing", "Commercial use"],
@@ -145,8 +172,13 @@ _POLICIES = {
         "deductible": "$1,500",
         "coverage_limit": "$375,000",
         "covered_perils": [
-            "Fire", "Wind", "Hail", "Water damage (non-flood)",
-            "Theft", "Vandalism", "Liability",
+            "Fire",
+            "Wind",
+            "Hail",
+            "Water damage (non-flood)",
+            "Theft",
+            "Vandalism",
+            "Liability",
         ],
         "exclusions": ["Flood", "Earthquake", "Mold (pre-existing)"],
     },
@@ -161,8 +193,13 @@ _POLICIES = {
         "deductible": "$1,000",
         "coverage_limit": "$450,000",
         "covered_perils": [
-            "Fire", "Wind", "Hail", "Water damage (non-flood)",
-            "Theft", "Vandalism", "Liability",
+            "Fire",
+            "Wind",
+            "Hail",
+            "Water damage (non-flood)",
+            "Theft",
+            "Vandalism",
+            "Liability",
         ],
         "exclusions": ["Flood", "Earthquake", "Mold (pre-existing)"],
     },
@@ -222,8 +259,12 @@ def make_lookup_policy_tool(session_id: str | None = None):
         result = evaluate_policy(policy_number)
         signals.record(session_id, "policy", result)
         formatted = format_policy(result)
-        signals.write_subtool_trace(session_id, "lookup_policy", policy_number,
-            f"{'FOUND' if result.get('found') else 'NOT FOUND'} | {result.get('type', '')} | {result.get('status', '')} | deductible={result.get('deductible', '')}")
+        signals.write_subtool_trace(
+            session_id,
+            "lookup_policy",
+            policy_number,
+            f"{'FOUND' if result.get('found') else 'NOT FOUND'} | {result.get('type', '')} | {result.get('status', '')} | deductible={result.get('deductible', '')}",
+        )
         return formatted
 
     return lookup_policy

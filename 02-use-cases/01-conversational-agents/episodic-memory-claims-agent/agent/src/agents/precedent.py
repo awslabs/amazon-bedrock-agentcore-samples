@@ -12,11 +12,11 @@ claim fields to prevent contamination.
 import json
 import logging
 
-from strands import Agent, tool as strands_tool
-
 from agents.prompts import with_current_date
-from memory.config import AGENT_MODEL_ID, REFLECTION_NAMESPACE, HUMAN_GROUNDED_FILTER, episode_namespace_path
+from memory.config import AGENT_MODEL_ID, HUMAN_GROUNDED_FILTER, REFLECTION_NAMESPACE, episode_namespace_path
 from schemas import TypedClaimSummary
+from strands import Agent
+from strands import tool as strands_tool
 from tools import signals
 
 logger = logging.getLogger("claims-demo.precedent")
@@ -82,12 +82,12 @@ def create_precedent_agent(
         query = " ".join(query_parts)
 
         try:
-            kwargs = dict(
-                memory_id=memory_id,
-                namespace=REFLECTION_NAMESPACE,
-                query=query,
-                top_k=5,
-            )
+            kwargs = {
+                "memory_id": memory_id,
+                "namespace": REFLECTION_NAMESPACE,
+                "query": query,
+                "top_k": 5,
+            }
             if refl_filters:
                 kwargs["metadata_filters"] = refl_filters
             logger.info("search_claim_patterns: query=%r, filter=%s", query, filter_label)
@@ -113,12 +113,20 @@ def create_precedent_agent(
             logger.info("search_claim_patterns: %d result(s)", len(results))
 
             # Record to signals (for Adjuster Console cards)
-            signals.record(session_id, "precedent_patterns", {
-                "query": query,
-                "filter": filter_label,
-                "count": len(trace_records),
-                "patterns": [{"title": r.get("title", ""), "confidence": r.get("confidence", "")} for r in trace_records if isinstance(r, dict)],
-            })
+            signals.record(
+                session_id,
+                "precedent_patterns",
+                {
+                    "query": query,
+                    "filter": filter_label,
+                    "count": len(trace_records),
+                    "patterns": [
+                        {"title": r.get("title", ""), "confidence": r.get("confidence", "")}
+                        for r in trace_records
+                        if isinstance(r, dict)
+                    ],
+                },
+            )
 
             # Write subtool trace with full content (snapshot at decision time)
             if session_id:
@@ -127,21 +135,28 @@ def create_precedent_agent(
                         memory_id=memory_id,
                         actor_id="system",
                         session_id=session_id,
-                        messages=[(json.dumps({
-                            "tool": "search_claim_patterns",
-                            "query": query,
-                            "filter": filter_label,
-                            "result_count": len(results),
-                            "results": trace_records,
-                        }), "TOOL")],
+                        messages=[
+                            (
+                                json.dumps(
+                                    {
+                                        "tool": "search_claim_patterns",
+                                        "query": query,
+                                        "filter": filter_label,
+                                        "result_count": len(results),
+                                        "results": trace_records,
+                                    }
+                                ),
+                                "TOOL",
+                            )
+                        ],
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - best-effort trace; must not break agent flow
                     logger.warning("Subtool trace failed: %s", e)
 
             if not results:
                 return "No patterns found."
             return "\n\n".join(results)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - tool must return text, never raise into the agent
             logger.error("search_claim_patterns failed: %s", e)
             return "Pattern retrieval failed."
 
@@ -156,12 +171,12 @@ def create_precedent_agent(
             ns_path = episode_namespace_path(claim.actor_id)
             ep_query = claim.incident_type
             logger.info("lookup_policyholder_history: actor=%s, query=%r", claim.actor_id, ep_query)
-            kwargs = dict(
-                memory_id=memory_id,
-                namespace_path=ns_path,
-                query=ep_query,
-                top_k=3,
-            )
+            kwargs = {
+                "memory_id": memory_id,
+                "namespace_path": ns_path,
+                "query": ep_query,
+                "top_k": 3,
+            }
             records = memory_client.retrieve_memories(**kwargs)
 
             results = []
@@ -182,12 +197,18 @@ def create_precedent_agent(
             logger.info("lookup_policyholder_history: %d episode(s)", len(results))
 
             # Record to signals (for Adjuster Console cards)
-            signals.record(session_id, "policyholder_episodes", {
-                "actor_id": claim.actor_id,
-                "query": ep_query,
-                "count": len(trace_records),
-                "episodes": [{"situation": r.get("situation", "")[:200]} for r in trace_records if isinstance(r, dict)],
-            })
+            signals.record(
+                session_id,
+                "policyholder_episodes",
+                {
+                    "actor_id": claim.actor_id,
+                    "query": ep_query,
+                    "count": len(trace_records),
+                    "episodes": [
+                        {"situation": r.get("situation", "")[:200]} for r in trace_records if isinstance(r, dict)
+                    ],
+                },
+            )
 
             # Write subtool trace with full content
             if session_id:
@@ -196,21 +217,28 @@ def create_precedent_agent(
                         memory_id=memory_id,
                         actor_id="system",
                         session_id=session_id,
-                        messages=[(json.dumps({
-                            "tool": "lookup_policyholder_history",
-                            "query": ep_query,
-                            "filter": filter_label,
-                            "result_count": len(results),
-                            "results": trace_records,
-                        }), "TOOL")],
+                        messages=[
+                            (
+                                json.dumps(
+                                    {
+                                        "tool": "lookup_policyholder_history",
+                                        "query": ep_query,
+                                        "filter": filter_label,
+                                        "result_count": len(results),
+                                        "results": trace_records,
+                                    }
+                                ),
+                                "TOOL",
+                            )
+                        ],
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - best-effort trace; must not break agent flow
                     logger.warning("Subtool trace failed: %s", e)
 
             if not results:
                 return "No prior episodes for this policyholder."
             return "\n\n".join(results)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - tool must return text, never raise into the agent
             logger.error("lookup_policyholder_history failed: %s", e)
             return "Episode retrieval failed."
 

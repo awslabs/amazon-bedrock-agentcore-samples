@@ -144,19 +144,19 @@ def _title_for(scn: dict) -> str:
     return f"[Training] {scn['id']}"
 
 
-def run_scenario(scn: dict, runtime_url: str, session_api: str, id_token: str, access_token: str, max_turns: int) -> str:
+def run_scenario(
+    scn: dict, runtime_url: str, session_api: str, id_token: str, access_token: str, max_turns: int
+) -> str:
     """Run one scenario end-to-end. Returns the session_id."""
     session = _create_session(session_api, id_token, _title_for(scn))
     session_id = session["session_id"]
     actor_id = session.get("actor_id") or scn["actor_id"]
 
-    print(f"\n{'='*70}\nSCENARIO {scn['id']}  ({scn['name']}, {actor_id}, session {session_id})\n{'='*70}")
+    print(f"\n{'=' * 70}\nSCENARIO {scn['id']}  ({scn['name']}, {actor_id}, session {session_id})\n{'=' * 70}")
 
     simulant = Agent(
         model=MODEL_ID,
-        system_prompt=SIMULANT_SYSTEM.format(
-            name=scn["name"], facts=scn["facts"], opening=scn["opening"]
-        ),
+        system_prompt=SIMULANT_SYSTEM.format(name=scn["name"], facts=scn["facts"], opening=scn["opening"]),
     )
 
     customer_msg = scn["opening"]
@@ -235,13 +235,13 @@ def main():
             id_token, access_token = tokens[actor_id]
             sid = run_scenario(scn, runtime_url, session_api, id_token, access_token, args.max_turns)
             results.append((scn["id"], sid, "ok"))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - continue seeding remaining scenarios on failure
             print(f"!! scenario {scn['id']} failed: {e}")
             results.append((scn["id"], "-", f"FAILED: {e}"))
         if i < len(scenarios) - 1:
             time.sleep(args.delay)
 
-    print(f"\n{'='*70}\nSEEDING SUMMARY\n{'='*70}")
+    print(f"\n{'=' * 70}\nSEEDING SUMMARY\n{'=' * 70}")
     for sid_name, sid, status in results:
         print(f"  {sid_name:28} {sid:28} {status}")
 

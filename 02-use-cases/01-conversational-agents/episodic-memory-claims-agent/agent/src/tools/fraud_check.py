@@ -3,9 +3,8 @@
 from datetime import datetime, timezone
 
 from strands import tool
-
-from tools.claims_history import count_prior_claims_of_type, _normalize_claim_type
 from tools import signals
+from tools.claims_history import _normalize_claim_type, count_prior_claims_of_type
 
 
 def evaluate_fraud_indicators(
@@ -24,14 +23,14 @@ def evaluate_fraud_indicators(
     # Default to today (UTC) when missing/unparseable.
     today = datetime.now(timezone.utc).date()
     try:
-        filed = datetime.strptime(filing_date, "%Y-%m-%d").date()
+        filed = datetime.strptime(filing_date, "%Y-%m-%d").date()  # noqa: DTZ007 - .date() discards time/tz
     except (ValueError, TypeError):
         filed = today
         filing_date = today.isoformat()
 
     # Delayed reporting check (incident date comes from the policyholder).
     try:
-        incident = datetime.strptime(incident_date, "%Y-%m-%d").date()
+        incident = datetime.strptime(incident_date, "%Y-%m-%d").date()  # noqa: DTZ007 - .date() discards time/tz
         delay_days = (filed - incident).days
         if delay_days > 5:
             flags.append(f"DELAYED REPORTING: {delay_days} days between incident and filing")
@@ -47,9 +46,7 @@ def evaluate_fraud_indicators(
     prior_count = count_prior_claims_of_type(actor_id, claim_type)
     if prior_count >= 1:
         normalized = _normalize_claim_type(claim_type)
-        flags.append(
-            f"REPEAT CLAIM TYPE: {prior_count} prior {normalized} claim(s) on file"
-        )
+        flags.append(f"REPEAT CLAIM TYPE: {prior_count} prior {normalized} claim(s) on file")
         risk_score += 25
 
     # High amount check
@@ -123,14 +120,15 @@ def make_check_fraud_indicators_tool(session_id: str | None = None):
         Returns:
             Fraud risk assessment with specific indicators found.
         """
-        result = evaluate_fraud_indicators(
-            actor_id, claim_type, incident_date, filing_date, claimed_amount
-        )
+        result = evaluate_fraud_indicators(actor_id, claim_type, incident_date, filing_date, claimed_amount)
         signals.record(session_id, "fraud", result)
         formatted = format_fraud_indicators(result)
-        signals.write_subtool_trace(session_id, "check_fraud_indicators",
+        signals.write_subtool_trace(
+            session_id,
+            "check_fraud_indicators",
             f"{actor_id} | {claim_type} | {incident_date} → {filing_date}",
-            f"{result.get('risk_level', '?')} risk (score {result.get('risk_score', '?')}/100) | delay {result.get('delay_days', '?')} day(s) | flags: {result.get('flags', [])}")
+            f"{result.get('risk_level', '?')} risk (score {result.get('risk_score', '?')}/100) | delay {result.get('delay_days', '?')} day(s) | flags: {result.get('flags', [])}",
+        )
         return formatted
 
     return check_fraud_indicators

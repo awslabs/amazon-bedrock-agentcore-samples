@@ -9,6 +9,7 @@ Decision = Literal["APPROVE", "DENY", "ESCALATE"]
 @dataclass
 class TypedClaimSummary:
     """Structured claim details collected by the Intake Agent."""
+
     policy_number: str
     incident_type: str
     incident_date: str
@@ -27,6 +28,7 @@ class TypedClaimSummary:
 @dataclass
 class TypedDecision:
     """Structured decision from the Adjudication Agent."""
+
     decision: Decision
     amount: float | None = None
     internal_reasoning: str = ""

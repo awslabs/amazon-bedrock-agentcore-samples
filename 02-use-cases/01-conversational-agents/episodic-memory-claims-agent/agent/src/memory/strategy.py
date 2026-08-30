@@ -85,11 +85,7 @@ METADATA_SCHEMA = [
                     "with an explicit APPROVE/DENY/ESCALATE decision made by a human adjuster, "
                     "classify as 'human_adjuster'. Otherwise classify as 'agent_only'."
                 ),
-                "validation": {
-                    "stringValidation": {
-                        "allowedValues": ["human_adjuster", "agent_only"]
-                    }
-                },
+                "validation": {"stringValidation": {"allowedValues": ["human_adjuster", "agent_only"]}},
             }
         },
     }

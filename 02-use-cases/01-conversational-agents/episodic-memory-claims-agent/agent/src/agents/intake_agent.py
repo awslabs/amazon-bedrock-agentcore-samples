@@ -9,16 +9,15 @@ the Strands Graph pipeline (Investigation + Memory → Adjudication → Router).
 import json
 import logging
 
-from strands import Agent, tool
+from agents.prompts import with_current_date
+from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import (
     AgentCoreMemorySessionManager,
 )
-from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
-
-from agents.prompts import with_current_date
 from claims_graph import process_claim
 from memory.config import AGENT_MODEL_ID
 from schemas import TypedClaimSummary
+from strands import Agent, tool
 
 logger = logging.getLogger("claims-demo.intake_agent")
 

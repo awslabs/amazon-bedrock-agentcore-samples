@@ -20,7 +20,10 @@ class _Dec(json.JSONEncoder):
 def _resp(status, body):
     return {
         "statusCode": status,
-        "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": os.environ.get('ALLOWED_ORIGIN', '*')},
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN", "*"),
+        },
         "body": json.dumps(body, cls=_Dec),
     }
 
@@ -53,6 +56,6 @@ def handler(event, context):
         if item is None:
             return _resp(404, {"error": f"No review task: {task_id}"})
         return _resp(200, _decode(item))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - handler boundary
         print(f"get_review error: {e}")
         return _resp(500, {"error": "Internal server error"})
