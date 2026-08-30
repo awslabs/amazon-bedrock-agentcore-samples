@@ -70,7 +70,8 @@ LANGUAGE_PRESETS = {
             "Write a Python HTTP server using http.server that listens on port 3000 "
             "and returns JSON with the current time, Python version, OS, and platform info. "
             "Save it to /tmp/server.py. Then test it: start the server in the background, "
-            "curl localhost:3000, and kill the server. Show the output."
+            "make an HTTP request using Python's urllib (the python:3.12-slim image has no "
+            "curl or wget), and kill the server. Show the output."
         ),
     },
 }
@@ -108,16 +109,41 @@ account_id = boto3.client("sts").get_caller_identity()["Account"]
 print(f"Account: {account_id}")
 print(f"Language: {args.language}  Container: {container_uri}")
 
+# The first invoke against a freshly attached container can race the microVM's
+# health check. Three attempts 15s apart covers the lag seen in practice without
+# masking a genuinely broken image, which fails every attempt the same way.
+INVOKE_MAX_ATTEMPTS = 3
+INVOKE_RETRY_DELAY = 15
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
 def stream_invoke(harness_arn, session_id, message, model_id=args.model):
-    response = client.invoke_harness(
-        harnessArn=harness_arn,
-        runtimeSessionId=session_id,
-        messages=[{"role": "user", "content": [{"text": message}]}],
-        model={"bedrockModelConfig": {"modelId": model_id}},
-    )
+    # A harness reporting READY does not guarantee the custom container's microVM
+    # is already answering health checks: the first invoke of a session boots a
+    # fresh VM from the image, and that has been observed losing the race, with
+    # InvokeHarness raising "Runtime health check failed or timed out" while the
+    # container itself logged a clean startup. Retrying the call absorbs it.
+    # Only the call is retried, never a stream that already yielded output, so no
+    # text can be printed twice.
+    for attempt in range(1, INVOKE_MAX_ATTEMPTS + 1):
+        try:
+            response = client.invoke_harness(
+                harnessArn=harness_arn,
+                runtimeSessionId=session_id,
+                messages=[{"role": "user", "content": [{"text": message}]}],
+                model={"bedrockModelConfig": {"modelId": model_id}},
+            )
+            break
+        except client.exceptions.RuntimeClientError as e:
+            if attempt == INVOKE_MAX_ATTEMPTS:
+                raise
+            print(
+                f"  Runtime not ready yet ({e.response['Error']['Code']}); "
+                f"retrying in {INVOKE_RETRY_DELAY}s "
+                f"[attempt {attempt}/{INVOKE_MAX_ATTEMPTS}]"
+            )
+            time.sleep(INVOKE_RETRY_DELAY)
     for event in response["stream"]:
         if "contentBlockStart" in event:
             start = event["contentBlockStart"].get("start", {})
@@ -170,8 +196,11 @@ try:
         time.sleep(10)
 
     # ── Step 1: Create Harness ────────────────────────────────────────────────
+    # Name after the selected language, not a hardcoded "NodeContainer" — a Go or
+    # Python run mislabelled as Node makes leaked resources (and their auto-named
+    # managed memory) impossible to tell apart in the console.
     print("\n=== Step 1: Create Harness ===")
-    HARNESS_NAME = f"NodeContainer_{uuid.uuid4().hex[:8]}"
+    HARNESS_NAME = f"{args.language.capitalize()}Container_{uuid.uuid4().hex[:8]}"
     resp = control.create_harness(harnessName=HARNESS_NAME, executionRoleArn=role_arn)
     harness = resp["harness"]
     harness_id = harness["harnessId"]
@@ -243,7 +272,8 @@ try:
             session_id,
             "Cross-compile the /tmp/goserver/main.go binary for linux/amd64. "
             "Use GOOS=linux GOARCH=amd64 go build -o /tmp/goserver_linux_amd64. "
-            "Show the file size and architecture using 'file' command.",
+            "Show the file size with ls -lh and the architecture with 'readelf -h' "
+            "(the golang:1.24 image has no 'file' binary).",
         )
 
     elif args.language == "python":

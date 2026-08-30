@@ -260,11 +260,11 @@ Each resource can be deleted independently based on your needs.
 If needed, you can also delete resources manually:
 
 ```bash
-# Delete memory
-aws bedrock-agentcore-control delete-memory --memory-id <MEMORY_ID> --region us-east-1
+# Delete memory. Quote the placeholders — unquoted, bash reads < as a redirect.
+aws bedrock-agentcore-control delete-memory --memory-id "<your-memory-id>" --region us-east-1
 
 # Delete HealthLake datastore
-aws healthlake delete-fhir-datastore --datastore-id <DATASTORE_ID> --region <REGION>
+aws healthlake delete-fhir-datastore --datastore-id "<your-datastore-id>" --region us-east-1
 ```
 
 ## Learn More

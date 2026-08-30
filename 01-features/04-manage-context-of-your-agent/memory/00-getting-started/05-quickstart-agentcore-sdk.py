@@ -35,7 +35,7 @@ for turn in turns:
     for msg in turn:
         print(msg["role"], "→", msg["content"]["text"])
 
-client.update_memory_strategies(
+client.update_memory_strategies_and_wait(
     memory_id=memory_id,
     add_strategies=[
         {

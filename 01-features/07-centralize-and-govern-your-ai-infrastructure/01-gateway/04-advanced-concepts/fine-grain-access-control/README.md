@@ -219,6 +219,8 @@ uv run python scripts/fine-grain-access-control/invoke.py
 | 5 | `fgac/fgac-mcp-target` (full) | all tools | ALLOW all |
 | 6 | `fgac/fgac-mcp-target:getOrder` | `tools/list` | Only `getOrder` visible |
 | 7 | `fgac/fgac-mcp-target` (full) | `tools/list` | All 4 tools visible |
+| 8 | `fgac/fgac-mcp-target:getOrder` | semantic search | Only `getOrder` in results |
+| 9 | `fgac/fgac-mcp-target` (full) | semantic search | All relevant tools in results |
 
 ## Cleanup
 

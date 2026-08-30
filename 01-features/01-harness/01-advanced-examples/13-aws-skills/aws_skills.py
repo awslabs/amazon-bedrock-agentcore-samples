@@ -59,23 +59,18 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 import time
 import uuid
 from pathlib import Path
 
-import boto3
-import botocore.exceptions
+from botocore.exceptions import BotoCoreError, ClientError
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.client import get_agentcore_client, get_agentcore_control_client
 from utils.harness import poll_harness_status
 from utils.iam import create_harness_role, delete_harness_role
-
-REGION = os.getenv("AWS_DEFAULT_REGION")
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -174,10 +169,24 @@ def stream_response(client, harness_arn, session_id, message, model_id, raw=Fals
     )
 
     full_text = ""
+    # A failure mid-stream is raised out of the iterator by botocore, not
+    # delivered as an {"internalServerException": ...} event. It can be a modeled
+    # service error (EventStreamError/ClientError — throttling, access denied) or
+    # a transport error (ReadTimeoutError, connection reset — a BotoCoreError,
+    # which the agent can trigger just by going quiet during a long tool call).
+    # Catch both base classes: EventStreamError alone let a read timeout or a
+    # throttle abort the script before the `finally` in main() had reported the
+    # partial answer, and the traceback said nothing about the real cause.
     try:
         for event in response["stream"]:
             if raw:
                 print(json.dumps(event, default=str))
+                # Keep accumulating text in raw mode too. Skipping it left
+                # full_text empty, so the error handling below could not tell a
+                # stream that had produced content from one that had not.
+                delta = event.get("contentBlockDelta", {}).get("delta", {})
+                if "text" in delta:
+                    full_text += delta["text"]
                 continue
 
             if "contentBlockStart" in event:
@@ -193,9 +202,11 @@ def stream_response(client, harness_arn, session_id, message, model_id, raw=Fals
                 print()
             elif "internalServerException" in event:
                 print(f"\n  Error: {event['internalServerException']}")
-    except botocore.exceptions.EventStreamError:
-        # The stream may send an empty error event on close; safe to ignore
-        # if we already received content.
+    except (BotoCoreError, ClientError) as e:
+        # The stream may fail on close after delivering the whole answer. Report
+        # it either way, but only re-raise when nothing arrived — otherwise a
+        # cosmetic close error would throw away a complete, correct response.
+        print(f"\n  Stream error: {e}")
         if not full_text:
             raise
 
@@ -240,8 +251,9 @@ def main(args=None):
             harnessName=harness_name,
             executionRoleArn=role_arn,
             skills=skills,
-            # Smaller models benefit most from skills; allow the agent to use
-            # its default tools (fs/shell) so it can act on what the skill teaches.
+            # No `tools`/`allowedTools` is set, so the harness keeps its built-in
+            # toolset (fs/shell) — that is what lets the agent read the skill
+            # files it was given and act on what they teach.
             systemPrompt=[{"text": "You are a helpful AWS engineering assistant."}],
         )
         harness_id = resp["harness"]["harnessId"]

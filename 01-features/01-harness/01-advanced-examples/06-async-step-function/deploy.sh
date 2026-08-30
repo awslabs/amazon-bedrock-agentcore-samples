@@ -12,20 +12,24 @@ echo -e "${BLUE}=====================================${NC}"
 echo ""
 
 STACK_NAME="weather-workflow-stack"
-REGION=$(aws configure get region || echo "us-west-2")
+# Honour the standard AWS environment variables first — every other sample in
+# this folder reads them, and `aws configure get region` ignores them, so a
+# caller who only exports AWS_DEFAULT_REGION was silently deployed elsewhere.
+REGION="${AWS_DEFAULT_REGION:-${AWS_REGION:-$(aws configure get region || echo "us-west-2")}}"
 
 echo "Region: $REGION"
 echo "Stack: $STACK_NAME"
 echo ""
 
 echo "Deploying CloudFormation stack..."
-aws cloudformation deploy \
+# `set -e` aborts the script the moment deploy fails, so a `[ $? -ne 0 ]` check
+# after it can never run. Handle the failure inline instead, so the error message
+# is actually printed.
+if ! aws cloudformation deploy \
   --template-file cloudformation.yaml \
   --stack-name $STACK_NAME \
   --capabilities CAPABILITY_NAMED_IAM \
-  --region $REGION
-
-if [ $? -ne 0 ]; then
+  --region $REGION; then
   echo -e "${RED}✗ Deployment failed${NC}"
   exit 1
 fi
@@ -77,7 +81,9 @@ echo ""
 echo "📝 Configuration:"
 echo "  Harness ID: $HARNESS_ID"
 echo "  DynamoDB: $DYNAMODB_TABLE"
-echo "  State Machine: $(basename $STATE_MACHINE_ARN)"
+# `basename` splits on '/', but a state machine ARN is colon-delimited, so it
+# returned the whole ARN unchanged. Take the field after the last colon.
+echo "  State Machine: ${STATE_MACHINE_ARN##*:}"
 echo ""
 echo "🚀 Next steps:"
 echo "  ./test_workflow.sh              # Interactive test"

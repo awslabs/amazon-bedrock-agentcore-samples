@@ -23,9 +23,11 @@ sessions.
 |---|---|
 | [`s3_filesystem.py`](s3_filesystem.py) | **The mechanism.** Session A writes a file under the mount; Session B (a brand-new microVM) reads it back — only possible because the file lives in S3, not on the VM disk. |
 | [`s3_llm_wiki.py`](s3_llm_wiki.py) | **The use case: a persistent LLM wiki.** The agent builds and maintains a compounding markdown wiki on the S3 mount across sessions (ingest → query → lint). |
+| [`provision_s3_filesystem.py`](provision_s3_filesystem.py) | **Optional setup.** Creates the prerequisites below (bucket, file system, access point, mount targets) and prints the command line to paste into either script. `--teardown` removes exactly what it created. |
 
 The first script proves the persistence boundary; the second shows *why you'd
-want it*.
+want it*. Both mount an **existing** access point — if you don't have one yet,
+[`provision_s3_filesystem.py`](provision_s3_filesystem.py) will make one.
 
 ## Configuration
 
@@ -57,16 +59,20 @@ environment={
 
 `mountPath` must look like `/mnt/<name>`. The execution role must be allowed to
 mount the access point — when this script creates the role, it attaches the
-required `s3files` permissions for you: `s3files:GetAccessPoint` (the runtime
-validates this at create time, so it stays unscoped) plus `s3files:ClientMount`
-and `s3files:ClientWrite` (scoped to the file system with an `AccessPointArn`
-condition, used when the microVM mounts the access point).
+required `s3files` permissions for you: `s3files:GetAccessPoint` **and
+`s3files:ListMountTargets`** (the runtime validates both at create time, so they
+stay unscoped — omitting `ListMountTargets` puts the harness straight into
+`CREATE_FAILED`) plus `s3files:ClientMount` and `s3files:ClientWrite` (scoped to
+the file system with an `AccessPointArn` condition, used when the microVM mounts
+the access point).
 
 ## Prerequisites
 
-- An **S3 Files access point** backed by a bucket, with a **mount target** in the
-  subnet you pass. Its ARN looks like:
+- An **S3 Files access point** backed by a **versioned** bucket, with a **mount
+  target** in the subnet you pass. Its ARN looks like:
   `arn:aws:s3files:<region>:<account>:file-system/fs-xxxx/access-point/fsap-xxxx`
+  Bucket **versioning is required** — `CreateFileSystem` rejects an unversioned
+  bucket with `Your bucket must have versioning enabled to create a file system.`
 - The **subnet(s) and security group(s)** that reach the mount target. The Harness
   must be in the **same VPC** as the mount target, the subnet(s) you pass must be
   in an **Availability Zone that has a mount target**, and the security group(s)
@@ -76,8 +82,16 @@ condition, used when the microVM mounts the access point).
   Harnesses run in private networking; public subnets do not give the microVM the
   connectivity it needs and the invoke will fail. See
   [Configure AgentCore for VPC](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-vpc.html).
+- **AWS credentials** for a region where AgentCore Harness is available, and
+  **model access** to `global.anthropic.claude-haiku-4-5-20251001-v1:0` (or pass
+  another model with `--model`).
 - If you bring your own execution role (`--role-arn`), it must already have the
-  `s3files` mount permissions above.
+  `s3files` mount permissions above. A role you supply is never deleted on
+  cleanup; the shared `HarnessExecutionRole` this script creates itself is.
+
+Creating the harness in VPC mode takes noticeably longer than the default network
+mode — expect **roughly 2–3 minutes** of `CREATING` before it reports `READY`, so
+the wait doesn't read as a hang.
 
 ## Sample Prompts
 
@@ -93,7 +107,62 @@ condition, used when the microVM mounts the access point).
 
 **Mount path format**: `mountPath` must match `/mnt/<name>` (validated by the script before the call).
 
-**IAM scope**: The execution role only needs access to the single access point — the script attaches a narrowly scoped policy.
+**IAM scope**: The mount permissions (`ClientMount`/`ClientWrite`) are scoped to the single access point with an `AccessPointArn` condition. The two the runtime checks at create time (`GetAccessPoint`, `ListMountTargets`) have to stay on `"*"`: `ListMountTargets` is authorized against the *file system* ID rather than the access point, so scoping it to the access point ARN denies it.
+
+## Optional: provisioning the prerequisites
+
+Both sample scripts mount an **existing** access point — they don't create
+infrastructure, so on a fresh account there is nothing for `--access-point-arn`
+to point at. [`provision_s3_filesystem.py`](provision_s3_filesystem.py) closes
+that gap:
+
+```bash
+# Create the S3 Files layer and print the command line to run the sample with
+python provision_s3_filesystem.py
+
+# See what it would do first, without creating anything
+python provision_s3_filesystem.py --dry-run
+
+# Delete everything it created
+python provision_s3_filesystem.py --teardown
+```
+
+It creates a bucket (versioning enabled), the IAM service role S3 Files assumes,
+a file system and access point over that bucket, a mount target per subnet, and a
+security group allowing NFS 2049. Each resource is written to
+`provision_state.json` as it is created, and `--teardown` deletes **only** what is
+recorded there — a bucket or VPC you brought yourself is never touched.
+
+**Networking: bring your own by default.** The script does *not* create a VPC. It
+looks for private subnets that already have NAT-gateway egress and uses those,
+because a NAT gateway bills hourly whether or not you're using it and is the
+resource people forget to delete. Pass `--create-vpc` only if the account has no
+suitable subnets; it then builds the VPC, subnets, internet gateway and NAT
+gateway too, and `--teardown` removes them.
+
+| Flag | What it does |
+|---|---|
+| `--bucket NAME` | Reuse a bucket you already have. It must have versioning enabled, and it is **never** deleted on teardown. |
+| `--prefix PREFIX` | Key prefix the file system is scoped to (default: `harness-sample/`). |
+| `--subnet-ids` | Use these subnets instead of discovering private ones with NAT egress. |
+| `--security-group-ids` | Use these security groups instead of creating one that allows NFS 2049. |
+| `--create-vpc` | Also create a VPC, subnets and a **NAT gateway** (bills hourly). |
+| `--dry-run` | Report what would be created, and what was discovered, without creating it. Combine with `--teardown` to preview a deletion. |
+| `--teardown` | Delete everything in `provision_state.json`, then remove the file. |
+
+Two things worth knowing about teardown:
+
+- **Expect to run it twice.** AgentCore reclaims the harness microVM's network
+  interfaces on its own schedule *after* the harness is deleted — well over an
+  hour in testing — and the security group can't be deleted until they're
+  released. Rather than make you wait, the first run deletes everything that
+  bills, reports the security group as still held, and exits 0. Re-run it later
+  and it removes just what's left.
+- It is **safe to re-run** as often as you like. Anything already gone is skipped,
+  and the state file shrinks as each resource is deleted.
+
+`--teardown --dry-run` lists what would be deleted, and what it would leave alone,
+without touching anything.
 
 ## Use case: a persistent LLM wiki
 
@@ -172,3 +241,17 @@ python s3_llm_wiki.py --access-point-arn arn:aws:s3files:... \
     --subnet-ids subnet-0abc1234 --security-group-ids sg-0def5678 \
     --op query -m "How does the LLM wiki pattern differ from RAG?"
 ```
+
+Other options (shared unless marked otherwise):
+
+| Flag | What it does |
+|---|---|
+| `--model MODEL_ID` | Use a different Bedrock model (default: Claude Haiku 4.5). |
+| `--message`/`-m` (wiki only) | The question for the `query` operation. |
+| `--op` (wiki only) | Run a single stage — `ingest`, `query` or `lint` — instead of `all`. |
+| `--filename` (mechanism only) | Name of the file written under the mount. |
+| `--role-arn ARN` | Reuse an existing execution role instead of creating one. It must already carry the `s3files` permissions, and it is **not** deleted on cleanup. |
+| `--skip-cleanup` | Keep the harness (and the role, if this run created it) after the demo. |
+| `--raw-events` | Print the raw JSON streaming events instead of formatted output — useful when debugging the stream. |
+
+`--help` lists every option for either script.

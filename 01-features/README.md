@@ -18,7 +18,7 @@ AgentCore services work together or independently with any open-source framework
 | **evaluations** | Automated, data-driven agent assessment with on-demand and online evaluation using built-in and custom evaluators. |
 | **policy** | Deterministic control over agent behavior using natural language or Cedar policies. Intercepts every tool call before execution via the gateway. |
 | **registry** | Centralized catalog for discovering and managing agents, MCP servers, tools, and skills across your organization. Governed publishing and approval workflow with semantic search. |
-| **payments** | Microtransaction payments for agents via the x402 protocol — wallet integration, configurable spending limits, and end-to-end observability. |
+| **payments** | Microtransaction payments for agents via the x402, MPP protocol — wallet integration, configurable spending limits, and end-to-end observability. |
 | **code interpreter** | Isolated sandbox for agents to execute Python, JavaScript, and TypeScript code. |
 | **browser** | Managed cloud browser for agents to interact with web applications, navigate sites, fill forms, and extract information. |
 | **web search** | Real-time web search as a managed MCP connector through AgentCore gateway. Agents discover and invoke it via standard MCP protocol — no search APIs to provision. |
