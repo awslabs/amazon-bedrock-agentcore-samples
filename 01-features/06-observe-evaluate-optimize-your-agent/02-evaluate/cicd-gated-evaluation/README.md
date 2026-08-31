@@ -83,7 +83,7 @@ an intervention.
 ├── scripts/
 │   ├── agentcore_eval.py            # Eval script (live invocation, used by CI)
 │   ├── evaluation_pipeline.py       # Eval pipeline walkthrough (deploy separately first)
-│   ├── deploy_and_test_rbac.py      # Verify role enforcement against a deployed stack
+│   ├── deploy_and_test_rbac.py      # Deploy the stack and verify role enforcement
 │   ├── evaluate_stored_traces.py    # Evaluate pre-collected fixtures
 │   └── eval_dataset.json            # Test prompts
 ├── .github/
@@ -105,25 +105,27 @@ an intervention.
 
 ## Quick Start
 
-The fastest way to get started is to deploy the stack once (see [Deployment](#deployment)
-below), then run the walkthrough scripts against it:
+The fastest way to get started is to run the two walkthrough scripts:
 
-1. `python scripts/deploy_and_test_rbac.py --password '<password>'` — sets the two test
-   users' passwords and verifies role-based access control (RBAC) end-to-end.
+1. `python scripts/deploy_and_test_rbac.py --password '<password>'` — deploys the stack,
+   sets the two test users' passwords, and verifies role-based access control (RBAC)
+   end-to-end.
 2. `python scripts/evaluation_pipeline.py` — runs the evaluation pipeline with an M2M token
-   and applies the quality gates.
+   and applies the quality gates against the deployed stack.
 
-Both scripts read `outputs.json` (written by `cdk deploy --outputs-file outputs.json`) and
-assume the stack is already deployed. Run them from the repository root with the `.venv`
+`deploy_and_test_rbac.py` deploys the stack itself (pass `--skip-deploy` to test an
+already-deployed one); `evaluation_pipeline.py` reads the `outputs.json` that the deploy
+writes, so run the RBAC script first. Run both from the repository root with the `.venv`
 active, and see [Testing](#testing) for the full options. They do **not** tear the stack
 down — run `cdk destroy --force` yourself when finished (see [Teardown](#teardown)).
 
 ### `deploy_and_test_rbac.py`
 
-Verifies that role enforcement works against the deployed stack. It sets a permanent
-password for the pre-created Cognito users (`user-a` as `FinanceUser`, `user-b` as
-`HRUser`), waits for the runtimes' containers to start, then authenticates as each user and
-checks that role-gated tools are reachable only by the matching role:
+Deploys the stack (via `npx aws-cdk@2`, unless `--skip-deploy` is given) and verifies role
+enforcement against it. It sets a permanent password for the pre-created Cognito users
+(`user-a` as `FinanceUser`, `user-b` as `HRUser`), waits for the runtimes' containers to
+start, then authenticates as each user and checks that role-gated tools are reachable only
+by the matching role:
 
 | User   | Role        | `get_stock_price` | `get_employee_count` | Public tools |
 |--------|-------------|:-----------------:|:--------------------:|:------------:|
@@ -177,9 +179,9 @@ CDK outputs include: `SharedUserPoolId`, `M2MClientId`, `UserClientId`, `TokenEn
 
 ### Role-based access tests
 
-Run `python scripts/deploy_and_test_rbac.py --password '<password>'` against a deployed stack to
-verify role enforcement. See [Quick Start](#quick-start) for what it checks and the available
-options.
+Run `python scripts/deploy_and_test_rbac.py --password '<password>'` to deploy the stack and
+verify role enforcement (add `--skip-deploy` to test an already-deployed stack). See
+[Quick Start](#quick-start) for what it checks and the available options.
 
 ### M2M (CI-style) invocation
 

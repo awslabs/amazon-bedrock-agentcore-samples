@@ -1,14 +1,15 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Role-Based Access Control - deploy verification and test.
+"""Role-Based Access Control - deploy and test.
 
-Verifies that role-based access control (RBAC) works end-to-end against a
-deployed Amazon Bedrock AgentCore agent + MCP server stack:
+Deploys the Amazon Bedrock AgentCore agent + MCP server stack and verifies that
+role-based access control (RBAC) works end-to-end:
 
-  1. Sets permanent passwords for the two pre-created Cognito users
+  1. Deploys the CDK stack (unless --skip-deploy) and reads its outputs.
+  2. Sets permanent passwords for the two pre-created Cognito users
      (CDK creates them in FORCE_CHANGE_PASSWORD status).
-  2. Waits for the agent and MCP server containers to start.
-  3. Authenticates as each user, invokes the agent, and checks that role-gated
+  3. Waits for the agent and MCP server containers to start.
+  4. Authenticates as each user, invokes the agent, and checks that role-gated
      tools are reachable only by the matching role.
 
 Test matrix:
@@ -19,17 +20,20 @@ Test matrix:
     | user-b | HRUser      | Denied          | Allowed            | Yes    |
 
 Usage:
-    # Deploy the stack first (see README "Deployment"), then:
-    python deploy_and_test_rbac.py --password '<password>' [--outputs ../outputs.json]
+    python deploy_and_test_rbac.py --password '<password>'
+
+    # Skip deployment and test an already-deployed stack:
+    python deploy_and_test_rbac.py --password '<password>' --skip-deploy
 
     # The password may also be supplied via the TEST_USER_PASSWORD environment
     # variable, or entered interactively when neither is provided. It must meet
     # the Cognito password policy (12+ chars, upper, lower, digit, symbol).
 
 Prerequisites:
-    - The CDK stack is deployed and outputs.json has been written
-      (cdk deploy --outputs-file outputs.json).
-    - AWS credentials configured with access to the deployed account/region.
+    - AWS credentials configured for the target account/region.
+    - For deployment: Node.js, a running Docker daemon, and CDK bootstrapped in
+      the target region (see README "Prerequisites"). The CDK CLI is invoked via
+      `npx aws-cdk@2` by default; override with --cdk-command.
 
 Exit status:
     0 if every RBAC test passes, 1 otherwise.
@@ -39,16 +43,23 @@ import argparse
 import getpass
 import json
 import os
+import shlex
+import subprocess
 import sys
 import time
 import urllib.parse
 import uuid
+from pathlib import Path
 
 import boto3
 import requests
 
 REGION = "ap-southeast-2"
 STACK_NAME = "AgentCoreCICDStack-dev"
+# Repository root of the sample (this file lives in <root>/scripts/).
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Default CDK invocation. npx fetches the pinned major so a stale global CLI is not used.
+DEFAULT_CDK_COMMAND = "npx --yes aws-cdk@2"
 TEST_USERS = ("user-a", "user-b")
 CONTAINER_WARMUP_SECONDS = 30
 
@@ -70,6 +81,33 @@ TEST_CASES = [
         "user-a (FinanceUser): get_employee_count DENIED",
     ),
 ]
+
+
+def deploy_stack(outputs_path: str, cdk_command: str) -> None:
+    """Deploy the CDK stack and write outputs to ``outputs_path``.
+
+    Runs ``cdk deploy`` from the project root. The CDK CLI is a Node package, so
+    it is invoked via ``npx aws-cdk@2`` by default rather than assuming a global
+    install; a stale global ``cdk`` on PATH can otherwise fail with a cloud
+    assembly schema mismatch.
+    """
+    # outputs_path may be given relative to the scripts/ cwd; resolve it now so
+    # CDK (run from the project root) writes to the same file the tests read.
+    resolved_outputs = Path(outputs_path).resolve()
+    cmd = [
+        *shlex.split(cdk_command),
+        "deploy",
+        "--require-approval",
+        "never",
+        "--outputs-file",
+        str(resolved_outputs),
+        STACK_NAME,
+    ]
+    print(f"Deploying stack from {PROJECT_ROOT} ...")
+    print(f"  $ {' '.join(cmd)}")
+    # check=True: a failed deploy must abort before the tests run against a
+    # missing or half-created stack.
+    subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
 
 
 def load_outputs(outputs_path: str) -> dict:
@@ -161,34 +199,52 @@ def run_tests(agent_arn: str, tokens: dict) -> tuple[int, int]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Deploy verification + RBAC tests for the AgentCore eval sample.")
+    parser = argparse.ArgumentParser(description="Deploy + RBAC tests for the AgentCore eval sample.")
     parser.add_argument(
         "--outputs",
-        default="../outputs.json",
-        help="Path to the CDK outputs file (default: ../outputs.json).",
+        default=str(PROJECT_ROOT / "outputs.json"),
+        help="Path to the CDK outputs file (default: <project root>/outputs.json).",
     )
     parser.add_argument(
         "--password",
         default=os.environ.get("TEST_USER_PASSWORD"),
         help="Password to set for the test users (or set TEST_USER_PASSWORD; prompted if omitted).",
     )
+    parser.add_argument(
+        "--skip-deploy",
+        action="store_true",
+        help="Skip `cdk deploy` and test an already-deployed stack (reads --outputs as-is).",
+    )
+    parser.add_argument(
+        "--cdk-command",
+        default=DEFAULT_CDK_COMMAND,
+        help=f'Command used to invoke the CDK CLI (default: "{DEFAULT_CDK_COMMAND}").',
+    )
     args = parser.parse_args()
+
+    # Ask for the password before the long-running deploy so the run is not
+    # interrupted waiting for input partway through.
+    password = args.password or getpass.getpass("Enter password for test users: ")
+
+    # Step 1: deploy the stack (unless testing an existing one).
+    if args.skip_deploy:
+        print("Skipping deploy (--skip-deploy); using existing stack outputs.")
+    else:
+        deploy_stack(args.outputs, args.cdk_command)
 
     outputs = load_outputs(args.outputs)
     pool_id = outputs["SharedUserPoolId"]
     client_id = outputs["UserClientId"]
     agent_arn = outputs["AgentRuntimeArn"]
 
-    password = args.password or getpass.getpass("Enter password for test users: ")
-
-    # Step 1: set permanent passwords for the pre-created users.
+    # Step 2: set permanent passwords for the pre-created users.
     set_user_passwords(pool_id, password)
 
-    # Step 2: give the agent and MCP server containers time to start.
+    # Step 3: give the agent and MCP server containers time to start.
     print(f"\nWaiting {CONTAINER_WARMUP_SECONDS}s for containers to start...")
     time.sleep(CONTAINER_WARMUP_SECONDS)
 
-    # Step 3: authenticate both users and run the RBAC test matrix.
+    # Step 4: authenticate both users and run the RBAC test matrix.
     tokens = {user: get_access_token(pool_id, client_id, user, password) for user in TEST_USERS}
     passed, failed = run_tests(agent_arn, tokens)
 
