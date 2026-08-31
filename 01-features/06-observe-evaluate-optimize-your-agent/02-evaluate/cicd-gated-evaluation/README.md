@@ -84,8 +84,6 @@ an intervention.
 │   ├── agentcore_eval.py            # Eval script (live invocation)
 │   ├── evaluate_stored_traces.py    # Evaluate pre-collected fixtures
 │   └── eval_dataset.json            # Test prompts
-├── docs/
-│   └── sbom/                        # CycloneDX SBOMs, generated from the built images
 ├── .github/
 │   └── workflows/
 │       └── agentcore-eval.yml       # CI/CD pipeline
