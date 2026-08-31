@@ -12,8 +12,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -23,9 +23,9 @@
         "name": "opentelemetry.instrumentation.botocore.bedrock-runtime",
         "version": "0.60b1"
       },
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "a9ca074886759191",
-      "parentSpanId": "953e51ae01873303",
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000000",
+      "parentSpanId": "1000000000000001",
       "flags": 256,
       "name": "chat us.anthropic.claude-sonnet-4-20250514-v1:0",
       "kind": "CLIENT",
@@ -81,8 +81,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -92,9 +92,9 @@
         "name": "strands.telemetry.tracer",
         "version": ""
       },
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "953e51ae01873303",
-      "parentSpanId": "3566b9a666b06fd0",
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000001",
+      "parentSpanId": "1000000000000002",
       "flags": 256,
       "name": "chat",
       "kind": "INTERNAL",
@@ -135,8 +135,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -146,9 +146,9 @@
         "name": "strands.telemetry.tracer",
         "version": ""
       },
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "3566b9a666b06fd0",
-      "parentSpanId": "bce2e4535e0c9d94",
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000002",
+      "parentSpanId": "1000000000000003",
       "flags": 256,
       "name": "execute_event_loop_cycle",
       "kind": "INTERNAL",
@@ -180,8 +180,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -191,9 +191,9 @@
         "name": "strands.telemetry.tracer",
         "version": ""
       },
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "bce2e4535e0c9d94",
-      "parentSpanId": "a17908b770e7e01c",
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000003",
+      "parentSpanId": "1000000000000004",
       "flags": 256,
       "name": "invoke_agent Strands Agents",
       "kind": "INTERNAL",
@@ -235,8 +235,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -246,9 +246,9 @@
         "name": "opentelemetry.instrumentation.starlette",
         "version": "0.60b1"
       },
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "a17908b770e7e01c",
-      "parentSpanId": "3685d79b7042aa9e",
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000004",
+      "parentSpanId": "1000000000000005",
       "flags": 768,
       "name": "POST /invocations",
       "kind": "SERVER",
@@ -293,8 +293,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -304,9 +304,9 @@
         "name": "opentelemetry.instrumentation.botocore.bedrock-runtime",
         "version": "0.60b1"
       },
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "dbc107b6daadd132",
-      "parentSpanId": "ad09b1d9d70abeda",
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000006",
+      "parentSpanId": "1000000000000007",
       "flags": 256,
       "name": "chat us.anthropic.claude-sonnet-4-20250514-v1:0",
       "kind": "CLIENT",
@@ -362,8 +362,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -373,9 +373,9 @@
         "name": "strands.telemetry.tracer",
         "version": ""
       },
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "ad09b1d9d70abeda",
-      "parentSpanId": "ac8298e22943f4f6",
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000007",
+      "parentSpanId": "1000000000000008",
       "flags": 256,
       "name": "chat",
       "kind": "INTERNAL",
@@ -416,8 +416,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -427,9 +427,9 @@
         "name": "strands.telemetry.tracer",
         "version": ""
       },
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "ac8298e22943f4f6",
-      "parentSpanId": "d4c74a748d8a3031",
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000008",
+      "parentSpanId": "1000000000000009",
       "flags": 256,
       "name": "execute_event_loop_cycle",
       "kind": "INTERNAL",
@@ -461,8 +461,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -472,9 +472,9 @@
         "name": "strands.telemetry.tracer",
         "version": ""
       },
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "d4c74a748d8a3031",
-      "parentSpanId": "cdba4c968ec4bfe1",
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000009",
+      "parentSpanId": "100000000000000a",
       "flags": 256,
       "name": "invoke_agent Strands Agents",
       "kind": "INTERNAL",
@@ -516,8 +516,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -527,9 +527,9 @@
         "name": "opentelemetry.instrumentation.starlette",
         "version": "0.60b1"
       },
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "cdba4c968ec4bfe1",
-      "parentSpanId": "7056317db2cf33a3",
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "100000000000000a",
+      "parentSpanId": "100000000000000b",
       "flags": 768,
       "name": "POST /invocations",
       "kind": "SERVER",
@@ -574,8 +574,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -616,8 +616,8 @@
         "session.id": "demo-session-001"
       },
       "flags": 1,
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "953e51ae01873303"
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000001"
     },
     {
       "resource": {
@@ -631,8 +631,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -662,8 +662,8 @@
         "session.id": "demo-session-001"
       },
       "flags": 1,
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "3566b9a666b06fd0"
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000002"
     },
     {
       "resource": {
@@ -677,8 +677,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -723,8 +723,8 @@
         "session.id": "demo-session-001"
       },
       "flags": 1,
-      "traceId": "69a0cfdf57f6e5f71da22e3e230b7a68",
-      "spanId": "bce2e4535e0c9d94"
+      "traceId": "10000000000000000000000000000000",
+      "spanId": "1000000000000003"
     },
     {
       "resource": {
@@ -738,8 +738,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -786,8 +786,8 @@
         "session.id": "demo-session-001"
       },
       "flags": 1,
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "ad09b1d9d70abeda"
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000007"
     },
     {
       "resource": {
@@ -801,8 +801,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -842,8 +842,8 @@
         "session.id": "demo-session-001"
       },
       "flags": 1,
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "ac8298e22943f4f6"
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000008"
     },
     {
       "resource": {
@@ -857,8 +857,8 @@
           "aws.service.type": "gen_ai_agent",
           "telemetry.sdk.language": "python",
           "cloud.provider": "aws",
-          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-I2HnEMHpQW/runtime-endpoint/DEFAULT:DEFAULT",
-          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-I2HnEMHpQW-DEFAULT",
+          "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/eval_test_agent-EXAMPLE123/runtime-endpoint/DEFAULT:DEFAULT",
+          "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/eval_test_agent-EXAMPLE123-DEFAULT",
           "telemetry.sdk.version": "1.39.1",
           "cloud.platform": "aws_bedrock_agentcore",
           "telemetry.auto.version": "0.15.0-aws"
@@ -903,8 +903,8 @@
         "session.id": "demo-session-001"
       },
       "flags": 1,
-      "traceId": "69a0cfe771b3eb7d57edf84434905fd7",
-      "spanId": "d4c74a748d8a3031"
+      "traceId": "10000000000000000000000000000001",
+      "spanId": "1000000000000009"
     }
   ]
 }
