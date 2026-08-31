@@ -70,7 +70,8 @@ class CombinedStack(cdk.Stack):
 
         # --- Shared Cognito Pool ---
         pre_token_fn = _lambda.Function(
-            self, "PreTokenFn",
+            self,
+            "PreTokenFn",
             # Latest supported runtime. The handler only reads the
             # event and returns validated claims, so there is no version-specific code.
             runtime=_lambda.Runtime.PYTHON_3_13,
@@ -83,7 +84,8 @@ class CombinedStack(cdk.Stack):
         )
 
         pool = cognito.UserPool(
-            self, "SharedPool",
+            self,
+            "SharedPool",
             user_pool_name=f"shared-{stage}-pool",
             removal_policy=_removal_policy(stage),
             # Explicit password policy rather than relying on the Cognito default,
@@ -119,7 +121,8 @@ class CombinedStack(cdk.Stack):
         # needs, so a leaked client secret cannot reach every gated tool, and a newly added
         # gated tool is denied to machine callers until its scope is granted here.
         mcp_rs = pool.add_resource_server(
-            "MCPRS", identifier="mcp",
+            "MCPRS",
+            identifier="mcp",
             scopes=[
                 cognito.ResourceServerScope(scope_name="invoke", scope_description="Invoke MCP server"),
                 cognito.ResourceServerScope(scope_name="finance", scope_description="Access finance tools"),
@@ -127,12 +130,14 @@ class CombinedStack(cdk.Stack):
             ],
         )
         agent_rs = pool.add_resource_server(
-            "AgentRS", identifier="agentcore",
+            "AgentRS",
+            identifier="agentcore",
             scopes=[cognito.ResourceServerScope(scope_name="invoke", scope_description="Invoke assistant agent")],
         )
 
         m2m_client = pool.add_client(
-            "M2MClient", generate_secret=True,
+            "M2MClient",
+            generate_secret=True,
             o_auth=cognito.OAuthSettings(
                 flows=cognito.OAuthFlows(client_credentials=True),
                 # Explicit least privilege: the CI evaluation dataset exercises the
@@ -150,7 +155,8 @@ class CombinedStack(cdk.Stack):
         m2m_client.node.add_dependency(agent_rs)
 
         user_client = pool.add_client(
-            "UserClient", generate_secret=False,
+            "UserClient",
+            generate_secret=False,
             auth_flows=cognito.AuthFlow(admin_user_password=True, user_srp=True),
             o_auth=cognito.OAuthSettings(
                 # Implicit grant is omitted: it returns tokens in the URL fragment, is
@@ -161,8 +167,11 @@ class CombinedStack(cdk.Stack):
                 # same authorization check as roles, so granting them here would let a user
                 # request a scope and reach a tool their role does not permit.
                 scopes=[
-                    cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE,
-                    cognito.OAuthScope.custom("agentcore/invoke"), cognito.OAuthScope.custom("mcp/invoke"),
+                    cognito.OAuthScope.OPENID,
+                    cognito.OAuthScope.EMAIL,
+                    cognito.OAuthScope.PROFILE,
+                    cognito.OAuthScope.custom("agentcore/invoke"),
+                    cognito.OAuthScope.custom("mcp/invoke"),
                 ],
                 callback_urls=["http://localhost:3000/callback"],
             ),
@@ -180,10 +189,15 @@ class CombinedStack(cdk.Stack):
         )
 
         # Pre-create users
-        for username, email, role in [("user-a", "user-a@example.com", "FinanceUser"), ("user-b", "user-b@example.com", "HRUser")]:
+        for username, email, role in [
+            ("user-a", "user-a@example.com", "FinanceUser"),
+            ("user-b", "user-b@example.com", "HRUser"),
+        ]:
             cognito.CfnUserPoolUser(
-                self, username.replace("-", "").title(),
-                user_pool_id=pool.user_pool_id, username=username,
+                self,
+                username.replace("-", "").title(),
+                user_pool_id=pool.user_pool_id,
+                username=username,
                 user_attributes=[
                     cognito.CfnUserPoolUser.AttributeTypeProperty(name="email", value=email),
                     cognito.CfnUserPoolUser.AttributeTypeProperty(name="custom:roles", value=role),
@@ -202,7 +216,8 @@ class CombinedStack(cdk.Stack):
 
         # Store M2M client secret for agent → MCP auth
         m2m_secret = secretsmanager.Secret(
-            self, "M2MClientSecret",
+            self,
+            "M2MClientSecret",
             secret_name=f"agentcore/{stage}/m2m-client",
             removal_policy=_removal_policy(stage),
             secret_object_value={
@@ -216,7 +231,8 @@ class CombinedStack(cdk.Stack):
         mcp_role = MCPServerRole(self, "MCPServerRole", description="Execution role for MCP server")
 
         mcp_image = ecr_assets.DockerImageAsset(
-            self, "MCPImage",
+            self,
+            "MCPImage",
             directory=str(repo_root / "mcp-server"),
             file="Dockerfile",
             platform=ecr_assets.Platform.LINUX_ARM64,
@@ -224,7 +240,8 @@ class CombinedStack(cdk.Stack):
         )
 
         mcp_runtime = CfnRuntime(
-            self, "MCPRuntime",
+            self,
+            "MCPRuntime",
             protocol_configuration="MCP",
             agent_runtime_name=f"mcp_server_{stage}".replace("-", "_"),
             description=f"MCP Server Runtime ({stage})",
@@ -239,7 +256,12 @@ class CombinedStack(cdk.Stack):
             ),
             # LOG_LEVEL stays at INFO: DEBUG logs decoded JWT claims and token
             # fragments, which anyone with CloudWatch read access could harvest.
-            environment_variables={"AWS_DEFAULT_REGION": region, "LOG_LEVEL": "INFO", "DEPLOY_VERSION": "9", "USER_POOL_ID": pool.user_pool_id},
+            environment_variables={
+                "AWS_DEFAULT_REGION": region,
+                "LOG_LEVEL": "INFO",
+                "DEPLOY_VERSION": "9",
+                "USER_POOL_ID": pool.user_pool_id,
+            },
         )
 
         # --- Bedrock Guardrail ---
@@ -254,7 +276,8 @@ class CombinedStack(cdk.Stack):
         # covering financial or investment subjects, because "what is the stock price of
         # AAPL?" is a supported request; a topic filter there would block normal use.
         guardrail = bedrock.CfnGuardrail(
-            self, "AgentGuardrail",
+            self,
+            "AgentGuardrail",
             name=f"agentcore-{stage}-guardrail",
             description="Content, prompt-attack and sensitive-data filters for the assistant agent.",
             blocked_input_messaging="That request cannot be processed.",
@@ -264,7 +287,9 @@ class CombinedStack(cdk.Stack):
                     # Harmful-content categories, filtered on both input and output.
                     *[
                         bedrock.CfnGuardrail.ContentFilterConfigProperty(
-                            type=category, input_strength="HIGH", output_strength="HIGH",
+                            type=category,
+                            input_strength="HIGH",
+                            output_strength="HIGH",
                         )
                         for category in ("HATE", "INSULTS", "SEXUAL", "VIOLENCE", "MISCONDUCT")
                     ],
@@ -274,7 +299,9 @@ class CombinedStack(cdk.Stack):
                     # to role-gated tools, so a successful injection could attempt to
                     # misuse a tool the caller is otherwise entitled to reach.
                     bedrock.CfnGuardrail.ContentFilterConfigProperty(
-                        type="PROMPT_ATTACK", input_strength="HIGH", output_strength="NONE",
+                        type="PROMPT_ATTACK",
+                        input_strength="HIGH",
+                        output_strength="NONE",
                     ),
                 ]
             ),
@@ -309,8 +336,11 @@ class CombinedStack(cdk.Stack):
                     *[
                         bedrock.CfnGuardrail.PiiEntityConfigProperty(type=entity, action="BLOCK")
                         for entity in (
-                            "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "PASSWORD",
-                            "CREDIT_DEBIT_CARD_NUMBER", "US_SOCIAL_SECURITY_NUMBER",
+                            "AWS_ACCESS_KEY",
+                            "AWS_SECRET_KEY",
+                            "PASSWORD",
+                            "CREDIT_DEBIT_CARD_NUMBER",
+                            "US_SOCIAL_SECURITY_NUMBER",
                         )
                     ],
                     # Contact details are masked rather than blocked, so an incidental
@@ -331,14 +361,16 @@ class CombinedStack(cdk.Stack):
         # Runtimes must reference an immutable published version, not DRAFT, so that
         # editing the guardrail cannot silently change behaviour under a running agent.
         guardrail_version = bedrock.CfnGuardrailVersion(
-            self, "AgentGuardrailVersion",
+            self,
+            "AgentGuardrailVersion",
             guardrail_identifier=guardrail.attr_guardrail_id,
             description="Published for the agent runtime to reference.",
         )
 
         # --- Assistant Agent Runtime ---
         agent_role = AgentCoreRuntimeRole(
-            self, "AgentRole",
+            self,
+            "AgentRole",
             description="Execution role for assistant agent",
             model_id=MODEL_ID,
             # The only runtime this agent invokes is the MCP server.
@@ -347,7 +379,8 @@ class CombinedStack(cdk.Stack):
         )
 
         agent_image = ecr_assets.DockerImageAsset(
-            self, "AgentImage",
+            self,
+            "AgentImage",
             directory=str(repo_root / "agent"),
             file="Dockerfile",
             platform=ecr_assets.Platform.LINUX_ARM64,
@@ -355,7 +388,8 @@ class CombinedStack(cdk.Stack):
         )
 
         agent_runtime = CfnRuntime(
-            self, "AgentRuntime",
+            self,
+            "AgentRuntime",
             protocol_configuration="HTTP",
             agent_runtime_name=f"assistant_agent_{stage}".replace("-", "_"),
             description=f"Assistant Agent Runtime ({stage})",
@@ -403,7 +437,8 @@ class CombinedStack(cdk.Stack):
             ("BedrockInputTokenSpike", "InputTokenCount", 500_000, "input tokens"),
         ]:
             cloudwatch.Alarm(
-                self, name,
+                self,
+                name,
                 alarm_description=(
                     f"More than {threshold} {unit_label} for {MODEL_ID} in 5 minutes — "
                     "possible runaway loop or abuse. Tune per environment."
@@ -432,7 +467,8 @@ class CombinedStack(cdk.Stack):
         # CloudWatch reference; missing data is treated as not breaching because the metric
         # is only published once an intervention occurs.
         cloudwatch.Alarm(
-            self, "GuardrailInterventions",
+            self,
+            "GuardrailInterventions",
             alarm_description=(
                 "The agent's guardrail intervened on model input or output. Investigate "
                 "whether this was an attack or an over-tight filter."

@@ -13,11 +13,7 @@ def handler(event, context):
     raw_roles = event["request"]["userAttributes"].get("custom:roles", "")
 
     # Validate each role against the allowlist
-    validated = [
-        role.strip()
-        for role in raw_roles.split(",")
-        if role.strip() in VALID_ROLES
-    ]
+    validated = [role.strip() for role in raw_roles.split(",") if role.strip() in VALID_ROLES]
 
     event["response"] = {
         "claimsAndScopeOverrideDetails": {

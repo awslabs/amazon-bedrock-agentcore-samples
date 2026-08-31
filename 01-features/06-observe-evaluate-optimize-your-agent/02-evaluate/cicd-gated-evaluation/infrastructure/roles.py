@@ -35,7 +35,9 @@ class MCPServerRole(Construct):
                         ),
                         iam.PolicyStatement(
                             actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                            resources=[f"arn:aws:logs:{region}:{account}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"],
+                            resources=[
+                                f"arn:aws:logs:{region}:{account}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                            ],
                         ),
                         iam.PolicyStatement(
                             sid="ECRTokenAccess",
@@ -58,7 +60,12 @@ class MCPServerRole(Construct):
                             # actions, so this cannot be narrowed further. Scope is instead
                             # bounded by the action list — write-and-sample only, no read
                             # of other traces.
-                            actions=["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"],
+                            actions=[
+                                "xray:PutTraceSegments",
+                                "xray:PutTelemetryRecords",
+                                "xray:GetSamplingRules",
+                                "xray:GetSamplingTargets",
+                            ],
                             resources=["*"],
                         ),
                     ]
@@ -103,19 +110,14 @@ class AgentCoreRuntimeRole(Construct):
         base_model_id = rest if prefix in self.CROSS_REGION_PREFIXES else model_id
         bedrock_model_resources = [
             f"arn:aws:bedrock:{region}:{account}:inference-profile/{model_id}",
-            *[
-                f"arn:aws:bedrock:{r}::foundation-model/{base_model_id}"
-                for r in self.INFERENCE_PROFILE_REGIONS
-            ],
+            *[f"arn:aws:bedrock:{r}::foundation-model/{base_model_id}" for r in self.INFERENCE_PROFILE_REGIONS],
         ]
 
         # InvokeAgentRuntime targets. Each runtime ARN also needs its endpoint sub-resource
         # (".../runtime-endpoint/*") because invocations address a qualifier.
         if a2a_target_runtime_arns:
             a2a_resources = [
-                arn_part
-                for arn in a2a_target_runtime_arns
-                for arn_part in (arn, f"{arn}/runtime-endpoint/*")
+                arn_part for arn in a2a_target_runtime_arns for arn_part in (arn, f"{arn}/runtime-endpoint/*")
             ]
         else:
             # No known targets: grant nothing rather than the whole account.
@@ -124,9 +126,7 @@ class AgentCoreRuntimeRole(Construct):
         # ApplyGuardrail is granted only on the guardrails this agent is configured with.
         # Without a guardrail the grant resolves to a non-existent ARN rather than "*", so
         # adding a guardrail later is an explicit change rather than a silent widening.
-        guardrail_resources = guardrail_arns or [
-            f"arn:aws:bedrock:{region}:{account}:guardrail/__none__"
-        ]
+        guardrail_resources = guardrail_arns or [f"arn:aws:bedrock:{region}:{account}:guardrail/__none__"]
 
         self.role = iam.Role(
             self,
@@ -163,7 +163,9 @@ class AgentCoreRuntimeRole(Construct):
                         ),
                         iam.PolicyStatement(
                             actions=["logs:CreateLogStream", "logs:PutLogEvents"],
-                            resources=[f"arn:aws:logs:{region}:{account}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"],
+                            resources=[
+                                f"arn:aws:logs:{region}:{account}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                            ],
                         ),
                         iam.PolicyStatement(
                             # X-Ray write APIs are account-level and accept no resource
@@ -173,7 +175,12 @@ class AgentCoreRuntimeRole(Construct):
                             # actions, so this cannot be narrowed further. Scope is instead
                             # bounded by the action list — write-and-sample only, no read
                             # of other traces.
-                            actions=["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"],
+                            actions=[
+                                "xray:PutTraceSegments",
+                                "xray:PutTelemetryRecords",
+                                "xray:GetSamplingRules",
+                                "xray:GetSamplingTargets",
+                            ],
                             resources=["*"],
                         ),
                         iam.PolicyStatement(

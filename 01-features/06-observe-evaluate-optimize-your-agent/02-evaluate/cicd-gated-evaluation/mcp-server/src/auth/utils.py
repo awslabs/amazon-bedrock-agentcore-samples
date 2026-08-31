@@ -28,10 +28,7 @@ SCOPES_META_KEY = "Scopes"
 # the CDK stack. If it is absent we fail closed rather than silently trusting claims.
 _USER_POOL_ID = os.getenv("USER_POOL_ID")
 _AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "ap-southeast-2")
-_ISSUER = (
-    f"https://cognito-idp.{_AWS_REGION}.amazonaws.com/{_USER_POOL_ID}"
-    if _USER_POOL_ID else None
-)
+_ISSUER = f"https://cognito-idp.{_AWS_REGION}.amazonaws.com/{_USER_POOL_ID}" if _USER_POOL_ID else None
 
 # PyJWKClient caches signing keys in-process and refreshes on unknown kid, so this does
 # not add a network call per request.

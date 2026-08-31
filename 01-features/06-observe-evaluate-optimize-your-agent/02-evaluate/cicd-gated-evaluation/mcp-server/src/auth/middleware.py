@@ -25,7 +25,8 @@ class AuthMiddleware(Middleware):
 
     async def on_call_tool(self, context: MiddlewareContext, call_next):
         return await self._authorize_execute(
-            context, call_next,
+            context,
+            call_next,
             get_component=lambda ctx: ctx.fastmcp_context.fastmcp.get_tool(ctx.message.name),
             error_cls=ToolError,
         )
@@ -38,10 +39,7 @@ class AuthMiddleware(Middleware):
             return []
 
         results = await call_next(context)
-        return [
-            self._strip_meta(r) for r in results
-            if not self._should_trim(r, token.roles, token.scopes)
-        ]
+        return [self._strip_meta(r) for r in results if not self._should_trim(r, token.roles, token.scopes)]
 
     async def _authorize_execute(self, context, call_next, get_component: Callable, error_cls: type[FastMCPError]):
         try:

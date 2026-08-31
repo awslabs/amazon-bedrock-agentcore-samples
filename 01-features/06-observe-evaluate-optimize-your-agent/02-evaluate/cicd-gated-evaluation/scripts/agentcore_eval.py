@@ -6,6 +6,7 @@ NOTE: When an AgentCore Runtime is configured with JWT/OAuth inbound auth,
 you CANNOT use the boto3 SDK to invoke it. You must make a direct HTTPS request
 with a Bearer token. The evaluation API itself is IAM-authenticated (boto3 works fine).
 """
+
 import contextlib
 import io
 import json
@@ -162,8 +163,7 @@ def main():
             time.sleep(interval)
             continue
         all_have_results = all(
-            any(r.value is not None for r in results.results if r.evaluator_name == e)
-            for e in evaluators
+            any(r.value is not None for r in results.results if r.evaluator_name == e) for e in evaluators
         )
         if all_have_results:
             break

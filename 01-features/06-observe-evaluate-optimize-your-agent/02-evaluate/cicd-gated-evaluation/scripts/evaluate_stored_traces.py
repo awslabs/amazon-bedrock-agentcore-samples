@@ -8,6 +8,7 @@ Decouples evaluation from live MCP calls — collect traces during manual testin
 or staging runs, commit them as JSON fixtures, and evaluate in CI.
 Same traces = same scores = deterministic quality gate.
 """
+
 import boto3
 import json
 import os
@@ -24,9 +25,7 @@ DEFAULT_CI_EVALUATORS = [
 def load_trace_fixtures(fixtures_dir):
     """Load pre-collected trace fixtures from JSON files."""
     all_spans = []
-    fixture_files = sorted(
-        f for f in os.listdir(fixtures_dir) if f.endswith(".json")
-    )
+    fixture_files = sorted(f for f in os.listdir(fixtures_dir) if f.endswith(".json"))
 
     if not fixture_files:
         print(f"ERROR: No .json fixtures found in {fixtures_dir}")
@@ -71,14 +70,14 @@ def evaluate_and_gate(spans, evaluator_ids, threshold, region):
             results[evaluator_id] = 0
 
     # Quality gate
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     all_passed = True
     for eid, score in results.items():
         status = "PASS" if score >= threshold else "FAIL"
         if status == "FAIL":
             all_passed = False
         print(f"  [{status}] {eid}: {score:.2f}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     return all_passed
 
