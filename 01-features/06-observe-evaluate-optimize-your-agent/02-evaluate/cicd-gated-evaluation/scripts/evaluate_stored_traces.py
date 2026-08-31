@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: Apache-2.0
 # scripts/evaluate_stored_traces.py
 """
 Evaluate pre-collected trace fixtures without live agent invocation (Approach A).

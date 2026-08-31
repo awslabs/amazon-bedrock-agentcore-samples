@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: Apache-2.0
 """Token extraction from HTTP headers.
 
 AgentCore validates the JWT at the platform edge before the request reaches this

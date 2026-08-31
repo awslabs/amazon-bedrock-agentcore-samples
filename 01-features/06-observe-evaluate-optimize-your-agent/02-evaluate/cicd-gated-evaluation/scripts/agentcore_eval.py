@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: Apache-2.0
 """Eval script: get OAuth token → invoke agent via HTTPS → run AgentCore evaluations → gate on threshold.
 
 NOTE: When an AgentCore Runtime is configured with JWT/OAuth inbound auth,

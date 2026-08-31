@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: Apache-2.0
 """Assistant Agent — Strands-based agent deployed on Bedrock AgentCore.
 
 Connects to an MCP server for role-gated tools (finance, HR, datetime).
