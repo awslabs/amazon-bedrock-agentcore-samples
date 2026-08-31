@@ -1,6 +1,6 @@
 # AgentCore Evaluation Pipeline with MCP Role-Based Access Control
 
-Reference implementation for running automated evaluations on an AgentCore-hosted agent that connects to an MCP server with role-based access control. The CI/CD pipeline deploys infrastructure, invokes the agent, runs evaluations, and gates the PR on quality thresholds.
+Reference implementation for running automated evaluations on an [Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html)-hosted agent that connects to an MCP server with role-based access control. The CI/CD pipeline deploys infrastructure, invokes the agent, runs evaluations, and gates the PR on quality thresholds.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ Reference implementation for running automated evaluations on an AgentCore-hoste
 
 ## Model Guardrail
 
-A Bedrock Guardrail is attached to the agent's model, so filtering is enforced by the platform
+A [Amazon Bedrock Guardrails](https://aws.amazon.com/bedrock/guardrails/) guardrail is attached to the agent's model, so filtering is enforced by the platform
 rather than by asking the model to behave. It applies:
 
 - **Content filters** on hate, insults, sexual content, violence and misconduct, on both input
@@ -81,15 +81,14 @@ an intervention.
 ├── fixtures/
 │   └── sample_traces.json           # Pre-collected OTel traces
 ├── scripts/
-│   ├── agentcore_eval.py            # Eval script (live invocation)
+│   ├── agentcore_eval.py            # Eval script (live invocation, used by CI)
+│   ├── evaluation_pipeline.py       # Eval pipeline walkthrough (deploy separately first)
+│   ├── deploy_and_test_rbac.py      # Verify role enforcement against a deployed stack
 │   ├── evaluate_stored_traces.py    # Evaluate pre-collected fixtures
 │   └── eval_dataset.json            # Test prompts
 ├── .github/
 │   └── workflows/
 │       └── agentcore-eval.yml       # CI/CD pipeline
-└── notebooks/
-    ├── 01_deploy_and_test_rbac.ipynb # Deploy + test role enforcement
-    └── 02_evaluation_pipeline.ipynb  # Eval pipeline walkthrough
 ```
 
 ## Prerequisites
@@ -106,16 +105,46 @@ an intervention.
 
 ## Quick Start
 
-The fastest way to get started is via the notebooks:
+The fastest way to get started is to deploy the stack once (see [Deployment](#deployment)
+below), then run the walkthrough scripts against it:
 
-1. Open `notebooks/01_deploy_and_test_rbac.ipynb` — deploys the stack, sets user passwords, and runs role-based access tests.
-2. Open `notebooks/02_evaluation_pipeline.ipynb` — runs the evaluation pipeline with M2M token and quality gates.
+1. `python scripts/deploy_and_test_rbac.py --password '<password>'` — sets the two test
+   users' passwords and verifies role-based access control (RBAC) end-to-end.
+2. `python scripts/evaluation_pipeline.py` — runs the evaluation pipeline with an M2M token
+   and applies the quality gates.
 
-Both notebooks deploy via `npx --yes cdk`, so they do not need a globally installed CDK CLI — but
-they do still need the `.venv` created below (they run CDK with `.venv/bin` on `PATH`), plus Node.js
-and a running Docker daemon. Each notebook deploys the stack in its first cells and **runs
-`cdk destroy --force` in its final cell**, so run them one at a time and skip the last cell if you
-want the stack to stay up.
+Both scripts read `outputs.json` (written by `cdk deploy --outputs-file outputs.json`) and
+assume the stack is already deployed. Run them from the repository root with the `.venv`
+active, and see [Testing](#testing) for the full options. They do **not** tear the stack
+down — run `cdk destroy --force` yourself when finished (see [Teardown](#teardown)).
+
+### `deploy_and_test_rbac.py`
+
+Verifies that role enforcement works against the deployed stack. It sets a permanent
+password for the pre-created Cognito users (`user-a` as `FinanceUser`, `user-b` as
+`HRUser`), waits for the runtimes' containers to start, then authenticates as each user and
+checks that role-gated tools are reachable only by the matching role:
+
+| User   | Role        | `get_stock_price` | `get_employee_count` | Public tools |
+|--------|-------------|:-----------------:|:--------------------:|:------------:|
+| user-a | FinanceUser | Allowed           | Denied               | Yes          |
+| user-b | HRUser      | Denied            | Allowed              | Yes          |
+
+The password can be passed with `--password`, set via `TEST_USER_PASSWORD`, or entered
+interactively. It must satisfy the Cognito policy (12+ chars, upper, lower, digit, symbol).
+The script exits non-zero if any RBAC check fails.
+
+### `evaluation_pipeline.py`
+
+Mirrors the CI pipeline against the deployed stack: it fetches the M2M client secret from
+Secrets Manager, gets an M2M token via the `client_credentials` grant, invokes the agent
+with a set of test prompts under a single session ID (so traces are grouped), scores the
+session with built-in evaluators, and applies a quality gate. Pass `--threshold` to change
+the pass mark (default `0.8`); the script exits non-zero if any metric falls below it.
+
+Both scripts pause a fixed 30s for containers to warm up rather than polling for `READY`
+(which `scripts/agentcore_eval.py` does). If an invocation returns `424 Failed Dependency`,
+the runtimes were not ready yet — re-run the script.
 
 ## Deployment
 
@@ -138,8 +167,9 @@ AgentCore runtimes, so allow around 10-15 minutes on a first run.
 
 Both runtimes stay in `CREATING` for a few minutes after `cdk deploy` returns, and invoking one
 before it reaches `READY` fails with `424 Failed Dependency`. `scripts/agentcore_eval.py` polls for
-`READY` before invoking; the notebooks instead pause for a fixed 30s, which is usually but not
-always enough — if a notebook invocation returns 424, re-run that cell.
+`READY` before invoking; the walkthrough scripts (`deploy_and_test_rbac.py`,
+`evaluation_pipeline.py`) instead pause for a fixed 30s, which is usually but not always
+enough — if an invocation returns 424, re-run the script.
 
 CDK outputs include: `SharedUserPoolId`, `M2MClientId`, `UserClientId`, `TokenEndpoint`, `MCPRuntimeId`, `MCPRuntimeArn`, `AgentRuntimeId`, `AgentRuntimeArn`.
 
@@ -147,7 +177,9 @@ CDK outputs include: `SharedUserPoolId`, `M2MClientId`, `UserClientId`, `TokenEn
 
 ### Role-based access tests
 
-Run the `notebooks/01_deploy_and_test_rbac.ipynb` notebook to deploy the stack and test role enforcement interactively.
+Run `python scripts/deploy_and_test_rbac.py --password '<password>'` against a deployed stack to
+verify role enforcement. See [Quick Start](#quick-start) for what it checks and the available
+options.
 
 ### M2M (CI-style) invocation
 

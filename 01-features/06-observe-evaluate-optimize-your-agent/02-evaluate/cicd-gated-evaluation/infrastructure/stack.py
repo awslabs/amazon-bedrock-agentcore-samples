@@ -26,7 +26,7 @@ def _removal_policy(stage: str) -> cdk.RemovalPolicy:
 
     The Cognito pool holds user identities and the secret holds live credentials, so a
     `cdk destroy` against a real environment would delete authentication data outright.
-    The dev stage deliberately keeps DESTROY: the notebooks deploy and tear down
+    The dev stage deliberately keeps DESTROY: the walkthrough scripts deploy and tear down
     repeatedly, and retained pools/secrets would collide with the next deploy.
     """
     return cdk.RemovalPolicy.DESTROY if stage == "dev" else cdk.RemovalPolicy.RETAIN
@@ -160,8 +160,8 @@ class CombinedStack(cdk.Stack):
             auth_flows=cognito.AuthFlow(admin_user_password=True, user_srp=True),
             o_auth=cognito.OAuthSettings(
                 # Implicit grant is omitted: it returns tokens in the URL fragment, is
-                # deprecated by OAuth 2.1, and nothing here needs it — the notebooks use
-                # ADMIN_NO_SRP_AUTH and the CI pipeline uses client_credentials.
+                # deprecated by OAuth 2.1, and nothing here needs it — the RBAC test script
+                # uses ADMIN_NO_SRP_AUTH and the CI pipeline uses client_credentials.
                 flows=cognito.OAuthFlows(authorization_code_grant=True),
                 # Deliberately NOT granted mcp/finance or mcp/hr. Tool scopes satisfy the
                 # same authorization check as roles, so granting them here would let a user

@@ -9,6 +9,6 @@ node_modules/
 build/
 .vscode/
 scripts/evals_results/
-notebooks/eval_output*
+scripts/eval_output*
 
 .ash/
