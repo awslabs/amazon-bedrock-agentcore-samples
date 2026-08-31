@@ -52,6 +52,25 @@ STACK_NAME = "AgentCoreCICDStack-dev"
 TEST_USERS = ("user-a", "user-b")
 CONTAINER_WARMUP_SECONDS = 30
 
+# Test matrix: (user, prompt, must_contain, must_not_contain, description)
+TEST_CASES = [
+    # Public tools - accessible to both users
+    ("user-a", "What is the current time in UTC?", ["202"], [], "user-a: get_current_datetime (public)"),
+    ("user-b", "How much is 15 * 7?", ["105"], [], "user-b: calculator (public)"),
+    # get_stock_price - only FinanceUser
+    ("user-a", "What is the stock price of AAPL?", ["175.50"], [], "user-a (FinanceUser): get_stock_price ALLOWED"),
+    ("user-b", "What is the stock price of AAPL?", [], ["175.50"], "user-b (HRUser): get_stock_price DENIED"),
+    # get_employee_count - only HRUser
+    ("user-b", "How many employees are in engineering?", ["150"], [], "user-b (HRUser): get_employee_count ALLOWED"),
+    (
+        "user-a",
+        "How many employees are in engineering?",
+        [],
+        ["150"],
+        "user-a (FinanceUser): get_employee_count DENIED",
+    ),
+]
+
 
 def load_outputs(outputs_path: str) -> dict:
     """Load the CDK stack outputs written by `cdk deploy --outputs-file`."""
@@ -114,26 +133,6 @@ def check(result: dict, should_contain=None, should_not_contain=None) -> bool:
         if s.lower() in body:
             ok = False
     return ok
-
-
-# Test matrix: (user, prompt, must_contain, must_not_contain, description)
-TEST_CASES = [
-    # Public tools - accessible to both users
-    ("user-a", "What is the current time in UTC?", ["202"], [], "user-a: get_current_datetime (public)"),
-    ("user-b", "How much is 15 * 7?", ["105"], [], "user-b: calculator (public)"),
-    # get_stock_price - only FinanceUser
-    ("user-a", "What is the stock price of AAPL?", ["175.50"], [], "user-a (FinanceUser): get_stock_price ALLOWED"),
-    ("user-b", "What is the stock price of AAPL?", [], ["175.50"], "user-b (HRUser): get_stock_price DENIED"),
-    # get_employee_count - only HRUser
-    ("user-b", "How many employees are in engineering?", ["150"], [], "user-b (HRUser): get_employee_count ALLOWED"),
-    (
-        "user-a",
-        "How many employees are in engineering?",
-        [],
-        ["150"],
-        "user-a (FinanceUser): get_employee_count DENIED",
-    ),
-]
 
 
 def run_tests(agent_arn: str, tokens: dict) -> tuple[int, int]:
