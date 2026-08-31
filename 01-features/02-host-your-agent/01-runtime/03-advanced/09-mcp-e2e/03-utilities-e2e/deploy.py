@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import zipfile
+
 import boto3
 from boto3.session import Session
 
@@ -190,7 +191,7 @@ def zip_and_upload_code():
         capture_output=True,
     )
     # Flatten: re-zip from inside pkg_dir so imports work at root level
-    zip_buf = io.BytesIO()  # noqa: F841
+    zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(pkg_dir):
             dirs[:] = [d for d in dirs if d not in ("__pycache__",)]

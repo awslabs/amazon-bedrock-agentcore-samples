@@ -19,6 +19,7 @@ import json
 import os
 import sys
 import time
+
 import boto3
 from boto3.session import Session
 
@@ -170,20 +171,20 @@ def create_runtime(role_arn: str) -> dict:
     if auth0_audience:
         env_vars["AUTH0_AUDIENCE"] = auth0_audience
 
-    create_kwargs = dict(
-        agentRuntimeName=AGENT_NAME,
-        agentRuntimeArtifact={
+    create_kwargs = {
+        "agentRuntimeName": AGENT_NAME,
+        "agentRuntimeArtifact": {
             "codeConfiguration": {
                 "code": {"s3": {"bucket": S3_BUCKET, "prefix": S3_PREFIX}},
                 "runtime": PYTHON_RUNTIME,
                 "entryPoint": [ENTRY_POINT],
             }
         },
-        roleArn=role_arn,
-        networkConfiguration={"networkMode": "PUBLIC"},
-        protocolConfiguration={"serverProtocol": PROTOCOL},
-        description="MCP server with Auth0 Dynamic Client Registration",
-    )
+        "roleArn": role_arn,
+        "networkConfiguration": {"networkMode": "PUBLIC"},
+        "protocolConfiguration": {"serverProtocol": PROTOCOL},
+        "description": "MCP server with Auth0 Dynamic Client Registration",
+    }
 
     if env_vars:
         create_kwargs["environmentVariables"] = env_vars
