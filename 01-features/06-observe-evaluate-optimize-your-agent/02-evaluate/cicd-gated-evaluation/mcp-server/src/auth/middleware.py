@@ -4,13 +4,12 @@
 
 import copy
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from fastmcp.exceptions import FastMCPError, PromptError, ResourceError, ToolError
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.utilities.components import FastMCPComponent
 from mcp.types import PaginatedRequest
-
 from src.auth.utils import ROLES_META_KEY, SCOPES_META_KEY, get_access_token
 from src.exceptions import AuthError
 

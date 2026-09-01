@@ -10,8 +10,8 @@ against an already-deployed stack. It:
      user identity). The token carries the tool scopes the agent needs.
   3. Invokes the agent with a set of test prompts under a single session ID so
      the OTel traces are grouped for evaluation.
-  4. Scores the session with built-in evaluators via the bedrock-agentcore SDK
-     evaluation client.
+  4. Scores the session with built-in evaluators: collects spans via the
+     bedrock-agentcore SDK span collector and calls the Evaluate API directly.
   5. Applies a quality gate: exits non-zero if any score is below threshold.
 
 This is the interactive walkthrough companion to `agentcore_eval.py`, which is
@@ -37,10 +37,11 @@ import sys
 import time
 import urllib.parse
 import uuid
+from datetime import UTC, datetime, timedelta, timezone
 
 import boto3
 import requests
-from bedrock_agentcore.evaluation import EvaluationClient
+from bedrock_agentcore.evaluation import CloudWatchAgentSpanCollector
 
 REGION = "ap-southeast-2"
 STACK_NAME = "AgentCoreCICDStack-dev"
@@ -128,20 +129,33 @@ def invoke_agent(agent_runtime_arn: str, prompt: str, session_id: str, token: st
 def run_evaluation(agent_runtime_id: str, session_id: str):
     """Score the session with built-in evaluators, retrying while traces propagate.
 
-    Traces can take several minutes to propagate. EvaluationClient.run() returns
-    an empty list until spans are queryable, so retry until every evaluator has
-    returned a score rather than breaking on the first empty response.
+    Collects the session's spans from CloudWatch via the bedrock-agentcore SDK
+    span collector, then calls the Evaluate API (boto3) once per evaluator. No
+    ``evaluationTarget`` is sent: the API selects the relevant spans for each
+    evaluator's level itself, which is what lets tool-call evaluators
+    (ToolSelectionAccuracy / ToolParameterAccuracy) score. Traces take a few
+    minutes to propagate, so retry until every evaluator returns a value.
     """
-    client = EvaluationClient(region_name=REGION)
+    log_group = f"/aws/bedrock-agentcore/runtimes/{agent_runtime_id}-DEFAULT"
+    collector = CloudWatchAgentSpanCollector(log_group_name=log_group, region=REGION)
+    dp_client = boto3.client("bedrock-agentcore", region_name=REGION)
+
     results = []
     for attempt in range(1, MAX_RETRIES + 1):
         print(f"Attempt {attempt}/{MAX_RETRIES}: waiting {WAIT_SECONDS}s for trace propagation...")
         time.sleep(WAIT_SECONDS)
-        results = client.run(
-            evaluator_ids=EVALUATORS,
-            session_id=session_id,
-            agent_id=agent_runtime_id,
-        )
+
+        end = datetime.now(UTC)
+        spans = collector.collect(session_id=session_id, start_time=end - timedelta(hours=1), end_time=end)
+        if not spans:
+            print("  No spans yet, retrying...")
+            continue
+
+        results = []
+        for evaluator_id in EVALUATORS:
+            response = dp_client.evaluate(evaluatorId=evaluator_id, evaluationInput={"sessionSpans": spans})
+            results.extend(response.get("evaluationResults", []))
+
         missing = [
             e for e in EVALUATORS if not any(r.get("value") is not None for r in results if r.get("evaluatorId") == e)
         ]

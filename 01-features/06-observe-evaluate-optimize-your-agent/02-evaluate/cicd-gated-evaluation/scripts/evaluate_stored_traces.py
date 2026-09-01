@@ -9,10 +9,11 @@ or staging runs, commit them as JSON fixtures, and evaluate in CI.
 Same traces = same scores = deterministic quality gate.
 """
 
-import boto3
 import json
 import os
 import sys
+
+import boto3
 
 DEFAULT_CI_EVALUATORS = [
     "Builtin.Helpfulness",

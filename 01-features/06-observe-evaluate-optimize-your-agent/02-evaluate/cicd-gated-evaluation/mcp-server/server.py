@@ -19,7 +19,6 @@ from fastmcp import FastMCP
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from pydantic import Field
 from pythonjsonlogger.json import JsonFormatter
-
 from src.auth import auth_meta
 from src.auth.middleware import AuthMiddleware
 

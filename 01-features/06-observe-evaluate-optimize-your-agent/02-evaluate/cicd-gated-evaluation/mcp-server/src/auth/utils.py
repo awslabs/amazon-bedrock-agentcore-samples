@@ -15,7 +15,6 @@ import os
 import jwt
 from fastmcp.server.dependencies import get_http_headers
 from jwt import PyJWKClient, PyJWKClientError, PyJWTError
-
 from src.auth.models import AccessToken
 from src.exceptions import AuthError
 

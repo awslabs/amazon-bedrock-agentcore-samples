@@ -5,21 +5,20 @@
 NOTE: When an AgentCore Runtime is configured with JWT/OAuth inbound auth,
 you CANNOT use the boto3 SDK to invoke it. You must make a direct HTTPS request
 with a Bearer token. The evaluation API itself is IAM-authenticated, so the
-bedrock-agentcore SDK evaluation client (backed by boto3) works fine.
+bedrock-agentcore SDK span collector plus the boto3 Evaluate call work fine.
 """
 
-import contextlib
-import io
 import json
 import os
 import sys
 import time
-import uuid
 import urllib.parse
+import uuid
+from datetime import UTC, datetime, timedelta, timezone
 
 import boto3
 import requests as http_requests
-from bedrock_agentcore.evaluation import EvaluationClient
+from bedrock_agentcore.evaluation import CloudWatchAgentSpanCollector
 
 
 def _oauth_credentials() -> tuple[str, str]:
@@ -147,17 +146,22 @@ def main():
     time.sleep(60)
     elapsed = 60
 
-    eval_client = EvaluationClient(region_name=region)
+    # Collect the session's spans from CloudWatch (bedrock-agentcore SDK), then call
+    # the Evaluate API (boto3) once per evaluator. No evaluationTarget is sent so the
+    # API selects the spans for each evaluator's level itself — required for the
+    # tool-call evaluators (ToolSelectionAccuracy / ToolParameterAccuracy) to score.
+    log_group = f"/aws/bedrock-agentcore/runtimes/{agent_id}-DEFAULT"
+    collector = CloudWatchAgentSpanCollector(log_group_name=log_group, region=region)
+    dp_client = boto3.client("bedrock-agentcore", region_name=region)
+
     while elapsed <= max_wait:
-        # Suppress noisy SDK output during retries
-        buf = io.StringIO()
         try:
-            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
-                results = eval_client.run(
-                    evaluator_ids=evaluators,
-                    session_id=session_id,
-                    agent_id=agent_id,
-                )
+            end = datetime.now(UTC)
+            spans = collector.collect(session_id=session_id, start_time=end - timedelta(hours=1), end_time=end)
+            results = []
+            for evaluator_id in evaluators:
+                response = dp_client.evaluate(evaluatorId=evaluator_id, evaluationInput={"sessionSpans": spans})
+                results.extend(response.get("evaluationResults", []))
         except Exception as e:
             elapsed += interval
             print(f"No traces yet... retrying ({elapsed}s / {max_wait}s) — {e}")

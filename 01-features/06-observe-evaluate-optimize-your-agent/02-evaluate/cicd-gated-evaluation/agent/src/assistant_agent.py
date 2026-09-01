@@ -8,21 +8,23 @@ Supports two auth modes:
   - M2M tokens (CI/pipelines): shared cached token via Cognito client credentials
 """
 
-from strands import Agent
-from strands_tools import calculator
-from strands.tools.mcp import MCPClient
-from mcp.client.streamable_http import streamablehttp_client, streamable_http_client
-import os
-import json
-import time
 import base64
+import json
+import logging
+import os
+import time
 import urllib.parse
+
 import boto3
 import httpx
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.runtime.context import RequestContext
+from botocore.exceptions import ClientError
+from mcp.client.streamable_http import streamable_http_client
+from strands import Agent
 from strands.models import BedrockModel
-import logging
+from strands.tools.mcp import MCPClient
+from strands_tools import calculator
 
 app = BedrockAgentCoreApp()
 
@@ -87,7 +89,7 @@ async def get_mcp_token_m2m() -> str:
             client_id = secret_data.get("client_id", client_id)
             client_secret = secret_data["client_secret"]
             token_endpoint = secret_data.get("token_endpoint", token_endpoint)
-        except Exception as e:
+        except (ClientError, KeyError, ValueError) as e:
             print(f"Failed to retrieve secret: {e}")
 
     if not all([client_id, client_secret, token_endpoint]):
@@ -133,7 +135,7 @@ def _is_user_token(token: str) -> bool:
         payload += "=" * (-len(payload) % 4)
         claims = json.loads(base64.urlsafe_b64decode(payload))
         return "sub" in claims
-    except Exception:
+    except (ValueError, KeyError, IndexError):
         return False
 
 
@@ -149,7 +151,7 @@ def _make_mcp_client(token: str) -> MCPClient | None:
         )
         client.__enter__()
         return client
-    except Exception as e:
+    except (httpx.HTTPError, OSError, RuntimeError) as e:
         print(f"Failed to initialize MCP client: {e}")
         return None
 
@@ -169,7 +171,7 @@ async def _get_m2m_mcp_client() -> MCPClient | None:
         token = await get_mcp_token_m2m()
         _m2m_mcp_client = _make_mcp_client(token)
         return _m2m_mcp_client
-    except Exception as e:
+    except (httpx.HTTPError, OSError, RuntimeError, ValueError) as e:
         print(f"Failed to initialize MCP client: {e}")
         return None
 
@@ -184,7 +186,7 @@ def get_tools(mcp_client: MCPClient | None):
             tools.extend(mcp_client.list_tools_sync())
             print(f"Retrieved {len(tools) - 1} tools from MCP server")
             logger.info(f"Retrieved {len(tools) - 1} tools from MCP server")
-        except Exception as e:
+        except (httpx.HTTPError, OSError, RuntimeError) as e:
             print(f"Failed to list MCP tools: {e}")
             logger.error(f"Failed to list MCP tools: {e}")
     return tools

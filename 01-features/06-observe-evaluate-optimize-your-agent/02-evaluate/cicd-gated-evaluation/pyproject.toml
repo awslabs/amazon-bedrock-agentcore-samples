@@ -7,6 +7,14 @@ dependencies = [
     "constructs>=10.0.0",
 ]
 
+# Dependencies for the scripts/ evaluation tools. Install: pip install ".[evaluation]"
+[project.optional-dependencies]
+evaluation = [
+    "boto3",
+    "requests",
+    "bedrock-agentcore",
+]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
