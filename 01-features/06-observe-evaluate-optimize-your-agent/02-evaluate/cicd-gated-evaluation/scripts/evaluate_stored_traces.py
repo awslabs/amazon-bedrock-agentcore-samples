@@ -35,7 +35,7 @@ def load_trace_fixtures(fixtures_dir):
     for filename in fixture_files:
         filepath = os.path.join(fixtures_dir, filename)
         print(f"Loading fixture: {filename}")
-        with open(filepath) as f:
+        with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
             if isinstance(data, dict):
                 # {session_id: [spans]} format — flatten all sessions
@@ -84,6 +84,7 @@ def evaluate_and_gate(spans, evaluator_ids, threshold, region):
 
 
 def main():
+    """Load trace fixtures, evaluate them, and enforce the quality gate."""
     region = os.environ.get("AWS_REGION", "us-east-1")
     fixtures_dir = os.environ.get("TRACE_FIXTURES_DIR", "fixtures")
     threshold = float(os.environ.get("EVAL_THRESHOLD", "0.7"))

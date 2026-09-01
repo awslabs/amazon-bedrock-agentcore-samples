@@ -37,7 +37,7 @@ import sys
 import time
 import urllib.parse
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import boto3
 import requests
@@ -68,7 +68,7 @@ WAIT_SECONDS = 30
 
 def load_config(outputs_path: str) -> dict:
     """Read stack outputs and fetch the M2M client secret from Secrets Manager."""
-    with open(outputs_path) as f:
+    with open(outputs_path, encoding="utf-8") as f:
         outputs = json.load(f)[STACK_NAME]
 
     sm = boto3.client("secretsmanager", region_name=REGION)
@@ -192,6 +192,7 @@ def print_scores(scores: dict, threshold: float) -> None:
 
 
 def main() -> None:
+    """Load config, invoke the agent, run evaluators, and enforce the quality gate."""
     parser = argparse.ArgumentParser(description="AgentCore evaluation pipeline walkthrough.")
     parser.add_argument("--outputs", default="../outputs.json", help="Path to the CDK outputs file.")
     parser.add_argument("--threshold", type=float, default=0.8, help="Quality gate threshold (default: 0.8).")

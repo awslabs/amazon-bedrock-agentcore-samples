@@ -14,7 +14,7 @@ import sys
 import time
 import urllib.parse
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import boto3
 import requests as http_requests

@@ -112,7 +112,7 @@ def deploy_stack(outputs_path: str, cdk_command: str) -> None:
 
 def load_outputs(outputs_path: str) -> dict:
     """Load the CDK stack outputs written by `cdk deploy --outputs-file`."""
-    with open(outputs_path) as f:
+    with open(outputs_path, encoding="utf-8") as f:
         return json.load(f)[STACK_NAME]
 
 
@@ -199,6 +199,7 @@ def run_tests(agent_arn: str, tokens: dict) -> tuple[int, int]:
 
 
 def main() -> None:
+    """Parse args, deploy the stack (unless skipped), then run the RBAC tests."""
     parser = argparse.ArgumentParser(description="Deploy + RBAC tests for the AgentCore eval sample.")
     parser.add_argument(
         "--outputs",
