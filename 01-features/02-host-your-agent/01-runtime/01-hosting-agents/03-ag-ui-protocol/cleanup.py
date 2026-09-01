@@ -7,6 +7,7 @@ import time
 
 import boto3
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
 
 def main():
@@ -35,13 +36,13 @@ def main():
                 continue  # DEFAULT endpoint is auto-deleted with the runtime
             control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ep["name"])
         time.sleep(30)
-    except Exception as e:
+    except ClientError as e:
         print(f"  Warning: {e}")
 
     try:
         control.delete_agent_runtime(agentRuntimeId=runtime_id)
         time.sleep(30)
-    except Exception as e:
+    except ClientError as e:
         print(f"  Warning: {e}")
 
     # Delete S3 code artifact
@@ -49,7 +50,7 @@ def main():
         bucket = f"agentcore-code-{account_id}-{region}"
         s3.delete_object(Bucket=bucket, Key=f"{agent_name}/code.zip")
         print("  Deleted S3 code artifact")
-    except Exception as e:
+    except ClientError as e:
         print(f"  Warning: {e}")
 
     role_name = f"agentcore-{agent_name}-role"
@@ -58,8 +59,8 @@ def main():
         for p in iam.list_role_policies(RoleName=role_name).get("PolicyNames", []):
             iam.delete_role_policy(RoleName=role_name, PolicyName=p)
         iam.delete_role(RoleName=role_name)
-    except Exception:
-        pass
+    except ClientError:
+        print("Cleanup: resource already deleted or not found")
 
     if os.path.exists("runtime_config.json"):
         os.remove("runtime_config.json")
