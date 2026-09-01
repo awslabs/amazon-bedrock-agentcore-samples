@@ -4,7 +4,8 @@
 
 NOTE: When an AgentCore Runtime is configured with JWT/OAuth inbound auth,
 you CANNOT use the boto3 SDK to invoke it. You must make a direct HTTPS request
-with a Bearer token. The evaluation API itself is IAM-authenticated (boto3 works fine).
+with a Bearer token. The evaluation API itself is IAM-authenticated, so the
+bedrock-agentcore SDK evaluation client (backed by boto3) works fine.
 """
 
 import contextlib
@@ -18,7 +19,7 @@ import urllib.parse
 
 import boto3
 import requests as http_requests
-from bedrock_agentcore_starter_toolkit import Evaluation
+from bedrock_agentcore.evaluation import EvaluationClient
 
 
 def _oauth_credentials() -> tuple[str, str]:
@@ -140,34 +141,29 @@ def main():
     max_wait = 600
     interval = 30
     elapsed = 0
-    results = None
+    results = []
 
     print("Waiting for traces to propagate...")
     time.sleep(60)
     elapsed = 60
 
+    eval_client = EvaluationClient(region_name=region)
     while elapsed <= max_wait:
         # Suppress noisy SDK output during retries
         buf = io.StringIO()
         try:
             with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
-                results = Evaluation(region=region).run(
-                    agent_id=agent_id,
+                results = eval_client.run(
+                    evaluator_ids=evaluators,
                     session_id=session_id,
-                    evaluators=evaluators,
-                    output="evals_results/ci_output.json",
+                    agent_id=agent_id,
                 )
         except Exception as e:
             elapsed += interval
             print(f"No traces yet... retrying ({elapsed}s / {max_wait}s) — {e}")
             time.sleep(interval)
             continue
-        all_have_results = all(
-            any(r.value is not None for r in results.results if r.evaluator_name == e) for e in evaluators
-        )
-        if all_have_results:
-            break
-        found = [e for e in evaluators if any(r.value is not None for r in results.results if r.evaluator_name == e)]
+        found = [e for e in evaluators if any(r.get("value") is not None for r in results if r.get("evaluatorId") == e)]
         missing = [e for e in evaluators if e not in found]
         if not missing:
             break
@@ -175,15 +171,37 @@ def main():
         print(f"Waiting for traces... ({elapsed}s / {max_wait}s) — missing: {', '.join(missing)}")
         time.sleep(interval)
 
+    # Persist raw results for the CI artifact / PR-comment step. Normalize to the
+    # {"results": [{"evaluator_name", "value", "label"}]} shape that the workflow's
+    # summary step reads.
+    os.makedirs("evals_results", exist_ok=True)
+    with open("evals_results/ci_output.json", "w") as f:
+        json.dump(
+            {
+                "results": [
+                    {
+                        "evaluator_name": r.get("evaluatorId"),
+                        "value": r.get("value"),
+                        "label": r.get("label"),
+                    }
+                    for r in results
+                ]
+            },
+            f,
+            indent=2,
+        )
+
     failed = False
     has_results = False
     # Aggregate: keep best score per evaluator (multiple spans may return results)
     scores = {}
-    for r in results.results:
-        if r.value is None:
+    for r in results:
+        value = r.get("value")
+        name = r.get("evaluatorId")
+        if value is None:
             continue
-        if r.evaluator_name not in scores or r.value > scores[r.evaluator_name][0]:
-            scores[r.evaluator_name] = (r.value, r.label)
+        if name not in scores or value > scores[name][0]:
+            scores[name] = (value, r.get("label"))
 
     print(f"\n{'─' * 50}")
     print(f"{'Evaluator':<35} {'Score':>6}  Result")

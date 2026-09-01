@@ -211,7 +211,7 @@ export OAUTH_CLIENT_SECRET="..."
 export OAUTH_SCOPE="mcp/invoke mcp/finance mcp/hr agentcore/invoke"
 export EVAL_THRESHOLD="0.8"
 
-pip install boto3 requests bedrock-agentcore-starter-toolkit
+pip install boto3 requests bedrock-agentcore
 python3 agentcore_eval.py
 ```
 

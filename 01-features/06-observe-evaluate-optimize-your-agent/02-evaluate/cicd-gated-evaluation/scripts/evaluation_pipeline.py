@@ -10,8 +10,8 @@ against an already-deployed stack. It:
      user identity). The token carries the tool scopes the agent needs.
   3. Invokes the agent with a set of test prompts under a single session ID so
      the OTel traces are grouped for evaluation.
-  4. Scores the session with built-in evaluators via the
-     bedrock-agentcore-starter-toolkit.
+  4. Scores the session with built-in evaluators via the bedrock-agentcore SDK
+     evaluation client.
   5. Applies a quality gate: exits non-zero if any score is below threshold.
 
 This is the interactive walkthrough companion to `agentcore_eval.py`, which is
@@ -25,7 +25,7 @@ Prerequisites:
     - The CDK stack is deployed and outputs.json has been written
       (cdk deploy --outputs-file outputs.json).
     - AWS credentials configured with access to the deployed account/region.
-    - pip install boto3 requests bedrock-agentcore-starter-toolkit
+    - pip install boto3 requests bedrock-agentcore
 
 Exit status:
     0 if every evaluator meets the threshold, 1 otherwise.
@@ -40,7 +40,7 @@ import uuid
 
 import boto3
 import requests
-from bedrock_agentcore_starter_toolkit import Evaluation
+from bedrock_agentcore.evaluation import EvaluationClient
 
 REGION = "ap-southeast-2"
 STACK_NAME = "AgentCoreCICDStack-dev"
@@ -128,29 +128,22 @@ def invoke_agent(agent_runtime_arn: str, prompt: str, session_id: str, token: st
 def run_evaluation(agent_runtime_id: str, session_id: str):
     """Score the session with built-in evaluators, retrying while traces propagate.
 
-    Traces can take several minutes to propagate. Evaluation.run() may succeed
-    while every score is still None, so retry until each evaluator returns a real
-    value rather than breaking on the first non-exception response.
+    Traces can take several minutes to propagate. EvaluationClient.run() returns
+    an empty list until spans are queryable, so retry until every evaluator has
+    returned a score rather than breaking on the first empty response.
     """
-    results = None
+    client = EvaluationClient(region_name=REGION)
+    results = []
     for attempt in range(1, MAX_RETRIES + 1):
         print(f"Attempt {attempt}/{MAX_RETRIES}: waiting {WAIT_SECONDS}s for trace propagation...")
         time.sleep(WAIT_SECONDS)
-        try:
-            results = Evaluation(region=REGION).run(
-                agent_id=agent_runtime_id,
-                session_id=session_id,
-                evaluators=EVALUATORS,
-                output="eval_output.json",
-            )
-        except RuntimeError as e:
-            if "No spans found" in str(e) and attempt < MAX_RETRIES:
-                print("  No spans yet, retrying...")
-                continue
-            raise
-
+        results = client.run(
+            evaluator_ids=EVALUATORS,
+            session_id=session_id,
+            agent_id=agent_runtime_id,
+        )
         missing = [
-            e for e in EVALUATORS if not any(r.value is not None for r in results.results if r.evaluator_name == e)
+            e for e in EVALUATORS if not any(r.get("value") is not None for r in results if r.get("evaluatorId") == e)
         ]
         if not missing:
             break
@@ -161,11 +154,11 @@ def run_evaluation(agent_runtime_id: str, session_id: str):
 def aggregate_scores(results) -> dict:
     """Keep the best score per evaluator (multiple spans may return results)."""
     scores = {}
-    if results is None:
-        return scores
-    for r in results.results:
-        if r.value is not None and (r.evaluator_name not in scores or r.value > scores[r.evaluator_name][0]):
-            scores[r.evaluator_name] = (r.value, r.label)
+    for r in results or []:
+        name = r.get("evaluatorId")
+        value = r.get("value")
+        if value is not None and (name not in scores or value > scores[name][0]):
+            scores[name] = (value, r.get("label"))
     return scores
 
 

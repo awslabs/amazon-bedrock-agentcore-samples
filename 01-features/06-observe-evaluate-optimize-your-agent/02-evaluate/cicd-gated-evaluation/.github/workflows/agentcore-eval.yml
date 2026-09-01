@@ -245,7 +245,7 @@ jobs:
 
       # --- Run evaluation ---
       - name: Install eval dependencies
-        run: pip install boto3 requests bedrock-agentcore-starter-toolkit
+        run: pip install boto3 requests bedrock-agentcore
 
       - name: Run evaluation
         working-directory: scripts
