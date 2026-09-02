@@ -7,6 +7,11 @@ botocore>=1.43.5
 strands-agents>=1.0.0
 strands-agents-tools>=0.2.0
 
+# OpenAI Agents SDK on Amazon Bedrock
+aws-bedrock-token-generator>=1.1.0
+httpx>=0.27.0
+openai-agents>=0.19.1
+
 # Observability (required for Runtime traces)
 aws-opentelemetry-distro
 
