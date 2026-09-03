@@ -95,7 +95,7 @@ python scripts/full_demo.py --extraction-timeout 600 --stream-poll-timeout 600
 
 ```bash
 python scripts/create_memories.py \
-  --name my-agent-memory \
+  --name my_agent_memory \
   --source-region us-east-1 \
   --target-region us-west-2
 # writes memories.json with both IDs

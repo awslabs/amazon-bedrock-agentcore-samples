@@ -18,13 +18,9 @@ dependencies = [
     # create_ab_test, create_gateway).
     # The [simulation] extra pulls in strands-agents-evals, which drives
     # LLM-actor conversations in SimulatedScenario evaluations.
-    "bedrock-agentcore[simulation]>=1.7.0",
-    "jinja2",
-    # AgentCore observability — framework-level auto-instrumentation for
-    # LangChain / LangGraph. Emits gen_ai.*, traceloop.entity.* attributes
-    # and tool-call spans that code-based evaluators can reason over.
-    # See: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html
-    "opentelemetry-instrumentation-langchain",
+    "bedrock-agentcore[simulation]==1.8.0",
+    # Exact runtime dependencies for the isolated native AgentSkills variant.
+    "strands-agents[otel]==1.38.0",
     # The ADOT Python distro. Without it the `opentelemetry-instrument` command
     # in the Dockerfile starts with no AWS exporter, so the agent emits no spans
     # and AgentCore Evaluations has nothing to score.
@@ -34,7 +30,13 @@ dependencies = [
     # aws/spans log group, so that header is overridden in agentcore.json to
     # point back at aws/spans. Without that override, spans are stored but never
     # evaluated and no scores are produced.
-    "aws-opentelemetry-distro>=0.10.1,<0.18.0",
+    "aws-opentelemetry-distro==0.19.0",
+    "jinja2",
+    # AgentCore observability — framework-level auto-instrumentation for
+    # LangChain / LangGraph. Emits gen_ai.*, traceloop.entity.* attributes
+    # and tool-call spans that code-based evaluators can reason over.
+    # See: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html
+    "opentelemetry-instrumentation-langchain",
     # Pin wrapt to avoid TypeError in opentelemetry-instrumentation-langchain:
     # wrapt 1.16.0+ made wrap_function_wrapper() args positional-only, breaking
     # LangchainInstrumentor().instrument() which passes module= as a keyword arg.

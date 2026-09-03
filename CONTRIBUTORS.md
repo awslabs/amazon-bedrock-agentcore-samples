@@ -132,3 +132,5 @@
 - Anil Nadiminti (aniloncloud)
 - ach1ntya
 - Anand Komandooru (akomandooru)
+- Shruthi Rajoli (rajolishruthi)
+- ratnopam

@@ -96,13 +96,14 @@ python observe/data_protection.py --cleanup
 
 ## evaluate/ — Automated Agent evaluation
 
-Three evaluation approaches across the full evaluation maturity curve:
+Four evaluation approaches across the full evaluation maturity curve:
 
 | Sub-folder | Approach | Description |
 |:-----------|:---------|:------------|
 | `ground-truth-based-evaluation/` | Ground Truth | Dataset simulation → batch evaluation with ground truth labels |
 | `llm-as-a-judge-evaluation/` | LLM as Judge | On-demand and online evaluation using built-in LLM evaluators |
 | `custom-code-based-evaluation/` | Custom Code | Lambda-based evaluators with domain-specific business logic |
+| `skills-evaluation/` | Agent Skills | Built-in skill selection and instruction-following evaluation |
 
 All evaluation samples use an **HR Assistant agent** as the demo agent.
 
@@ -115,6 +116,8 @@ All evaluation samples use an **HR Assistant agent** as the demo agent.
 | `Correctness` | Did the agent give accurate information? |
 | `TrajectoryToolSelectionAccuracy` | Did the agent choose the right tools in the right order? |
 | `Faithfulness` | Is the response grounded in retrieved context? |
+| `SkillSelectionAccuracy` | Did the agent load the right skill for the request? |
+| `SkillInstructionFollowing` | Did the agent follow the loaded skill's required steps? |
 
 ---
 
