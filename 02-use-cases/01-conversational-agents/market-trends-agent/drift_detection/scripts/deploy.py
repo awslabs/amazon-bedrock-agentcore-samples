@@ -52,23 +52,59 @@ DASHBOARD_NAME = "MarketTrendsDriftDetection"
 ALARM_PREFIX = "MarketTrends-Drift"
 
 DRIFT_NAMESPACE = os.environ.get("DRIFT_NAMESPACE", "MarketTrends/DriftDetection")
-SERVICE_NAME = os.environ.get("SERVICE_NAME", "markettrends_market_trends_agent.DEFAULT")
 SCHEDULE_MINUTES = int(os.environ.get("DRIFT_SCHEDULE_MINUTES", "5"))
+
+_EVAL_DEPLOY_OUTPUT = AGENT_ROOT / "evaluators" / "scripts" / ".deploy_output.json"
+
+
+def _eval_deploy_output() -> Dict[str, Any]:
+    if _EVAL_DEPLOY_OUTPUT.exists():
+        return json.loads(_EVAL_DEPLOY_OUTPUT.read_text())
+    return {}
 
 
 def resolve_online_config_id() -> str:
     from_env = os.environ.get("ONLINE_EVAL_CONFIG_ID", "")
     if from_env:
         return from_env
-    out = AGENT_ROOT / "evaluators" / "scripts" / ".deploy_output.json"
-    if out.exists():
-        cid = json.loads(out.read_text()).get("onlineEvaluationConfigId", "")
-        if cid:
-            return cid
+    cid = _eval_deploy_output().get("onlineEvaluationConfigId", "")
+    if cid:
+        return cid
     raise SystemExit(
         "ONLINE_EVAL_CONFIG_ID not set and evaluators/scripts/.deploy_output.json "
         "not found. Run evaluators/scripts/deploy.py first."
     )
+
+
+def resolve_service_name() -> str:
+    """The service.name dimension AgentCore Observability publishes for this agent.
+
+    Must match exactly what evaluators/scripts/deploy.py computed when it created
+    the online evaluation config, or the dashboard's raw-scores widget queries the
+    wrong service.name and silently renders empty. Derived the same way that
+    script derives it (agentRuntimeArn stripped of its runtime suffix), read back
+    from its .deploy_output.json rather than recomputed by guesswork here.
+    """
+    from_env = os.environ.get("SERVICE_NAME", "")
+    if from_env:
+        return from_env
+
+    arn = _eval_deploy_output().get("agentRuntimeArn", "")
+    if arn:
+        agent_id = arn.split("/")[-1]
+        agent_name = agent_id[:-11] if len(agent_id) > 11 and agent_id[-11] == "-" else agent_id
+        return f"{agent_name}.DEFAULT"
+
+    LOG.warning(
+        "Could not derive SERVICE_NAME from evaluators/scripts/.deploy_output.json; "
+        "falling back to a guessed default. The dashboard's raw evaluator score "
+        "widget will be empty if this does not match the agent's real service.name. "
+        "Set SERVICE_NAME explicitly or run evaluators/scripts/deploy.py first."
+    )
+    return "markettrends_market_trends_agent.DEFAULT"
+
+
+SERVICE_NAME = resolve_service_name()
 
 
 # ------------------------------------------------------------------ DynamoDB
