@@ -95,28 +95,31 @@ def main() -> int:
         recommended = cfg.SHAPE_DEFAULTS.get(observed, {})
         agrees = observed == ev.shape and recommended.get("method") == ev.method
 
-        rows.append({
-            "evaluator": ev.evaluator,
-            "status": "ok",
-            "level": ev.level,
-            "configured": ev.shape,
-            "configuredMethod": ev.method,
-            "observed": observed,
-            "recommendedMethod": recommended.get("method"),
-            "recommendedParams": recommended.get("params"),
-            "agrees": agrees,
-            "labels": sorted({s.label for s in items if s.label}),
-            **stats,
-        })
+        rows.append(
+            {
+                "evaluator": ev.evaluator,
+                "status": "ok",
+                "level": ev.level,
+                "configured": ev.shape,
+                "configuredMethod": ev.method,
+                "observed": observed,
+                "recommendedMethod": recommended.get("method"),
+                "recommendedParams": recommended.get("params"),
+                "agrees": agrees,
+                "labels": sorted({s.label for s in items if s.label}),
+                **stats,
+            }
+        )
 
     if args.json:
         print(json.dumps({"hours": args.hours, "streams": rows}, indent=2, default=str))
         return 0
 
-    print(f"\nObserved score shape over the last {args.hours:g}h "
-          f"({len(all_scores)} evaluation records)\n")
-    print(f"{'evaluator':<30} {'n':>4} {'mean':>7} {'sd':>7} {'top':>5} {'observed':<16} "
-          f"{'configured':<16} {'method':<8} {'agrees':<7} distribution")
+    print(f"\nObserved score shape over the last {args.hours:g}h ({len(all_scores)} evaluation records)\n")
+    print(
+        f"{'evaluator':<30} {'n':>4} {'mean':>7} {'sd':>7} {'top':>5} {'observed':<16} "
+        f"{'configured':<16} {'method':<8} {'agrees':<7} distribution"
+    )
     print("-" * 150)
 
     disagree = []
@@ -124,8 +127,10 @@ def main() -> int:
     for r in rows:
         if r["status"] != "ok":
             nodata.append(r["evaluator"])
-            print(f"{r['evaluator']:<30} {'-':>4} {'-':>7} {'-':>7} {'-':>5} "
-                  f"{'no data':<16} {r['configured']:<16} {'-':<8} {'-':<7}")
+            print(
+                f"{r['evaluator']:<30} {'-':>4} {'-':>7} {'-':>7} {'-':>5} "
+                f"{'no data':<16} {r['configured']:<16} {'-':<8} {'-':<7}"
+            )
             continue
         if not r["agrees"]:
             disagree.append(r)
@@ -140,10 +145,14 @@ def main() -> int:
         print("\nDISAGREES: observed shape does not match the configuration\n")
         for r in disagree:
             print(f"  {r['evaluator']}")
-            print(f"    observed {r['observed']} (top value {r['top_value']} is "
-                  f"{r['top_fraction']*100:.0f}% of the stream)")
-            print(f"    configured as {r['configured']} using {r['configuredMethod']}, "
-                  f"recommended {r['recommendedMethod']} {json.dumps(r['recommendedParams'])}")
+            print(
+                f"    observed {r['observed']} (top value {r['top_value']} is "
+                f"{r['top_fraction'] * 100:.0f}% of the stream)"
+            )
+            print(
+                f"    configured as {r['configured']} using {r['configuredMethod']}, "
+                f"recommended {r['recommendedMethod']} {json.dumps(r['recommendedParams'])}"
+            )
             if r["observed"] == "near_degenerate" and r["configuredMethod"] != "zscore":
                 print("    a smoothing method on this stream will carry a single isolated dip")
                 print("    forward for many samples and satisfy the persistence rule, which")
@@ -155,8 +164,7 @@ def main() -> int:
         print("PINNED STREAMS: no headroom to detect degradation\n")
         for r in degenerate:
             where = "floor" if r["at_floor"] else "ceiling"
-            print(f"  {r['evaluator']} sits at its {where} ({r['mean']:.2f}) across all "
-                  f"{r['n']} samples.")
+            print(f"  {r['evaluator']} sits at its {where} ({r['mean']:.2f}) across all {r['n']} samples.")
         print("  A stream pinned at the floor cannot fall, so nothing can be detected on it.")
         print("  A stream pinned at the ceiling with zero variance relies entirely on the")
         print("  standard deviation floor, which makes its limit an assumption rather than a")

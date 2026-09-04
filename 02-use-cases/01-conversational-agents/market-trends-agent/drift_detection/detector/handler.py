@@ -190,9 +190,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     drifting = [r["evaluator"] for r in results if r["drifting"]]
     warming = [r["evaluator"] for r in results if r["warming_up"]]
-    LOG.info(
-        "detectors=%d drifting=%s warming_up=%s", len(results), drifting or "none", warming or "none"
-    )
+    LOG.info("detectors=%d drifting=%s warming_up=%s", len(results), drifting or "none", warming or "none")
 
     return {
         "scores_read": len(all_scores),

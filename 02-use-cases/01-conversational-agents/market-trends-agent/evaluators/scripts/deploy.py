@@ -141,9 +141,7 @@ def _ensure_inline_policy(iam, role_name: str, policy_name: str, policy: Dict[st
 
 def _eval_exec_role(iam, account_id: str) -> str:
     trust = json.loads((IAM_DIR / "trust-policy.json").read_text())
-    perms_text = (IAM_DIR / "permissions-policy.json").read_text().replace(
-        "<ACCOUNT_ID>", account_id
-    )
+    perms_text = (IAM_DIR / "permissions-policy.json").read_text().replace("<ACCOUNT_ID>", account_id)
     perms = json.loads(perms_text)
     arn = _ensure_role(
         iam,

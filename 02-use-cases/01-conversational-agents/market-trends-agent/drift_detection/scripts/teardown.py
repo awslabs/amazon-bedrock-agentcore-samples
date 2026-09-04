@@ -84,8 +84,7 @@ def main() -> int:
             "the agent and its AgentCore Runtime",
             "the evaluators and their Lambdas",
             "the online evaluation config and its results",
-            f"published metrics in the drift namespace (metrics cannot be deleted, "
-            f"they expire on their own retention)",
+            "published metrics in the drift namespace (metrics cannot be deleted, they expire on their own retention)",
         ],
     }
 

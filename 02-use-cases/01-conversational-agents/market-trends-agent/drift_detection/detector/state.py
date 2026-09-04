@@ -133,9 +133,7 @@ class StateStore:
         This is the reset used after a demo: clearing the latch alone would leave
         a baseline that absorbed part of the degraded traffic.
         """
-        self.client.delete_item(
-            TableName=self.table_name, Key={"evaluator": {"S": evaluator}}
-        )
+        self.client.delete_item(TableName=self.table_name, Key={"evaluator": {"S": evaluator}})
 
     def clear_latch(self, evaluator: str) -> bool:
         """Release the drift latch but keep the baseline.

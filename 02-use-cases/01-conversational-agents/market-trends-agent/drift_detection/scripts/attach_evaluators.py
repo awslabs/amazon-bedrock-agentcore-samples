@@ -132,17 +132,19 @@ def main() -> int:
     )
 
     after = cp.get_online_evaluation_config(onlineEvaluationConfigId=config_id)
-    print(json.dumps(
-        {
-            "configId": config_id,
-            "status": after.get("status"),
-            "executionStatus": after.get("executionStatus"),
-            "added": added,
-            "notRegistered": missing,
-            "evaluators": [e["evaluatorId"] for e in after.get("evaluators", [])],
-        },
-        indent=2,
-    ))
+    print(
+        json.dumps(
+            {
+                "configId": config_id,
+                "status": after.get("status"),
+                "executionStatus": after.get("executionStatus"),
+                "added": added,
+                "notRegistered": missing,
+                "evaluators": [e["evaluatorId"] for e in after.get("evaluators", [])],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

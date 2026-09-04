@@ -54,8 +54,10 @@ def render(store) -> None:
     warmup = cfg.WARMUP
 
     print(f"\nMarket Trends Agent drift detectors    warmup={warmup}  confirm={cfg.CONSECUTIVE}")
-    print(f"{'evaluator':<30} {'method':<8} {'shape':<16} {'samples':>9} {'baseline':>9} "
-          f"{'stat':>9} {'limit':>9} {'run':>4}  {'pressure':<20} state")
+    print(
+        f"{'evaluator':<30} {'method':<8} {'shape':<16} {'samples':>9} {'baseline':>9} "
+        f"{'stat':>9} {'limit':>9} {'run':>4}  {'pressure':<20} state"
+    )
     print("-" * 142)
 
     if not states:
@@ -65,8 +67,10 @@ def render(store) -> None:
     for ev in cfg.ALL_EVALUATORS:
         st = states.get(ev.evaluator)
         if st is None:
-            print(f"{ev.evaluator:<30} {ev.method:<8} {ev.shape:<16} {'-':>9} {'-':>9} "
-                  f"{'-':>9} {'-':>9} {'-':>4}  {'':<20} not deployed")
+            print(
+                f"{ev.evaluator:<30} {ev.method:<8} {ev.shape:<16} {'-':>9} {'-':>9} "
+                f"{'-':>9} {'-':>9} {'-':>4}  {'':<20} not deployed"
+            )
             continue
 
         baseline = (st.detector or {}).get("baseline", {}) or {}
@@ -74,7 +78,7 @@ def render(store) -> None:
         run_length = (st.gate or {}).get("run_length", 0)
 
         if st.drifting:
-            state = f"DRIFT since {(st.gate or {}).get('latched_at','')[:19]}"
+            state = f"DRIFT since {(st.gate or {}).get('latched_at', '')[:19]}"
         elif st.warming_up:
             state = f"warming up {st.samples_seen}/{warmup}"
         else:
@@ -85,7 +89,7 @@ def render(store) -> None:
         print(
             f"{ev.evaluator:<30} {ev.method:<8} {ev.shape:<16} "
             f"{st.samples_seen:>9} "
-            f"{(f'{mean:.4f}' if isinstance(mean,(int,float)) else '-'):>9} "
+            f"{(f'{mean:.4f}' if isinstance(mean, (int, float)) else '-'):>9} "
             f"{(f'{st.last_statistic:.4f}' if st.last_statistic is not None else '-'):>9} "
             f"{(f'{st.last_threshold:.4f}' if st.last_threshold is not None else '-'):>9} "
             f"{run_length:>4}  {_bar(pressure):<20} {state}"
@@ -121,8 +125,7 @@ def main() -> int:
         lam = boto3.client("lambda", region_name=REGION)
         resp = lam.invoke(FunctionName=FUNCTION_NAME, Payload=b"{}")
         payload = json.loads(resp["Payload"].read() or b"{}")
-        print(f"detector run: scores_read={payload.get('scores_read')} "
-              f"drifting={payload.get('drifting')}")
+        print(f"detector run: scores_read={payload.get('scores_read')} drifting={payload.get('drifting')}")
 
     if not args.watch:
         render(store)

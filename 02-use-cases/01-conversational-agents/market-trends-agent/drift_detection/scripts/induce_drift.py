@@ -222,21 +222,19 @@ def cmd_list() -> int:
 def cmd_status(cp, runtime_id: str) -> int:
     current = get_runtime(cp, runtime_id)
     env = current.get("environmentVariables", {}) or {}
-    active = [
-        t.name
-        for t in TRIGGERS.values()
-        if all(env.get(k) == v for k, v in t.env.items())
-    ]
-    print(json.dumps(
-        {
-            "runtimeId": runtime_id,
-            "version": current.get("agentRuntimeVersion"),
-            "status": current.get("status"),
-            "environmentVariables": env,
-            "activeTriggers": active or ["none"],
-        },
-        indent=2,
-    ))
+    active = [t.name for t in TRIGGERS.values() if all(env.get(k) == v for k, v in t.env.items())]
+    print(
+        json.dumps(
+            {
+                "runtimeId": runtime_id,
+                "version": current.get("agentRuntimeVersion"),
+                "status": current.get("status"),
+                "environmentVariables": env,
+                "activeTriggers": active or ["none"],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -258,19 +256,21 @@ def cmd_trigger(cp, runtime_id: str, name: str) -> int:
     LOG.info("Applying trigger %s: %s", name, json.dumps(trigger.env))
     apply_env(cp, runtime_id, env)
 
-    print(json.dumps(
-        {
-            "trigger": name,
-            "represents": trigger.represents,
-            "applied": trigger.env,
-            "predictedToMove": trigger.expected_to_move,
-            "nextStep": (
-                "Generate traffic, then watch the drift dashboard. Prediction is "
-                "recorded so the demo can report whether it held."
-            ),
-        },
-        indent=2,
-    ))
+    print(
+        json.dumps(
+            {
+                "trigger": name,
+                "represents": trigger.represents,
+                "applied": trigger.env,
+                "predictedToMove": trigger.expected_to_move,
+                "nextStep": (
+                    "Generate traffic, then watch the drift dashboard. Prediction is "
+                    "recorded so the demo can report whether it held."
+                ),
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

@@ -83,13 +83,17 @@ def create_market_trends_agent():
         broker_card_tools = [parse_broker_profile_from_message]
 
     # Bind tools to the LLM (market data tools + memory tools + conversational broker tools)
-    tools = [
-        get_stock_data,
-        search_news,
-        generate_market_summary_for_broker,
-        get_broker_card_template,
-        collect_broker_preferences_interactively,
-    ] + broker_card_tools + memory_tools
+    tools = (
+        [
+            get_stock_data,
+            search_news,
+            generate_market_summary_for_broker,
+            get_broker_card_template,
+            collect_broker_preferences_interactively,
+        ]
+        + broker_card_tools
+        + memory_tools
+    )
     llm_with_tools = llm.bind_tools(tools)
 
     # System message optimized for Claude Sonnet 4 with Long-Term AgentCore Memory

@@ -200,9 +200,7 @@ def ensure_role(iam, account_id: str, online_cfg_id: str) -> str:
         LOG.info("Waiting for IAM propagation")
         time.sleep(12)
 
-    iam.put_role_policy(
-        RoleName=ROLE_NAME, PolicyName=ROLE_POLICY_NAME, PolicyDocument=json.dumps(perms)
-    )
+    iam.put_role_policy(RoleName=ROLE_NAME, PolicyName=ROLE_POLICY_NAME, PolicyDocument=json.dumps(perms))
     return arn
 
 
@@ -316,8 +314,7 @@ def ensure_alarms(cw, evaluators: List[Any]) -> List[str]:
         cw.put_metric_alarm(
             AlarmName=alarm_name,
             AlarmDescription=(
-                f"Quality drift on {ev.evaluator} ({ev.shape} score stream, "
-                f"{ev.method} detector). {ev.note}"
+                f"Quality drift on {ev.evaluator} ({ev.shape} score stream, {ev.method} detector). {ev.note}"
             ),
             Namespace=DRIFT_NAMESPACE,
             MetricName="DriftDetected",
@@ -343,10 +340,7 @@ def ensure_alarms(cw, evaluators: List[Any]) -> List[str]:
 
 def ensure_dashboard(cw, evaluators: List[Any]) -> None:
     def series(metric: str):
-        return [
-            [DRIFT_NAMESPACE, metric, "Evaluator", ev.evaluator, "ServiceName", SERVICE_NAME]
-            for ev in evaluators
-        ]
+        return [[DRIFT_NAMESPACE, metric, "Evaluator", ev.evaluator, "ServiceName", SERVICE_NAME] for ev in evaluators]
 
     widgets = [
         {
@@ -466,9 +460,7 @@ def ensure_dashboard(cw, evaluators: List[Any]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--skip-invoke", action="store_true", help="do not run the detector once after deploying"
-    )
+    parser.add_argument("--skip-invoke", action="store_true", help="do not run the detector once after deploying")
     args = parser.parse_args()
 
     sys.path.insert(0, str(AGENT_ROOT))
@@ -510,8 +502,7 @@ def main() -> int:
         "alarms": alarms,
         "dashboard": DASHBOARD_NAME,
         "dashboardUrl": (
-            f"https://{REGION}.console.aws.amazon.com/cloudwatch/home?region={REGION}"
-            f"#dashboards:name={DASHBOARD_NAME}"
+            f"https://{REGION}.console.aws.amazon.com/cloudwatch/home?region={REGION}#dashboards:name={DASHBOARD_NAME}"
         ),
         "warmup": os.environ.get("DRIFT_WARMUP", "100"),
         "consecutive": os.environ.get("DRIFT_CONSECUTIVE", "5"),

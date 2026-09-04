@@ -152,28 +152,28 @@ def main() -> int:
     results = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
         futures = [
-            pool.submit(run_session, client, agent_arn, i, args.tag, base_seed + i)
-            for i in range(1, args.sessions + 1)
+            pool.submit(run_session, client, agent_arn, i, args.tag, base_seed + i) for i in range(1, args.sessions + 1)
         ]
         for fut in as_completed(futures):
             results.append(fut.result())
 
     ok = sum(1 for _, success, _ in results if success)
     total = time.time() - started
-    print(json.dumps(
-        {
-            "sessions": args.sessions,
-            "succeeded": ok,
-            "failed": args.sessions - ok,
-            "wallClockSeconds": round(total, 1),
-            "tag": args.tag,
-            "note": (
-                "Evaluation runs after the session timeout, so scores appear a few "
-                "minutes after this returns."
-            ),
-        },
-        indent=2,
-    ))
+    print(
+        json.dumps(
+            {
+                "sessions": args.sessions,
+                "succeeded": ok,
+                "failed": args.sessions - ok,
+                "wallClockSeconds": round(total, 1),
+                "tag": args.tag,
+                "note": (
+                    "Evaluation runs after the session timeout, so scores appear a few minutes after this returns."
+                ),
+            },
+            indent=2,
+        )
+    )
     return 0 if ok == args.sessions else 1
 
 
